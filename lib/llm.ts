@@ -8,13 +8,15 @@ import type { AssistantSettings, TaskType } from "./types";
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-4-8";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.1";
 
-type Provider = "anthropic" | "openai";
+type Provider = "anthropic" | "openai" | "mock";
 
 function resolveProvider(): Provider {
   const explicit = process.env.LLM_PROVIDER;
-  if (explicit === "openai" || explicit === "anthropic") return explicit;
-  if (process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) return "openai";
-  return "anthropic";
+  if (explicit === "openai" || explicit === "anthropic" || explicit === "mock") return explicit;
+  if (process.env.OPENAI_API_KEY) return "openai";
+  if (process.env.ANTHROPIC_API_KEY) return "anthropic";
+  // 키가 하나도 없으면 데모 모드 — 승인 게이트 흐름을 키 없이 시험할 수 있게 함
+  return "mock";
 }
 
 // ---------- 프롬프트 (공급자 무관) ----------
@@ -106,6 +108,51 @@ async function completeWithOpenAI(system: string, user: string): Promise<string>
   return (response.choices[0]?.message?.content ?? "").trim();
 }
 
+// LLM 키가 없을 때의 데모 초안 — 흐름 검증용. 키를 설정하면 자동으로 실제 모델 사용.
+function completeWithMock(taskType: TaskType, instruction: string): string {
+  const sections: Record<TaskType, string> = {
+    자료조사: `## 요약 (3줄 이내)
+- "${instruction}"에 대한 조사 초안 자리입니다. (데모 모드)
+
+## 핵심 발견
+- LLM API 키가 아직 연결되지 않아 실제 조사 내용 대신 데모 초안이 생성되었습니다.
+
+## 상세 내용
+위임 내용: ${instruction}
+
+## 한계·추가 확인 필요 사항
+- OPENAI_API_KEY 또는 ANTHROPIC_API_KEY를 설정하면 실제 AI 초안이 생성됩니다.`,
+    회의록: `## 회의 개요
+- 안건: ${instruction} (데모 모드)
+
+## 주요 논의 사항
+- LLM API 키 미연결 상태로, 실제 회의 내용 정리 대신 데모 초안이 생성되었습니다.
+
+## 결정 사항
+- (키 연결 후 재작성 필요)
+
+## 액션 아이템
+- OPENAI_API_KEY 또는 ANTHROPIC_API_KEY 설정`,
+    내용정리: `## 한 줄 요약
+- "${instruction}" 정리 초안 자리입니다. (데모 모드)
+
+## 핵심 포인트
+- LLM API 키가 아직 연결되지 않았습니다.
+
+## 구조화된 정리
+위임 내용: ${instruction}`,
+    반복업무: `## 처리 결과 요약
+- "${instruction}" 처리 초안 자리입니다. (데모 모드)
+
+## 처리 내역
+1. LLM API 키 미연결 — 데모 초안 생성
+
+## 다음 반복 시 참고사항
+- OPENAI_API_KEY 또는 ANTHROPIC_API_KEY를 설정하면 실제 AI가 처리합니다.`,
+  };
+  return `제목: [데모] ${instruction.slice(0, 40)}\n${sections[taskType]}`;
+}
+
 // ---------- 공개 인터페이스 ----------
 
 export interface DraftResult {
@@ -129,9 +176,11 @@ export async function generateDraft(params: {
   const system = buildSystemPrompt(assistant, taskType);
   const provider = resolveProvider();
   const text =
-    provider === "openai"
-      ? await completeWithOpenAI(system, userContent)
-      : await completeWithAnthropic(system, userContent);
+    provider === "mock"
+      ? completeWithMock(taskType, instruction)
+      : provider === "openai"
+        ? await completeWithOpenAI(system, userContent)
+        : await completeWithAnthropic(system, userContent);
 
   if (!text) throw new Error("부사수가 빈 응답을 반환했습니다.");
 
