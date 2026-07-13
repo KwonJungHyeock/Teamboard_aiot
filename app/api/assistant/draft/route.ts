@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
-import { generateDraft } from "@/lib/claude";
+import { generateDraft } from "@/lib/llm";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
 import { TASK_TYPES, type AssistantSettings, type Draft, type TaskType } from "@/lib/types";

@@ -1,19 +1,23 @@
-// 부사수 지능 — Claude API (PRD 12장). 서버 전용: 키는 서버 환경변수에만.
+// 부사수 지능 (PRD 12장) — 공급자 교체 가능 레이어.
+// LLM_PROVIDER(openai|anthropic)로 선택. 미지정 시 설정된 API 키 기준 자동 선택.
+// 키는 서버 환경변수에만 존재하며 클라이언트에 노출되지 않는다.
 import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import type { AssistantSettings, TaskType } from "./types";
 
-const MODEL = "claude-opus-4-8";
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-4-8";
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.1";
 
-let client: Anthropic | null = null;
-function getClient(): Anthropic {
-  if (!client) {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      throw new Error("ANTHROPIC_API_KEY 환경변수가 설정되지 않았습니다.");
-    }
-    client = new Anthropic();
-  }
-  return client;
+type Provider = "anthropic" | "openai";
+
+function resolveProvider(): Provider {
+  const explicit = process.env.LLM_PROVIDER;
+  if (explicit === "openai" || explicit === "anthropic") return explicit;
+  if (process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) return "openai";
+  return "anthropic";
 }
+
+// ---------- 프롬프트 (공급자 무관) ----------
 
 // task_type별 출력 포맷 고정 (PRD 12장)
 const TASK_TEMPLATES: Record<TaskType, string> = {
@@ -64,6 +68,46 @@ function buildSystemPrompt(assistant: AssistantSettings, taskType: TaskType): st
   return parts.join("\n\n");
 }
 
+// ---------- 공급자별 호출 ----------
+
+let anthropicClient: Anthropic | null = null;
+async function completeWithAnthropic(system: string, user: string): Promise<string> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY 환경변수가 설정되지 않았습니다.");
+  }
+  if (!anthropicClient) anthropicClient = new Anthropic();
+  const response = await anthropicClient.messages.create({
+    model: ANTHROPIC_MODEL,
+    max_tokens: 8192,
+    system,
+    messages: [{ role: "user", content: user }],
+  });
+  return response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === "text")
+    .map((block) => block.text)
+    .join("\n")
+    .trim();
+}
+
+let openaiClient: OpenAI | null = null;
+async function completeWithOpenAI(system: string, user: string): Promise<string> {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY 환경변수가 설정되지 않았습니다.");
+  }
+  if (!openaiClient) openaiClient = new OpenAI();
+  const response = await openaiClient.chat.completions.create({
+    model: OPENAI_MODEL,
+    max_completion_tokens: 8192,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+  });
+  return (response.choices[0]?.message?.content ?? "").trim();
+}
+
+// ---------- 공개 인터페이스 ----------
+
 export interface DraftResult {
   title: string;
   body: string;
@@ -82,18 +126,12 @@ export async function generateDraft(params: {
     userContent += `\n\n이전 초안이 반려되었습니다. 아래 반려 사유를 반영해 재작업하세요.\n\n[반려 사유]\n${previousDraft.feedback}\n\n[이전 초안: ${previousDraft.title}]\n${previousDraft.body}`;
   }
 
-  const response = await getClient().messages.create({
-    model: MODEL,
-    max_tokens: 8192,
-    system: buildSystemPrompt(assistant, taskType),
-    messages: [{ role: "user", content: userContent }],
-  });
-
-  const text = response.content
-    .filter((block): block is Anthropic.TextBlock => block.type === "text")
-    .map((block) => block.text)
-    .join("\n")
-    .trim();
+  const system = buildSystemPrompt(assistant, taskType);
+  const provider = resolveProvider();
+  const text =
+    provider === "openai"
+      ? await completeWithOpenAI(system, userContent)
+      : await completeWithAnthropic(system, userContent);
 
   if (!text) throw new Error("부사수가 빈 응답을 반환했습니다.");
 

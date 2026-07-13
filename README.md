@@ -18,7 +18,8 @@ R&D팀 3명이 각자 AI 부사수를 두고, 팀 업무를 Notion과 연동해 
 
 - Next.js (App Router) + TypeScript — Vercel 배포
 - Postgres (`lib/db.ts`로 추상화 — 다른 DB로 교체 시 이 파일만 수정)
-- Claude API (`@anthropic-ai/sdk`, 모델: `claude-opus-4-8`) — 부사수 초안 생성
+- LLM (`lib/llm.ts`로 추상화) — 부사수 초안 생성. OpenAI(`gpt-5.1`) 또는
+  Claude(`claude-opus-4-8`) 중 설정된 API 키에 따라 자동 선택
 - Notion API (버전 `2025-09-03`, data source 기반) — 서버 API Routes에서만 호출
 
 ## 설정
@@ -33,7 +34,9 @@ R&D팀 3명이 각자 AI 부사수를 두고, 팀 업무를 Notion과 연동해 
 
    | 변수 | 설명 |
    |------|------|
-   | `ANTHROPIC_API_KEY` | Claude API 키 (서버 전용) |
+   | `OPENAI_API_KEY` **또는** `ANTHROPIC_API_KEY` | 부사수 LLM 키 — 하나만 있으면 됨 (서버 전용) |
+   | `LLM_PROVIDER` | (선택) 둘 다 설정 시 강제 선택: `openai` \| `anthropic` |
+   | `OPENAI_MODEL` / `ANTHROPIC_MODEL` | (선택) 모델 오버라이드. 기본 `gpt-5.1` / `claude-opus-4-8` |
    | `NOTION_TOKEN` | "팀 업무 타임라인" DB에만 연결된 Notion 통합 토큰 |
    | `NOTION_TIMELINE_DS_ID` | 타임라인 data_source_id (기본값 내장) |
    | `DATABASE_URL` | Postgres 연결 문자열 |
