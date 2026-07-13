@@ -8,7 +8,7 @@ import { jsonError } from "@/lib/api";
 import { TASK_TYPES, type AssistantSettings, type Draft, type TaskType } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 120; // Claude 초안 생성 대기
+export const maxDuration = 60; // Claude 초안 생성 대기 (Vercel Hobby 플랜 상한)
 
 export async function POST(request: Request) {
   let draftId: number | null = null;
