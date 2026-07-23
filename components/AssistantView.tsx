@@ -11,6 +11,7 @@ type DraftRow = Draft & { user_name?: string; assistant_name?: string };
 export default function AssistantView({ user }: { user: SessionUser }) {
   const [assistant, setAssistant] = useState<AssistantSettings | null>(null);
   const [drafts, setDrafts] = useState<DraftRow[]>([]);
+  const [teamDrafts, setTeamDrafts] = useState<DraftRow[]>([]); // lead 전용 — 팀원 초안 (scope=all)
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [taskType, setTaskType] = useState<TaskType>("자료조사");
   const [instruction, setInstruction] = useState("");
@@ -29,7 +30,18 @@ export default function AssistantView({ user }: { user: SessionUser }) {
     ]);
     if (draftsRes.drafts) setDrafts(draftsRes.drafts);
     if (activityRes.entries) setActivity(activityRes.entries);
-  }, []);
+    // lead — 팀원 초안 승인 경로 (구 /control 승인 처리 흡수). 본인 것은 위의 개인 섹션에서 처리
+    if (user.role === "lead") {
+      const teamRes = await fetch("/api/drafts?scope=all&status=pending").then((r) => r.json());
+      if (teamRes.drafts) {
+        setTeamDrafts(
+          teamRes.drafts.filter(
+            (d: DraftRow) => d.user_id !== user.id && d.task_type !== "monthly_report"
+          )
+        );
+      }
+    }
+  }, [user.role, user.id]);
 
   useEffect(() => {
     fetch("/api/assistant/settings")
@@ -40,9 +52,10 @@ export default function AssistantView({ user }: { user: SessionUser }) {
     return () => clearInterval(timer);
   }, [refresh]);
 
-  const working = drafts.filter((d) => d.status === "working");
-  const pending = drafts.filter((d) => d.status === "pending");
-  const rejected = drafts.filter((d) => d.status === "rejected");
+  // 월간 보고 초안(monthly_report)은 /reports에서 승인한다. 부사수 화면에는 부수 업무 초안만.
+  const working = drafts.filter((d) => d.status === "working" && d.task_type !== "monthly_report");
+  const pending = drafts.filter((d) => d.status === "pending" && d.task_type !== "monthly_report");
+  const rejected = drafts.filter((d) => d.status === "rejected" && d.task_type !== "monthly_report");
   const decided = drafts.filter((d) => d.status === "approved").slice(0, 5);
 
   const assistantStatus =
@@ -266,6 +279,75 @@ export default function AssistantView({ user }: { user: SessionUser }) {
           </div>
         ))}
       </div>
+
+      {/* 팀 초안 — lead 전용. 팀원 부사수 초안 승인/반려 (구 /control 승인 처리 흡수) */}
+      {user.role === "lead" && (
+        <div className="card section-gap">
+          <h2>
+            팀 초안 · 승인 대기 <span className="count">{teamDrafts.length}</span>
+          </h2>
+          <p className="muted" style={{ marginBottom: 10 }}>
+            팀원 부사수가 올린 초안입니다. 승인해야 Notion에 기록됩니다.
+          </p>
+          {teamDrafts.length === 0 && <p className="muted">승인 대기 중인 팀원 초안이 없습니다.</p>}
+          {teamDrafts.map((d) => (
+            <div className="item" key={d.id}>
+              <div className="title">
+                <span className="badge red" style={{ marginRight: 8 }}>
+                  {d.task_type}
+                </span>
+                {d.title}
+                <span className="muted" style={{ marginLeft: 8, fontWeight: 400 }}>
+                  · {d.user_name ?? "팀원"} 담당
+                </span>
+              </div>
+              <div className="meta">
+                위임 내용: {d.instruction.slice(0, 80)} ·{" "}
+                {new Date(d.created_at).toLocaleString("ko-KR")}
+              </div>
+              {expandedId === d.id && <div className="draft-body">{d.body}</div>}
+              <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                <button
+                  className="btn small"
+                  onClick={() => setExpandedId(expandedId === d.id ? null : d.id)}
+                >
+                  {expandedId === d.id ? "본문 접기" : "본문 보기"}
+                </button>
+                <button className="btn small primary" onClick={() => setApproving(d)}>
+                  승인
+                </button>
+                <button
+                  className="btn small"
+                  onClick={() => {
+                    setRejectingId(rejectingId === d.id ? null : d.id);
+                    setFeedback("");
+                  }}
+                >
+                  반려·재작업
+                </button>
+              </div>
+              {rejectingId === d.id && (
+                <div style={{ marginTop: 10 }}>
+                  <textarea
+                    rows={2}
+                    placeholder="반려 사유 / 재작업 지시사항"
+                    value={feedback}
+                    onChange={(e) => setFeedback(e.target.value)}
+                  />
+                  <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+                    <button className="btn small ghost" onClick={() => setRejectingId(null)}>
+                      취소
+                    </button>
+                    <button className="btn small primary" onClick={() => reject(d.id)}>
+                      반려 확정
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* 반려됨 → 재작업 */}
       {rejected.length > 0 && (
