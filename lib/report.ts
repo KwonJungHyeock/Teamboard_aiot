@@ -33,6 +33,37 @@ export interface ReportSignalRef {
   status: string;
   decidedAt: string | null;
   resolvedAt: string | null;
+  /** 결정 후 경과일 — 미실행 결정에만 채워짐 (개선 1). 생성 시점에 고정 */
+  decidedElapsedDays?: number | null;
+}
+
+/** 화면 렌더 시 항목 수 대조용 — 조용한 누락 감지 (D-013, 치명1 조치) */
+export interface ReportCounts {
+  goals: number;
+  completed: number;
+  incomplete: number;
+  dropped: number;
+  decisions: number;
+  pendingDecisions: number;
+  risks: number;
+  nextGoals: number;
+  nextTasks: number;
+}
+
+/** 서버가 계산한 요약 수치 — LLM은 이 값만 문장에 끼워넣는다 (치명2 조치) */
+export interface ReportSummary {
+  totalGoals: number;
+  goalsBelow30: number; // 진척 30% 미만(산출 가능한 것 중)
+  goalsUnmeasured: number; // 진척 산출 불가("-")
+  avgProgress: number | null; // 산출 가능한 목표 평균(정수)
+  completedCount: number;
+  incompleteCount: number;
+  droppedCount: number;
+  decisionsCount: number;
+  pendingDecisionsCount: number;
+  risksCount: number;
+  nextGoalsCount: number;
+  nextTasksCount: number;
 }
 
 export interface MonthlyReportData {
@@ -48,6 +79,8 @@ export interface MonthlyReportData {
   risks: ReportSignalRef[];
   nextGoals: ReportGoalRef[];
   nextTasks: ReportTaskRef[];
+  counts: ReportCounts; // 렌더 대조용
+  summary: ReportSummary; // LLM 문장화용 서버 계산값
 }
 
 /** KST 기준 월 경계 — [start, nextStart) 반개구간의 timestamptz 문자열 */
@@ -149,10 +182,12 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
   ).map(mapSignal);
 
   // 6. 미실행 결정 — 월말(nextStart) 시점에 decided 상태로 남아 있던 것 (point-in-time)
+  //    경과일은 생성 시점 기준으로 고정 저장 (개선 1)
   const pendingDecisions = (
-    await query<ReportSignalRow>(
+    await query<ReportSignalRow & { decided_elapsed: string | null }>(
       `SELECT s.id, s.type, s.title, a.display_name AS author_name, s.status,
-              s.decided_at::text, s.resolved_at::text
+              s.decided_at::text, s.resolved_at::text,
+              floor(EXTRACT(EPOCH FROM (now() - s.decided_at)) / 86400) AS decided_elapsed
        FROM signal s JOIN actor a ON a.id = s.author_id
        WHERE s.is_active = true AND s.type = 'decision'
          AND s.decided_at IS NOT NULL AND s.decided_at < $1::timestamptz
@@ -160,7 +195,10 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
        ORDER BY s.decided_at`,
       [nextStart]
     )
-  ).map(mapSignal);
+  ).map((r) => ({
+    ...mapSignal(r),
+    decidedElapsedDays: r.decided_elapsed === null ? null : Number(r.decided_elapsed),
+  }));
 
   // 7. 리스크 — 해당 월 생성된 risk
   const risks = (
@@ -198,6 +236,83 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
     )
   ).map(mapTask);
 
+  // 렌더 대조용 count — 목록 쿼리와 독립된 COUNT(*)로 재측정한다.
+  // 목록 배열 길이와 이 값이 다르면 화면이 경고 배너를 띄운다 (조용한 누락 감지, 치명1 조치).
+  const countOne = async (sql: string, p: unknown[]) =>
+    Number((await query<{ n: string }>(sql, p))[0]?.n ?? 0);
+  const [cCompleted, cIncomplete, cDropped, cDecisions, cPending, cRisks, cNextTasks] = await Promise.all([
+    countOne(
+      `SELECT count(*) AS n FROM task WHERE is_active AND status='done'
+         AND completed_at >= $1::timestamptz AND completed_at < $2::timestamptz`,
+      [start, nextStart]
+    ),
+    countOne(
+      `SELECT count(*) AS n FROM task WHERE is_active AND status NOT IN ('done','dropped','proposed')
+         AND due_date >= ($1::timestamptz)::date AND due_date < ($2::timestamptz)::date`,
+      [start, nextStart]
+    ),
+    countOne(
+      `SELECT count(*) AS n FROM task WHERE is_active AND status='dropped'
+         AND dropped_at >= $1::timestamptz AND dropped_at < $2::timestamptz`,
+      [start, nextStart]
+    ),
+    countOne(
+      `SELECT count(*) AS n FROM signal WHERE is_active AND type='decision'
+         AND ((decided_at >= $1::timestamptz AND decided_at < $2::timestamptz)
+           OR (resolved_at >= $1::timestamptz AND resolved_at < $2::timestamptz))`,
+      [start, nextStart]
+    ),
+    countOne(
+      `SELECT count(*) AS n FROM signal WHERE is_active AND type='decision'
+         AND decided_at IS NOT NULL AND decided_at < $1::timestamptz
+         AND (resolved_at IS NULL OR resolved_at >= $1::timestamptz)`,
+      [nextStart]
+    ),
+    countOne(
+      `SELECT count(*) AS n FROM signal WHERE is_active AND type='risk'
+         AND created_at >= $1::timestamptz AND created_at < $2::timestamptz`,
+      [start, nextStart]
+    ),
+    countOne(
+      `SELECT count(*) AS n FROM task WHERE is_active AND status NOT IN ('done','dropped','proposed')
+         AND due_date >= ($1::timestamptz)::date AND due_date < ($2::timestamptz)::date`,
+      [nextMonthStart, afterNext]
+    ),
+  ]);
+
+  // LLM 문장화용 summary — 모두 서버 계산
+  const measurable = goals.filter((g) => g.progress !== null) as { progress: number }[];
+  const summary: ReportSummary = {
+    totalGoals: goals.length,
+    goalsBelow30: measurable.filter((g) => g.progress < 30).length,
+    goalsUnmeasured: goals.filter((g) => g.progress === null).length,
+    avgProgress:
+      measurable.length > 0
+        ? Math.round(measurable.reduce((s, g) => s + g.progress, 0) / measurable.length)
+        : null,
+    completedCount: completed.length,
+    incompleteCount: incomplete.length,
+    droppedCount: dropped.length,
+    decisionsCount: decisions.length,
+    pendingDecisionsCount: pendingDecisions.length,
+    risksCount: risks.length,
+    nextGoalsCount: nextGoals.length,
+    nextTasksCount: nextTasks.length,
+  };
+  // goals/nextGoals는 getCurrentMonthGoals가 행 1:1 매핑이라 배열 길이가 곧 authoritative count.
+  // 나머지는 위 독립 COUNT(*) 결과를 사용 — 목록 배열과 다르면 화면이 경고한다.
+  const counts: ReportCounts = {
+    goals: goals.length,
+    completed: cCompleted,
+    incomplete: cIncomplete,
+    dropped: cDropped,
+    decisions: cDecisions,
+    pendingDecisions: cPending,
+    risks: cRisks,
+    nextGoals: nextGoals.length,
+    nextTasks: cNextTasks,
+  };
+
   return {
     year,
     month,
@@ -211,6 +326,8 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
     risks,
     nextGoals,
     nextTasks,
+    counts,
+    summary,
   };
 }
 
@@ -265,7 +382,11 @@ export function renderReportMarkdown(
   for (const s of data.decisions) L.push(`- ${s.title}${s.status === "resolved" ? " (반영됨)" : " (결정됨)"}`);
   if (data.pendingDecisions.length > 0) {
     L.push("", "**미실행 결정 (결정됐으나 업무로 반영되지 않음):**");
-    for (const s of data.pendingDecisions) L.push(`- ${s.title}`);
+    for (const s of data.pendingDecisions) {
+      const when = s.decidedAt ? s.decidedAt.slice(0, 10) : "?";
+      const elapsed = s.decidedElapsedDays != null ? `, ${s.decidedElapsedDays}일 경과` : "";
+      L.push(`- ${s.title} (${when} 결정${elapsed})`);
+    }
   }
   L.push("");
 
@@ -277,8 +398,11 @@ export function renderReportMarkdown(
 
   L.push("## 6. 다음 달 목표 및 계획", "");
   para("next");
-  if (data.nextGoals.length === 0 && data.nextTasks.length === 0) L.push("- 등록된 다음 달 계획 없음");
-  for (const g of data.nextGoals) L.push(`- (목표) ${g.title}`);
+  if (data.nextGoals.length === 0) {
+    L.push("- 다음 달 목표가 아직 설정되지 않았습니다. 목표 화면에서 설정하세요.");
+  } else {
+    for (const g of data.nextGoals) L.push(`- (목표) ${g.title}`);
+  }
   for (const t of data.nextTasks) L.push(`- (예정) ${t.title}${t.dueDate ? ` — ${t.dueDate}` : ""}`);
 
   return L.join("\n");
