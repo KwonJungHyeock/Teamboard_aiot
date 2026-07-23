@@ -1,6 +1,7 @@
 // 홈 대시보드 집계 (Phase 3) — 모든 수치는 서버가 DB에서 산출한다 (금지 3: LLM 수치 생성 금지와 동일 원칙).
 // /api/home/summary 라우트와 홈 서버 페이지가 공유한다.
 import { query, queryOne } from "./db";
+import { getCurrentMonthGoals } from "./goals";
 
 const TZ_OFFSET = "+09:00"; // Asia/Seoul — 팀 기준 시간대
 
@@ -61,11 +62,14 @@ export interface LaneTask {
 export interface Lane {
   actorId: number;
   name: string;
+  /** 부사수 상태 — working(작성 중)/pending(보고 대기)/idle */
+  assistantStatus: "working" | "pending" | "idle";
   tasks: LaneTask[];
 }
 
 export interface HomeSummary {
   today: string;
+  greetingName: string; // short_name 우선, 없으면 display_name
   greetingSub: string;
   metrics: Metric[];
   lanes: Lane[];
@@ -75,10 +79,19 @@ export interface HomeSummary {
   monthGoals: {
     id: number;
     title: string;
-    progress: number;
+    progress: number | null; // null = 산출 불가 → "-"
     colorKey: string | null;
     projectName: string | null;
   }[];
+  projectProgress: {
+    id: number;
+    name: string;
+    colorKey: string | null;
+    total: number;
+    done: number;
+    percent: number | null; // 업무 0건이면 null → "-"
+  }[];
+  isoWeek: number;
   dueSoon: {
     id: number;
     title: string;
@@ -198,15 +211,18 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
      WHERE s.is_active = true AND s.type = 'decision' AND s.resolved_at IS NOT NULL
        AND s.resolved_at > now() - interval '90 days'`
   );
+  // 카드 숫자(90일 평균)와 동일 지표의 추세: 각 날짜 시점의 "직전 90일 평균 결정 소요일"
   const decisionSpark = await sparkSeries(
     async (day) =>
       Number(
-        (await queryOne<{ n: string }>(
-          `SELECT count(*) AS n FROM signal s
+        (await queryOne<{ avg_days: string | null }>(
+          `SELECT round(avg(EXTRACT(EPOCH FROM (s.resolved_at - s.created_at)) / 86400)::numeric, 1) AS avg_days
+           FROM signal s
            WHERE s.is_active = true AND s.type = 'decision' AND s.resolved_at IS NOT NULL
-             AND s.resolved_at >= $1::timestamptz AND s.resolved_at < $2::timestamptz`,
-          [kstDayStart(day), kstDayStart(addDays(day, 1))]
-        ))!.n
+             AND s.resolved_at >= $1::timestamptz - interval '90 days'
+             AND s.resolved_at < $1::timestamptz`,
+          [kstDayStart(addDays(day, 1))]
+        ))!.avg_days ?? 0
       ),
     today
   );
@@ -305,9 +321,20 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
      WHERE ${OPEN_TASK}
      ORDER BY t.due_date ASC NULLS LAST, t.priority = 'high' DESC, t.id`
   );
+  // 부사수 상태 (레인 이름 옆 상태 점) — working 우선, 없으면 pending, 없으면 idle
+  const assistantStates = await query<{ user_id: number; status: string }>(
+    `SELECT DISTINCT user_id, status FROM drafts WHERE status IN ('working','pending')`
+  );
+  const assistantStatusOf = (actorId: number): "working" | "pending" | "idle" => {
+    if (assistantStates.some((s) => s.user_id === actorId && s.status === "working")) return "working";
+    if (assistantStates.some((s) => s.user_id === actorId && s.status === "pending")) return "pending";
+    return "idle";
+  };
+
   const lanes: Lane[] = humans.map((h) => ({
     actorId: h.id,
     name: h.display_name,
+    assistantStatus: assistantStatusOf(h.id),
     tasks: laneTasks
       .filter((t) => t.assignee_id === h.id)
       .map((t) => ({
@@ -344,30 +371,43 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
     [kstDayStart(today), kstDayStart(addDays(today, 1))]
   );
 
-  // ── 이번 달 목표 진척 (auto: 연결 Task 완료율 / manual: 저장값) ──
-  const monthGoals = await query<{
+  // ── 이번 달 목표 진척 — 계산은 lib/goals.ts 단일 소스 (Phase 4) ──
+  const monthGoals = await getCurrentMonthGoals(today);
+
+  // ── 프로젝트 진행 (구 관제뷰 "프로젝트별 진행률" 흡수) — 활성 업무 완료율 ──
+  const projectProgress = await query<{
     id: number;
-    title: string;
-    progress_mode: string;
-    progress: string;
+    name: string;
     color_key: string | null;
-    project_name: string | null;
     total: string;
     done: string;
   }>(
-    `SELECT g.id, g.title, g.progress_mode, g.progress, p.color_key, p.name AS project_name,
-            count(gt.task_id) AS total,
-            count(gt.task_id) FILTER (WHERE t.status = 'done') AS done
-     FROM goal g
-     LEFT JOIN project p ON p.id = g.project_id
-     LEFT JOIN goal_task gt ON gt.goal_id = g.id
-     LEFT JOIN task t ON t.id = gt.task_id AND t.is_active = true
-     WHERE g.is_active = true AND g.period_type = 'month'
-       AND g.period_start <= $1::date AND g.period_end >= $1::date
-     GROUP BY g.id, p.color_key, p.name
-     ORDER BY g.id`,
-    [today]
+    `SELECT p.id, p.name, p.color_key,
+            count(t.id) FILTER (WHERE t.status <> 'proposed') AS total,
+            count(t.id) FILTER (WHERE t.status = 'done') AS done
+     FROM project p
+     LEFT JOIN task t ON t.project_id = p.id AND t.is_active = true
+     WHERE p.is_active = true
+     GROUP BY p.id
+     ORDER BY p.id`
   );
+
+  // 뷰어 호칭 (short_name 우선)
+  const viewer = await queryOne<{ display_name: string; short_name: string | null }>(
+    `SELECT display_name, short_name FROM actor WHERE id = $1`,
+    [viewerId]
+  );
+
+  // ISO 주차 (프로젝트 진행 카드 부제 "W30")
+  const isoWeek = (() => {
+    const d = new Date(`${today}T00:00:00Z`);
+    const day = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - day + 3);
+    const firstThu = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+    const firstDay = (firstThu.getUTCDay() + 6) % 7;
+    firstThu.setUTCDate(firstThu.getUTCDate() - firstDay + 3);
+    return 1 + Math.round((d.getTime() - firstThu.getTime()) / (7 * 86400000));
+  })();
 
   // ── 마감 임박 (7일 이내 + 지연) ──
   const dueSoonRows = await query<{
@@ -498,6 +538,7 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
 
   return {
     today,
+    greetingName: viewer?.short_name || viewer?.display_name || "",
     greetingSub,
     metrics,
     lanes,
@@ -512,18 +553,17 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
     })),
     eventCount: events.length,
     taskCount: lanes.reduce((sum, lane) => sum + lane.tasks.length, 0),
-    monthGoals: monthGoals.map((g) => ({
-      id: g.id,
-      title: g.title,
-      progress:
-        g.progress_mode === "manual"
-          ? Math.round(Number(g.progress))
-          : Number(g.total) > 0
-            ? Math.round((Number(g.done) / Number(g.total)) * 100)
-            : 0,
-      colorKey: g.color_key,
-      projectName: g.project_name,
+    monthGoals,
+    projectProgress: projectProgress.map((p) => ({
+      id: p.id,
+      name: p.name,
+      colorKey: p.color_key,
+      total: Number(p.total),
+      done: Number(p.done),
+      percent:
+        Number(p.total) > 0 ? Math.round((Number(p.done) / Number(p.total)) * 100) : null,
     })),
+    isoWeek,
     dueSoon: dueSoonRows.map((t) => ({
       id: t.id,
       title: t.title,

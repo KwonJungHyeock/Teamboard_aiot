@@ -91,22 +91,52 @@ await event(edu, "외부 미팅 · 전북교육청", at(0, "14:00"), at(0, "16:0
 await event(play, "디자인 싱크", at(0, "09:00"), at(0, "11:00"), false, [jo]);
 await event(train, "차시 구조 리뷰", at(2, "14:00"), at(2, "15:00"), false, [park]);
 
-// ── 목표 (이번 달, auto 진척 = 연결 Task 완료율) ──
+// ── 목표 트리: 연간 > 분기 > 월 (롤업 검증용 계층 포함) ──
 const monthStart = today.slice(0, 8) + "01";
 const [yy, mm] = today.split("-").map(Number);
 const monthEnd = new Date(Date.UTC(yy, mm, 0)).toISOString().slice(0, 10);
-async function goal(title, projectId, links) {
+
+async function goal({ periodType, start, end, title, parentId = null, projectId = null, mode = "auto", progress = 0, links = [] }) {
   const r = await q(
-    `INSERT INTO goal (period_type, period_start, period_end, title, progress_mode, owner_actor_id, project_id)
-     VALUES ('month',$1,$2,$3,'auto',$4,$5) RETURNING id`,
-    [monthStart, monthEnd, title, kwon, projectId]
+    `INSERT INTO goal (parent_id, period_type, period_start, period_end, title, progress_mode, progress, owner_actor_id, project_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+    [parentId, periodType, start, end, title, mode, progress, kwon, projectId]
   );
   for (const t of links) await q("INSERT INTO goal_task (goal_id, task_id) VALUES ($1,$2)", [r.rows[0].id, t]);
   return r.rows[0].id;
 }
-await goal("EDUINO AI 커리큘럼 1차 완성", edu, [tPoc, tPrd, tCurr, tAx, tDone1]);
-await goal("Playino 엔진 코어 계약 확정", play, [tCore, tHome, tEddie, tLoad, tDone3]);
-await goal("AI 트레이너 차시 설계", train, [tEval, tDb, tDone2]);
+
+const gYear = await goal({
+  periodType: "year", start: `${yy}-01-01`, end: `${yy}-12-31`,
+  title: `${yy} 교육 플랫폼 사업 기반 확립`,
+});
+const quarter = Math.floor((mm - 1) / 3) + 1;
+const qStartM = (quarter - 1) * 3 + 1;
+const qEndM = qStartM + 2;
+const qEndDay = new Date(Date.UTC(yy, qEndM, 0)).getUTCDate();
+const gQuarter = await goal({
+  periodType: "quarter",
+  start: `${yy}-${String(qStartM).padStart(2, "0")}-01`,
+  end: `${yy}-${String(qEndM).padStart(2, "0")}-${qEndDay}`,
+  title: `Q${quarter} 제품 코어 확정`, parentId: gYear,
+});
+// 하위 0개 분기 — 진척 "-" 표시 검증용
+const nq = quarter === 4 ? 1 : quarter + 1;
+const nqStartM = (nq - 1) * 3 + 1;
+const nqEndM = nqStartM + 2;
+const nqYear = quarter === 4 ? yy + 1 : yy;
+await goal({
+  periodType: "quarter",
+  start: `${nqYear}-${String(nqStartM).padStart(2, "0")}-01`,
+  end: `${nqYear}-${String(nqEndM).padStart(2, "0")}-${new Date(Date.UTC(nqYear, nqEndM, 0)).getUTCDate()}`,
+  title: `Q${nq} 현장 적용 확대 (계획)`, parentId: quarter === 4 ? null : gYear,
+});
+
+await goal({ periodType: "month", start: monthStart, end: monthEnd, title: "EDUINO AI 커리큘럼 1차 완성", parentId: gQuarter, projectId: edu, links: [tPoc, tPrd, tCurr, tAx, tDone1] });
+await goal({ periodType: "month", start: monthStart, end: monthEnd, title: "Playino 엔진 코어 계약 확정", parentId: gQuarter, projectId: play, links: [tCore, tHome, tEddie, tLoad, tDone3] });
+await goal({ periodType: "month", start: monthStart, end: monthEnd, title: "AI 트레이너 차시 설계", parentId: gQuarter, projectId: train, links: [tEval, tDb, tDone2] });
+// 수동 진척 목표 — Task 완료율에 영향받지 않아야 함 (검수 포인트 3)
+await goal({ periodType: "month", start: monthStart, end: monthEnd, title: "키트 판매 200대", parentId: gQuarter, projectId: edu, mode: "manual", progress: 35, links: [tDone1] });
 
 // ── 시그널 ──
 async function signal(type, scope, title, body, author, status, daysAgo, projectId = null, taskId = null) {

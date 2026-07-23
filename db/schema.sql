@@ -7,11 +7,15 @@ CREATE TABLE IF NOT EXISTS actor (
   id             SERIAL PRIMARY KEY,
   type           TEXT NOT NULL CHECK (type IN ('human', 'agent')),
   display_name   TEXT NOT NULL,
+  short_name     TEXT,                           -- 호칭용 (예: 정혁). 없으면 display_name 사용
   owner_actor_id INTEGER REFERENCES actor(id),  -- agent일 때 소유자(human)
   avatar_url     TEXT,
   is_active      BOOLEAN NOT NULL DEFAULT true,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- 기존 DB 업그레이드 (idempotent)
+ALTER TABLE actor ADD COLUMN IF NOT EXISTS short_name TEXT;
 
 CREATE TABLE IF NOT EXISTS account (
   actor_id       INTEGER PRIMARY KEY REFERENCES actor(id),

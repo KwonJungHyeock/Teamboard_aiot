@@ -82,7 +82,7 @@ export default function HomeView({
           <div>
             <div className="eb">{dateLabel} · 플랫폼팀</div>
             <h1>
-              {greeting()}, {user.name.slice(-2)}님
+              {greeting()}, {summary.greetingName || user.name}님
             </h1>
             <p>{summary.greetingSub}</p>
           </div>
@@ -130,12 +130,41 @@ export default function HomeView({
                 <div className="pr" key={goal.id}>
                   <div className="pr-t">
                     <span>{goal.title}</span>
-                    <span>{goal.progress}%</span>
+                    <span>{goal.progress === null ? "-" : `${goal.progress}%`}</span>
                   </div>
                   <div className="bar">
                     <i
                       className={goal.colorKey ?? "edu"}
-                      style={{ width: `${Math.min(goal.progress, 100)}%` }}
+                      style={{ width: `${Math.min(goal.progress ?? 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </section>
+
+            {/* 프로젝트 진행 — 구 관제뷰 "프로젝트별 진행률" 흡수 (발주 지시: 목표 다음 카드) */}
+            <section className="card" aria-label="프로젝트 진행">
+              <div className="ch">
+                <h2>프로젝트 진행</h2>
+                <span className="sub">W{summary.isoWeek}</span>
+              </div>
+              {summary.projectProgress.map((project) => (
+                <div className="pr" key={project.id}>
+                  <div className="pr-t">
+                    <span>{project.name}</span>
+                    <span>
+                      {project.percent === null ? "-" : `${project.percent}%`}
+                      {project.total > 0 && (
+                        <span style={{ color: "var(--lo)", marginLeft: 6 }}>
+                          {project.done}/{project.total}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="bar">
+                    <i
+                      className={project.colorKey ?? "edu"}
+                      style={{ width: `${Math.min(project.percent ?? 0, 100)}%` }}
                     />
                   </div>
                 </div>

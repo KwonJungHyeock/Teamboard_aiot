@@ -21,6 +21,7 @@ const TEAM = [
   {
     email: "jhkwon@robodyne.co.kr",
     name: "권정혁",
+    shortName: "정혁",
     role: "lead",
     notionUserId: "3ba23515-d244-458a-a0f7-a92cfadf950a",
     assistantName: "정혁의 부사수",
@@ -29,6 +30,7 @@ const TEAM = [
   {
     email: "jhpark@robodyne.co.kr",
     name: "박주희",
+    shortName: "주희",
     role: "member",
     notionUserId: "260d872b-594c-81e4-9f78-000299e7e74b",
     assistantName: "주희의 부사수",
@@ -37,6 +39,7 @@ const TEAM = [
   {
     email: "syjo@robodyne.co.kr",
     name: "조서연",
+    shortName: "서연",
     role: "member",
     notionUserId: "5453c24d-940e-4cdf-9f89-1adfe5cc18ab",
     assistantName: "서연의 부사수",
@@ -83,18 +86,18 @@ for (const member of TEAM) {
   let humanId;
   if (existing.rows.length > 0) {
     humanId = existing.rows[0].actor_id;
-    await pool.query("UPDATE actor SET display_name = $1, is_active = true WHERE id = $2", [
-      member.name,
-      humanId,
-    ]);
+    await pool.query(
+      "UPDATE actor SET display_name = $1, short_name = $2, is_active = true WHERE id = $3",
+      [member.name, member.shortName ?? null, humanId]
+    );
     await pool.query(
       "UPDATE account SET role = $1, notion_user_id = $2 WHERE actor_id = $3",
       [member.role, member.notionUserId, humanId]
     );
   } else {
     const inserted = await pool.query(
-      "INSERT INTO actor (type, display_name) VALUES ('human', $1) RETURNING id",
-      [member.name]
+      "INSERT INTO actor (type, display_name, short_name) VALUES ('human', $1, $2) RETURNING id",
+      [member.name, member.shortName ?? null]
     );
     humanId = inserted.rows[0].id;
     await pool.query(

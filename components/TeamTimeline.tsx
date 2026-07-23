@@ -247,6 +247,16 @@ export default function TeamTimeline({
                 {lane.name.slice(0, 1)}
               </span>
               <span className="w">{lane.name}</span>
+              {lane.assistantStatus !== "idle" && (
+                <Link
+                  href="/assistant"
+                  className={`agdot ${lane.assistantStatus}`}
+                  aria-label={
+                    lane.assistantStatus === "working" ? "부사수 작동중" : "부사수 보고 대기"
+                  }
+                  title={lane.assistantStatus === "working" ? "부사수 작동중" : "부사수 보고 대기"}
+                />
+              )}
             </div>
             <div className="ln-b">
               <EventTrack events={personal(lane.actorId)} view={view} from={range.from} />
