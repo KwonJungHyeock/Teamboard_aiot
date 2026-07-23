@@ -205,11 +205,10 @@ export default function Sidebar({
             <span>{project.name}</span>
           </Link>
         ))}
-        {projects.length > 5 && (
-          <Link className="moreln" href="/projects">
-            전체 프로젝트 →
-          </Link>
-        )}
+        {/* 인덱스 진입 경로는 항상 노출, 직접 나열만 5개 제한 (발주 지시) */}
+        <Link className="moreln" href="/projects">
+          전체 프로젝트 →
+        </Link>
       </details>
 
       <details className="grp" open>

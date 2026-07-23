@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@/lib/theme.css";
 import "./globals.css";
+import "./home.css";
 
 export const metadata: Metadata = {
   title: "팀보드 — TeamBoard",
