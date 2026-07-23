@@ -1,16 +1,16 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import AppShell from "@/components/AppShell";
-import TimelineView from "@/components/TimelineView";
+import PlaceholderPage from "@/components/PlaceholderPage";
 
 export const dynamic = "force-dynamic";
 
-export default function TimelinePage() {
+export default function Page() {
   const user = getSession();
   if (!user) redirect("/login");
   return (
     <AppShell user={user}>
-      <TimelineView />
+      <PlaceholderPage title="목표" phase="Phase 4" />
     </AppShell>
   );
 }
