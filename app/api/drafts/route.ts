@@ -30,10 +30,10 @@ export async function GET(request: Request) {
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const drafts = await query<Draft & { user_name: string; assistant_name: string }>(
-      `SELECT d.*, u.name AS user_name, a.name AS assistant_name
+      `SELECT d.*, u.display_name AS user_name, a.display_name AS assistant_name
        FROM drafts d
-       JOIN users u ON u.id = d.user_id
-       JOIN assistants a ON a.id = d.assistant_id
+       JOIN actor u ON u.id = d.user_id
+       JOIN actor a ON a.id = d.assistant_id
        ${where}
        ORDER BY d.created_at DESC
        LIMIT 100`,

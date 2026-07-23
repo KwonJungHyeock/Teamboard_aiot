@@ -12,7 +12,7 @@ export async function GET() {
   try {
     requireSession();
     const row = await queryOne<{ value: any; updated_at: string }>(
-      "SELECT value, updated_at FROM app_settings WHERE key = 'notion_scope'"
+      "SELECT value, updated_at FROM config WHERE key = 'notion_scope'"
     );
     return NextResponse.json({
       scope: row?.value ?? {
@@ -37,7 +37,7 @@ export async function PUT(request: Request) {
 
     const value = { dataSourceId, label };
     await query(
-      `INSERT INTO app_settings (key, value, updated_by, updated_at)
+      `INSERT INTO config (key, value, updated_by, updated_at)
        VALUES ('notion_scope', $1, $2, now())
        ON CONFLICT (key) DO UPDATE SET value = $1, updated_by = $2, updated_at = now()`,
       [JSON.stringify(value), session.id]

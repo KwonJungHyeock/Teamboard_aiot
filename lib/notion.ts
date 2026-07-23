@@ -14,7 +14,7 @@ function token(): string {
 
 export async function getTimelineDataSourceId(): Promise<string> {
   const row = await queryOne<{ value: { dataSourceId?: string } }>(
-    "SELECT value FROM app_settings WHERE key = 'notion_scope'"
+    "SELECT value FROM config WHERE key = 'notion_scope'"
   );
   const fromDb = row?.value?.dataSourceId;
   const fromEnv = process.env.NOTION_TIMELINE_DS_ID;

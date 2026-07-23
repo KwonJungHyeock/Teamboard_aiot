@@ -30,8 +30,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const payload = await request.json().catch(() => ({}));
 
     const draft = await queryOne<Draft & { user_name: string; notion_user_id: string | null }>(
-      `SELECT d.*, u.name AS user_name, u.notion_user_id
-       FROM drafts d JOIN users u ON u.id = d.user_id
+      `SELECT d.*, u.display_name AS user_name, ac.notion_user_id
+       FROM drafts d
+       JOIN actor u ON u.id = d.user_id
+       LEFT JOIN account ac ON ac.actor_id = u.id
        WHERE d.id = $1`,
       [draftId]
     );

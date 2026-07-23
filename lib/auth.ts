@@ -78,16 +78,21 @@ export function verifyPassword(password: string, stored: string): boolean {
 }
 
 export async function authenticate(email: string, password: string): Promise<SessionUser | null> {
+  // 신규 스키마: actor(type='human', is_active) + account 조인
   const user = await queryOne<{
     id: number;
     email: string;
     name: string;
     role: Role;
     password_hash: string;
-  }>("SELECT id, email, name, role, password_hash FROM users WHERE email = $1", [
-    email.trim().toLowerCase(),
-  ]);
+  }>(
+    `SELECT a.id, ac.email, a.display_name AS name, ac.role, ac.password_hash
+     FROM account ac JOIN actor a ON a.id = ac.actor_id
+     WHERE ac.email = $1 AND a.is_active = true`,
+    [email.trim().toLowerCase()]
+  );
   if (!user) return null;
   if (!verifyPassword(password, user.password_hash)) return null;
+  await queryOne("UPDATE account SET last_login_at = now() WHERE actor_id = $1", [user.id]);
   return { id: user.id, email: user.email, name: user.name, role: user.role };
 }

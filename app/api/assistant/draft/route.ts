@@ -1,7 +1,7 @@
 // 부사수에게 부수 업무 위임 → 초안 생성 (PRD 7장 흐름 1~3단계)
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
-import { query, queryOne } from "@/lib/db";
+import { query, queryOne, getAssistantByOwner } from "@/lib/db";
 import { generateDraft } from "@/lib/llm";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
@@ -26,10 +26,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "업무 내용을 입력하세요." }, { status: 400 });
     }
 
-    const assistantRow = await queryOne<AssistantSettings & { work_areas: any }>(
-      "SELECT * FROM assistants WHERE user_id = $1",
-      [session.id]
-    );
+    const assistantRow = await getAssistantByOwner(session.id);
     if (!assistantRow) {
       return NextResponse.json({ error: "부사수가 설정되지 않았습니다." }, { status: 404 });
     }

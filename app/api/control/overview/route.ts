@@ -17,18 +17,21 @@ export async function GET() {
 
     const [members, workingDrafts, pendingDrafts, activity] = await Promise.all([
       query<{ id: number; name: string; role: string; assistant_name: string }>(
-        `SELECT u.id, u.name, u.role, a.name AS assistant_name
-         FROM users u JOIN assistants a ON a.user_id = u.id
+        `SELECT u.id, u.display_name AS name, ac.role, ag.display_name AS assistant_name
+         FROM actor u
+         JOIN account ac ON ac.actor_id = u.id
+         JOIN actor ag ON ag.owner_actor_id = u.id AND ag.type = 'agent'
+         WHERE u.type = 'human' AND u.is_active = true
          ORDER BY u.id`
       ),
       query<Draft & { user_name: string; assistant_name: string }>(
-        `SELECT d.*, u.name AS user_name, a.name AS assistant_name
-         FROM drafts d JOIN users u ON u.id = d.user_id JOIN assistants a ON a.id = d.assistant_id
+        `SELECT d.*, u.display_name AS user_name, a.display_name AS assistant_name
+         FROM drafts d JOIN actor u ON u.id = d.user_id JOIN actor a ON a.id = d.assistant_id
          WHERE d.status = 'working' ORDER BY d.created_at DESC`
       ),
       query<Draft & { user_name: string; assistant_name: string }>(
-        `SELECT d.*, u.name AS user_name, a.name AS assistant_name
-         FROM drafts d JOIN users u ON u.id = d.user_id JOIN assistants a ON a.id = d.assistant_id
+        `SELECT d.*, u.display_name AS user_name, a.display_name AS assistant_name
+         FROM drafts d JOIN actor u ON u.id = d.user_id JOIN actor a ON a.id = d.assistant_id
          WHERE d.status = 'pending' ORDER BY d.created_at ASC`
       ),
       recentActivity(20),
