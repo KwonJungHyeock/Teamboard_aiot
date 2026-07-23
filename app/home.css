@@ -197,6 +197,7 @@
 .hv .gbtn:hover{border-color:var(--line-hi)}
 .hv .gbtn:disabled{opacity:.5;cursor:default}
 .hv .gbtn.mu{color:var(--lo)}
+.hv a.gbtn{text-decoration:none;display:inline-flex;align-items:center}
 .hv .gbtn.danger{color:var(--danger);border-color:rgba(248,113,113,.35)}
 .hv .garchive-r{margin-top:2px;padding-top:8px;border-top:1px dashed var(--line)}
 .hv .gdlg-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;display:flex;align-items:center;justify-content:center}

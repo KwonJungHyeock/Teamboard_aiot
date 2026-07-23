@@ -195,6 +195,9 @@ export default function ReportsView() {
                   <button className="gbtn mu" onClick={() => window.print()}>
                     PDF 인쇄
                   </button>
+                  <a className="gbtn mu" href={`/api/reports/${detail.report.id}/pptx`}>
+                    PPTX 내보내기
+                  </a>
                   {canApprove && (
                     <button className="gbtn" disabled={busy} onClick={approve}>
                       승인 · Notion 기록
