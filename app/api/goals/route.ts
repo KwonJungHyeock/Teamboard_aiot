@@ -15,6 +15,22 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const yearParam = url.searchParams.get("year");
     const year = yearParam ? Number(yearParam) : undefined;
+
+    // 보관함 조회 (평면 목록)
+    if (url.searchParams.get("archived") === "1") {
+      const archived = await query<{
+        id: number;
+        title: string;
+        period_type: string;
+        period_start: string;
+      }>(
+        `SELECT id, title, period_type, period_start::text FROM goal
+         WHERE is_active = false ${year ? `AND EXTRACT(YEAR FROM period_start) = ${Number(year)}` : ""}
+         ORDER BY period_start, id`
+      );
+      return NextResponse.json({ archived });
+    }
+
     const tree = await getGoalTree(Number.isFinite(year) ? year : undefined);
 
     // 월 목표의 Task 연결 편집용 — 활성 업무 목록 (Phase 5의 /api/tasks 전까지 최소 제공)

@@ -16,6 +16,122 @@ export interface LinkableTask {
 
 const PERIOD_LABEL = { year: "연간", quarter: "분기", month: "월" } as const;
 
+/** 보관 확인 다이얼로그 — 목표 제목 표시, [취소]가 기본 포커스 */
+function ArchiveDialog({
+  goal,
+  onClose,
+  onArchived,
+}: {
+  goal: GoalNode;
+  onClose: () => void;
+  onArchived: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function archive() {
+    setBusy(true);
+    setError("");
+    const res = await fetch(`/api/goals/${goal.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: false }),
+    });
+    setBusy(false);
+    if (!res.ok) {
+      setError((await res.json()).error ?? "보관 실패");
+      return;
+    }
+    onClose();
+    onArchived();
+  }
+
+  return (
+    <div className="gdlg-bg" role="presentation" onClick={onClose}>
+      <div
+        className="gdlg"
+        role="alertdialog"
+        aria-modal="true"
+        aria-label="목표 보관 확인"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.key === "Escape" && onClose()}
+      >
+        <h3>목표를 보관할까요?</h3>
+        <p className="gdlg-t">“{goal.title}”</p>
+        <p className="gdlg-d">
+          보관된 목표는 트리와 집계에서 제외됩니다. 연결된 업무는 유지되며, 보관함에서 복구할 수
+          있습니다.
+        </p>
+        {error && <p className="gerr">{error}</p>}
+        <div className="gdlg-a">
+          <button className="gbtn" autoFocus onClick={onClose} disabled={busy}>
+            취소
+          </button>
+          <button className="gbtn danger" onClick={archive} disabled={busy}>
+            보관
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 연간·분기 목표 편집 패널 — 제목 변경 + (하단) 보관. 트리에는 보관 버튼을 직접 노출하지 않는다. */
+function NodeEditPanel({
+  goal,
+  isLead,
+  onChanged,
+}: {
+  goal: GoalNode;
+  isLead: boolean;
+  onChanged: () => void;
+}) {
+  const [title, setTitle] = useState(goal.title);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [confirming, setConfirming] = useState(false);
+
+  async function rename() {
+    if (!title.trim() || title.trim() === goal.title) return;
+    setBusy(true);
+    setError("");
+    const res = await fetch(`/api/goals/${goal.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+    setBusy(false);
+    if (!res.ok) {
+      setError((await res.json()).error ?? "수정 실패");
+      return;
+    }
+    onChanged();
+  }
+
+  return (
+    <div className="gedit">
+      <div className="gedit-r">
+        <label>제목</label>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} style={{ minWidth: 220 }} />
+        <button className="lk" onClick={rename} disabled={busy || !title.trim()}>
+          저장
+        </button>
+        {error && <span className="gerr">{error}</span>}
+      </div>
+      {isLead && (
+        <div className="gedit-r garchive-r">
+          <button className="gbtn mu" onClick={() => setConfirming(true)} disabled={busy}>
+            보관
+          </button>
+        </div>
+      )}
+      {confirming && (
+        <ArchiveDialog goal={goal} onClose={() => setConfirming(false)} onArchived={onChanged} />
+      )}
+    </div>
+  );
+}
+
 function AddGoalForm({
   periodType,
   parent,
@@ -133,6 +249,7 @@ function MonthGoalRow({
   const [manualValue, setManualValue] = useState(goal.progress ?? 0);
   const [selected, setSelected] = useState<number[]>(goal.tasks.map((t) => t.id));
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   async function save(body: Record<string, unknown>) {
     setBusy(true);
@@ -234,9 +351,69 @@ function MonthGoalRow({
           <button className="lk" disabled={busy} onClick={() => save({ taskIds: selected })}>
             연결 저장
           </button>
+          {user.role === "lead" && (
+            <div className="gedit-r garchive-r">
+              <button className="gbtn mu" disabled={busy} onClick={() => setConfirming(true)}>
+                보관
+              </button>
+            </div>
+          )}
         </div>
       )}
+      {confirming && (
+        <ArchiveDialog goal={goal} onClose={() => setConfirming(false)} onArchived={onChanged} />
+      )}
     </div>
+  );
+}
+
+/** 연간·분기 노드 — <details> 접기 + (lead/소유자) 편집 패널 토글 */
+function BranchNode({
+  goal,
+  user,
+  onChanged,
+  children,
+}: {
+  goal: GoalNode;
+  user: SessionUser;
+  onChanged: () => void;
+  children: React.ReactNode;
+}) {
+  const canEdit = user.role === "lead" || goal.ownerActorId === user.id;
+  const [editing, setEditing] = useState(false);
+  const isYear = goal.periodType === "year";
+
+  return (
+    <details className={`gnode ${isYear ? "" : "q"}`} open>
+      <summary>
+        <svg className="cv" viewBox="0 0 24 24">
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+        {isYear ? (
+          <span className="gtag y">연간</span>
+        ) : (
+          <span className="gtag">
+            Q{Math.floor((Number(goal.periodStart.slice(5, 7)) - 1) / 3) + 1}
+          </span>
+        )}
+        <span className="gtitle">{goal.title}</span>
+        <span className="gsp" />
+        <GoalProgress progress={goal.progress} colorKey={goal.colorKey} />
+        {canEdit && (
+          <button
+            className="lk mu"
+            onClick={(e) => {
+              e.preventDefault(); // summary 토글 방지
+              setEditing((v) => !v);
+            }}
+          >
+            {editing ? "닫기" : "편집"}
+          </button>
+        )}
+      </summary>
+      {editing && <NodeEditPanel goal={goal} isLead={user.role === "lead"} onChanged={onChanged} />}
+      {children}
+    </details>
   );
 }
 
@@ -266,31 +443,9 @@ export default function GoalTree({
       )}
 
       {years.map((yearGoal) => (
-        <details key={yearGoal.id} className="gnode" open>
-          <summary>
-            <svg className="cv" viewBox="0 0 24 24">
-              <path d="M9 6l6 6-6 6" />
-            </svg>
-            <span className="gtag y">연간</span>
-            <span className="gtitle">{yearGoal.title}</span>
-            <span className="gsp" />
-            <GoalProgress progress={yearGoal.progress} colorKey={yearGoal.colorKey} />
-          </summary>
-
+        <BranchNode key={yearGoal.id} goal={yearGoal} user={user} onChanged={onChanged}>
           {yearGoal.children.map((quarter) => (
-            <details key={quarter.id} className="gnode q" open>
-              <summary>
-                <svg className="cv" viewBox="0 0 24 24">
-                  <path d="M9 6l6 6-6 6" />
-                </svg>
-                <span className="gtag">
-                  Q{Math.floor((Number(quarter.periodStart.slice(5, 7)) - 1) / 3) + 1}
-                </span>
-                <span className="gtitle">{quarter.title}</span>
-                <span className="gsp" />
-                <GoalProgress progress={quarter.progress} colorKey={quarter.colorKey} />
-              </summary>
-
+            <BranchNode key={quarter.id} goal={quarter} user={user} onChanged={onChanged}>
               {quarter.children.map((month) => (
                 <MonthGoalRow
                   key={month.id}
@@ -303,12 +458,12 @@ export default function GoalTree({
               {isLead && (
                 <AddGoalForm periodType="month" parent={quarter} year={year} onDone={onChanged} />
               )}
-            </details>
+            </BranchNode>
           ))}
           {isLead && (
             <AddGoalForm periodType="quarter" parent={yearGoal} year={year} onDone={onChanged} />
           )}
-        </details>
+        </BranchNode>
       ))}
 
       {orphans.length > 0 && (

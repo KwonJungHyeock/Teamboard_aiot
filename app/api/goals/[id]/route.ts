@@ -15,14 +15,14 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const goalId = Number(params.id);
     const payload = await request.json();
 
+    // 보관·복구 대상 조회를 위해 is_active 무관하게 탐색
     const goal = await queryOne<{
       id: number;
       title: string;
       period_type: string;
       owner_actor_id: number | null;
-    }>("SELECT id, title, period_type, owner_actor_id FROM goal WHERE id = $1 AND is_active = true", [
-      goalId,
-    ]);
+      is_active: boolean;
+    }>("SELECT id, title, period_type, owner_actor_id, is_active FROM goal WHERE id = $1", [goalId]);
     if (!goal) return NextResponse.json({ error: "목표를 찾을 수 없습니다." }, { status: 404 });
 
     const isLead = session.role === "lead";
@@ -31,12 +31,44 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: "수정 권한이 없습니다." }, { status: 403 });
     }
 
-    // 소프트 삭제(보관)는 lead만
+    // 보관 (소프트 삭제) — lead만. 하위 목표가 있으면 불가. goal_task 링크는 유지.
     if (payload.isActive === false) {
       if (!isLead) return NextResponse.json({ error: "팀장만 보관할 수 있습니다." }, { status: 403 });
+      const children = await queryOne<{ n: string }>(
+        "SELECT count(*) AS n FROM goal WHERE parent_id = $1 AND is_active = true",
+        [goalId]
+      );
+      const childCount = Number(children?.n ?? 0);
+      if (childCount > 0) {
+        return NextResponse.json(
+          { error: `하위 목표 ${childCount}개를 먼저 보관하세요.` },
+          { status: 409 }
+        );
+      }
       await query("UPDATE goal SET is_active = false, updated_at = now() WHERE id = $1", [goalId]);
       await logActivity({ userId: session.id, message: `${session.name}이(가) 목표 보관 — "${goal.title}"`, level: "warn" });
       return NextResponse.json({ ok: true });
+    }
+
+    // 복구 — lead만. 상위가 보관 상태면 복구 불가(트리 정합).
+    if (payload.isActive === true && !goal.is_active) {
+      if (!isLead) return NextResponse.json({ error: "팀장만 복구할 수 있습니다." }, { status: 403 });
+      const parentInactive = await queryOne<{ n: string }>(
+        `SELECT count(*) AS n FROM goal parent
+         JOIN goal child ON child.parent_id = parent.id
+         WHERE child.id = $1 AND parent.is_active = false`,
+        [goalId]
+      );
+      if (Number(parentInactive?.n ?? 0) > 0) {
+        return NextResponse.json({ error: "상위 목표를 먼저 복구하세요." }, { status: 409 });
+      }
+      await query("UPDATE goal SET is_active = true, updated_at = now() WHERE id = $1", [goalId]);
+      await logActivity({ userId: session.id, message: `${session.name}이(가) 목표 복구 — "${goal.title}"` });
+      return NextResponse.json({ ok: true });
+    }
+
+    if (!goal.is_active) {
+      return NextResponse.json({ error: "보관된 목표입니다. 먼저 복구하세요." }, { status: 409 });
     }
 
     const sets: string[] = [];

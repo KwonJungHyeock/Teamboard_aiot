@@ -1,10 +1,19 @@
 "use client";
 
-// 목표 화면 (Phase 4) — 연도 선택 + 트리
+// 목표 화면 (Phase 4) — 연도 선택 + 트리 + 보관함(토글)
 import { useCallback, useEffect, useState } from "react";
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
 import GoalTree, { type LinkableTask } from "./GoalTree";
+
+interface ArchivedGoal {
+  id: number;
+  title: string;
+  period_type: string;
+  period_start: string;
+}
+
+const PERIOD_LABEL: Record<string, string> = { year: "연간", quarter: "분기", month: "월" };
 
 export default function GoalsView({ user, initialYear }: { user: SessionUser; initialYear: number }) {
   const [year, setYear] = useState(initialYear);
@@ -12,6 +21,9 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
   const [linkableTasks, setLinkableTasks] = useState<LinkableTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showArchive, setShowArchive] = useState(false);
+  const [archived, setArchived] = useState<ArchivedGoal[]>([]);
+  const [archiveError, setArchiveError] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -28,10 +40,40 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
     }
   }, [year]);
 
+  const loadArchive = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/goals?archived=1&year=${year}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "보관함 조회 실패");
+      setArchived(data.archived ?? []);
+      setArchiveError("");
+    } catch (e) {
+      setArchiveError(e instanceof Error ? e.message : "오류");
+    }
+  }, [year]);
+
   useEffect(() => {
     setLoading(true);
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (showArchive) loadArchive();
+  }, [showArchive, loadArchive]);
+
+  async function restore(goal: ArchivedGoal) {
+    const res = await fetch(`/api/goals/${goal.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: true }),
+    });
+    if (!res.ok) {
+      setArchiveError((await res.json()).error ?? "복구 실패");
+      return;
+    }
+    setArchiveError("");
+    await Promise.all([load(), loadArchive()]);
+  }
 
   return (
     <div className="hv">
@@ -71,7 +113,35 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
               onChanged={load}
             />
           )}
+          <div className="garchive-toggle">
+            <button className="lk mu" onClick={() => setShowArchive((v) => !v)}>
+              {showArchive ? "보관함 닫기" : "보관함 보기"}
+            </button>
+          </div>
         </section>
+
+        {showArchive && (
+          <section className="card garchive">
+            <h2 className="garchive-h">보관함 — {year}년</h2>
+            {archiveError && <p className="gerr">{archiveError}</p>}
+            {archived.length === 0 && !archiveError && (
+              <p className="gempty">보관된 목표가 없습니다.</p>
+            )}
+            {archived.map((goal) => (
+              <div key={goal.id} className="garchive-row">
+                <span className="gtag">{PERIOD_LABEL[goal.period_type] ?? goal.period_type}</span>
+                <span className="gtitle">{goal.title}</span>
+                <em className="garchive-p">{goal.period_start}</em>
+                <span className="gsp" />
+                {user.role === "lead" && (
+                  <button className="lk" onClick={() => restore(goal)}>
+                    복구
+                  </button>
+                )}
+              </div>
+            ))}
+          </section>
+        )}
       </div>
     </div>
   );
