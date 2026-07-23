@@ -1,0 +1,21 @@
+/* 팀보드 디자인 토큰 — docs/prototype/index.html v0.3 :root 블록에서 추출.
+   값 변경 금지 (CHANGE-GUIDE Phase 0). 에셋 두 줄은 프로토타입 주석의 지시대로
+   데이터 URI → 파일 경로로 교체 (Next.js public/ 기준 절대 경로). */
+:root{
+  --bg-canvas:#070A11; --bg-surface:#0D121E; --bg-elevated:#141A28; --bg-rail:#090D16;
+  --glass:rgba(255,255,255,.032); --line:rgba(255,255,255,.07); --line-hi:rgba(255,255,255,.14);
+  --hi:#EAEEF7; --mid:#98A2B8; --lo:#5C6680;
+  --edu:#4B8DF8; --play:#8B5CF6; --train:#2DD4BF; --team:#7C8AA5;
+  --warn:#F5A524; --danger:#F87171; --ok:#34D399;
+  --r:14px; --r-s:9px;
+  --f-ui:'Pretendard','Pretendard Variable',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  --f-d:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --side-w:216px;
+
+  --asset-grain:url('/assets/texture/grain.png');
+  --asset-mesh:url('/assets/texture/mesh.webp');
+
+  /* SPEC 8.1 브랜드 토큰 — 프로토타입 :root에는 없어 SPEC 기준으로 추가.
+     용법: 로고·주요 CTA 솔리드에만 (SPEC 8.2 레드 용법 분리 규칙) */
+  --brand:#E31E24;
+}
