@@ -156,7 +156,13 @@ await pool.query(
    ON CONFLICT (key) DO NOTHING`,
   [JSON.stringify({ decision: 14, review: 7, memo: null, risk: 0 })]
 );
-console.log("config 시드: notion_scope, signal_thresholds");
+// 미실행 결정(decided) 정체 임계값 — decided 상태가 이 일수 이상 지속되면 상단 노출
+await pool.query(
+  `INSERT INTO config (key, value) VALUES ('signal_decided_stale_days', $1)
+   ON CONFLICT (key) DO NOTHING`,
+  [JSON.stringify(7)]
+);
+console.log("config 시드: notion_scope, signal_thresholds, signal_decided_stale_days");
 
 console.log(`완료. 초기 비밀번호: ${DEFAULT_PASSWORD}`);
 await pool.end();

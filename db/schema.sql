@@ -145,23 +145,43 @@ CREATE TABLE IF NOT EXISTS task_artifact (
 -- ─── Signal 4타입 + 허들(scope) (SPEC 2.3, 2.4) ───
 
 CREATE TABLE IF NOT EXISTS signal (
-  id          SERIAL PRIMARY KEY,
-  type        TEXT NOT NULL CHECK (type IN ('decision', 'review', 'memo', 'risk')),
-  scope       TEXT NOT NULL DEFAULT 'team' CHECK (scope IN ('private', 'huddle', 'team')),
-  title       TEXT NOT NULL,
-  body        TEXT NOT NULL DEFAULT '',
-  author_id   INTEGER NOT NULL REFERENCES actor(id),
-  project_id  INTEGER REFERENCES project(id),
-  task_id     INTEGER REFERENCES task(id),
-  status      TEXT NOT NULL DEFAULT 'open'
-              CHECK (status IN ('open', 'discussing', 'resolved', 'archived')),
-  resolved_at TIMESTAMPTZ,
-  is_active   BOOLEAN NOT NULL DEFAULT true,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  id              SERIAL PRIMARY KEY,
+  type            TEXT NOT NULL CHECK (type IN ('decision', 'review', 'memo', 'risk')),
+  scope           TEXT NOT NULL DEFAULT 'team' CHECK (scope IN ('private', 'huddle', 'team')),
+  title           TEXT NOT NULL,
+  body            TEXT NOT NULL DEFAULT '',
+  author_id       INTEGER NOT NULL REFERENCES actor(id),
+  target_actor_id INTEGER REFERENCES actor(id),   -- review 대상(필수), 그 외 nullable
+  project_id      INTEGER REFERENCES project(id),
+  task_id         INTEGER REFERENCES task(id),
+  -- 생명주기: open 제기됨 → discussing 논의중 → decided 결정됨(Task 미생성)
+  --           → resolved 반영됨(Task 생성 완료) 또는 archived 기각됨
+  status          TEXT NOT NULL DEFAULT 'open'
+                  CHECK (status IN ('open', 'discussing', 'decided', 'resolved', 'archived')),
+  resolved_at     TIMESTAMPTZ,
+  decided_at      TIMESTAMPTZ,                     -- decided 전환 시각 (미실행 결정 정체 판정용)
+  huddle_at       TIMESTAMPTZ,                     -- 허들로 보낸 시각. 이후 삭제하지 않음(피드 조회 기준)
+  is_active       BOOLEAN NOT NULL DEFAULT true,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_signal_status ON signal(status, type);
+
+-- 기존 DB 보강 (CREATE TABLE IF NOT EXISTS는 기존 테이블 컬럼·제약을 갱신하지 않음)
+-- 신규 컬럼 추가가 인덱스·UPDATE보다 먼저 와야 한다 (기존 테이블 대상)
+ALTER TABLE signal ADD COLUMN IF NOT EXISTS target_actor_id INTEGER REFERENCES actor(id);
+ALTER TABLE signal ADD COLUMN IF NOT EXISTS decided_at TIMESTAMPTZ;
+ALTER TABLE signal ADD COLUMN IF NOT EXISTS huddle_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_signal_huddle ON signal(huddle_at);
+-- 기존 huddle scope 데이터에 huddle_at 소급 기록 (scope→가시성 분리 전 데이터 보존)
+UPDATE signal SET huddle_at = created_at WHERE scope = 'huddle' AND huddle_at IS NULL;
+-- status 5값 확장: resolved를 task_id 유무로 재분류 (task 없으면 decided로)
+ALTER TABLE signal DROP CONSTRAINT IF EXISTS signal_status_check;
+UPDATE signal SET status = 'decided', decided_at = COALESCE(resolved_at, updated_at)
+  WHERE status = 'resolved' AND task_id IS NULL;
+ALTER TABLE signal ADD CONSTRAINT signal_status_check
+  CHECK (status IN ('open', 'discussing', 'decided', 'resolved', 'archived'));
 
 CREATE TABLE IF NOT EXISTS comment (
   id         SERIAL PRIMARY KEY,

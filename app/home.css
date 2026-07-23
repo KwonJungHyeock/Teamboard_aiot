@@ -106,6 +106,8 @@
 .hv .bg.stale{background:rgba(248,113,113,.12);color:#FCA5A5;border:1px solid rgba(248,113,113,.3)}
 .hv .bg.wait{background:rgba(139,92,246,.12);color:#C9B6FC;border:1px solid rgba(139,92,246,.32)}
 .hv .bg.priv{background:rgba(255,255,255,.045);color:var(--lo);border:1px solid var(--line)}
+.hv .bg.decided{background:rgba(245,165,36,.12);color:#F5A524;border:1px solid rgba(245,165,36,.32)}
+.hv .bg.tome{background:rgba(75,141,248,.14);color:#9CC0FF;border:1px solid rgba(75,141,248,.35)}
 .hv .sig.ag{border-left:2px solid var(--play);padding-left:11px;background:linear-gradient(90deg,rgba(139,92,246,.07),transparent 40%);opacity:.9}
 .hv .sig.ag .tt{color:var(--mid)}
 .hv .atag{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-d);font-size:10px;color:#C9B6FC;background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.3);border-radius:5px;padding:1px 6px;margin-right:6px}
@@ -261,6 +263,9 @@
 .hv .smeta em{font-style:normal;font-size:11px;color:var(--lo)}
 .hv .sbody{font-size:12.5px;color:var(--mid);line-height:1.6;margin:0 0 10px;white-space:pre-wrap}
 .hv .slinked{font-size:11.5px;color:var(--ok);margin:0 0 8px}
+.hv .sdecided{font-size:11.5px;color:#F5A524;margin:0 0 8px}
+.hv .hud .f .gtag.decided{color:#F5A524;border-color:rgba(245,165,36,.32)}
+.hv .hud .f .gtag.resolved{color:var(--ok);border-color:rgba(52,211,153,.3)}
 .hv .sacts{display:flex;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px dashed var(--line)}
 .hv .scomments{margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
 .hv .scomment{display:flex;gap:8px;align-items:baseline;padding:5px 0;font-size:12px;border-top:1px solid var(--line)}

@@ -15,10 +15,13 @@ interface ThreadSignal {
   status: string;
   taskId: number | null;
   taskTitle: string | null;
+  targetActorId: number | null;
+  targetName: string | null;
   authorId: number;
   authorName: string;
   agent: boolean;
   projectName: string | null;
+  huddledAt: string | null;
 }
 
 interface ThreadComment {
@@ -39,7 +42,8 @@ const SCOPE_LABEL: Record<string, string> = { private: "비공개", huddle: "허
 const STATUS_LABEL: Record<string, string> = {
   open: "제기됨",
   discussing: "논의중",
-  resolved: "해결됨",
+  decided: "결정됨",
+  resolved: "반영됨",
   archived: "기각됨",
 };
 
@@ -132,8 +136,11 @@ export default function SignalThread({
     );
   }
 
-  const open = signal.status === "open" || signal.status === "discussing";
+  const active = signal.status === "open" || signal.status === "discussing";
+  const decided = signal.status === "decided";
+  const openish = active || decided; // 종결(resolved/archived) 전
   const isAuthor = signal.authorId === user.id;
+  const isTarget = signal.targetActorId === user.id;
   const isLead = user.role === "lead";
 
   return (
@@ -158,8 +165,10 @@ export default function SignalThread({
         <span className="gtag">{TYPE_LABEL[signal.type] ?? signal.type}</span>
         <span className="gtag">{SCOPE_LABEL[signal.scope] ?? signal.scope}</span>
         <span className="gtag">{STATUS_LABEL[signal.status] ?? signal.status}</span>
+        {signal.huddledAt && <span className="gtag">허들 공유됨</span>}
         <em>
           {signal.authorName}
+          {signal.type === "review" && signal.targetName ? ` → ${signal.targetName} 확인 요청` : ""}
           {signal.projectName ? ` · ${signal.projectName}` : ""}
         </em>
       </div>
@@ -167,10 +176,13 @@ export default function SignalThread({
       {signal.taskId && (
         <p className="slinked">반영됨 → Task #{signal.taskId} {signal.taskTitle ? `“${signal.taskTitle}”` : ""}</p>
       )}
+      {decided && (
+        <p className="sdecided">결정됨 · 아직 업무로 반영되지 않았습니다 (미실행 결정)</p>
+      )}
 
       {/* 생명주기 액션 — 제기됨 → 논의중 → 결정됨 → 반영됨(Task) 또는 기각됨 */}
       <div className="sacts">
-        {signal.scope === "private" && isAuthor && (
+        {signal.scope !== "huddle" && isAuthor && !signal.huddledAt && (
           <button className="gbtn" disabled={busy} onClick={() => act({ action: "toHuddle" })}>
             허들로 보내기
           </button>
@@ -185,17 +197,31 @@ export default function SignalThread({
             논의 시작
           </button>
         )}
-        {signal.type === "decision" && open && !signal.taskId && (
+        {/* 결정: 논의중 → 결정됨(작성자·lead) */}
+        {signal.type === "decision" && active && (isAuthor || isLead) && (
+          <button className="gbtn" disabled={busy} onClick={() => act({ status: "decided" })}>
+            결정 확정
+          </button>
+        )}
+        {/* 결정 → Task 반영 (작성자·lead). decided·논의중 모두 가능 */}
+        {signal.type === "decision" && openish && !signal.taskId && (isAuthor || isLead) && (
           <button className="gbtn" disabled={busy} onClick={() => setTaskForm((v) => !v)}>
             Task로 반영
           </button>
         )}
-        {open && signal.type !== "decision" && (
-          <button className="gbtn mu" disabled={busy} onClick={() => act({ status: "resolved" })}>
-            해결됨
+        {/* 확인 요청: 대상·lead가 확인 완료 → resolved */}
+        {signal.type === "review" && active && (isTarget || isLead) && (
+          <button className="gbtn" disabled={busy} onClick={() => act({ action: "confirmReview" })}>
+            확인 완료
           </button>
         )}
-        {open && (
+        {/* memo·risk 처리 완료 → resolved (member 전권) */}
+        {active && (signal.type === "memo" || signal.type === "risk") && (
+          <button className="gbtn mu" disabled={busy} onClick={() => act({ status: "resolved" })}>
+            처리 완료
+          </button>
+        )}
+        {openish && (
           <button className="gbtn mu" disabled={busy} onClick={() => act({ status: "archived" })}>
             기각
           </button>

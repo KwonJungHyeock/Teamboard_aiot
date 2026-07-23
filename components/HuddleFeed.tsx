@@ -69,14 +69,24 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
 
   const load = useCallback(async () => {
     try {
-      const [huddleRes, privateRes] = await Promise.all([
-        fetch("/api/signals?scope=huddle").then((r) => r.json()),
+      // 허들 피드는 huddle_at 기준 (scope 무관) — 승격돼 scope=team이 돼도 흐름이 남는다 (A-3).
+      // 미종결·종결 모두 조회해 결정·반영까지 흐름을 보여준다.
+      const [huddleRes, huddleClosed, privateRes] = await Promise.all([
+        fetch("/api/signals?huddle=1").then((r) => r.json()),
+        fetch("/api/signals?huddle=1&status=resolved").then((r) => r.json()),
         fetch("/api/signals?scope=private").then((r) => r.json()),
       ]);
-      if (huddleRes.error) throw new Error(huddleRes.error);
-      if (privateRes.error) throw new Error(privateRes.error);
-      setHuddles(huddleRes.signals ?? []);
-      setMyMemos((privateRes.signals ?? []).filter((s: ApiSignal) => s.type === "memo"));
+      for (const r of [huddleRes, huddleClosed, privateRes]) if (r.error) throw new Error(r.error);
+      const merged = [...(huddleRes.signals ?? []), ...(huddleClosed.signals ?? [])];
+      // 중복 제거(같은 id) + huddledAt 내림차순
+      const seen = new Set<number>();
+      const deduped = merged.filter((s: ApiSignal) => (seen.has(s.id) ? false : seen.add(s.id)));
+      deduped.sort((a: ApiSignal, b: ApiSignal) => (b.huddledAt ?? "").localeCompare(a.huddledAt ?? ""));
+      setHuddles(deduped);
+      // 내 메모: 아직 허들로 보내지 않은 비공개 메모만
+      setMyMemos(
+        (privateRes.signals ?? []).filter((s: ApiSignal) => s.type === "memo" && !s.huddledAt)
+      );
       setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류");
@@ -177,7 +187,12 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
                 <div className="f">
                   <span>{signal.authorName}</span>
                   <span>코멘트 {signal.commentCount}</span>
-                  {signal.type === "decision" && <span className="gtag">결정</span>}
+                  {/* 흐름 상태 배지 — 논의중 / 결정됨 / 반영됨 (A-3) */}
+                  {signal.status === "decided" && <span className="gtag decided">결정됨</span>}
+                  {signal.status === "resolved" && <span className="gtag resolved">반영됨</span>}
+                  {(signal.status === "open" || signal.status === "discussing") && (
+                    <span className="gtag">논의중</span>
+                  )}
                 </div>
               </div>
             ))}

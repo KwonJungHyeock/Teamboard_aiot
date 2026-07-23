@@ -14,13 +14,19 @@ export interface ApiSignal {
   body: string;
   status: string;
   taskId: number | null;
+  targetActorId: number | null;
+  targetName: string | null;
   authorId: number;
   authorName: string;
   agent: boolean;
   projectName: string | null;
   days: number;
+  decidedDays: number | null;
   commentCount: number;
+  huddledAt: string | null;
   stalled: boolean;
+  decidedStale: boolean;
+  toMe: boolean;
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -32,6 +38,29 @@ const TYPE_LABEL: Record<string, string> = {
 
 /** /api/signals 응답을 패널 아이템으로 — 홈(lib/home.ts)과 같은 표기 규칙 */
 export function toPanelItem(s: ApiSignal): SignalPanelItem {
+  const active = s.status === "open" || s.status === "discussing";
+  const badge = s.toMe
+    ? "tome"
+    : s.type === "risk" && active
+      ? "stale"
+      : s.decidedStale
+        ? "decided"
+        : s.stalled
+          ? "stale"
+          : s.scope === "private"
+            ? "priv"
+            : null;
+  const badgeLabel = s.toMe
+    ? "확인 요청"
+    : s.type === "risk" && active
+      ? "고정"
+      : s.decidedStale
+        ? "미실행"
+        : s.stalled
+          ? "정체"
+          : s.scope === "private"
+            ? "비공개"
+            : null;
   return {
     id: s.id,
     kind: "signal",
@@ -40,33 +69,54 @@ export function toPanelItem(s: ApiSignal): SignalPanelItem {
     meta: [
       TYPE_LABEL[s.type] ?? s.type,
       s.scope === "private" ? "비공개" : s.authorName,
-      s.status === "discussing" ? `논의중 ${s.days}일` : `${s.days}일 경과`,
+      s.type === "review" && s.targetName ? `→ ${s.targetName}` : null,
+      s.status === "decided"
+        ? `결정 후 ${s.decidedDays ?? 0}일`
+        : s.status === "discussing"
+          ? `논의중 ${s.days}일`
+          : `${s.days}일 경과`,
       s.commentCount > 0 ? `코멘트 ${s.commentCount}` : null,
     ]
       .filter(Boolean)
       .join(" · "),
-    badge: s.type === "risk" ? "stale" : s.stalled ? "stale" : s.scope === "private" ? "priv" : null,
-    badgeLabel: s.type === "risk" ? "고정" : s.stalled ? "정체" : s.scope === "private" ? "비공개" : null,
+    badge,
+    badgeLabel,
     agent: s.agent,
     stalled: s.stalled,
   };
 }
 
-function NewSignalForm({ onDone }: { onDone: () => void }) {
+function NewSignalForm({
+  actors,
+  onDone,
+}: {
+  actors: { id: number; name: string }[];
+  onDone: () => void;
+}) {
   const [type, setType] = useState("memo");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [targetActorId, setTargetActorId] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   async function submit() {
     if (!title.trim()) return;
+    if (type === "review" && !targetActorId) {
+      setError("확인 요청은 대상을 지정해야 합니다.");
+      return;
+    }
     setBusy(true);
     setError("");
     const res = await fetch("/api/signals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type, title, body }), // scope는 서버 규칙 (memo=비공개, 그 외 팀)
+      body: JSON.stringify({
+        type,
+        title,
+        body,
+        targetActorId: type === "review" ? targetActorId : undefined,
+      }), // scope는 서버 규칙 (memo=비공개, 그 외 팀)
     });
     setBusy(false);
     if (!res.ok) {
@@ -86,6 +136,16 @@ function NewSignalForm({ onDone }: { onDone: () => void }) {
         <option value="review">확인 요청</option>
         <option value="risk">리스크</option>
       </select>
+      {type === "review" && (
+        <select value={targetActorId} onChange={(e) => setTargetActorId(Number(e.target.value))}>
+          <option value={0}>확인 대상 선택</option>
+          {actors.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+      )}
       <input
         placeholder="제목"
         value={title}
@@ -108,6 +168,7 @@ function NewSignalForm({ onDone }: { onDone: () => void }) {
 
 export default function SignalsView({ user }: { user: SessionUser }) {
   const [signals, setSignals] = useState<ApiSignal[]>([]);
+  const [actors, setActors] = useState<{ id: number; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -117,7 +178,7 @@ export default function SignalsView({ user }: { user: SessionUser }) {
     try {
       const urls = showClosed
         ? ["/api/signals?status=resolved", "/api/signals?status=archived"]
-        : ["/api/signals"];
+        : ["/api/signals"]; // 기본 = open/discussing/decided (미종결)
       const results = await Promise.all(urls.map((u) => fetch(u).then((r) => r.json())));
       const merged = results.flatMap((d) => d.signals ?? []);
       if (results.some((d) => d.error)) throw new Error(results.find((d) => d.error)!.error);
@@ -134,6 +195,13 @@ export default function SignalsView({ user }: { user: SessionUser }) {
     setLoading(true);
     load();
   }, [load]);
+
+  useEffect(() => {
+    fetch("/api/meta/selectors")
+      .then((r) => r.json())
+      .then((d) => setActors(d.actors ?? []))
+      .catch(() => {});
+  }, []);
 
   const stalledCount = signals.filter((s) => s.stalled).length;
 
@@ -182,7 +250,7 @@ export default function SignalsView({ user }: { user: SessionUser }) {
           />
         )}
 
-        <NewSignalForm onDone={load} />
+        <NewSignalForm actors={actors} onDone={load} />
       </div>
     </div>
   );

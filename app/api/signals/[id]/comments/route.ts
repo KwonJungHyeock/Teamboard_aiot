@@ -8,14 +8,28 @@ import { jsonError } from "@/lib/api";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-async function guardSignal(signalId: number, viewerId: number) {
-  const signal = await queryOne<{ id: number; scope: string; author_id: number; title: string }>(
-    `SELECT id, scope, author_id, title FROM signal WHERE id = $1 AND is_active = true`,
+async function guardSignal(signalId: number, viewerId: number, isLead: boolean) {
+  const signal = await queryOne<{
+    id: number;
+    scope: string;
+    type: string;
+    author_id: number;
+    target_actor_id: number | null;
+    title: string;
+  }>(
+    `SELECT id, scope, type, author_id, target_actor_id, title FROM signal WHERE id = $1 AND is_active = true`,
     [signalId]
   );
   if (!signal) return { error: NextResponse.json({ error: "시그널을 찾을 수 없습니다." }, { status: 404 }) };
-  if (signal.scope === "private" && signal.author_id !== viewerId) {
-    return { error: NextResponse.json({ error: "비공개 메모입니다." }, { status: 403 }) };
+  // 가시성: private=작성자 / review=작성자+대상+lead / 그 외 공개
+  const visible =
+    signal.scope === "private"
+      ? signal.author_id === viewerId
+      : signal.type === "review"
+        ? signal.author_id === viewerId || signal.target_actor_id === viewerId || isLead
+        : true;
+  if (!visible) {
+    return { error: NextResponse.json({ error: "접근 권한이 없습니다." }, { status: 403 }) };
   }
   return { signal };
 }
@@ -23,7 +37,7 @@ async function guardSignal(signalId: number, viewerId: number) {
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {
     const session = requireSession();
-    const guarded = await guardSignal(Number(params.id), session.id);
+    const guarded = await guardSignal(Number(params.id), session.id, session.role === "lead");
     if (guarded.error) return guarded.error;
     const comments = await query<{
       id: number;
@@ -54,7 +68,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = requireSession();
-    const guarded = await guardSignal(Number(params.id), session.id);
+    const guarded = await guardSignal(Number(params.id), session.id, session.role === "lead");
     if (guarded.error) return guarded.error;
     const payload = await request.json();
     const body = String(payload.body ?? "").trim().slice(0, 2000);

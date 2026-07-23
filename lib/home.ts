@@ -2,6 +2,7 @@
 // /api/home/summary 라우트와 홈 서버 페이지가 공유한다.
 import { query, queryOne } from "./db";
 import { getCurrentMonthGoals } from "./goals";
+import { getDecidedStaleDays, signalVisibilityClause } from "./signals";
 
 const TZ_OFFSET = "+09:00"; // Asia/Seoul — 팀 기준 시간대
 
@@ -121,7 +122,7 @@ export interface HomeSignal {
   type: string;
   title: string;
   meta: string;
-  badge: "stale" | "wait" | "priv" | null;
+  badge: "stale" | "wait" | "priv" | "decided" | "tome" | null;
   badgeLabel: string | null;
   agent: boolean;
   stalled: boolean;
@@ -431,7 +432,8 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
     [in7]
   );
 
-  // ── 시그널 패널 (본인 비공개 포함, 정체 상단 고정) + 부사수 승인 대기 초안 병합 ──
+  // ── 시그널 패널 — 가시성·미실행결정 판정은 lib/signals 단일 소스와 동일 규칙 ──
+  const decidedStaleDays = await getDecidedStaleDays();
   const signalRows = await query<{
     id: number;
     type: string;
@@ -440,18 +442,22 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
     status: string;
     author_name: string;
     author_type: string;
+    target_actor_id: number | null;
     days: string;
+    decided_days: string | null;
     comment_count: string;
   }>(
     `SELECT s.id, s.type, s.scope, s.title, s.status,
-            a.display_name AS author_name, a.type AS author_type,
+            a.display_name AS author_name, a.type AS author_type, s.target_actor_id,
             floor(EXTRACT(EPOCH FROM (now() - s.created_at)) / 86400) AS days,
+            CASE WHEN s.decided_at IS NOT NULL
+                 THEN floor(EXTRACT(EPOCH FROM (now() - s.decided_at)) / 86400) END AS decided_days,
             (SELECT count(*) FROM comment c WHERE c.signal_id = s.id) AS comment_count
      FROM signal s JOIN actor a ON a.id = s.author_id
-     WHERE s.is_active = true AND s.status IN ('open','discussing')
-       AND (s.scope IN ('team','huddle') OR (s.scope = 'private' AND s.author_id = $1))
+     WHERE s.is_active = true AND s.status IN ('open','discussing','decided')
+       AND ${signalVisibilityClause("$1")}
      ORDER BY s.created_at DESC
-     LIMIT 12`,
+     LIMIT 14`,
     [viewerId]
   );
   const typeLabel: Record<string, string> = {
@@ -460,12 +466,36 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
     memo: "메모",
     risk: "리스크",
   };
-  const signalItems: HomeSignal[] = signalRows.map((s) => {
+  const signalItems: (HomeSignal & { decidedStale: boolean; toMe: boolean })[] = signalRows.map((s) => {
     const limit = thresholds[s.type];
+    const active = s.status === "open" || s.status === "discussing";
     const stalled =
-      s.type === "risk"
-        ? true
-        : limit !== null && limit !== undefined && Number(s.days) >= Number(limit);
+      active && (s.type === "risk" ? true : limit !== null && limit !== undefined && Number(s.days) >= Number(limit));
+    const decidedStale =
+      s.status === "decided" && s.decided_days !== null && Number(s.decided_days) >= decidedStaleDays;
+    const toMe = s.type === "review" && s.target_actor_id === viewerId && active;
+    const badge = toMe
+      ? "tome"
+      : s.type === "risk" && active
+        ? "stale"
+        : decidedStale
+          ? "decided"
+          : stalled
+            ? "stale"
+            : s.scope === "private"
+              ? "priv"
+              : null;
+    const badgeLabel = toMe
+      ? "확인 요청"
+      : s.type === "risk" && active
+        ? "고정"
+        : decidedStale
+          ? "미실행"
+          : stalled
+            ? "정체"
+            : s.scope === "private"
+              ? "비공개"
+              : null;
     return {
       id: s.id,
       kind: "signal",
@@ -474,15 +504,21 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
       meta: [
         typeLabel[s.type] ?? s.type,
         s.scope === "private" ? "비공개" : s.author_name,
-        s.status === "discussing" ? `논의중 ${s.days}일` : `${s.days}일 경과`,
+        s.status === "decided"
+          ? `결정 후 ${s.decided_days ?? 0}일`
+          : s.status === "discussing"
+            ? `논의중 ${s.days}일`
+            : `${s.days}일 경과`,
         Number(s.comment_count) > 0 ? `코멘트 ${s.comment_count}` : null,
       ]
         .filter(Boolean)
         .join(" · "),
-      badge: s.type === "risk" ? "stale" : stalled ? "stale" : s.scope === "private" ? "priv" : null,
-      badgeLabel: s.type === "risk" ? "고정" : stalled ? "정체" : s.scope === "private" ? "비공개" : null,
+      badge,
+      badgeLabel,
       agent: s.author_type === "agent",
       stalled,
+      decidedStale,
+      toMe,
     };
   });
   // 부사수 승인 대기 초안 → 에이전트 생성물로 패널에 표시 (구 관제뷰 "막힌 곳" 요소 흡수)
@@ -508,11 +544,22 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
     agent: true,
     stalled: false,
   }));
-  const signals = [
-    ...signalItems.filter((s) => s.stalled || s.type === "risk"),
-    ...draftItems,
-    ...signalItems.filter((s) => !s.stalled && s.type !== "risk"),
-  ].slice(0, 10);
+  // 우선순위: 나에게 온 확인 요청 → risk → 미실행 결정 → 정체 → 승인 대기 초안 → 나머지
+  const priority = signalItems.filter((s) => s.toMe || s.type === "risk" || s.decidedStale || s.stalled);
+  const rest = signalItems.filter((s) => !priority.includes(s));
+  const signals: HomeSignal[] = [...priority, ...draftItems, ...rest]
+    .slice(0, 10)
+    .map(({ id, kind, type, title, meta, badge, badgeLabel, agent, stalled }) => ({
+      id,
+      kind,
+      type,
+      title,
+      meta,
+      badge,
+      badgeLabel,
+      agent,
+      stalled,
+    }));
 
   // ── 허들 피드 ──
   const huddles = await query<{

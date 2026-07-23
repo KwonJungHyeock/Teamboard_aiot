@@ -13,7 +13,7 @@ export interface SignalPanelItem {
   type: string;
   title: string;
   meta: string;
-  badge: "stale" | "wait" | "priv" | null;
+  badge: "stale" | "wait" | "priv" | "decided" | "tome" | null;
   badgeLabel: string | null;
   agent: boolean;
   stalled: boolean;
