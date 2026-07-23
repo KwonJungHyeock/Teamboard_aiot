@@ -98,6 +98,7 @@ function TaskDetail({
   const [assigneeId, setAssigneeId] = useState(task.assigneeId ?? 0);
   const [dueDate, setDueDate] = useState(task.dueDate ?? "");
   const [goalIds, setGoalIds] = useState<number[]>(task.goalIds);
+  const [dropReason, setDropReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -130,6 +131,7 @@ function TaskDetail({
         assigneeId: assigneeId || null,
         dueDate: dueDate || null,
         goalIds, // 다중 선택 · 선택 사항 (빈 배열 허용)
+        dropReason: status === "dropped" ? dropReason : undefined,
       }),
     });
     setBusy(false);
@@ -221,6 +223,16 @@ function TaskDetail({
             <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
         </div>
+        {status === "dropped" && task.status !== "dropped" && (
+          <div className="tform-r">
+            <label>중단 사유 (필수)</label>
+            <input
+              placeholder="왜 중단하나요? 목표 진척 분모에서 제외됩니다."
+              value={dropReason}
+              onChange={(e) => setDropReason(e.target.value)}
+            />
+          </div>
+        )}
         <div className="tform-r">
           <label>목표 연결 (다중 선택 · 선택 사항)</label>
         </div>

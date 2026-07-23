@@ -125,6 +125,7 @@ export async function GET(request: Request) {
        ORDER BY t.created_at ASC`
     );
 
+    // TODO(Phase 8): /api/meta/selectors 로 분리. 목록 응답에 룩업 데이터 혼재
     // 화면 셀렉트용 부가 데이터 — 담당(활성 human)·프로젝트·연결 가능한 월 목표
     const actors = await query<{ id: number; display_name: string }>(
       `SELECT id, display_name FROM actor WHERE type = 'human' AND is_active = true ORDER BY id`

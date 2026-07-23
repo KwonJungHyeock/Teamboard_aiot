@@ -39,16 +39,19 @@ export interface GoalTaskRef {
   dueDate: string | null;
 }
 
-/** 월 목표 1건의 진척 — auto: 연결 Task 완료율, manual: 저장값. 산출 불가 시 null */
+/** 월 목표 1건의 진척 — auto: 연결 Task 완료율, manual: 저장값. 산출 불가 시 null.
+ *  진척률 = done / (연결 Task 수 - dropped 수). 중단은 더 이상 "할 일"이 아니므로 분모 제외.
+ *  전부 dropped(분모 0)면 null → "-" (SPEC v1.1 예정) */
 export function monthProgress(
   progressMode: "auto" | "manual",
   storedProgress: number,
   linkedTasks: { status: string }[]
 ): number | null {
   if (progressMode === "manual") return Math.round(storedProgress);
-  if (linkedTasks.length === 0) return null;
-  const done = linkedTasks.filter((t) => t.status === "done").length;
-  return Math.round((done / linkedTasks.length) * 100);
+  const counted = linkedTasks.filter((t) => t.status !== "dropped");
+  if (counted.length === 0) return null;
+  const done = counted.filter((t) => t.status === "done").length;
+  return Math.round((done / counted.length) * 100);
 }
 
 /** 하위 진척들의 평균 — null(산출 불가) 하위는 제외, 전부 null이면 null */
@@ -171,7 +174,15 @@ export async function getGoalTree(year?: number): Promise<GoalNode[]> {
 
 /** 현재 월 목표 목록 + 진척 — 홈 대시보드용 (lib/home.ts에서 사용) */
 export async function getCurrentMonthGoals(todayStr: string): Promise<
-  { id: number; title: string; progress: number | null; colorKey: string | null; projectName: string | null }[]
+  {
+    id: number;
+    title: string;
+    progress: number | null;
+    colorKey: string | null;
+    projectName: string | null;
+    /** 연결 Task 중 중단 건수 — N>0일 때 "중단 N건" 라벨 */
+    droppedCount: number;
+  }[]
 > {
   const rows = await query<{
     id: number;
@@ -206,6 +217,7 @@ export async function getCurrentMonthGoals(todayStr: string): Promise<
           : monthProgress("auto", 0, linked),
       colorKey: row.color_key,
       projectName: row.project_name,
+      droppedCount: linked.filter((l) => l.status === "dropped").length,
     };
   });
 }

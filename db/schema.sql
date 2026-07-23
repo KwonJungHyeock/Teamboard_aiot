@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS agent_config (
 CREATE TABLE IF NOT EXISTS project (
   id         SERIAL PRIMARY KEY,
   name       TEXT NOT NULL,
-  status     TEXT NOT NULL DEFAULT 'active',
+  status     TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'done', 'hold')),
   start_date DATE,
   end_date   DATE,
   color_key  TEXT,                               -- 'edu' | 'play' | 'train' (theme.css 토큰 키)
@@ -50,6 +50,10 @@ CREATE TABLE IF NOT EXISTS project (
   is_active  BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- 기존 DB 보강 (CREATE TABLE IF NOT EXISTS는 기존 테이블에 제약을 추가하지 않음)
+ALTER TABLE project DROP CONSTRAINT IF EXISTS project_status_check;
+ALTER TABLE project ADD CONSTRAINT project_status_check CHECK (status IN ('active', 'done', 'hold'));
 
 CREATE TABLE IF NOT EXISTS goal (
   id             SERIAL PRIMARY KEY,
@@ -84,10 +88,13 @@ CREATE TABLE IF NOT EXISTS task (
   origin       TEXT NOT NULL DEFAULT 'human' CHECK (origin IN ('human', 'agent')),
   created_by   INTEGER REFERENCES actor(id),
   completed_at TIMESTAMPTZ,
+  drop_reason  TEXT,                              -- status='dropped' 전환 시 필수 (진척률 우회 방지)
   is_active    BOOLEAN NOT NULL DEFAULT true,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE task ADD COLUMN IF NOT EXISTS drop_reason TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_task_assignee ON task(assignee_id, status);
 CREATE INDEX IF NOT EXISTS idx_task_due ON task(due_date);

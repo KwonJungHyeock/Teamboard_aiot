@@ -82,6 +82,7 @@ export interface HomeSummary {
     progress: number | null; // null = 산출 불가 → "-"
     colorKey: string | null;
     projectName: string | null;
+    droppedCount: number; // N>0이면 "중단 N건" 라벨
   }[];
   projectProgress: {
     id: number;

@@ -4,18 +4,11 @@
 // ③ "이번 달 목표 진척"은 SPEC 우선 규칙에 따라 프로토타입의 "프로젝트 진행" 자리를 대체.
 import { useMemo, useState } from "react";
 import type { HomeSummary } from "@/lib/home";
-import type { SessionUser, SignalType } from "@/lib/types";
+import type { SessionUser } from "@/lib/types";
 import MetricCards from "./MetricCards";
+import SignalPanel from "./SignalPanel";
 import TaskTable from "./TaskTable";
 import TeamTimeline, { type TimelineView } from "./TeamTimeline";
-
-const SIGNAL_TABS: { key: "all" | SignalType; label: string }[] = [
-  { key: "all", label: "전체" },
-  { key: "decision", label: "결정" },
-  { key: "review", label: "확인" },
-  { key: "memo", label: "메모" },
-  { key: "risk", label: "리스크" },
-];
 
 function greeting(): string {
   const hour = Number(
@@ -36,24 +29,12 @@ export default function HomeView({
   user: SessionUser;
 }) {
   const [view, setView] = useState<TimelineView>("day");
-  const [signalTab, setSignalTab] = useState<"all" | SignalType>("all");
 
   const dateLabel = useMemo(() => {
     const d = new Date(`${summary.today}T00:00:00+09:00`);
     const dow = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][d.getUTCDay() === undefined ? 0 : new Date(`${summary.today}T12:00:00+09:00`).getDay()];
     return `${summary.today.replace(/-/g, ".")} ${dow}`;
   }, [summary.today]);
-
-  const tabCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: summary.signals.length };
-    for (const tab of SIGNAL_TABS.slice(1)) {
-      counts[tab.key] = summary.signals.filter((s) => s.type === tab.key).length;
-    }
-    return counts;
-  }, [summary.signals]);
-
-  const visibleSignals =
-    signalTab === "all" ? summary.signals : summary.signals.filter((s) => s.type === signalTab);
 
   function openPalette() {
     window.dispatchEvent(new CustomEvent("tb:open-palette"));
@@ -135,7 +116,10 @@ export default function HomeView({
                 <div className="pr" key={goal.id}>
                   <div className="pr-t">
                     <span>{goal.title}</span>
-                    <span>{goal.progress === null ? "-" : `${goal.progress}%`}</span>
+                    <span>
+                      {goal.droppedCount > 0 && <em className="gdrop">중단 {goal.droppedCount}건</em>}
+                      {goal.progress === null ? "-" : `${goal.progress}%`}
+                    </span>
                   </div>
                   <div className="bar">
                     <i
@@ -176,54 +160,8 @@ export default function HomeView({
               ))}
             </section>
 
-            {/* 시그널 패널 (타입 필터, 정체 상단 고정 — 서버 정렬) */}
-            <section className="card" aria-label="시그널">
-              <div className="ch">
-                <h2>시그널</h2>
-                <span className="sub">정체 {summary.stalledCount}</span>
-              </div>
-              <div className="tabs" role="group" aria-label="시그널 필터">
-                {SIGNAL_TABS.map((tab) => (
-                  <button
-                    key={tab.key}
-                    className="tab"
-                    aria-pressed={signalTab === tab.key}
-                    onClick={() => setSignalTab(tab.key)}
-                  >
-                    {tab.label}
-                    <span className="n">{tabCounts[tab.key] ?? 0}</span>
-                  </button>
-                ))}
-              </div>
-              <div>
-                {visibleSignals.length === 0 && (
-                  <p style={{ color: "var(--lo)", fontSize: 12, padding: "8px 0" }}>
-                    표시할 시그널이 없습니다.
-                  </p>
-                )}
-                {visibleSignals.map((signal) => (
-                  <div
-                    className={`sig ${signal.agent ? "ag" : ""}`}
-                    key={`${signal.kind}-${signal.id}`}
-                  >
-                    <span className={`dt ${signal.type}`} />
-                    <div className="bd">
-                      <div className="tt">
-                        {signal.agent && (
-                          <span className="atag">
-                            <span className="mo" />
-                            {signal.kind === "draft" ? "부사수" : "에이전트"}
-                          </span>
-                        )}
-                        {signal.title}
-                      </div>
-                      <div className="mt">{signal.meta}</div>
-                    </div>
-                    {signal.badge && <span className={`bg ${signal.badge}`}>{signal.badgeLabel}</span>}
-                  </div>
-                ))}
-              </div>
-            </section>
+            {/* 시그널 패널 — /signals와 공유하는 SignalPanel (Phase 6), 정렬은 서버 */}
+            <SignalPanel items={summary.signals} stalledCount={summary.stalledCount} />
 
             {/* 허들 피드 */}
             <section className="card" aria-label="허들">

@@ -106,7 +106,7 @@
 .hv .bg.stale{background:rgba(248,113,113,.12);color:#FCA5A5;border:1px solid rgba(248,113,113,.3)}
 .hv .bg.wait{background:rgba(139,92,246,.12);color:#C9B6FC;border:1px solid rgba(139,92,246,.32)}
 .hv .bg.priv{background:rgba(255,255,255,.045);color:var(--lo);border:1px solid var(--line)}
-.hv .sig.ag{border-left:2px solid var(--play);padding-left:11px;background:linear-gradient(90deg,rgba(139,92,246,.07),transparent 40%)}
+.hv .sig.ag{border-left:2px solid var(--play);padding-left:11px;background:linear-gradient(90deg,rgba(139,92,246,.07),transparent 40%);opacity:.9}
 .hv .sig.ag .tt{color:var(--mid)}
 .hv .atag{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-d);font-size:10px;color:#C9B6FC;background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.3);border-radius:5px;padding:1px 6px;margin-right:6px}
 .hv .mo{width:12px;height:12px;flex:0 0 12px;display:inline-grid;place-items:center}
@@ -173,6 +173,8 @@
 .hv .gtasks{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .hv .gchip{font-size:10.5px;padding:2px 8px;border-radius:5px;border:1px solid var(--line);color:var(--mid);background:rgba(255,255,255,.03)}
 .hv .gchip.done{color:var(--ok);border-color:rgba(52,211,153,.3)}
+.hv .gchip.drop{color:var(--lo);text-decoration:line-through;opacity:.7}
+.hv .gdrop{font-style:normal;font-family:var(--f-d);font-size:10px;color:var(--lo);border:1px dashed var(--line);border-radius:5px;padding:1px 6px;white-space:nowrap;margin-right:6px}
 .hv .gadd{display:flex;align-items:center;gap:7px;margin:6px 0 4px 30px}
 .hv .gadd input{height:28px;font-size:12px;padding:0 9px;background:transparent;border:1px solid var(--line);border-radius:6px;color:var(--hi);max-width:280px}
 .hv .gadd select{height:28px;font-size:12px;background:var(--bg-elevated);border:1px solid var(--line);border-radius:6px;color:var(--mid);width:auto;padding:0 6px}
@@ -247,6 +249,29 @@
 .hv .pover-r{display:flex;flex-direction:column;gap:5px}
 .hv .pover-r label{font-family:var(--f-d);font-size:10px;color:var(--lo);letter-spacing:.06em}
 .hv .pover-r span{font-size:12.5px;color:var(--mid)}
+
+/* ── 시그널 스레드 · 허들 (Phase 6) ── */
+.hv .sig.clickable{cursor:pointer}
+.hv .sig.clickable:hover{background:var(--glass)}
+.hv .sig.selected{background:rgba(255,255,255,.045)}
+.hv .sthread{margin-top:12px}
+.hv .sthread.agline{border-left:2px solid var(--play);opacity:.95}
+.hv .sthread .ch h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hv .smeta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.hv .smeta em{font-style:normal;font-size:11px;color:var(--lo)}
+.hv .sbody{font-size:12.5px;color:var(--mid);line-height:1.6;margin:0 0 10px;white-space:pre-wrap}
+.hv .slinked{font-size:11.5px;color:var(--ok);margin:0 0 8px}
+.hv .sacts{display:flex;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px dashed var(--line)}
+.hv .scomments{margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
+.hv .scomment{display:flex;gap:8px;align-items:baseline;padding:5px 0;font-size:12px;border-top:1px solid var(--line)}
+.hv .scomment:first-of-type{border-top:0}
+.hv .scomment b{color:var(--hi);font-weight:600;white-space:nowrap}
+.hv .scomment span{color:var(--mid);line-height:1.5}
+.hv .scomment.ag{opacity:.9}
+.hv .hud.clickable{cursor:pointer}
+.hv .hud.clickable:hover{border-color:var(--line-hi)}
+.hv .hud.selected{border-color:var(--line-hi);background:rgba(255,255,255,.04)}
+.hv .hud.ag{border-left:2px solid var(--play);opacity:.9}
 
 /* ── 자료 링크 카드 (Phase 5) — 메타데이터만, 본문 없음 ── */
 .hv .acards{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}

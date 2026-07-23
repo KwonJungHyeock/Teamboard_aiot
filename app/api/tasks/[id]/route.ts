@@ -18,8 +18,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const taskId = Number(params.id);
     const payload = await request.json();
 
-    const task = await queryOne<{ id: number; title: string; status: string }>(
-      "SELECT id, title, status FROM task WHERE id = $1 AND is_active = true",
+    const task = await queryOne<{ id: number; title: string; status: string; assignee_id: number | null }>(
+      "SELECT id, title, status, assignee_id FROM task WHERE id = $1 AND is_active = true",
       [taskId]
     );
     if (!task) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
@@ -63,6 +63,27 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       if (!(STATUSES as readonly string[]).includes(payload.status)) {
         return NextResponse.json({ error: "상태 값이 올바르지 않습니다." }, { status: 400 });
       }
+      // 인박스 승인·기각(proposed의 상태 전이)은 담당자 본인 또는 lead만 — drafts 승인 규칙과 동일
+      if (task.status === "proposed" && payload.status !== "proposed") {
+        const canJudge = session.role === "lead" || task.assignee_id === session.id;
+        if (!canJudge) {
+          return NextResponse.json(
+            { error: "제안 업무의 승인·기각은 담당자 본인 또는 팀장만 할 수 있습니다." },
+            { status: 403 }
+          );
+        }
+      }
+      // 중단 전환은 사유 필수 — 진척률 분모에서 빠지므로 우회 방지 (SPEC v1.1 예정)
+      let dropReason = "";
+      if (payload.status === "dropped" && task.status !== "proposed") {
+        dropReason = String(payload.dropReason ?? "").trim().slice(0, 500);
+        if (!dropReason) {
+          return NextResponse.json({ error: "중단 사유를 입력하세요." }, { status: 400 });
+        }
+        set("drop_reason", dropReason);
+      } else if (payload.status !== "dropped") {
+        set("drop_reason", null);
+      }
       set("status", payload.status);
       // 완료 시각은 상태 전이에서만 기록/해제
       if (payload.status === "done") set("completed_at", new Date().toISOString());
@@ -71,6 +92,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         statusLog = `${session.name}이(가) 부사수 제안 업무 승인 — "${task.title}"`;
       } else if (task.status === "proposed" && payload.status === "dropped") {
         statusLog = `${session.name}이(가) 부사수 제안 업무 기각 — "${task.title}"`;
+      } else if (payload.status === "dropped") {
+        statusLog = `${session.name}이(가) 업무 중단 — "${task.title}" (사유: ${dropReason})`;
       } else {
         statusLog = `${session.name}이(가) 업무 상태 변경 (${task.status} → ${payload.status}) — "${task.title}"`;
       }

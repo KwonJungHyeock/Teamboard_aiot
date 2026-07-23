@@ -262,7 +262,10 @@ function MonthGoalRow({
     onChanged();
   }
 
-  const doneCount = goal.tasks.filter((t) => t.status === "done").length;
+  // 진척 분모는 dropped 제외 (lib/goals.ts monthProgress와 동일 기준)
+  const countedTasks = goal.tasks.filter((t) => t.status !== "dropped");
+  const doneCount = countedTasks.filter((t) => t.status === "done").length;
+  const droppedCount = goal.tasks.length - countedTasks.length;
 
   return (
     <div className="grow">
@@ -271,12 +274,13 @@ function MonthGoalRow({
         <span className="gtitle">{goal.title}</span>
         {goal.progressMode === "manual" && <span className="gtag mu">수동</span>}
         <span className="gsp" />
+        {droppedCount > 0 && <em className="gdrop">중단 {droppedCount}건</em>}
         <GoalProgress
           progress={goal.progress}
           colorKey={goal.colorKey}
           detail={
-            goal.progressMode === "auto" && goal.tasks.length > 0
-              ? `${doneCount}/${goal.tasks.length}`
+            goal.progressMode === "auto" && countedTasks.length > 0
+              ? `${doneCount}/${countedTasks.length}`
               : undefined
           }
         />
@@ -290,7 +294,10 @@ function MonthGoalRow({
       {goal.tasks.length > 0 && !editing && (
         <div className="gtasks">
           {goal.tasks.map((task) => (
-            <span key={task.id} className={`gchip ${task.status === "done" ? "done" : ""}`}>
+            <span
+              key={task.id}
+              className={`gchip ${task.status === "done" ? "done" : task.status === "dropped" ? "drop" : ""}`}
+            >
               {task.status === "done" ? "✓ " : ""}
               {task.title}
             </span>
