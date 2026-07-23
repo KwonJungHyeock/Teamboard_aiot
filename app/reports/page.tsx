@@ -11,7 +11,7 @@ export default function Page() {
   if (user.role !== "lead") redirect("/assistant");
   return (
     <AppShell user={user}>
-      <ReportsView user={user} />
+      <ReportsView />
     </AppShell>
   );
 }

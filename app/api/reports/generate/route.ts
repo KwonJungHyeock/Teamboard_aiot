@@ -3,7 +3,7 @@
 // 기존 승인 게이트를 재사용하므로 새 Notion 쓰기 로직을 만들지 않는다. lead 전용.
 import { NextResponse } from "next/server";
 import { requireLead } from "@/lib/auth";
-import { query, queryOne, getAssistantByOwner } from "@/lib/db";
+import { queryOne, getAssistantByOwner } from "@/lib/db";
 import { buildMonthlyReport, renderReportMarkdown, REPORT_SECTIONS } from "@/lib/report";
 import { narrateReport } from "@/lib/llm";
 import { logActivity } from "@/lib/activity";

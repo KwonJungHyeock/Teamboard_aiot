@@ -2,7 +2,6 @@
 
 // 월간 보고 화면 (Phase 7) — 월별 목록 + 생성 + 상세(보기/편집) + 승인 + 인쇄(PDF). lead 전용.
 import { useCallback, useEffect, useState } from "react";
-import type { SessionUser } from "@/lib/types";
 import ReportView, { type ReportData } from "./ReportView";
 import ReportEditor from "./ReportEditor";
 
@@ -32,7 +31,7 @@ interface ReportDetail {
   narration: Record<string, string>;
 }
 
-export default function ReportsView({ user }: { user: SessionUser }) {
+export default function ReportsView() {
   const now = new Date();
   const [list, setList] = useState<ReportListItem[]>([]);
   const [genYear, setGenYear] = useState(now.getUTCFullYear());

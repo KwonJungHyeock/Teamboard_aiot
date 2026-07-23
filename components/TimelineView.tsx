@@ -47,6 +47,20 @@ export default function TimelineView() {
 
   return (
     <div className="card">
+      <p
+        style={{
+          fontSize: 12.5,
+          color: "var(--text-dim, #9aa)",
+          background: "rgba(255,255,255,.04)",
+          border: "1px solid var(--line, #23252c)",
+          borderLeft: "2px solid var(--accent, #4b8df8)",
+          borderRadius: 6,
+          padding: "9px 12px",
+          marginBottom: 14,
+        }}
+      >
+        Notion 원본 조회용 보조 화면입니다. 팀 업무 현황은 홈과 캘린더를 이용하세요.
+      </p>
       <h2>
         팀 업무 타임라인 <span className="count">{filtered.length}</span>
       </h2>

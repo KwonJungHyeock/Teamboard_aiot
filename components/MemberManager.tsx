@@ -16,8 +16,6 @@ interface Member {
   assistantName: string | null;
 }
 
-const ROLE_LABEL: Record<string, string> = { lead: "팀장", member: "팀원", viewer: "뷰어" };
-
 function NewMemberForm({ onCreated }: { onCreated: (tempPw: string, email: string) => void }) {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");

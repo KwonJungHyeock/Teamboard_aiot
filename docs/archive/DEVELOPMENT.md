@@ -1,4 +1,7 @@
-# 팀보드 (TeamBoard) — 개발 내용 요약
+# 팀보드 (TeamBoard) — 개발 내용 요약 (아카이브)
+
+> ⚠️ **이 문서는 보관용입니다.** v0.x 초기 3화면(부사수/타임라인/관제뷰) 구조를 기록한 스냅샷으로, 더 이상 기준이 아닙니다.
+> **현재 유일한 기준 문서는 [`docs/SPEC.md`](../SPEC.md) (v1.1)** 이며, Phase 지침은 [`docs/CHANGE-GUIDE.md`](../CHANGE-GUIDE.md) 를 따릅니다.
 
 > AIoT 교육플랫폼 사업팀(ROBODYNE SYSTEMS) 사내 업무 관리 도구
 > 작성일: 2026-07-23 · 배포: https://teamboard-aiot.vercel.app
