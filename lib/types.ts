@@ -189,9 +189,11 @@ export interface ActivityEntry {
 
 export const TASK_TYPES: TaskType[] = ["자료조사", "회의록", "내용정리", "반복업무"];
 
-// Notion 속성 허용값 (승인 게이트 → Notion 기록 시 이 값만 사용)
-export const NOTION_CATEGORIES = ["팀 메인", "개인 상시"] as const;
-export const NOTION_WORK_TYPES = ["팀업무", "개인업무", "상시업무"] as const;
-export const NOTION_AREAS = ["R&D", "플랫폼", "연구소", "디자인", "교육자료", "현장실습교육", "기타"] as const;
-export const NOTION_STATUSES = ["대기", "진행", "완료"] as const;
-export const NOTION_PRIORITIES = ["High", "Mid", "Low"] as const;
+// Notion 속성 허용값 — 단일 소스는 lib/notion-schema.ts. 기존 import 호환을 위해 재수출.
+export {
+  NOTION_CATEGORIES,
+  NOTION_WORK_TYPES,
+  NOTION_AREAS,
+  NOTION_STATUSES,
+  NOTION_PRIORITIES,
+} from "./notion-schema";

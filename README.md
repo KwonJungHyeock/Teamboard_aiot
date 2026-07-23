@@ -78,12 +78,34 @@ npm run dev                  # 개발 서버
 - 모든 생성·수정·승인·반려·설정 변경은 `activity_log`에 기록
 - 비활성 계정(`is_active=false`)의 기존 세션은 서버측 라이브 검증으로 즉시 무효화(다음 페이지 접근 시 로그인으로)
 
-## 운영 전환 전 남은 작업
+## 운영 전환 순서 (반드시 이 순서로)
 
-- [ ] `NOTION_TOKEN` 발급 (없으면 승인→Notion 기록 단계에서 에러)
-- [ ] `OPENAI_API_KEY` 또는 `ANTHROPIC_API_KEY` 발급 (없으면 부사수·월간 보고가 데모 모드)
-- [ ] 프로덕션 DB 초기화: `POST /api/admin/init-db` 실행
-  - 이중 잠금: 환경변수 `ALLOW_DB_INIT=true` + 헤더 `x-admin-secret`(=`AUTH_SECRET`)
-  - 실행 당일에만 `ALLOW_DB_INIT`를 켜고, **초기화 성공 직후 이 임시 라우트(`app/api/admin/init-db/`)와 `ALLOW_DB_INIT` 변수를 함께 제거**
-- [ ] `scripts/init-db.mjs`의 시드 이메일을 실제 업무메일로 교체, Notion person ID 매핑 확인
-- [ ] 팀원 초기 비밀번호(`teamboard123!`) 변경 안내 — 최초 로그인 시 변경 강제됨
+순서가 어긋나면 DB를 두 번 초기화하게 됩니다. 특히 **시드 이메일 교체(3)는 DB 초기화(5)보다 먼저**여야 합니다.
+
+| # | 단계 | 건너뛰면? |
+|---|---|---|
+| 1 | **Notion 통합 토큰 발급** (워크스페이스 소유자 권한, 리드타임 김) | 승인 시 Notion 페이지 생성이 전부 실패 |
+| 2 | **Notion DB 속성 허용값 확인** — 토큰 등록 후 `GET /api/admin/verify-notion-schema` 로 대조 | 운영 첫날 승인 시 "선택지 없음"으로 실패, 대응 비용 큼 |
+| 3 | **`scripts/init-db.mjs`의 업무메일 + Notion person ID 교체 → 커밋 → 배포** (초기화 *전에*) | 초기화 후 바꾸면 재초기화 필요 |
+| 4 | **Vercel 환경변수 등록**: `NOTION_TOKEN` / `OPENAI_API_KEY`(또는 `ANTHROPIC_API_KEY`) / `ALLOW_DB_INIT=true` | 키 없으면 데모 모드, `ALLOW_DB_INIT` 없으면 초기화 라우트 404 |
+| 5 | **`curl POST /api/admin/init-db`** (헤더 `x-admin-secret`=`AUTH_SECRET`) → 프로덕션 초기화 | DB가 비어 로그인·화면 미동작 |
+| 6 | **임시 라우트(`app/api/admin/*`) + `ALLOW_DB_INIT` 즉시 제거 → 커밋** | 초기화·검증 라우트 계속 노출 |
+| 7 | **팀원 초기 비밀번호 전달** (최초 로그인 시 변경 강제) | 팀원 로그인 불가 |
+
+`/api/admin/*` 라우트는 이중 잠금(환경변수 `ALLOW_DB_INIT=true` + 헤더 `x-admin-secret`)이며, 미충족 시 404로 존재를 숨깁니다.
+
+## Notion 타임라인 DB 속성 (승인 → 기록 시 사용)
+
+코드가 보내는 값입니다. 실제 Notion DB의 선택지와 대조해 일치시키세요 (단일 소스: `lib/notion-schema.ts`).
+
+| 속성 | 타입 | 허용값 |
+|---|---|---|
+| 업무명 | title | (초안 제목) |
+| 구분 | select | 팀 메인 · 개인 상시 |
+| 업무유형 | select | 팀업무 · 개인업무 · 상시업무 |
+| 업무 구분 | multi_select | R&D · 플랫폼 · 연구소 · 디자인 · 교육자료 · 현장실습교육 · 기타 |
+| 상태 | status | 대기 · 진행 · 완료 |
+| 우선순위 | select | High · Mid · Low |
+| 담당자 | people | (account.notion_user_id 매핑) |
+| 시작일 / 종료일 | date | (업무 기간) |
+| 메모 | rich_text | (승인 기록 메모) |

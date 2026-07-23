@@ -2,6 +2,7 @@
 // 삭제 금지 원칙: 페이지 삭제 API는 사용하지 않는다 (PRD 11장).
 import { queryOne } from "./db";
 import type { TimelineItem } from "./types";
+import { NP } from "./notion-schema";
 
 const NOTION_API = "https://api.notion.com/v1";
 const NOTION_VERSION = "2025-09-03"; // data_source 지원 버전
@@ -39,6 +40,28 @@ async function notionFetch(path: string, init?: RequestInit): Promise<any> {
     throw new Error(`Notion API 오류 (${res.status}): ${detail.slice(0, 500)}`);
   }
   return res.json();
+}
+
+/**
+ * data source의 속성 스키마 조회 (Phase 9 검증용) — 선택형 속성의 실제 선택지를 반환.
+ * 반환: { [속성이름]: { type, options[] } }. 코드 허용값과 대조하는 데 쓴다.
+ */
+export async function getDataSourceSchema(): Promise<
+  Record<string, { type: string; options: string[] }>
+> {
+  const dsId = await getTimelineDataSourceId();
+  const data = await notionFetch(`/data_sources/${dsId}`);
+  const props = data.properties ?? {};
+  const out: Record<string, { type: string; options: string[] }> = {};
+  for (const [name, spec] of Object.entries<any>(props)) {
+    const type = spec?.type ?? "";
+    let options: string[] = [];
+    if (type === "select") options = (spec.select?.options ?? []).map((o: any) => o.name);
+    else if (type === "multi_select") options = (spec.multi_select?.options ?? []).map((o: any) => o.name);
+    else if (type === "status") options = (spec.status?.options ?? []).map((o: any) => o.name);
+    out[name] = { type, options };
+  }
+  return out;
 }
 
 function plainText(richText: any[] | undefined): string {
@@ -127,21 +150,22 @@ export async function createTimelinePage(
   params: CreateTimelinePageParams
 ): Promise<{ pageId: string; url: string | null }> {
   const dsId = await getTimelineDataSourceId();
+  // 속성 이름은 lib/notion-schema.ts(NP)를 단일 소스로 사용 — 흩어진 문자열 제거
   const properties: any = {
-    업무명: { title: [{ type: "text", text: { content: params.title.slice(0, 200) } }] },
-    구분: { select: { name: params.category } },
-    업무유형: { select: { name: params.workType } },
-    "업무 구분": { multi_select: params.areas.map((name) => ({ name })) },
-    상태: { status: { name: params.status } },
-    우선순위: { select: { name: params.priority } },
-    시작일: { date: { start: params.startDate } },
-    종료일: { date: { start: params.endDate } },
+    [NP.title]: { title: [{ type: "text", text: { content: params.title.slice(0, 200) } }] },
+    [NP.category]: { select: { name: params.category } },
+    [NP.workType]: { select: { name: params.workType } },
+    [NP.areas]: { multi_select: params.areas.map((name) => ({ name })) },
+    [NP.status]: { status: { name: params.status } },
+    [NP.priority]: { select: { name: params.priority } },
+    [NP.startDate]: { date: { start: params.startDate } },
+    [NP.endDate]: { date: { start: params.endDate } },
   };
   if (params.assigneeNotionId) {
-    properties["담당자"] = { people: [{ id: params.assigneeNotionId }] };
+    properties[NP.assignee] = { people: [{ id: params.assigneeNotionId }] };
   }
   if (params.memo) {
-    properties["메모"] = {
+    properties[NP.memo] = {
       rich_text: [{ type: "text", text: { content: params.memo.slice(0, 2000) } }],
     };
   }

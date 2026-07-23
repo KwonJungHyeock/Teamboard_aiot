@@ -14,6 +14,11 @@ import { timingSafeEqual } from "crypto";
 import path from "path";
 import { logActivity } from "@/lib/activity";
 
+// 로깅 실패가 잠금 응답 상태를 바꾸지 않도록 best-effort
+async function safeLog(p: Parameters<typeof logActivity>[0]) {
+  try { await logActivity(p); } catch { /* noop */ }
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -41,7 +46,7 @@ export async function POST(request: Request) {
 
   // 잠금 ① — ALLOW_DB_INIT 이 켜져 있지 않으면 존재하지 않는 것처럼 404
   if (process.env.ALLOW_DB_INIT !== "true") {
-    await logActivity({
+    await safeLog({
       userId: null,
       message: `admin/init-db 호출 차단 — ALLOW_DB_INIT 미설정 (IP: ${ip})`,
       level: "warn",
@@ -51,7 +56,7 @@ export async function POST(request: Request) {
 
   // 잠금 ② — 시크릿 불일치도 404 (존재 은폐)
   if (!secretMatches(request.headers.get("x-admin-secret"))) {
-    await logActivity({
+    await safeLog({
       userId: null,
       message: `admin/init-db 호출 차단 — 시크릿 불일치 (IP: ${ip})`,
       level: "warn",
@@ -59,7 +64,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  await logActivity({
+  await safeLog({
     userId: null,
     message: `admin/init-db 실행 시작 (IP: ${ip})`,
     level: "warn",
@@ -84,7 +89,7 @@ export async function POST(request: Request) {
         ok: false,
         output: `${error?.stdout ?? ""}${error?.stderr ?? ""}${error?.message ?? ""}`.trim(),
       });
-      await logActivity({
+      await safeLog({
         userId: null,
         message: `admin/init-db 실패 — ${step} (IP: ${ip})`,
         level: "warn",
@@ -92,7 +97,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, logs }, { status: 500 });
     }
   }
-  await logActivity({
+  await safeLog({
     userId: null,
     message: `admin/init-db 실행 완료 (IP: ${ip})`,
     level: "warn",
