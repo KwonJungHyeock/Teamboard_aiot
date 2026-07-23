@@ -182,6 +182,8 @@ export async function getCurrentMonthGoals(todayStr: string): Promise<
     projectName: string | null;
     /** 연결 Task 중 중단 건수 — N>0일 때 "중단 N건" 라벨 */
     droppedCount: number;
+    /** 진척 산정 방식 — 월간 보고에서 수동 목표 구분용 */
+    progressMode: "auto" | "manual";
   }[]
 > {
   const rows = await query<{
@@ -218,6 +220,7 @@ export async function getCurrentMonthGoals(todayStr: string): Promise<
       colorKey: row.color_key,
       projectName: row.project_name,
       droppedCount: linked.filter((l) => l.status === "dropped").length,
+      progressMode: row.progress_mode,
     };
   });
 }

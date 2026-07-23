@@ -23,6 +23,7 @@ export interface ReportGoalRef {
   progress: number | null;
   projectName: string | null;
   droppedCount: number;
+  progressMode: "auto" | "manual";
 }
 
 export interface ReportSignalRef {
@@ -55,7 +56,8 @@ export interface ReportSummary {
   totalGoals: number;
   goalsBelow30: number; // 진척 30% 미만(산출 가능한 것 중)
   goalsUnmeasured: number; // 진척 산출 불가("-")
-  avgProgress: number | null; // 산출 가능한 목표 평균(정수)
+  manualGoals: number; // 수동 입력 목표 수 (평균에 성격이 다른 값이 섞임을 명시하기 위함)
+  avgProgress: number | null; // 산출 가능한 목표 평균(정수) — auto+manual 혼합
   completedCount: number;
   incompleteCount: number;
   droppedCount: number;
@@ -92,11 +94,14 @@ function monthBounds(year: number, month: number) {
   const nextStart = `${ny}-${pad(nm)}-01T00:00:00${KST}`;
   const midDay = `${year}-${pad(month)}-15`; // 월 목표 조회용 (period 포함 판정)
   const nextMid = `${ny}-${pad(nm)}-15`;
-  return { start, nextStart, midDay, nextMid, ny, nm };
+  // 해당 월 마지막 날 (KST 세션 타임존과 무관하게 JS로 계산) — 미실행 결정 경과일 기준
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const monthEndDate = `${year}-${pad(month)}-${pad(lastDay)}`;
+  return { start, nextStart, midDay, nextMid, monthEndDate, ny, nm };
 }
 
 export async function buildMonthlyReport(year: number, month: number): Promise<MonthlyReportData> {
-  const { start, nextStart, midDay, nextMid, ny, nm } = monthBounds(year, month);
+  const { start, nextStart, midDay, nextMid, monthEndDate, ny, nm } = monthBounds(year, month);
 
   // 1. 목표 — lib/goals.ts의 dropped 제외 진척을 그대로 사용
   const monthGoals = await getCurrentMonthGoals(midDay);
@@ -106,6 +111,7 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
     progress: g.progress,
     projectName: g.projectName,
     droppedCount: g.droppedCount,
+    progressMode: g.progressMode,
   }));
 
   // 공통: Task + 연결 목표 제목
@@ -182,18 +188,18 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
   ).map(mapSignal);
 
   // 6. 미실행 결정 — 월말(nextStart) 시점에 decided 상태로 남아 있던 것 (point-in-time)
-  //    경과일은 생성 시점 기준으로 고정 저장 (개선 1)
+  //    경과일은 '월말(해당 월 마지막 날)' 기준으로 고정 — 월간 보고이므로 생성일이 아닌 월말 기준 (개선 2)
   const pendingDecisions = (
     await query<ReportSignalRow & { decided_elapsed: string | null }>(
       `SELECT s.id, s.type, s.title, a.display_name AS author_name, s.status,
               s.decided_at::text, s.resolved_at::text,
-              floor(EXTRACT(EPOCH FROM (now() - s.decided_at)) / 86400) AS decided_elapsed
+              $2::date - (s.decided_at AT TIME ZONE 'Asia/Seoul')::date AS decided_elapsed
        FROM signal s JOIN actor a ON a.id = s.author_id
        WHERE s.is_active = true AND s.type = 'decision'
          AND s.decided_at IS NOT NULL AND s.decided_at < $1::timestamptz
          AND (s.resolved_at IS NULL OR s.resolved_at >= $1::timestamptz)
        ORDER BY s.decided_at`,
-      [nextStart]
+      [nextStart, monthEndDate]
     )
   ).map((r) => ({
     ...mapSignal(r),
@@ -221,6 +227,7 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
     progress: g.progress,
     projectName: g.projectName,
     droppedCount: g.droppedCount,
+    progressMode: g.progressMode,
   }));
 
   // 9. 다음 달 예정 Task — 기한이 다음 달
@@ -286,6 +293,7 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
     totalGoals: goals.length,
     goalsBelow30: measurable.filter((g) => g.progress < 30).length,
     goalsUnmeasured: goals.filter((g) => g.progress === null).length,
+    manualGoals: goals.filter((g) => g.progressMode === "manual").length,
     avgProgress:
       measurable.length > 0
         ? Math.round(measurable.reduce((s, g) => s + g.progress, 0) / measurable.length)
@@ -384,7 +392,7 @@ export function renderReportMarkdown(
     L.push("", "**미실행 결정 (결정됐으나 업무로 반영되지 않음):**");
     for (const s of data.pendingDecisions) {
       const when = s.decidedAt ? s.decidedAt.slice(0, 10) : "?";
-      const elapsed = s.decidedElapsedDays != null ? `, ${s.decidedElapsedDays}일 경과` : "";
+      const elapsed = s.decidedElapsedDays != null ? `, 월말 기준 ${s.decidedElapsedDays}일 경과` : "";
       L.push(`- ${s.title} (${when} 결정${elapsed})`);
     }
   }
@@ -398,12 +406,17 @@ export function renderReportMarkdown(
 
   L.push("## 6. 다음 달 목표 및 계획", "");
   para("next");
+  // 목표: 안내문은 목록 항목이 아니라 별도 안내 블록으로 분리 (경미 수정 1)
   if (data.nextGoals.length === 0) {
-    L.push("- 다음 달 목표가 아직 설정되지 않았습니다. 목표 화면에서 설정하세요.");
+    L.push("> 다음 달 목표가 아직 설정되지 않았습니다. 목표 화면에서 설정하세요.", "");
   } else {
-    for (const g of data.nextGoals) L.push(`- (목표) ${g.title}`);
+    L.push("**목표**");
+    for (const g of data.nextGoals) L.push(`- ${g.title}`);
+    L.push("");
   }
-  for (const t of data.nextTasks) L.push(`- (예정) ${t.title}${t.dueDate ? ` — ${t.dueDate}` : ""}`);
+  L.push("**예정 업무**");
+  if (data.nextTasks.length === 0) L.push("- 예정 업무 없음");
+  for (const t of data.nextTasks) L.push(`- ${t.title}${t.dueDate ? ` — ${t.dueDate}` : ""}`);
 
   return L.join("\n");
 }

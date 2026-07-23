@@ -6,7 +6,7 @@ export interface ReportData {
   year: number;
   month: number;
   periodLabel: string;
-  goals: { id: number; title: string; progress: number | null; projectName: string | null; droppedCount: number }[];
+  goals: { id: number; title: string; progress: number | null; projectName: string | null; droppedCount: number; progressMode?: "auto" | "manual" }[];
   completed: { id: number; title: string; goalTitles: string[]; assigneeName: string | null }[];
   incomplete: { id: number; title: string; dueDate: string | null; assigneeName: string | null }[];
   dropped: { id: number; title: string; dropReason: string | null }[];
@@ -162,7 +162,7 @@ export default function ReportView({
                   <span className="rp-by">
                     {" · "}
                     {s.decidedAt ? s.decidedAt.slice(0, 10) : "?"} 결정
-                    {s.decidedElapsedDays != null ? `, ${s.decidedElapsedDays}일 경과` : ""}
+                    {s.decidedElapsedDays != null ? `, 월말 기준 ${s.decidedElapsedDays}일 경과` : ""}
                   </span>
                 </li>
               ))}
@@ -194,21 +194,29 @@ export default function ReportView({
         <Prose text={narration.next} />
         <CountGuard expected={data.counts.nextGoals} rendered={data.nextGoals.length} label="다음 달 목표" />
         <CountGuard expected={data.counts.nextTasks} rendered={data.nextTasks.length} label="다음 달 예정 업무" />
-        {data.nextGoals.length === 0 && (
-          <p className="rp-empty">다음 달 목표가 아직 설정되지 않았습니다. 목표 화면에서 설정하세요.</p>
+
+        {/* 목표 — 안내문은 목록이 아니라 상단 안내 블록으로 분리 (경미 수정 1) */}
+        {data.nextGoals.length === 0 ? (
+          <p className="rp-notice-block">다음 달 목표가 아직 설정되지 않았습니다. 목표 화면에서 설정하세요.</p>
+        ) : (
+          <>
+            <h3 className="rp-sub">목표</h3>
+            <ul className="rp-list">
+              {data.nextGoals.map((g) => (
+                <li key={`g${g.id}`}>{g.title}</li>
+              ))}
+            </ul>
+          </>
         )}
-        {data.nextGoals.length === 0 && data.nextTasks.length === 0 ? (
-          <p className="rp-empty">등록된 다음 달 예정 업무도 없습니다.</p>
+
+        <h3 className="rp-sub">예정 업무</h3>
+        {data.nextTasks.length === 0 ? (
+          <p className="rp-empty">예정 업무가 없습니다.</p>
         ) : (
           <ul className="rp-list">
-            {data.nextGoals.map((g) => (
-              <li key={`g${g.id}`}>
-                <span className="rp-mk mk-goal">목표</span> {g.title}
-              </li>
-            ))}
             {data.nextTasks.map((t) => (
               <li key={`t${t.id}`}>
-                <span className="rp-mk mk-task">예정</span> {t.title}
+                {t.title}
                 {t.dueDate && <span className="rp-by"> · {t.dueDate}</span>}
               </li>
             ))}

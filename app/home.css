@@ -300,6 +300,8 @@
 .hv .rp-prose{font-size:12.5px;color:var(--mid);line-height:1.65;margin:0 0 10px;white-space:pre-wrap}
 .hv .rp-empty{font-size:12px;color:var(--lo);margin:0}
 .hv .rp-warn{font-size:12px;color:#FCA5A5;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.35);border-radius:6px;padding:7px 10px;margin:0 0 10px}
+.hv .rp-notice-block{font-size:12.5px;color:var(--mid);background:var(--glass);border:1px solid var(--line);border-left:2px solid var(--edu);border-radius:6px;padding:9px 11px;margin:0 0 12px}
+.hv .rp-sub{font-size:12px;color:var(--lo);font-family:var(--f-d);letter-spacing:.06em;margin:12px 0 6px}
 .hv .rp-table{width:100%;border-collapse:collapse;font-size:12px}
 .hv .rp-table th{text-align:left;color:var(--lo);font-family:var(--f-d);font-size:10px;letter-spacing:.06em;padding:5px 8px;border-bottom:1px solid var(--line)}
 .hv .rp-table td{padding:6px 8px;border-bottom:1px solid var(--line);color:var(--mid)}
