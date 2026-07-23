@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import AppShell from "@/components/AppShell";
-import PlaceholderPage from "@/components/PlaceholderPage";
+import TasksView from "@/components/TasksView";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,7 @@ export default function Page() {
   if (!user) redirect("/login");
   return (
     <AppShell user={user}>
-      <PlaceholderPage title="내 업무" phase="Phase 5" />
+      <TasksView user={user} />
     </AppShell>
   );
 }

@@ -207,3 +207,54 @@
 .hv .garchive-row{display:flex;align-items:center;gap:8px;padding:6px 4px;border-top:1px solid var(--line)}
 .hv .garchive-row:first-of-type{border-top:0}
 .hv .garchive-p{font-style:normal;font-family:var(--f-d);font-size:10.5px;color:var(--lo)}
+
+/* ── 업무 화면 (Phase 5) — 인박스 · 필터 · 공용 테이블 확장 · 상세 ── */
+.hv tr.clickable{cursor:pointer}
+.hv tr.clickable:hover td{background:var(--glass)}
+.hv tr.selected td{background:rgba(255,255,255,.045)}
+.hv .tinbox{border-color:rgba(139,92,246,.35)}
+.hv .tinbox-row{display:flex;align-items:center;gap:10px;padding:7px 4px;border-top:1px solid var(--line)}
+.hv .tinbox-row:first-of-type{border-top:0}
+.hv .tinbox-b{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hv .tinbox-b b{font-size:12.5px;color:var(--hi);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hv .tinbox-b em{font-style:normal;font-size:10.5px;color:var(--lo)}
+.hv .tfilters{display:flex;gap:8px;margin:2px 0 12px;flex-wrap:wrap}
+.hv .tfilters select,.hv .tnew select,.hv .tnew input{height:30px;font-size:12px;background:var(--bg-elevated);border:1px solid var(--line);border-radius:6px;color:var(--mid);padding:0 8px}
+.hv .tnew{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.hv .tnew input{color:var(--hi);min-width:200px}
+.hv .tdetail{margin-top:12px}
+.hv .tform{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.hv .tform-r{display:flex;flex-direction:column;gap:4px}
+.hv .tform-r label{font-family:var(--f-d);font-size:10px;color:var(--lo);letter-spacing:.06em}
+.hv .tform-r input,.hv .tform-r select,.hv .tform-r textarea{font-size:12.5px;background:var(--bg-elevated);border:1px solid var(--line);border-radius:6px;color:var(--hi);padding:6px 9px;font-family:inherit}
+.hv .tform-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px}
+.hv .tform-a{display:flex;align-items:center;gap:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.hv .tdel-q{font-size:12px;color:var(--danger)}
+
+/* ── 프로젝트 인덱스 · 상세 (Phase 5) ── */
+.hv .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.hv a.pcard{text-decoration:none;display:flex;flex-direction:column;gap:10px;cursor:pointer}
+.hv a.pcard:hover{border-color:var(--line-hi)}
+.hv .pcard-h{display:flex;align-items:center;gap:8px}
+.hv .pcard-h b{font-size:13.5px;color:var(--hi);font-weight:600}
+.hv .pst{font-family:var(--f-d);font-size:9.5px;letter-spacing:.08em;border:1px solid var(--line);border-radius:5px;padding:1px 7px;color:var(--lo);white-space:nowrap}
+.hv .pst.active{color:var(--ok);border-color:rgba(52,211,153,.3)}
+.hv .pst.hold{color:var(--warn,#fbbf24);border-color:rgba(251,191,36,.3)}
+.hv .pcard-bar{display:flex;align-items:center;gap:10px}
+.hv .pcard-bar .bar{flex:1}
+.hv .pcard-m{display:flex;gap:12px;font-size:11px;color:var(--lo)}
+.hv .pover{display:flex;flex-direction:column;gap:12px}
+.hv .pover-r{display:flex;flex-direction:column;gap:5px}
+.hv .pover-r label{font-family:var(--f-d);font-size:10px;color:var(--lo);letter-spacing:.06em}
+.hv .pover-r span{font-size:12.5px;color:var(--mid)}
+
+/* ── 자료 링크 카드 (Phase 5) — 메타데이터만, 본문 없음 ── */
+.hv .acards{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
+.hv .acard{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;min-width:0}
+.hv .akind{font-family:var(--f-d);font-size:9.5px;letter-spacing:.08em;border:1px solid var(--line);border-radius:5px;padding:1px 7px;color:var(--lo);white-space:nowrap}
+.hv .akind.notion{color:var(--hi);border-color:var(--line-hi)}
+.hv .akind.github{color:var(--play)}
+.hv .akind.figma{color:var(--train)}
+.hv .acard-t{font-size:12.5px;color:var(--hi);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hv .acard-t:hover{text-decoration:underline}
+.hv .acard-u{font-style:normal;font-size:10.5px;color:var(--lo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:32%}

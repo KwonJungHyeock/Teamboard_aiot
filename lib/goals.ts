@@ -102,7 +102,7 @@ export async function getGoalTree(year?: number): Promise<GoalNode[]> {
   }>(
     `SELECT gt.goal_id, t.id, t.title, t.status, a.display_name AS assignee_name, t.due_date::text
      FROM goal_task gt
-     JOIN task t ON t.id = gt.task_id AND t.is_active = true
+     JOIN task t ON t.id = gt.task_id AND t.is_active = true AND t.status <> 'proposed'
      LEFT JOIN actor a ON a.id = t.assignee_id
      ORDER BY t.due_date ASC NULLS LAST, t.id`
   );
@@ -191,7 +191,7 @@ export async function getCurrentMonthGoals(todayStr: string): Promise<
   );
   const links = await query<{ goal_id: number; status: string }>(
     `SELECT gt.goal_id, t.status
-     FROM goal_task gt JOIN task t ON t.id = gt.task_id AND t.is_active = true
+     FROM goal_task gt JOIN task t ON t.id = gt.task_id AND t.is_active = true AND t.status <> 'proposed'
      WHERE gt.goal_id = ANY($1::int[])`,
     [rows.map((r) => r.id)]
   );

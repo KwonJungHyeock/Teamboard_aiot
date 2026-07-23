@@ -111,7 +111,12 @@ export default function HomeView({
               anchor={summary.today}
               isLead={user.role === "lead"}
             />
-            <TaskTable rows={summary.dueSoon} />
+            <TaskTable
+              rows={summary.dueSoon}
+              title="마감 임박"
+              sub={`7일 이내 · ${summary.dueSoon.length}건`}
+              emptyText="7일 이내 마감 업무가 없습니다."
+            />
           </div>
 
           <div className="stack">

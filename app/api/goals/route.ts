@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     }>(
       `SELECT t.id, t.title, t.status, a.display_name AS assignee_name
        FROM task t LEFT JOIN actor a ON a.id = t.assignee_id
-       WHERE t.is_active = true AND t.status <> 'dropped'
+       WHERE t.is_active = true AND t.status NOT IN ('dropped', 'proposed')
        ORDER BY t.created_at DESC LIMIT 200`
     );
     return NextResponse.json({ tree, linkableTasks });
