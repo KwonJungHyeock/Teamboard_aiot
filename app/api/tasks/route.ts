@@ -125,20 +125,7 @@ export async function GET(request: Request) {
        ORDER BY t.created_at ASC`
     );
 
-    // TODO(Phase 8): /api/meta/selectors 로 분리. 목록 응답에 룩업 데이터 혼재
-    // 화면 셀렉트용 부가 데이터 — 담당(활성 human)·프로젝트·연결 가능한 월 목표
-    const actors = await query<{ id: number; display_name: string }>(
-      `SELECT id, display_name FROM actor WHERE type = 'human' AND is_active = true ORDER BY id`
-    );
-    const projects = await query<{ id: number; name: string; color_key: string | null }>(
-      `SELECT id, name, color_key FROM project WHERE is_active = true ORDER BY id`
-    );
-    const monthGoals = await query<{ id: number; title: string; period_start: string }>(
-      `SELECT id, title, period_start::text FROM goal
-       WHERE is_active = true AND period_type = 'month'
-       ORDER BY period_start DESC, id LIMIT 100`
-    );
-
+    // 룩업 데이터(담당·프로젝트·목표)는 GET /api/meta/selectors로 분리됨 (Phase 8 D-3).
     const tasks: TaskListRow[] = rows.map((r) => ({
       id: r.id,
       title: r.title,
@@ -169,13 +156,6 @@ export async function GET(request: Request) {
         createdByName: r.created_by_name,
       })),
       today,
-      actors: actors.map((a) => ({ id: a.id, name: a.display_name })),
-      projects: projects.map((p) => ({ id: p.id, name: p.name, colorKey: p.color_key })),
-      monthGoals: monthGoals.map((g) => ({
-        id: g.id,
-        title: g.title,
-        month: g.period_start.slice(0, 7),
-      })),
     });
   } catch (error) {
     return jsonError(error);

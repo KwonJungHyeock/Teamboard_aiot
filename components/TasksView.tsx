@@ -392,9 +392,6 @@ export default function TasksView({ user }: { user: SessionUser }) {
       if (!res.ok) throw new Error(data.error ?? "업무 조회 실패");
       setTasks(data.tasks ?? []);
       setInbox(data.inbox ?? []);
-      setActors(data.actors ?? []);
-      setProjects(data.projects ?? []);
-      setMonthGoals(data.monthGoals ?? []);
       setToday(data.today ?? "");
       setError("");
     } catch (e) {
@@ -404,9 +401,24 @@ export default function TasksView({ user }: { user: SessionUser }) {
     }
   }, [fProject, fAssignee, fStatus, fDue]);
 
+  // 셀렉트 룩업은 목록과 분리된 /api/meta/selectors에서 (Phase 8 D-3)
+  const loadSelectors = useCallback(async () => {
+    const res = await fetch("/api/meta/selectors");
+    const data = await res.json();
+    if (res.ok) {
+      setActors(data.actors ?? []);
+      setProjects(data.projects ?? []);
+      setMonthGoals(data.monthGoals ?? []);
+    }
+  }, []);
+
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    loadSelectors();
+  }, [loadSelectors]);
 
   async function judgeInbox(item: InboxItem, approve: boolean) {
     const res = await fetch(`/api/tasks/${item.id}`, {

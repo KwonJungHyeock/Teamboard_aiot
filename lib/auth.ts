@@ -1,6 +1,6 @@
 // 세션/인증 — 메일플러그 SSO 방식 확정 전까지 이메일+비밀번호 (PRD 16장 열린 질문).
 // 세션은 HMAC 서명 쿠키. 비밀키는 AUTH_SECRET.
-import { createHmac, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { queryOne } from "./db";
 import type { Role, SessionUser } from "./types";
@@ -67,6 +67,18 @@ export class AuthError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+/** scrypt 해시 생성 — "salt:hash" 형식 (init-db 시드와 동일 방식). Phase 8 계정 발급용 */
+export function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
+
+/** 임시 비밀번호 생성 — 계정 발급 시 1회용 (사용자는 최초 로그인에 변경 강제) */
+export function generateTempPassword(): string {
+  return `Tb-${randomBytes(6).toString("base64url")}`;
 }
 
 export function verifyPassword(password: string, stored: string): boolean {
