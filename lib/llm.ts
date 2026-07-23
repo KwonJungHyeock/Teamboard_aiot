@@ -160,6 +160,70 @@ export interface DraftResult {
   body: string;
 }
 
+/**
+ * 월간 보고 문장화 (Phase 7) — 집계 JSON을 받아 섹션별 서술 문단만 생성한다.
+ * 수치·항목은 서버(lib/report.ts)가 확정하며, LLM은 주어진 데이터만 문장으로 옮긴다.
+ * 반환은 { [sectionKey]: 문단 텍스트 }. 키 없으면 화면이 빈 문단으로 처리한다.
+ * (기존 generateDraft 시그니처는 건드리지 않는 내부 확장)
+ */
+export async function narrateReport(params: {
+  periodLabel: string;
+  data: unknown;
+  sections: { key: string; title: string; hint: string }[];
+}): Promise<Record<string, string>> {
+  const { periodLabel, data, sections } = params;
+  const provider = resolveProvider();
+
+  if (provider === "mock") {
+    // 데모 모드 — 집계 JSON을 그대로 나열 (수치 생성 없음)
+    const out: Record<string, string> = {};
+    for (const s of sections) {
+      out[s.key] = `(데모 모드 — LLM 키 미연결) ${s.title}: 아래 표의 집계 데이터를 참고하세요.`;
+    }
+    return out;
+  }
+
+  const system = `당신은 사내 업무 관리 도구 "팀보드"의 보고서 작성 보조입니다.
+주어진 집계 데이터(JSON)만 사용하여 각 섹션의 서술 문단을 한국어로 작성합니다.
+
+절대 규칙:
+- 주어진 데이터에 없는 수치·항목·사실을 생성·추정·추가하지 않는다.
+- 수치를 새로 계산하거나 반올림하지 않는다. 숫자가 필요하면 데이터의 값을 그대로 인용한다.
+- 각 섹션은 2~4문장의 요약 서술만 작성한다. 표·목록은 화면이 별도로 렌더하므로 반복하지 않는다.
+- 데이터가 비어 있는 섹션은 "해당 사항 없음"으로 간결히 적는다.
+- 출력은 JSON 객체 하나. 키는 섹션 key, 값은 문단 문자열.`;
+
+  const user = `보고 기간: ${periodLabel}
+
+섹션 정의:
+${sections.map((s) => `- ${s.key}: ${s.title} — ${s.hint}`).join("\n")}
+
+집계 데이터(JSON):
+${JSON.stringify(data)}
+
+위 데이터만 사용해 각 섹션의 서술 문단을 작성하고, {"섹션key": "문단", ...} 형태의 JSON만 출력하세요.`;
+
+  const text =
+    provider === "openai"
+      ? await completeWithOpenAI(system, user)
+      : await completeWithAnthropic(system, user);
+
+  // JSON 파싱 — 코드펜스/잡음 제거 후 첫 객체 추출
+  try {
+    const cleaned = text.replace(/```json\s*|\s*```/g, "").trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(match ? match[0] : cleaned);
+    const out: Record<string, string> = {};
+    for (const s of sections) out[s.key] = typeof parsed[s.key] === "string" ? parsed[s.key] : "";
+    return out;
+  } catch {
+    // 파싱 실패 시 전체 텍스트를 첫 섹션에 담아 사람이 편집하도록 함
+    const out: Record<string, string> = {};
+    sections.forEach((s, i) => (out[s.key] = i === 0 ? text : ""));
+    return out;
+  }
+}
+
 export async function generateDraft(params: {
   assistant: AssistantSettings;
   taskType: TaskType;

@@ -278,6 +278,58 @@
 .hv .hud.selected{border-color:var(--line-hi);background:rgba(255,255,255,.04)}
 .hv .hud.ag{border-left:2px solid var(--play);opacity:.9}
 
+/* ── 월간 보고 (Phase 7) ── */
+.hv .rp-gen{display:flex;gap:8px;align-items:center}
+.hv .rp-gen select{height:30px;font-size:12px;background:var(--bg-elevated);border:1px solid var(--line);border-radius:6px;color:var(--mid);padding:0 8px}
+.hv .rp-notice{color:var(--ok);font-size:12px}
+.hv .rp-cols{display:grid;grid-template-columns:210px 1fr;gap:16px;align-items:start}
+.hv .rp-side{border:1px solid var(--line);border-radius:var(--r-s);padding:10px;background:var(--glass)}
+.hv .rp-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:0;border:0;border-radius:6px;padding:8px;cursor:pointer;color:var(--mid);font-family:inherit}
+.hv .rp-item:hover{background:var(--glass)}
+.hv .rp-item.on{background:rgba(255,255,255,.05)}
+.hv .rp-item b{font-size:12.5px;color:var(--hi);font-weight:600}
+.hv .rp-item .gsp{flex:1}
+.hv .rp-st{font-family:var(--f-d);font-size:9.5px;letter-spacing:.06em;border:1px solid var(--line);border-radius:5px;padding:1px 6px;white-space:nowrap;margin-left:auto}
+.hv .rp-st.approved{color:var(--ok);border-color:rgba(52,211,153,.3)}
+.hv .rp-actions{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.hv .rp-main{min-width:0}
+.hv .rp{background:var(--bg-elevated);border:1px solid var(--line);border-radius:var(--r-s);padding:26px}
+.hv .rp-title{font-size:20px;margin:0 0 18px;color:var(--hi)}
+.hv .rp-sec{margin-bottom:20px}
+.hv .rp-sec h2{font-size:14px;color:var(--hi);border-bottom:1px solid var(--line);padding-bottom:6px;margin:0 0 10px}
+.hv .rp-prose{font-size:12.5px;color:var(--mid);line-height:1.65;margin:0 0 10px;white-space:pre-wrap}
+.hv .rp-empty{font-size:12px;color:var(--lo);margin:0}
+.hv .rp-table{width:100%;border-collapse:collapse;font-size:12px}
+.hv .rp-table th{text-align:left;color:var(--lo);font-family:var(--f-d);font-size:10px;letter-spacing:.06em;padding:5px 8px;border-bottom:1px solid var(--line)}
+.hv .rp-table td{padding:6px 8px;border-bottom:1px solid var(--line);color:var(--mid)}
+.hv .rp-list{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px}
+.hv .rp-list li{font-size:12.5px;color:var(--mid);line-height:1.5}
+.hv .rp-tag{font-style:normal;color:var(--edu)}
+.hv .rp-by{color:var(--lo);font-size:11px}
+.hv .rp-drop{font-style:normal;color:var(--lo);font-size:11px}
+.hv .rp-mk{font-family:var(--f-d);font-size:9.5px;border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-right:4px}
+.hv .rp-mk.mk-inc{color:var(--warn,#fbbf24)}
+.hv .rp-mk.mk-drop{color:var(--lo);text-decoration:line-through}
+.hv .rp-mk.mk-goal{color:var(--edu)}
+.hv .rp-mk.mk-task{color:var(--mid)}
+.hv .rp-pending{margin-top:10px;padding:10px;border:1px dashed rgba(245,165,36,.4);border-radius:7px}
+.hv .rp-pending b{font-size:12px;color:#F5A524;display:block;margin-bottom:6px}
+.hv .rped{border:1px dashed var(--line-hi);border-radius:8px;padding:12px;margin-bottom:14px;display:flex;flex-direction:column;gap:9px}
+.hv .rped-note{font-size:11.5px;color:var(--lo);margin:0}
+.hv .rped-r{display:flex;flex-direction:column;gap:4px}
+.hv .rped-r label{font-family:var(--f-d);font-size:10px;color:var(--lo);letter-spacing:.06em}
+.hv .rped-r textarea{font-size:12.5px;background:var(--bg-elevated);border:1px solid var(--line);border-radius:6px;color:var(--hi);padding:7px 9px;font-family:inherit;resize:vertical}
+.hv .rped-a{display:flex;justify-content:flex-end}
+
+/* 인쇄(PDF) — 사이드바·액션 숨기고 보고서 본문만 (별도 라이브러리 없이 @media print) */
+@media print {
+  .hv .top, .hv .head .rp-gen, .no-print, .rp-side, .rp-actions { display: none !important; }
+  .hv .rp-cols { grid-template-columns: 1fr; }
+  .hv .rp { border: 0; padding: 0; background: #fff; color: #000; }
+  .hv .rp-title, .hv .rp-sec h2 { color: #000; }
+  .hv .rp-prose, .hv .rp-list li, .hv .rp-table td { color: #111; }
+}
+
 /* ── 자료 링크 카드 (Phase 5) — 메타데이터만, 본문 없음 ── */
 .hv .acards{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
 .hv .acard{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;min-width:0}

@@ -81,8 +81,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
           return NextResponse.json({ error: "중단 사유를 입력하세요." }, { status: 400 });
         }
         set("drop_reason", dropReason);
+        set("dropped_at", new Date().toISOString());
       } else if (payload.status !== "dropped") {
         set("drop_reason", null);
+        set("dropped_at", null);
       }
       set("status", payload.status);
       // 완료 시각은 상태 전이에서만 기록/해제

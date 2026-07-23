@@ -89,12 +89,15 @@ CREATE TABLE IF NOT EXISTS task (
   created_by   INTEGER REFERENCES actor(id),
   completed_at TIMESTAMPTZ,
   drop_reason  TEXT,                              -- status='dropped' 전환 시 필수 (진척률 우회 방지)
+  dropped_at   TIMESTAMPTZ,                       -- 중단 시각 (월간 보고 월 경계 판정)
   is_active    BOOLEAN NOT NULL DEFAULT true,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE task ADD COLUMN IF NOT EXISTS drop_reason TEXT;
+-- 중단 시각 — 월간 보고의 "해당 월 중단된 Task" 정확 판정용 (completed_at과 대칭)
+ALTER TABLE task ADD COLUMN IF NOT EXISTS dropped_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_task_assignee ON task(assignee_id, status);
 CREATE INDEX IF NOT EXISTS idx_task_due ON task(due_date);
