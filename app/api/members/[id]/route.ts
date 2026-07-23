@@ -3,7 +3,7 @@
 //   ① lead는 본인을 비활성화할 수 없다
 //   ② 시스템에 활성 lead가 1명뿐이면 그 lead의 강등·비활성화 불가
 import { NextResponse } from "next/server";
-import { requireLead } from "@/lib/auth";
+import { requireLiveLead } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
@@ -23,7 +23,7 @@ async function activeLeadCount(): Promise<number> {
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
-    const session = requireLead();
+    const session = await requireLiveLead();
     const memberId = Number(params.id);
     const payload = await request.json();
 

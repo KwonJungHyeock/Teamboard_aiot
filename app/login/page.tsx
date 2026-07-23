@@ -1,14 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+
+const REASON_MESSAGE: Record<string, string> = {
+  inactive: "계정이 비활성화되었습니다. 관리자에게 문의하세요.",
+};
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // 서버측 세션 무효화(?reason=inactive 등) 사유 표시 — window에서 직접 읽어 Suspense 불필요
+  useEffect(() => {
+    const reason = new URLSearchParams(window.location.search).get("reason");
+    if (reason && REASON_MESSAGE[reason]) setNotice(REASON_MESSAGE[reason]);
+  }, []);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -41,6 +52,15 @@ export default function LoginPage() {
           팀보드<span style={{ color: "var(--accent)" }}>.</span>
         </h1>
         <p className="sub">AIoT 교육플랫폼 사업팀 · 회사 업무메일로 로그인</p>
+        {notice && (
+          <p
+            className="error-text"
+            role="alert"
+            style={{ background: "rgba(245,165,36,.12)", border: "1px solid rgba(245,165,36,.3)", color: "#F5A524", padding: "8px 11px", borderRadius: 8 }}
+          >
+            {notice}
+          </p>
+        )}
         <div className="field">
           <label>업무메일</label>
           <input

@@ -49,6 +49,59 @@ export function getSession(): SessionUser | null {
   return verifySessionToken(token);
 }
 
+/**
+ * 라이브 세션 해석 (Phase 9) — 토큰 서명 검증 후 actor를 조회해 실시간 상태를 반영한다.
+ * 한 번의 조회로 is_active·role·must_change_pw를 함께 가져와 추가 쿼리를 만들지 않는다.
+ * 비활성 계정이면 세션을 무효(null)로 처리하고 activity_log(warn)에 기록한다.
+ * 기존 sync 함수(getSession/requireSession/requireLead) 시그니처는 그대로 두고 이 함수만 추가한다.
+ */
+export interface LiveSession {
+  user: SessionUser;
+  mustChangePassword: boolean;
+}
+
+export async function getLiveSession(): Promise<LiveSession | null> {
+  const token = cookies().get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  const tokenUser = verifySessionToken(token);
+  if (!tokenUser) return null;
+
+  const row = await queryOne<{
+    is_active: boolean;
+    display_name: string;
+    role: Role;
+    must_change_pw: boolean;
+  }>(
+    `SELECT a.is_active, a.display_name, ac.role, ac.must_change_pw
+     FROM actor a JOIN account ac ON ac.actor_id = a.id
+     WHERE a.id = $1 AND a.type = 'human'`,
+    [tokenUser.id]
+  );
+  if (!row || !row.is_active) {
+    // 순환 참조 방지를 위해 동적 import
+    const { logActivity } = await import("./activity");
+    await logActivity({
+      userId: null,
+      message: `비활성/삭제 계정 세션 접근 차단 — actor#${tokenUser.id} (${tokenUser.email})`,
+      level: "warn",
+    });
+    return null;
+  }
+  // 실시간 role·must_change_pw 반영 (승격·강등·비번변경 즉시 적용)
+  return {
+    user: { id: tokenUser.id, email: tokenUser.email, name: row.display_name, role: row.role },
+    mustChangePassword: row.must_change_pw,
+  };
+}
+
+/** 라이브 lead 검증 — 비활성/강등 즉시 반영. 민감 API(구성원 관리 등)에서 사용 */
+export async function requireLiveLead(): Promise<SessionUser> {
+  const live = await getLiveSession();
+  if (!live) throw new AuthError(401, "세션이 만료되었거나 비활성화된 계정입니다.");
+  if (live.user.role !== "lead") throw new AuthError(403, "팀장만 접근할 수 있습니다.");
+  return live.user;
+}
+
 export function requireSession(): SessionUser {
   const session = getSession();
   if (!session) throw new AuthError(401, "로그인이 필요합니다.");

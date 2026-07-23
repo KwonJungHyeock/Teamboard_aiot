@@ -76,3 +76,14 @@ npm run dev                  # 개발 서버
 - 승인 게이트 우회 불가 — Notion 쓰기는 `/api/drafts/[id]/approve`·`/api/reports/[id]/approve` 뿐
 - 하드 삭제 없음 — 모두 소프트 삭제(`is_active=false`)로 이력 보존
 - 모든 생성·수정·승인·반려·설정 변경은 `activity_log`에 기록
+- 비활성 계정(`is_active=false`)의 기존 세션은 서버측 라이브 검증으로 즉시 무효화(다음 페이지 접근 시 로그인으로)
+
+## 운영 전환 전 남은 작업
+
+- [ ] `NOTION_TOKEN` 발급 (없으면 승인→Notion 기록 단계에서 에러)
+- [ ] `OPENAI_API_KEY` 또는 `ANTHROPIC_API_KEY` 발급 (없으면 부사수·월간 보고가 데모 모드)
+- [ ] 프로덕션 DB 초기화: `POST /api/admin/init-db` 실행
+  - 이중 잠금: 환경변수 `ALLOW_DB_INIT=true` + 헤더 `x-admin-secret`(=`AUTH_SECRET`)
+  - 실행 당일에만 `ALLOW_DB_INIT`를 켜고, **초기화 성공 직후 이 임시 라우트(`app/api/admin/init-db/`)와 `ALLOW_DB_INIT` 변수를 함께 제거**
+- [ ] `scripts/init-db.mjs`의 시드 이메일을 실제 업무메일로 교체, Notion person ID 매핑 확인
+- [ ] 팀원 초기 비밀번호(`teamboard123!`) 변경 안내 — 최초 로그인 시 변경 강제됨

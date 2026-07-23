@@ -6,7 +6,6 @@ import type { MonthlyReportData } from "./report";
 
 const BRAND_RED = "E31E24";
 const DARK_BG = "14151A";
-const PANEL = "1B1D24";
 const TEXT_HI = "F2F3F5";
 const TEXT_MID = "AEB2BC";
 const TEXT_LO = "7C818C";
