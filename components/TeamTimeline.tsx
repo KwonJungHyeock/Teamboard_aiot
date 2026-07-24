@@ -131,6 +131,114 @@ function EventTrack({
   );
 }
 
+// ── 업무 기간 바 (주·월 뷰) — 이벤트 배치 로직을 그대로 재사용, 3줄까지 쌓고 초과 +N ──
+const BAR_COLOR: Record<string, string> = {
+  edu: "#4B8DF8",
+  play: "#8B5CF6",
+  train: "#2DD4BF",
+  team: "#7C8AA5",
+};
+const barColor = (colorKey: string | null, late: boolean): string =>
+  late ? "#F87171" : BAR_COLOR[colorKey ?? "team"] ?? "#7C8AA5";
+
+interface PlacedTask {
+  task: import("@/lib/home").LaneTask;
+  left: number;
+  width: number;
+  row: number;
+  point: boolean; // start_date 없음 → 마감일 점 하나
+}
+
+function placeTasks(tasks: import("@/lib/home").LaneTask[], view: TimelineView, from: string) {
+  const items = tasks
+    .map((task) => {
+      const hasStart = !!task.startDate;
+      const s = task.startDate ?? task.dueDate;
+      const e = task.dueDate ?? task.startDate;
+      if (!s || !e) return null;
+      const l = Math.max(0, fracOf(`${s}T00:00:00${TZ}`, view, from));
+      const r = Math.min(1, fracOf(`${addDays(e, 1)}T00:00:00${TZ}`, view, from));
+      return { task, l, r, point: !hasStart };
+    })
+    .filter((x): x is { task: import("@/lib/home").LaneTask; l: number; r: number; point: boolean } =>
+      !!x && x.r > 0 && x.l < 1
+    )
+    .sort((a, b) => a.l - b.l);
+
+  const rowEnds: number[] = [];
+  const placed: PlacedTask[] = [];
+  let overflow = 0;
+  for (const it of items) {
+    let row = rowEnds.findIndex((end) => end <= it.l + 0.001);
+    if (row < 0) {
+      if (rowEnds.length >= 3) {
+        overflow += 1;
+        continue;
+      }
+      row = rowEnds.length;
+      rowEnds.push(0);
+    }
+    rowEnds[row] = it.point ? it.l + 0.01 : it.r;
+    placed.push({
+      task: it.task,
+      left: it.l * 100,
+      width: it.point ? 0 : Math.max((it.r - it.l) * 100, 1.5),
+      row,
+      point: it.point,
+    });
+  }
+  return { placed, overflow, rows: Math.max(rowEnds.length, 1) };
+}
+
+function TaskTrack({
+  tasks,
+  view,
+  from,
+}: {
+  tasks: import("@/lib/home").LaneTask[];
+  view: TimelineView;
+  from: string;
+}) {
+  const { placed, overflow, rows } = placeTasks(tasks, view, from);
+  const H = 20;
+  const G = 4;
+  return (
+    <div className="ttrk" style={{ height: rows * (H + G) }}>
+      {placed.map((p) =>
+        p.point ? (
+          <span
+            key={p.task.id}
+            className="tdotm"
+            style={{
+              left: `${p.left}%`,
+              top: p.row * (H + G) + H / 2 - 4,
+              background: barColor(p.task.colorKey, p.task.late),
+            }}
+            title={`${p.task.title}${p.task.dday ? ` · ${p.task.dday}` : ""}`}
+          />
+        ) : (
+          <div
+            key={p.task.id}
+            className="tbar"
+            style={{
+              left: `${p.left}%`,
+              width: `${p.width}%`,
+              top: p.row * (H + G),
+              height: H,
+              background: `linear-gradient(100deg, ${barColor(p.task.colorKey, p.task.late)}, ${barColor(p.task.colorKey, p.task.late)}88)`,
+            }}
+            title={`${p.task.title}${p.task.dday ? ` · ${p.task.dday}` : ""}`}
+          >
+            {p.task.origin === "agent" && <span className="mo" />}
+            {p.task.title}
+          </div>
+        )
+      )}
+      {overflow > 0 && <span className="ovf">+{overflow}</span>}
+    </div>
+  );
+}
+
 export default function TeamTimeline({
   lanes,
   initialEvents,
@@ -252,30 +360,45 @@ export default function TeamTimeline({
                   href="/assistant"
                   className={`agdot ${lane.assistantStatus}`}
                   aria-label={
-                    lane.assistantStatus === "working" ? "부사수 작동중" : "부사수 보고 대기"
+                    lane.assistantStatus === "working" ? "에이전트 작동중" : "에이전트 보고 대기"
                   }
-                  title={lane.assistantStatus === "working" ? "부사수 작동중" : "부사수 보고 대기"}
+                  title={lane.assistantStatus === "working" ? "에이전트 작동중" : "에이전트 보고 대기"}
                 />
               )}
             </div>
             <div className="ln-b">
               <EventTrack events={personal(lane.actorId)} view={view} from={range.from} />
-              <div className="chips">
-                {lane.tasks.slice(0, chipLimit).map((task) => (
-                  <span
-                    key={task.id}
-                    className={`chip ${task.late ? "late" : (task.colorKey ?? "")} ${task.origin === "agent" ? "ag" : ""}`}
-                    title={task.dday ? `${task.title} · ${task.dday}` : task.title}
-                  >
-                    {task.origin === "agent" && <span className="mo" />}
-                    {task.title}
-                    {task.late && task.dday ? ` · ${task.dday}` : ""}
-                  </span>
-                ))}
-                {lane.tasks.length > chipLimit && (
-                  <span className="chip">+{lane.tasks.length - chipLimit}</span>
-                )}
-              </div>
+              {view === "day" ? (
+                // 일 뷰: 종일 칩. start_date 있으면 표시일이 [start, due] 구간 안일 때만 노출.
+                (() => {
+                  const dayTasks = lane.tasks.filter(
+                    (t) =>
+                      !t.startDate ||
+                      (t.startDate <= anchor && (!t.dueDate || anchor <= t.dueDate))
+                  );
+                  return (
+                    <div className="chips">
+                      {dayTasks.slice(0, chipLimit).map((task) => (
+                        <span
+                          key={task.id}
+                          className={`chip ${task.late ? "late" : (task.colorKey ?? "")} ${task.origin === "agent" ? "ag" : ""}`}
+                          title={task.dday ? `${task.title} · ${task.dday}` : task.title}
+                        >
+                          {task.origin === "agent" && <span className="mo" />}
+                          {task.title}
+                          {task.late && task.dday ? ` · ${task.dday}` : ""}
+                        </span>
+                      ))}
+                      {dayTasks.length > chipLimit && (
+                        <span className="chip">+{dayTasks.length - chipLimit}</span>
+                      )}
+                    </div>
+                  );
+                })()
+              ) : (
+                // 주·월 뷰: 기간 바 (시작일~마감일). start_date 없으면 마감일 점.
+                <TaskTrack tasks={lane.tasks} view={view} from={range.from} />
+              )}
             </div>
           </div>
         ))}

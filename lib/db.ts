@@ -46,7 +46,7 @@ export async function getActiveProjects(): Promise<Project[]> {
   return query<Project>(`SELECT * FROM project WHERE is_active = true ORDER BY id`);
 }
 
-/** owner(human actor) 기준 부사수 설정 조회 — 기존 AssistantSettings 형태 유지 */
+/** owner(human actor) 기준 에이전트 설정 조회 — 기존 AssistantSettings 형태 유지 */
 export async function getAssistantByOwner(ownerActorId: number) {
   return queryOne<{
     id: number;

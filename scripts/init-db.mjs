@@ -24,7 +24,7 @@ const TEAM = [
     shortName: "정혁",
     role: "lead",
     notionUserId: "3ba23515-d244-458a-a0f7-a92cfadf950a",
-    assistantName: "정혁의 부사수",
+    assistantName: "정혁의 에이전트",
     workAreas: ["R&D"],
   },
   {
@@ -33,7 +33,7 @@ const TEAM = [
     shortName: "주희",
     role: "member",
     notionUserId: "260d872b-594c-81e4-9f78-000299e7e74b",
-    assistantName: "주희의 부사수",
+    assistantName: "주희의 에이전트",
     workAreas: ["교육자료"],
   },
   {
@@ -42,7 +42,7 @@ const TEAM = [
     shortName: "서연",
     role: "member",
     notionUserId: "5453c24d-940e-4cdf-9f89-1adfe5cc18ab",
-    assistantName: "서연의 부사수",
+    assistantName: "서연의 에이전트",
     workAreas: ["디자인"],
   },
 ];
@@ -76,7 +76,7 @@ const schema = readFileSync(join(here, "..", "db", "schema.sql"), "utf8");
 await pool.query(schema);
 console.log("스키마 적용 완료");
 
-// ── 팀원(human actor + account) + 부사수(agent actor + agent_config) ──
+// ── 팀원(human actor + account) + 에이전트(agent actor + agent_config) ──
 for (const member of TEAM) {
   // 사람은 display_name으로 식별(안정 키). 이렇게 하면 이메일이 바뀌어도
   // 기존 사람의 email을 갱신할 뿐 계정을 중복 생성하지 않는다.
@@ -110,7 +110,7 @@ for (const member of TEAM) {
     );
   }
 
-  // 부사수: owner 기준 1개 보장
+  // 에이전트: owner 기준 1개 보장
   const agent = await pool.query(
     "SELECT id FROM actor WHERE type = 'agent' AND owner_actor_id = $1",
     [humanId]
@@ -129,7 +129,7 @@ for (const member of TEAM) {
       [agentId, JSON.stringify(member.workAreas)]
     );
   }
-  console.log(`시드: ${member.name} (${member.email}) / 역할=${member.role} / 부사수 actor#${agentId}`);
+  console.log(`시드: ${member.name} (${member.email}) / 역할=${member.role} / 에이전트 actor#${agentId}`);
 }
 
 // ── 프로젝트 3종 ──

@@ -51,6 +51,7 @@ export interface LaneEvent {
 export interface LaneTask {
   id: number;
   title: string;
+  startDate: string | null;
   dueDate: string | null;
   status: string;
   colorKey: string | null;
@@ -63,7 +64,7 @@ export interface LaneTask {
 export interface Lane {
   actorId: number;
   name: string;
-  /** 부사수 상태 — working(작성 중)/pending(보고 대기)/idle */
+  /** 에이전트 상태 — working(작성 중)/pending(보고 대기)/idle */
   assistantStatus: "working" | "pending" | "idle";
   tasks: LaneTask[];
 }
@@ -118,7 +119,7 @@ export interface HomeSummary {
 
 export interface HomeSignal {
   id: number;
-  kind: "signal" | "draft"; // draft = 부사수 승인 대기 초안 (에이전트 생성물)
+  kind: "signal" | "draft"; // draft = 에이전트 승인 대기 초안 (에이전트 생성물)
   type: string;
   title: string;
   meta: string;
@@ -312,18 +313,19 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
   const laneTasks = await query<{
     id: number;
     title: string;
+    start_date: string | null;
     due_date: string | null;
     status: string;
     color_key: string | null;
     origin: "human" | "agent";
     assignee_id: number | null;
   }>(
-    `SELECT t.id, t.title, t.due_date::text, t.status, p.color_key, t.origin, t.assignee_id
+    `SELECT t.id, t.title, t.start_date::text, t.due_date::text, t.status, p.color_key, t.origin, t.assignee_id
      FROM task t LEFT JOIN project p ON p.id = t.project_id
      WHERE ${OPEN_TASK}
      ORDER BY t.due_date ASC NULLS LAST, t.priority = 'high' DESC, t.id`
   );
-  // 부사수 상태 (레인 이름 옆 상태 점) — working 우선, 없으면 pending, 없으면 idle
+  // 에이전트 상태 (레인 이름 옆 상태 점) — working 우선, 없으면 pending, 없으면 idle
   const assistantStates = await query<{ user_id: number; status: string }>(
     `SELECT DISTINCT user_id, status FROM drafts WHERE status IN ('working','pending')`
   );
@@ -342,6 +344,7 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
       .map((t) => ({
         id: t.id,
         title: t.title,
+        startDate: t.start_date,
         dueDate: t.due_date,
         status: t.status,
         colorKey: t.color_key,
@@ -521,7 +524,7 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
       toMe,
     };
   });
-  // 부사수 승인 대기 초안 → 에이전트 생성물로 패널에 표시 (구 관제뷰 "막힌 곳" 요소 흡수)
+  // 에이전트 승인 대기 초안 → 에이전트 생성물로 패널에 표시 (구 관제뷰 "막힌 곳" 요소 흡수)
   const pendingDrafts = await query<{
     id: number;
     title: string;

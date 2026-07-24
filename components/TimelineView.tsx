@@ -66,7 +66,7 @@ export default function TimelineView() {
       </h2>
       <p className="muted" style={{ marginBottom: 14 }}>
         정본은 팀 Notion &quot;팀 업무 타임라인&quot; DB입니다. 여기서의 직접 편집은 지원하지 않으며,
-        기록은 부사수 초안 → 승인 게이트를 통해서만 추가됩니다.
+        기록은 에이전트 초안 → 승인 게이트를 통해서만 추가됩니다.
       </p>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>

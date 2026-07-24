@@ -52,7 +52,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         );
       }
       await query("UPDATE actor SET is_active = false WHERE id = $1", [memberId]);
-      // 부사수도 함께 비활성화 (담당자 없는 에이전트 방지). 과거 Task 담당 이력은 유지됨
+      // 에이전트도 함께 비활성화 (담당자 없는 에이전트 방지). 과거 Task 담당 이력은 유지됨
       await query("UPDATE actor SET is_active = false WHERE type = 'agent' AND owner_actor_id = $1", [memberId]);
       await logActivity({
         userId: session.id,

@@ -29,7 +29,7 @@ export interface Actor {
   is_active: boolean;
 }
 
-// 부사수 설정 — actor(type='agent') + agent_config 조인 결과.
+// 에이전트 설정 — actor(type='agent') + agent_config 조인 결과.
 // 기존 API 응답 형태 유지: id = agent actor id, user_id = owner(human) actor id
 export interface AssistantSettings {
   id: number;
@@ -77,6 +77,7 @@ export interface Task {
   description: string;
   status: TaskStatus;
   assignee_id: number | null;
+  start_date: string | null;
   due_date: string | null;
   priority: TaskPriority;
   origin: "human" | "agent";

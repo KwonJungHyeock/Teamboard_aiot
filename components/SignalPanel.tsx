@@ -98,7 +98,7 @@ export default function SignalPanel({
                   {signal.agent && (
                     <span className="atag">
                       <span className="mo" />
-                      {signal.kind === "draft" ? "부사수" : "에이전트"}
+                      {signal.kind === "draft" ? "에이전트" : "에이전트"}
                     </span>
                   )}
                   {signal.title}

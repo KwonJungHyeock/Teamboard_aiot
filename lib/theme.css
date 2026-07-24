@@ -7,13 +7,34 @@
   --hi:#EAEEF7; --mid:#98A2B8; --lo:#5C6680;
   --edu:#4B8DF8; --play:#8B5CF6; --train:#2DD4BF; --team:#7C8AA5;
   --warn:#F5A524; --danger:#F87171; --ok:#34D399;
-  --r:14px; --r-s:9px;
+  --r:8px; --r-s:5px;
   --f-ui:'Pretendard','Pretendard Variable',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
   --f-d:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-  --side-w:216px;
+  --side-w:248px;
+
+  /* 타입 스케일 (UI 개편 2차 — 110%를 기본으로). 10px 이하 금지, line-height 1.45 통일.
+     home.css / globals.css 는 이 변수로 폰트 크기를 참조한다. */
+  --fs-page-title:24px;
+  --fs-metric:29px;
+  --fs-panel-title:16px;
+  --fs-body:15px;
+  --fs-row:15px;
+  --fs-meta:13px;
+  --fs-badge:12.5px;
+  --lh:1.45;
+  /* 컨트롤 높이 — 행 40 / 패널 헤더 42 / 버튼 표준 36 · 컴팩트 30 */
+  --row-h:40px;
+  --panel-h:42px;
+  --btn-h:36px;
+  --btn-h-sm:30px;
+  /* text 별칭 — 개편 지시가 --text-mid/--text-lo 로 참조 (기존 --mid/--lo 매핑) */
+  --text-mid:var(--mid);
+  --text-lo:var(--lo);
 
   --asset-grain:url('/assets/texture/grain.png');
-  --asset-mesh:url('/assets/texture/mesh.webp');
+  /* mesh-brand.webp 전달 전까지 mesh.webp 로 자연 degrade — 위 레이어(brand)가 404면
+     아래 레이어(mesh)가 그대로 비쳐 배경이 깨지지 않는다. 파일 도착 시 자동 적용. */
+  --asset-mesh:url('/assets/texture/mesh-brand.webp'), url('/assets/texture/mesh.webp');
 
   /* SPEC 8.1 브랜드 토큰 — 프로토타입 :root에는 없어 SPEC 기준으로 추가.
      용법: 로고·주요 CTA 솔리드에만 (SPEC 8.2 레드 용법 분리 규칙) */

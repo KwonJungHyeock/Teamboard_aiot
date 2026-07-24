@@ -76,7 +76,7 @@ function NewMemberForm({ onCreated }: { onCreated: (tempPw: string, email: strin
       {error && <p className="gerr">{error}</p>}
       <div className="tform-a">
         <button className="gbtn" disabled={busy || !displayName.trim() || !email.trim()} onClick={submit}>
-          계정 발급 · 부사수 생성
+          계정 발급 · 에이전트 생성
         </button>
       </div>
     </section>
@@ -134,7 +134,7 @@ export default function MemberManager({ user }: { user: SessionUser }) {
           <div>
             <div className="eb">MEMBERS</div>
             <h1>구성원</h1>
-            <p>계정 발급 시 부사수가 자동 생성되고 캘린더 레인이 늘어납니다. 삭제 대신 비활성화만 가능합니다.</p>
+            <p>계정 발급 시 에이전트가 자동 생성되고 캘린더 레인이 늘어납니다. 삭제 대신 비활성화만 가능합니다.</p>
           </div>
         </div>
 
@@ -172,7 +172,7 @@ export default function MemberManager({ user }: { user: SessionUser }) {
                 <th>이름</th>
                 <th>이메일</th>
                 <th>역할</th>
-                <th>부사수 · 상태</th>
+                <th>에이전트 · 상태</th>
                 <th>관리</th>
               </tr>
             </thead>

@@ -98,6 +98,15 @@ CREATE TABLE IF NOT EXISTS task (
 ALTER TABLE task ADD COLUMN IF NOT EXISTS drop_reason TEXT;
 -- 중단 시각 — 월간 보고의 "해당 월 중단된 Task" 정확 판정용 (completed_at과 대칭)
 ALTER TABLE task ADD COLUMN IF NOT EXISTS dropped_at TIMESTAMPTZ;
+-- 업무 기간: 시작일 (마감일 due_date와 대칭, nullable). 컬럼 추가만 — 기존 데이터 영향 없음.
+ALTER TABLE task ADD COLUMN IF NOT EXISTS start_date DATE;
+-- 둘 다 있을 때만 시작일 <= 마감일 보장 (한쪽이 NULL이면 제약 없음)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'task_date_order') THEN
+    ALTER TABLE task ADD CONSTRAINT task_date_order
+      CHECK (start_date IS NULL OR due_date IS NULL OR start_date <= due_date);
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_task_assignee ON task(assignee_id, status);
 CREATE INDEX IF NOT EXISTS idx_task_due ON task(due_date);

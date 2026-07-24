@@ -1,12 +1,53 @@
 "use client";
 
-// 화면 A — 내 부사수 (PRD 6장)
+// 화면 A — 내 에이전트 (PRD 6장)
 import { useCallback, useEffect, useState } from "react";
 import ApproveModal from "./ApproveModal";
 import { NOTION_WORK_AREAS, TASK_TYPES } from "@/lib/types";
 import type { ActivityEntry, AssistantSettings, Draft, SessionUser, TaskType } from "@/lib/types";
 
 type DraftRow = Draft & { user_name?: string; assistant_name?: string };
+
+// 카운트 배지 — 0이면 렌더하지 않음(숨김). warn=true 는 조치 필요(승인 대기 등) → 경고색.
+// 브랜드 레드는 카운트에 쓰지 않는다 (D-016 확장 · globals.css .count 규칙).
+function CountBadge({ n, warn }: { n: number; warn?: boolean }) {
+  if (n <= 0) return null;
+  return <span className={`count${warn ? " warn" : ""}`}>{n}</span>;
+}
+
+// 빈 상태 일러스트 슬롯 — 이미지는 기본 숨김(display:none)이며 로드 성공 시에만 노출한다.
+// 파일이 없으면(404) onLoad가 오지 않아 숨김 그대로 → 깨진 이미지 아이콘도, 빈 여백도 없이
+// 텍스트만 남는다. /assets/illust/*.png 파일이 도착하면 자동으로 나타난다 (P1-3).
+function EmptyState({ img, children }: { img: string; children: React.ReactNode }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className="empty-state">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/assets/illust/${img}`}
+        alt=""
+        style={{ display: loaded ? "block" : "none" }}
+        onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(false)}
+      />
+      <p className="muted">{children}</p>
+    </div>
+  );
+}
+
+// 활동 로그 시각 — 오늘이면 HH:MM:SS, 그 외 날짜는 MM-DD HH:MM (JetBrains Mono·자리수 정렬).
+function fmtLogTime(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  return sameDay
+    ? `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+    : `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 export default function AssistantView({ user }: { user: SessionUser }) {
   const [assistant, setAssistant] = useState<AssistantSettings | null>(null);
@@ -52,7 +93,7 @@ export default function AssistantView({ user }: { user: SessionUser }) {
     return () => clearInterval(timer);
   }, [refresh]);
 
-  // 월간 보고 초안(monthly_report)은 /reports에서 승인한다. 부사수 화면에는 부수 업무 초안만.
+  // 월간 보고 초안(monthly_report)은 /reports에서 승인한다. 에이전트 화면에는 부수 업무 초안만.
   const working = drafts.filter((d) => d.status === "working" && d.task_type !== "monthly_report");
   const pending = drafts.filter((d) => d.status === "pending" && d.task_type !== "monthly_report");
   const rejected = drafts.filter((d) => d.status === "rejected" && d.task_type !== "monthly_report");
@@ -108,7 +149,7 @@ export default function AssistantView({ user }: { user: SessionUser }) {
 
   return (
     <div>
-      {/* 부사수 헤더 */}
+      {/* 에이전트 헤더 */}
       <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <div
           style={{
@@ -126,15 +167,15 @@ export default function AssistantView({ user }: { user: SessionUser }) {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 800, fontSize: 17 }}>
-            {assistant?.name ?? "부사수"}{" "}
+            {assistant?.name ?? "에이전트"}{" "}
             <span className={`badge ${statusColor}`}>{assistantStatus}</span>
           </div>
           <div className="muted">
-            {user.name}의 AI 부사수 · 초안만 작성하며, 승인 없이는 Notion에 기록하지 않습니다.
+            {user.name}의 AI 에이전트 · 초안만 작성하며, 승인 없이는 Notion에 기록하지 않습니다.
           </div>
         </div>
         <button className="btn small" onClick={() => setShowSettings((v) => !v)}>
-          {showSettings ? "설정 닫기" : "내 부사수 설정"}
+          {showSettings ? "설정 닫기" : "에이전트 설정"}
         </button>
       </div>
 
@@ -149,9 +190,9 @@ export default function AssistantView({ user }: { user: SessionUser }) {
       )}
 
       <div className="grid cols-2 section-gap">
-        {/* 부수 업무 맡기기 */}
+        {/* 에이전트에게 위임 */}
         <div className="card">
-          <h2>부수 업무 맡기기</h2>
+          <h2>에이전트에게 위임</h2>
           <div className="chips" style={{ marginBottom: 12 }}>
             {TASK_TYPES.map((t) => (
               <button
@@ -166,25 +207,27 @@ export default function AssistantView({ user }: { user: SessionUser }) {
           </div>
           <textarea
             rows={4}
-            placeholder={`부사수에게 맡길 ${taskType} 내용을 입력하세요.\n예: "아두이노 교육 키트 시장 동향 조사"`}
+            placeholder={`에이전트에게 맡길 ${taskType} 내용을 입력하세요.\n예: "아두이노 교육 키트 시장 동향 조사"`}
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
           />
           <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
             <button
-              className="btn primary"
+              className="btn"
               disabled={delegating || !instruction.trim()}
               onClick={() => delegate()}
             >
-              {delegating ? "부사수 작성 중..." : "위임하기"}
+              {delegating ? "에이전트 작성 중..." : "위임하기"}
             </button>
           </div>
 
           {/* 진행 중 업무 */}
           <h2 style={{ marginTop: 20 }}>
-            진행 중 업무 <span className="count">{working.length}</span>
+            진행 중 업무 <CountBadge n={working.length} />
           </h2>
-          {working.length === 0 && <p className="muted">지금 처리 중인 위임 업무가 없습니다.</p>}
+          {working.length === 0 && (
+            <EmptyState img="empty-tasks.png">지금 처리 중인 위임 업무가 없습니다.</EmptyState>
+          )}
           {working.map((d) => (
             <div className="item" key={d.id}>
               <div className="title">
@@ -200,16 +243,16 @@ export default function AssistantView({ user }: { user: SessionUser }) {
           ))}
         </div>
 
-        {/* 실시간 활동 로그 */}
-        <div className="card">
+        {/* 실시간 활동 로그 — 내용 높이만 차지(왼쪽 카드에 늘어나지 않도록 align-self: start) */}
+        <div className="card" style={{ alignSelf: "start" }}>
           <h2>실시간 활동 로그</h2>
           <div className="log">
-            {activity.length === 0 && <p className="muted">아직 활동이 없습니다.</p>}
+            {activity.length === 0 && (
+              <EmptyState img="empty-log.png">아직 활동이 없습니다.</EmptyState>
+            )}
             {activity.map((entry) => (
               <div className="row" key={entry.id}>
-                <span className="time">
-                  {new Date(entry.created_at).toLocaleTimeString("ko-KR", { hour12: false })}
-                </span>
+                <span className="time">{fmtLogTime(entry.created_at)}</span>
                 <span className={`lv-${entry.level}`}>{entry.message}</span>
               </div>
             ))}
@@ -217,13 +260,18 @@ export default function AssistantView({ user }: { user: SessionUser }) {
         </div>
       </div>
 
-      {/* 보고 대기 (승인 게이트) */}
+      {/* 내 초안 · 승인 대기 (내 에이전트가 올린 초안) */}
       <div className="card section-gap">
         <h2>
-          보고 대기 · 승인 게이트 <span className="count">{pending.length}</span>
+          내 초안 · 승인 대기 <CountBadge n={pending.length} warn />
         </h2>
+        <p className="muted" style={{ marginBottom: 10 }}>
+          내 에이전트가 올린 초안입니다. 승인해야 Notion에 기록됩니다.
+        </p>
         {pending.length === 0 && (
-          <p className="muted">승인 대기 중인 초안이 없습니다. 승인된 것만 Notion에 기록됩니다.</p>
+          <EmptyState img="empty-drafts.png">
+            승인 대기 중인 초안이 없습니다. 승인된 것만 Notion에 기록됩니다.
+          </EmptyState>
         )}
         {pending.map((d) => (
           <div className="item" key={d.id}>
@@ -280,16 +328,18 @@ export default function AssistantView({ user }: { user: SessionUser }) {
         ))}
       </div>
 
-      {/* 팀 초안 — lead 전용. 팀원 부사수 초안 승인/반려 (구 /control 승인 처리 흡수) */}
+      {/* 팀 초안 — lead 전용. 팀원 에이전트 초안 승인/반려 (구 /control 승인 처리 흡수) */}
       {user.role === "lead" && (
         <div className="card section-gap">
           <h2>
-            팀 초안 · 승인 대기 <span className="count">{teamDrafts.length}</span>
+            팀원 초안 · 승인 대기 (팀장) <CountBadge n={teamDrafts.length} warn />
           </h2>
           <p className="muted" style={{ marginBottom: 10 }}>
-            팀원 부사수가 올린 초안입니다. 승인해야 Notion에 기록됩니다.
+            팀원 에이전트가 올린 초안입니다. 승인해야 Notion에 기록됩니다.
           </p>
-          {teamDrafts.length === 0 && <p className="muted">승인 대기 중인 팀원 초안이 없습니다.</p>}
+          {teamDrafts.length === 0 && (
+            <EmptyState img="empty-drafts.png">승인 대기 중인 팀원 초안이 없습니다.</EmptyState>
+          )}
           {teamDrafts.map((d) => (
             <div className="item" key={d.id}>
               <div className="title">
@@ -353,7 +403,7 @@ export default function AssistantView({ user }: { user: SessionUser }) {
       {rejected.length > 0 && (
         <div className="card section-gap">
           <h2>
-            반려됨 · 재작업 대기 <span className="count">{rejected.length}</span>
+            반려됨 · 재작업 대기 <CountBadge n={rejected.length} warn />
           </h2>
           {rejected.map((d) => (
             <div className="item" key={d.id}>
@@ -448,7 +498,7 @@ function SettingsCard({
 
   return (
     <div className="card section-gap">
-      <h2>내 부사수 설정</h2>
+      <h2>에이전트 설정</h2>
       <div className="grid cols-2">
         <div className="field">
           <label>이름</label>

@@ -5,7 +5,7 @@ import "./home.css";
 
 export const metadata: Metadata = {
   title: "팀보드 — TeamBoard",
-  description: "AI 부사수와 함께하는 팀 업무 관리 (AIoT 교육플랫폼 사업팀)",
+  description: "AI 에이전트와 함께하는 팀 업무 관리 (AIoT 교육플랫폼 사업팀)",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

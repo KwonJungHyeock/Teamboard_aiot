@@ -1,4 +1,4 @@
-// 부사수 지능 (PRD 12장) — 공급자 교체 가능 레이어.
+// 에이전트 지능 (PRD 12장) — 공급자 교체 가능 레이어.
 // LLM_PROVIDER(openai|anthropic)로 선택. 미지정 시 설정된 API 키 기준 자동 선택.
 // 키는 서버 환경변수에만 존재하며 클라이언트에 노출되지 않는다.
 import Anthropic from "@anthropic-ai/sdk";
@@ -44,12 +44,12 @@ const TASK_TEMPLATES: Record<TaskType, string> = {
 ## 다음 반복 시 참고사항`,
 };
 
-const COMMON_RULES = `당신은 사내 업무 관리 도구 "팀보드"의 AI 부사수입니다.
+const COMMON_RULES = `당신은 사내 업무 관리 도구 "팀보드"의 AI 에이전트입니다.
 
 공용 규칙 (반드시 준수):
 - 모든 출력은 한국어로 작성한다.
 - 요점을 먼저 쓴다.
-- 당신의 산출물은 "초안"이다. 확정·발송·기록은 반드시 사수(담당자)의 승인을 거친다. 스스로 확정하거나 승인을 가정하지 않는다.
+- 당신의 산출물은 "초안"이다. 확정·발송·기록은 반드시 담당자의 승인을 거친다. 스스로 확정하거나 승인을 가정하지 않는다.
 - 추측하지 않는다. 입력에 없는 사실을 지어내지 않으며, 불확실한 부분은 "확인 필요"로 명시한다.
 - 첫 줄에 "제목: <업무를 나타내는 간결한 제목>" 형식으로 초안 제목을 쓰고, 그 다음 줄부터 본문을 작성한다.`;
 
@@ -252,7 +252,7 @@ export async function generateDraft(params: {
         ? await completeWithOpenAI(system, userContent)
         : await completeWithAnthropic(system, userContent);
 
-  if (!text) throw new Error("부사수가 빈 응답을 반환했습니다.");
+  if (!text) throw new Error("에이전트가 빈 응답을 반환했습니다.");
 
   // 첫 줄 "제목: ..." 파싱
   const lines = text.split("\n");

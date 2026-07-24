@@ -82,56 +82,29 @@ export default function HomeView({
 
         <MetricCards metrics={summary.metrics} />
 
+        {/* 팀 타임라인 — 전폭 (레이아웃 재배치) */}
+        <div className="fullrow">
+          <TeamTimeline
+            lanes={summary.lanes}
+            initialEvents={summary.events}
+            today={summary.today}
+            view={view}
+            anchor={summary.today}
+            isLead={user.role === "lead"}
+          />
+        </div>
+
         <div className="cols">
+          {/* 좌: 마감 임박 / 프로젝트 진행 */}
           <div className="stack">
-            <TeamTimeline
-              lanes={summary.lanes}
-              initialEvents={summary.events}
-              today={summary.today}
-              view={view}
-              anchor={summary.today}
-              isLead={user.role === "lead"}
-            />
             <TaskTable
               rows={summary.dueSoon}
-              title="마감 임박"
-              sub={`7일 이내 · ${summary.dueSoon.length}건`}
-              emptyText="7일 이내 마감 업무가 없습니다."
+              title="지연 · 마감 임박"
+              sub={`지연 ${summary.dueSoon.filter((t) => t.overdue).length} · 7일 이내 ${summary.dueSoon.filter((t) => !t.overdue).length}`}
+              emptyText="지연·마감 임박 업무가 없습니다."
             />
-          </div>
 
-          <div className="stack">
-            {/* 이번 달 목표 진척 (SPEC 4.1 ③) */}
-            <section className="card" aria-label="이번 달 목표">
-              <div className="ch">
-                <h2>이번 달 목표</h2>
-                <span className="sub">{summary.monthGoals.length}개</span>
-              </div>
-              {summary.monthGoals.length === 0 && (
-                <p style={{ color: "var(--lo)", fontSize: 12 }}>
-                  이번 달 목표가 없습니다. 목표 화면에서 추가하세요.
-                </p>
-              )}
-              {summary.monthGoals.map((goal) => (
-                <div className="pr" key={goal.id}>
-                  <div className="pr-t">
-                    <span>{goal.title}</span>
-                    <span>
-                      {goal.droppedCount > 0 && <em className="gdrop">중단 {goal.droppedCount}건</em>}
-                      {goal.progress === null ? "-" : `${goal.progress}%`}
-                    </span>
-                  </div>
-                  <div className="bar">
-                    <i
-                      className={goal.colorKey ?? "edu"}
-                      style={{ width: `${Math.min(goal.progress ?? 0, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </section>
-
-            {/* 프로젝트 진행 — 구 관제뷰 "프로젝트별 진행률" 흡수 (발주 지시: 목표 다음 카드) */}
+            {/* 프로젝트 진행 — 구 관제뷰 "프로젝트별 진행률" 흡수 */}
             <section className="card" aria-label="프로젝트 진행">
               <div className="ch">
                 <h2>프로젝트 진행</h2>
@@ -160,6 +133,39 @@ export default function HomeView({
               ))}
             </section>
 
+            {/* 이번 달 목표 — 좌우 높이 균형을 위해 좌측 배치 (#6 balance rule) */}
+            <section className="card" aria-label="이번 달 목표">
+              <div className="ch">
+                <h2>이번 달 목표</h2>
+                <span className="sub">{summary.monthGoals.length}개</span>
+              </div>
+              {summary.monthGoals.length === 0 && (
+                <p style={{ color: "var(--lo)", fontSize: 12 }}>
+                  이번 달 목표가 없습니다. 목표 화면에서 추가하세요.
+                </p>
+              )}
+              {summary.monthGoals.map((goal) => (
+                <div className="pr" key={goal.id}>
+                  <div className="pr-t">
+                    <span>{goal.title}</span>
+                    <span>
+                      {goal.droppedCount > 0 && <em className="gdrop">중단 {goal.droppedCount}건</em>}
+                      {goal.progress === null ? "-" : `${goal.progress}%`}
+                    </span>
+                  </div>
+                  <div className="bar">
+                    <i
+                      className={goal.colorKey ?? "edu"}
+                      style={{ width: `${Math.min(goal.progress ?? 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </section>
+          </div>
+
+          {/* 우: 시그널 / 허들 */}
+          <div className="stack">
             {/* 시그널 패널 — /signals와 공유하는 SignalPanel (Phase 6), 정렬은 서버 */}
             <SignalPanel items={summary.signals} stalledCount={summary.stalledCount} />
 
