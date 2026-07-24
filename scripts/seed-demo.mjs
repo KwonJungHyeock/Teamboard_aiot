@@ -47,13 +47,13 @@ const d = (offset) => {
 const at = (dayOffset, hhmm) => `${d(dayOffset)}T${hhmm}:00+09:00`;
 
 // ── 업무 (proposed 없음 — 홈·캘린더 노출 규칙 준수. 에이전트 기원 1건은 승인된 todo) ──
-async function task(projectId, title, status, assignee, dueOffset, priority = "mid", origin = "human", createdDaysAgo = 10, completedDaysAgo = null) {
+async function task(projectId, title, status, assignee, dueOffset, priority = "mid", origin = "human", createdDaysAgo = 10, completedDaysAgo = null, areaName = "플랫폼", workType = "team") {
   const r = await q(
-    `INSERT INTO task (project_id, title, status, assignee_id, due_date, priority, origin, created_by, created_at, completed_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now() - ($9 || ' days')::interval,
-             CASE WHEN $10::int IS NULL THEN NULL ELSE now() - ($10 || ' days')::interval END)
+    `INSERT INTO task (project_id, area_id, work_type, title, status, assignee_id, due_date, priority, origin, created_by, created_at, completed_at)
+     VALUES ($1,(SELECT id FROM area WHERE name=$2),$3,$4,$5,$6,$7,$8,$9,$10, now() - ($11 || ' days')::interval,
+             CASE WHEN $12::int IS NULL THEN NULL ELSE now() - ($12 || ' days')::interval END)
      RETURNING id`,
-    [projectId, title, status, assignee, dueOffset === null ? null : d(dueOffset), priority, origin, assignee, createdDaysAgo, completedDaysAgo]
+    [projectId, areaName, workType, title, status, assignee, dueOffset === null ? null : d(dueOffset), priority, origin, assignee, createdDaysAgo, completedDaysAgo]
   );
   return r.rows[0].id;
 }
@@ -73,10 +73,21 @@ const tDone1 = await task(edu, "PoC 현장 테스트 준비", "done", kwon, -3, 
 const tDone2 = await task(train, "4~5장 평가문항 검수", "done", park, -1, "mid", "human", 9, 1);
 const tDone3 = await task(play, "로그인 화면 시안", "done", jo, -2, "mid", "human", 8, 3);
 
+// ── 영역 분류가 보이도록 프로젝트 없는 "영역 단위" 업무 (R&D·교육자료·디자인) + 상시업무 ──
+const tRnd1 = await task(null, "AIoT 센서 모듈 R&D 리서치", "doing", kwon, 8, "mid", "human", 6, null, "R&D");
+const tRnd2 = await task(null, "특허 선행조사", "todo", kwon, 14, "mid", "human", 4, null, "R&D");
+const tEduA = await task(null, "8차시 교육자료 개정", "doing", park, 5, "mid", "human", 5, null, "교육자료");
+const tDsn1 = await task(null, "쇼핑몰 상세페이지 디자인", "doing", jo, 3, "high", "human", 4, null, "디자인");
+const tDsn2 = await task(null, "브랜드 배너 리뉴얼", "todo", jo, 9, "mid", "human", 3, null, "디자인");
+// 상시업무 (work_type='routine') — 기한 없음, 마감·목표 집계 제외
+await task(null, "주간 고객 문의 대응", "doing", park, null, "mid", "human", 20, null, "교육자료", "routine");
+await task(null, "디자인 에셋 정리·백업", "doing", jo, null, "low", "human", 20, null, "디자인", "routine");
+
 // ── 업무 기간(시작일) — 주·월 뷰 기간 바 확인용. 운영 시드는 건드리지 않음 (데모 전용). ──
 const taskStarts = [
   [tPoc, -5], [tCore, -1], [tPrd, 0], [tLoad, 3], [tCurr, 7],
   [tHome, -1], [tEddie, 1], [tEval, -2], [tDb, 4], [tAx, 0],
+  [tRnd1, -1], [tEduA, 0], [tDsn1, -2], [tDsn2, 4],
 ];
 for (const [id, off] of taskStarts) {
   await q("UPDATE task SET start_date = $1 WHERE id = $2", [d(off), id]);

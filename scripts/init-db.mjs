@@ -26,6 +26,7 @@ const TEAM = [
     notionUserId: "3ba23515-d244-458a-a0f7-a92cfadf950a",
     assistantName: "정혁의 에이전트",
     workAreas: ["R&D"],
+    actorAreas: ["R&D", "플랫폼"], // 담당자 기본 영역 (첫 항목이 폼 기본값)
   },
   {
     email: "meotto@robodyne.co.kr",
@@ -35,6 +36,7 @@ const TEAM = [
     notionUserId: "260d872b-594c-81e4-9f78-000299e7e74b",
     assistantName: "주희의 에이전트",
     workAreas: ["교육자료"],
+    actorAreas: ["교육자료", "플랫폼"],
   },
   {
     email: "sycho09@robodyne.co.kr",
@@ -44,14 +46,15 @@ const TEAM = [
     notionUserId: "5453c24d-940e-4cdf-9f89-1adfe5cc18ab",
     assistantName: "서연의 에이전트",
     workAreas: ["디자인"],
+    actorAreas: ["디자인", "플랫폼"],
   },
 ];
 
-// 프로젝트 3종 (CHANGE-GUIDE Phase 1) — color_key는 theme.css 토큰 키
+// 프로젝트 3종 — 모두 area=플랫폼. "AI 트레이너"는 "AI 학습추론모델"로 개명.
 const PROJECTS = [
-  { name: "EDUINO AI", colorKey: "edu" },
-  { name: "Playino", colorKey: "play" },
-  { name: "AI 트레이너", colorKey: "train" },
+  { name: "EDUINO AI", colorKey: "edu", area: "플랫폼" },
+  { name: "Playino", colorKey: "play", area: "플랫폼" },
+  { name: "AI 학습추론모델", colorKey: "train", area: "플랫폼" },
 ];
 
 function hashPassword(password) {
@@ -129,15 +132,31 @@ for (const member of TEAM) {
       [agentId, JSON.stringify(member.workAreas)]
     );
   }
+  // 담당자 기본 영역(actor_area) — 이름으로 area 조회해 매핑
+  for (let i = 0; i < (member.actorAreas ?? []).length; i++) {
+    await pool.query(
+      `INSERT INTO actor_area (actor_id, area_id, sort_order)
+       SELECT $1, a.id, $3 FROM area a WHERE a.name = $2
+       ON CONFLICT (actor_id, area_id) DO UPDATE SET sort_order = EXCLUDED.sort_order`,
+      [humanId, member.actorAreas[i], i]
+    );
+  }
   console.log(`시드: ${member.name} (${member.email}) / 역할=${member.role} / 에이전트 actor#${agentId}`);
 }
 
-// ── 프로젝트 3종 ──
+// ── 프로젝트 3종 (area=플랫폼) — 구명 "AI 트레이너" 개명 반영 ──
+await pool.query("UPDATE project SET name = 'AI 학습추론모델' WHERE name = 'AI 트레이너'");
 for (const project of PROJECTS) {
   await pool.query(
-    `INSERT INTO project (name, color_key)
-     SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM project WHERE name = $1)`,
-    [project.name, project.colorKey]
+    `INSERT INTO project (name, color_key, area_id)
+     SELECT $1, $2, (SELECT id FROM area WHERE name = $3)
+     WHERE NOT EXISTS (SELECT 1 FROM project WHERE name = $1)`,
+    [project.name, project.colorKey, project.area]
+  );
+  // 기존 프로젝트도 영역 보정
+  await pool.query(
+    "UPDATE project SET area_id = (SELECT id FROM area WHERE name = $2) WHERE name = $1",
+    [project.name, project.area]
   );
 }
 console.log("프로젝트 시드: " + PROJECTS.map((p) => p.name).join(" / "));

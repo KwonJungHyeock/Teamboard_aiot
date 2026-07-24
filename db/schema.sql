@@ -264,3 +264,71 @@ CREATE TABLE IF NOT EXISTS config (
   updated_by INTEGER REFERENCES actor(id),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- ─── 업무 영역(area) — 상위 분류 계층 (area → project → task). Notion "업무 구분" 값 채택 ───
+-- 자체 분류를 새로 만들지 않고 Notion 값을 그대로 name 으로 쓴다(승인 매핑 일치).
+CREATE TABLE IF NOT EXISTS area (
+  id         SERIAL PRIMARY KEY,
+  name       TEXT NOT NULL,
+  color_key  TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active  BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- name 은 Notion "업무 구분" 선택지와 문자열 일치 필수 → 유니크로 보장 + ON CONFLICT 시드
+ALTER TABLE area DROP CONSTRAINT IF EXISTS area_name_uniq;
+ALTER TABLE area ADD CONSTRAINT area_name_uniq UNIQUE (name);
+INSERT INTO area (name, color_key, sort_order) VALUES
+  ('R&D', 'train', 1),
+  ('플랫폼', 'edu', 2),
+  ('교육자료', 'play', 3),
+  ('디자인', 'play', 4),
+  ('연구소', 'train', 5),
+  ('현장실습교육', 'train', 6),
+  ('기타', 'team', 7)
+ON CONFLICT (name) DO NOTHING;
+
+-- 계층 컬럼 (모두 idempotent). project/task 는 NOT NULL, goal 은 nullable.
+ALTER TABLE project ADD COLUMN IF NOT EXISTS area_id INTEGER REFERENCES area(id);
+ALTER TABLE task    ADD COLUMN IF NOT EXISTS area_id INTEGER REFERENCES area(id);
+ALTER TABLE goal    ADD COLUMN IF NOT EXISTS area_id INTEGER REFERENCES area(id);
+-- 업무유형 (Notion 업무유형: 팀업무/개인업무/상시업무)
+ALTER TABLE task ADD COLUMN IF NOT EXISTS work_type TEXT NOT NULL DEFAULT 'team';
+ALTER TABLE task DROP CONSTRAINT IF EXISTS task_work_type_check;
+ALTER TABLE task ADD CONSTRAINT task_work_type_check CHECK (work_type IN ('team', 'personal', 'routine'));
+
+-- 기존 데이터 백필 → 이후 NOT NULL 강제 (신규 스키마·구 스키마 모두 안전)
+UPDATE project SET area_id = (SELECT id FROM area WHERE name = '플랫폼') WHERE area_id IS NULL;
+UPDATE task t SET area_id = COALESCE(
+  (SELECT p.area_id FROM project p WHERE p.id = t.project_id),
+  (SELECT id FROM area WHERE name = '기타')
+) WHERE area_id IS NULL;
+ALTER TABLE project ALTER COLUMN area_id SET NOT NULL;
+ALTER TABLE task    ALTER COLUMN area_id SET NOT NULL;
+
+-- 담당자 기본 영역 (N:M) — 업무 폼 기본값·"내 업무" 영역 필터에 사용
+CREATE TABLE IF NOT EXISTS actor_area (
+  actor_id   INTEGER NOT NULL REFERENCES actor(id),
+  area_id    INTEGER NOT NULL REFERENCES area(id),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (actor_id, area_id)
+);
+
+-- 무결성: project_id 가 있으면 task.area_id 는 project.area_id 와 일치해야 한다.
+-- (CHECK 로는 타 테이블 참조 불가 → BEFORE 트리거로 강제)
+CREATE OR REPLACE FUNCTION task_area_matches_project() RETURNS trigger AS $$
+BEGIN
+  IF NEW.project_id IS NOT NULL THEN
+    IF (SELECT area_id FROM project WHERE id = NEW.project_id) IS DISTINCT FROM NEW.area_id THEN
+      RAISE EXCEPTION 'task.area_id(%) must match project.area_id for project %', NEW.area_id, NEW.project_id;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_task_area_match ON task;
+CREATE TRIGGER trg_task_area_match BEFORE INSERT OR UPDATE ON task
+  FOR EACH ROW EXECUTE FUNCTION task_area_matches_project();
+
+CREATE INDEX IF NOT EXISTS idx_task_area ON task(area_id);
+CREATE INDEX IF NOT EXISTS idx_project_area ON project(area_id);
