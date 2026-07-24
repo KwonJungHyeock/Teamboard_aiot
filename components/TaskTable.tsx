@@ -12,6 +12,7 @@ export interface TaskTableRow {
   overdue: boolean;
   priority?: string; // full 전용
   goalNames?: string[]; // full 전용
+  areaName?: string; // full 전용
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -48,7 +49,7 @@ export default function TaskTable({
   onStatusChange?: (id: number, status: string) => void;
 }) {
   const full = variant === "full";
-  const colCount = full ? 7 : 5;
+  const colCount = full ? 8 : 5;
   return (
     <section className="card" aria-label={title}>
       <div className="ch">
@@ -60,12 +61,13 @@ export default function TaskTable({
           {full ? (
             <>
               <col />
-              <col style={{ width: "160px" }} />
-              <col style={{ width: "140px" }} />
-              <col style={{ width: "90px" }} />
+              <col style={{ width: "150px" }} />
+              <col style={{ width: "100px" }} />
+              <col style={{ width: "130px" }} />
               <col style={{ width: "80px" }} />
-              <col style={{ width: "104px" }} />
-              <col style={{ width: "80px" }} />
+              <col style={{ width: "74px" }} />
+              <col style={{ width: "100px" }} />
+              <col style={{ width: "76px" }} />
             </>
           ) : (
             <>
@@ -81,6 +83,7 @@ export default function TaskTable({
           <tr>
             <th>업무</th>
             {full && <th>목표</th>}
+            {full && <th>영역</th>}
             <th>프로젝트</th>
             <th>담당</th>
             {full && <th>우선순위</th>}
@@ -118,6 +121,11 @@ export default function TaskTable({
                 {full && (
                   <td>
                     {t.goalNames && t.goalNames.length > 0 ? t.goalNames.join(", ") : "—"}
+                  </td>
+                )}
+                {full && (
+                  <td>
+                    {t.areaName ? <span className="areatag">{t.areaName}</span> : "—"}
                   </td>
                 )}
                 <td>

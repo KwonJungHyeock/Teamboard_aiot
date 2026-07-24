@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 const STATUSES = ["proposed", "todo", "doing", "review", "done", "dropped"] as const;
 const PRIORITIES = ["high", "mid", "low"] as const;
+const WORK_TYPES = ["team", "personal", "routine"] as const;
 
 export interface TaskListRow {
   id: number;
@@ -26,6 +27,9 @@ export interface TaskListRow {
   colorKey: string | null;
   assigneeId: number | null;
   assigneeName: string | null;
+  areaId: number;
+  areaName: string;
+  workType: string;
   startDate: string | null;
   dueDate: string | null;
   goalIds: number[];
@@ -36,6 +40,7 @@ export async function GET(request: Request) {
   try {
     requireSession();
     const url = new URL(request.url);
+    const area = url.searchParams.get("area");
     const project = url.searchParams.get("project");
     const assignee = url.searchParams.get("assignee");
     const status = url.searchParams.get("status");
@@ -54,6 +59,7 @@ export async function GET(request: Request) {
       // 기본 목록은 proposed 제외 — 인박스는 status=proposed로 명시 조회
       where.push("t.status <> 'proposed'");
     }
+    if (area) add("t.area_id = ?", Number(area));
     if (project) add("t.project_id = ?", Number(project));
     if (assignee) add("t.assignee_id = ?", Number(assignee));
 
@@ -82,6 +88,9 @@ export async function GET(request: Request) {
       color_key: string | null;
       assignee_id: number | null;
       assignee_name: string | null;
+      area_id: number;
+      area_name: string;
+      work_type: string;
       start_date: string | null;
       due_date: string | null;
       goal_ids: number[] | null;
@@ -90,16 +99,18 @@ export async function GET(request: Request) {
       `SELECT t.id, t.title, t.description, t.status, t.priority, t.origin,
               t.project_id, p.name AS project_name, p.color_key,
               t.assignee_id, a.display_name AS assignee_name,
+              t.area_id, ar.name AS area_name, t.work_type,
               t.start_date::text, t.due_date::text,
               array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
               c.display_name AS created_by_name
        FROM task t
        LEFT JOIN project p ON p.id = t.project_id
+       JOIN area ar ON ar.id = t.area_id
        LEFT JOIN actor a ON a.id = t.assignee_id
        LEFT JOIN actor c ON c.id = t.created_by
        LEFT JOIN goal_task gt ON gt.task_id = t.id
        WHERE ${where.join(" AND ")}
-       GROUP BY t.id, p.name, p.color_key, a.display_name, c.display_name
+       GROUP BY t.id, p.name, p.color_key, ar.name, a.display_name, c.display_name
        ORDER BY t.due_date ASC NULLS LAST, t.id DESC
        LIMIT 300`,
       params
@@ -141,6 +152,9 @@ export async function GET(request: Request) {
       colorKey: r.color_key,
       assigneeId: r.assignee_id,
       assigneeName: r.assignee_name,
+      areaId: r.area_id,
+      areaName: r.area_name,
+      workType: r.work_type,
       startDate: r.start_date,
       dueDate: r.due_date,
       goalIds: r.goal_ids ?? [],
@@ -183,12 +197,17 @@ export async function POST(request: Request) {
     if (startDate && dueDate && startDate > dueDate) {
       return NextResponse.json({ error: "시작일이 마감일보다 늦을 수 없습니다." }, { status: 400 });
     }
+    const areaId = payload.areaId ? Number(payload.areaId) : null;
+    if (!areaId) return NextResponse.json({ error: "업무 영역을 선택하세요." }, { status: 400 });
+    const workType = (WORK_TYPES as readonly string[]).includes(payload.workType) ? payload.workType : "team";
 
     const task = await queryOne<{ id: number }>(
-      `INSERT INTO task (project_id, title, description, status, assignee_id, start_date, due_date, priority, origin, created_by)
-       VALUES ($1,$2,$3,'todo',$4,$5,$6,$7,'human',$8) RETURNING id`,
+      `INSERT INTO task (project_id, area_id, work_type, title, description, status, assignee_id, start_date, due_date, priority, origin, created_by)
+       VALUES ($1,$2,$3,$4,$5,'todo',$6,$7,$8,$9,'human',$10) RETURNING id`,
       [
         payload.projectId ? Number(payload.projectId) : null,
+        areaId,
+        workType,
         title,
         String(payload.description ?? "").slice(0, 4000),
         payload.assigneeId ? Number(payload.assigneeId) : session.id,

@@ -18,10 +18,26 @@ interface TaskItem {
   colorKey: string | null;
   assigneeId: number | null;
   assigneeName: string | null;
+  areaId: number;
+  areaName: string;
+  workType: string;
   startDate: string | null;
   dueDate: string | null;
   goalIds: number[];
   createdByName: string | null;
+}
+
+interface AreaOption {
+  id: number;
+  name: string;
+  colorKey: string | null;
+}
+
+interface ProjectOption {
+  id: number;
+  name: string;
+  colorKey: string | null;
+  areaId: number;
 }
 
 interface InboxItem {
@@ -80,13 +96,15 @@ function TaskDetail({
   task,
   actors,
   projects,
+  areas,
   monthGoals,
   onChanged,
   onClose,
 }: {
   task: TaskItem;
   actors: Option[];
-  projects: { id: number; name: string; colorKey: string | null }[];
+  projects: ProjectOption[];
+  areas: AreaOption[];
   monthGoals: MonthGoalOption[];
   onChanged: () => void;
   onClose: () => void;
@@ -95,11 +113,14 @@ function TaskDetail({
   const [description, setDescription] = useState(task.description);
   const [status, setStatus] = useState(task.status);
   const [priority, setPriority] = useState(task.priority);
+  const [areaId, setAreaId] = useState(task.areaId);
+  const [workType, setWorkType] = useState(task.workType);
   const [projectId, setProjectId] = useState(task.projectId ?? 0);
   const [assigneeId, setAssigneeId] = useState(task.assigneeId ?? 0);
   const [startDate, setStartDate] = useState(task.startDate ?? "");
   const [dueDate, setDueDate] = useState(task.dueDate ?? "");
   const [goalIds, setGoalIds] = useState<number[]>(task.goalIds);
+  const areaProjects = projects.filter((p) => p.areaId === areaId);
   const [dropReason, setDropReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -110,6 +131,8 @@ function TaskDetail({
     setDescription(task.description);
     setStatus(task.status);
     setPriority(task.priority);
+    setAreaId(task.areaId);
+    setWorkType(task.workType);
     setProjectId(task.projectId ?? 0);
     setAssigneeId(task.assigneeId ?? 0);
     setStartDate(task.startDate ?? "");
@@ -134,6 +157,8 @@ function TaskDetail({
         description,
         status,
         priority,
+        areaId,
+        workType,
         projectId: projectId || null,
         assigneeId: assigneeId || null,
         startDate: startDate || null,
@@ -187,6 +212,24 @@ function TaskDetail({
         </div>
         <div className="tform-grid">
           <div className="tform-r">
+            <label>영역 (필수)</label>
+            <select value={areaId} onChange={(e) => setAreaId(Number(e.target.value))}>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="tform-r">
+            <label>업무유형</label>
+            <select value={workType} onChange={(e) => setWorkType(e.target.value)}>
+              <option value="team">팀업무</option>
+              <option value="personal">개인업무</option>
+              <option value="routine">상시업무</option>
+            </select>
+          </div>
+          <div className="tform-r">
             <label>상태</label>
             <select value={status} onChange={(e) => setStatus(e.target.value)}>
               {STATUS_OPTIONS.filter(([v]) => v).map(([v, l]) => (
@@ -205,10 +248,10 @@ function TaskDetail({
             </select>
           </div>
           <div className="tform-r">
-            <label>프로젝트</label>
+            <label>프로젝트 (영역 하위)</label>
             <select value={projectId} onChange={(e) => setProjectId(Number(e.target.value))}>
               <option value={0}>없음</option>
-              {projects.map((p) => (
+              {areaProjects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
@@ -293,19 +336,26 @@ function TaskDetail({
   );
 }
 
-/** 새 업무 폼 */
+/** 새 업무 폼 — 영역(필수, 최상단) → 업무유형 → 프로젝트(선택 영역 하위만) */
 function NewTaskForm({
   actors,
   projects,
+  areas,
+  myAreaIds,
   user,
   onDone,
 }: {
   actors: Option[];
-  projects: { id: number; name: string; colorKey: string | null }[];
+  projects: ProjectOption[];
+  areas: AreaOption[];
+  myAreaIds: number[];
   user: SessionUser;
   onDone: () => void;
 }) {
   const [title, setTitle] = useState("");
+  // 담당자의 기본 영역 첫 항목을 기본값으로
+  const [areaId, setAreaId] = useState<number>(myAreaIds[0] ?? areas[0]?.id ?? 0);
+  const [workType, setWorkType] = useState("team");
   const [projectId, setProjectId] = useState(0);
   const [assigneeId, setAssigneeId] = useState(user.id);
   const [startDate, setStartDate] = useState("");
@@ -314,8 +364,18 @@ function NewTaskForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  // 선택 영역의 하위 프로젝트만 노출. 영역이 바뀌면 소속 아닌 프로젝트는 해제.
+  const areaProjects = projects.filter((p) => p.areaId === areaId);
+  useEffect(() => {
+    if (projectId && !areaProjects.some((p) => p.id === projectId)) setProjectId(0);
+  }, [areaId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function submit() {
     if (!title.trim()) return;
+    if (!areaId) {
+      setError("업무 영역을 선택하세요.");
+      return;
+    }
     if (startDate && dueDate && startDate > dueDate) {
       setError("시작일이 마감일보다 늦을 수 없습니다.");
       return;
@@ -327,6 +387,8 @@ function NewTaskForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title,
+        areaId,
+        workType,
         projectId: projectId || null,
         assigneeId: assigneeId || null,
         startDate: startDate || null,
@@ -353,9 +415,21 @@ function NewTaskForm({
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && submit()}
       />
+      <select aria-label="영역" value={areaId} onChange={(e) => setAreaId(Number(e.target.value))}>
+        {areas.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.name}
+          </option>
+        ))}
+      </select>
+      <select aria-label="업무유형" value={workType} onChange={(e) => setWorkType(e.target.value)}>
+        <option value="team">팀업무</option>
+        <option value="personal">개인업무</option>
+        <option value="routine">상시업무</option>
+      </select>
       <select value={projectId} onChange={(e) => setProjectId(Number(e.target.value))}>
         <option value={0}>프로젝트 없음</option>
-        {projects.map((p) => (
+        {areaProjects.map((p) => (
           <option key={p.id} value={p.id}>
             {p.name}
           </option>
@@ -387,7 +461,9 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [inbox, setInbox] = useState<InboxItem[]>([]);
   const [actors, setActors] = useState<Option[]>([]);
-  const [projects, setProjects] = useState<{ id: number; name: string; colorKey: string | null }[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [areas, setAreas] = useState<AreaOption[]>([]);
+  const [myAreaIds, setMyAreaIds] = useState<number[]>([]);
   const [monthGoals, setMonthGoals] = useState<MonthGoalOption[]>([]);
   const [today, setToday] = useState("");
   const [loading, setLoading] = useState(true);
@@ -396,16 +472,19 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState("");
 
-  // 필터 (프로젝트 · 담당 · 상태 · 기한). 담당 기본값=본인 → "내 업무" 진입.
+  // 필터 (영역 · 프로젝트 · 담당 · 상태 · 기한). 담당 기본값=본인 → "내 업무" 진입.
+  const [fArea, setFArea] = useState("");
   const [fProject, setFProject] = useState("");
   const [fAssignee, setFAssignee] = useState(String(user.id));
   const [fStatus, setFStatus] = useState("");
   const [fDue, setFDue] = useState("");
+  const [areaDefaulted, setAreaDefaulted] = useState(false);
   const isMine = fAssignee === String(user.id);
 
   const load = useCallback(async () => {
     try {
       const qs = new URLSearchParams();
+      if (fArea) qs.set("area", fArea);
       if (fProject) qs.set("project", fProject);
       if (fAssignee) qs.set("assignee", fAssignee);
       if (fStatus) qs.set("status", fStatus);
@@ -422,7 +501,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
     } finally {
       setLoading(false);
     }
-  }, [fProject, fAssignee, fStatus, fDue]);
+  }, [fArea, fProject, fAssignee, fStatus, fDue]);
 
   // 셀렉트 룩업은 목록과 분리된 /api/meta/selectors에서 (Phase 8 D-3)
   const loadSelectors = useCallback(async () => {
@@ -431,9 +510,25 @@ export default function TasksView({ user }: { user: SessionUser }) {
     if (res.ok) {
       setActors(data.actors ?? []);
       setProjects(data.projects ?? []);
+      setAreas(data.areas ?? []);
+      setMyAreaIds(data.myAreaIds ?? []);
       setMonthGoals(data.monthGoals ?? []);
     }
   }, []);
+
+  // 진입 시 영역 기본값: URL ?area 우선, 없으면 본인 기본 영역(actor_area 첫 항목).
+  // "내 업무" 진입 = 담당 본인 + 영역 본인 (한 번만 적용, 이후엔 사용자 선택 존중).
+  useEffect(() => {
+    if (areaDefaulted) return;
+    const urlArea = new URLSearchParams(window.location.search).get("area");
+    if (urlArea) {
+      setFArea(urlArea);
+      setAreaDefaulted(true);
+    } else if (myAreaIds.length > 0) {
+      setFArea(String(myAreaIds[0]));
+      setAreaDefaulted(true);
+    }
+  }, [myAreaIds, areaDefaulted]);
 
   useEffect(() => {
     load();
@@ -495,6 +590,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
           assigneeName: t.assigneeName,
           status: t.status,
           priority: t.priority,
+          areaName: t.areaName,
           goalNames: t.goalIds.map(goalTitleOf).filter((x): x is string => !!x),
           dday: d.text,
           overdue: d.overdue && t.status !== "done" && t.status !== "dropped",
@@ -563,6 +659,14 @@ export default function TasksView({ user }: { user: SessionUser }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <select value={fArea} onChange={(e) => { setFArea(e.target.value); setAreaDefaulted(true); }}>
+            <option value="">전체 영역</option>
+            {areas.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
           <select value={fProject} onChange={(e) => setFProject(e.target.value)}>
             <option value="">전체 프로젝트</option>
             {projects.map((p) => (
@@ -599,7 +703,16 @@ export default function TasksView({ user }: { user: SessionUser }) {
           </button>
         </div>
 
-        {showNew && <NewTaskForm actors={actors} projects={projects} user={user} onDone={() => { setShowNew(false); load(); }} />}
+        {showNew && (
+          <NewTaskForm
+            actors={actors}
+            projects={projects}
+            areas={areas}
+            myAreaIds={myAreaIds}
+            user={user}
+            onDone={() => { setShowNew(false); load(); }}
+          />
+        )}
 
         {loading && <p className="gempty">불러오는 중...</p>}
         {error && <p className="gerr">{error}</p>}
@@ -621,6 +734,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
             task={selected}
             actors={actors}
             projects={projects}
+            areas={areas}
             monthGoals={monthGoals}
             onChanged={load}
             onClose={() => setSelectedId(null)}

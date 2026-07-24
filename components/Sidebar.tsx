@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Project, SessionUser } from "@/lib/types";
+import type { AreaWithProjects, SessionUser } from "@/lib/types";
 
 const RAIL_KEY = "tb.rail";
 
@@ -29,6 +29,12 @@ const IC = {
     <>
       <rect x="4" y="8" width="16" height="12" rx="3" />
       <path d="M12 4v4M9 14h.01M15 14h.01" />
+    </>
+  ),
+  inbox: (
+    <>
+      <path d="M4 13h4l2 3h4l2-3h4" />
+      <path d="M4 13 6 5h12l2 8v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
     </>
   ),
   goal: (
@@ -85,16 +91,19 @@ function NavLink({
   icon,
   label,
   current,
+  count,
 }: {
   href: string;
   icon: React.ReactNode;
   label: string;
   current: boolean;
+  count?: number; // 지정 시 우측 카운트 배지 (0이면 회색, >0이면 강조)
 }) {
   return (
     <Link href={href} aria-current={current ? "page" : undefined}>
       <Icon d={icon} />
       <span>{label}</span>
+      {count !== undefined && <span className={`cnt ${count > 0 ? "alert" : ""}`}>{count}</span>}
     </Link>
   );
 }
@@ -107,10 +116,12 @@ const Chevron = () => (
 
 export default function Sidebar({
   user,
-  projects,
+  areas,
+  inboxCount,
 }: {
   user: SessionUser;
-  projects: Project[];
+  areas: AreaWithProjects[];
+  inboxCount: number;
 }) {
   const pathname = usePathname();
   const [rail, setRail] = useState(false);
@@ -135,7 +146,6 @@ export default function Sidebar({
   const isLead = user.role === "lead";
   const cur = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
-  const shownProjects = projects.slice(0, 5);
 
   return (
     <aside className="side">
@@ -166,6 +176,8 @@ export default function Sidebar({
           <Chevron />
           <span className="gname">내 작업</span>
         </summary>
+        {/* 승인 인박스 — 사람/에이전트 공간의 유일한 통로. 최상단 + 카운트 배지 */}
+        <NavLink href="/inbox" icon={IC.inbox} label="승인 인박스" current={cur("/inbox")} count={inboxCount} />
         <NavLink href="/" icon={IC.home} label="홈" current={cur("/")} />
         <NavLink href="/tasks" icon={IC.tasks} label="내 업무" current={cur("/tasks")} />
         <NavLink href="/calendar" icon={IC.calendar} label="캘린더" current={cur("/calendar")} />
@@ -186,19 +198,28 @@ export default function Sidebar({
       <details className="grp" open>
         <summary>
           <Chevron />
-          <span className="gname">프로젝트</span>
+          <span className="gname">업무 영역</span>
         </summary>
-        {shownProjects.map((project) => (
-          <Link
-            key={project.id}
-            href={`/projects/${project.id}`}
-            aria-current={cur(`/projects/${project.id}`) ? "page" : undefined}
-          >
-            <span className={`pjdot ${project.color_key ?? "team"}`} />
-            <span>{project.name}</span>
-          </Link>
+        {/* 영역 7종 나열, 각 영역 아래 소속 프로젝트를 들여쓰기로 표시 (is_active=false 는 서버에서 제외) */}
+        {areas.map((area) => (
+          <div key={area.id}>
+            <Link href={`/tasks?area=${area.id}`}>
+              <span className={`pjdot ${area.color_key ?? "team"}`} />
+              <span>{area.name}</span>
+            </Link>
+            {area.projects.map((project) => (
+              <Link
+                key={project.id}
+                className="subproj"
+                href={`/projects/${project.id}`}
+                aria-current={cur(`/projects/${project.id}`) ? "page" : undefined}
+              >
+                <span className={`pjdot ${project.color_key ?? "team"}`} />
+                <span>{project.name}</span>
+              </Link>
+            ))}
+          </div>
         ))}
-        {/* 인덱스 진입 경로는 항상 노출, 직접 나열만 5개 제한 (발주 지시) */}
         <Link className="moreln" href="/projects">
           전체 프로젝트 →
         </Link>

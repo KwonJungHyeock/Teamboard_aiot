@@ -571,6 +571,10 @@ body {
 .pjdot.team { background: var(--team); }
 .moreln { display: block; padding: 5px 8px 5px 30px; font-size: 11.5px; color: var(--lo); text-decoration: none; }
 .moreln:hover { color: var(--mid); }
+/* 업무 영역 트리 — 소속 프로젝트 들여쓰기 */
+.side a.subproj { padding-left: 30px; font-size: 12.5px; color: var(--lo); min-height: 30px; }
+.side a.subproj .pjdot { width: 6px; height: 6px; flex-basis: 6px; }
+.side a.subproj:hover { color: var(--hi); }
 
 .acct { display: flex; align-items: center; gap: 9px; padding: 8px; border-radius: var(--r-s); border: 1px solid var(--line); background: var(--glass); cursor: pointer; width: 100%; font-family: inherit; text-align: left; color: inherit; }
 .acct:hover { border-color: var(--line-hi); }

@@ -524,33 +524,12 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
       toMe,
     };
   });
-  // 에이전트 승인 대기 초안 → 에이전트 생성물로 패널에 표시 (구 관제뷰 "막힌 곳" 요소 흡수)
-  const pendingDrafts = await query<{
-    id: number;
-    title: string;
-    task_type: string;
-    user_name: string;
-    assistant_name: string;
-  }>(
-    `SELECT d.id, d.title, d.task_type, u.display_name AS user_name, a.display_name AS assistant_name
-     FROM drafts d JOIN actor u ON u.id = d.user_id JOIN actor a ON a.id = d.assistant_id
-     WHERE d.status = 'pending' ORDER BY d.created_at ASC LIMIT 6`
-  );
-  const draftItems: HomeSignal[] = pendingDrafts.map((d) => ({
-    id: d.id,
-    kind: "draft",
-    type: "review",
-    title: d.title,
-    meta: `${d.assistant_name} 초안 · ${d.task_type} · ${d.user_name} 담당`,
-    badge: "wait",
-    badgeLabel: "승인 대기",
-    agent: true,
-    stalled: false,
-  }));
-  // 우선순위: 나에게 온 확인 요청 → risk → 미실행 결정 → 정체 → 승인 대기 초안 → 나머지
+  // 사람 공간 원칙 — 홈 시그널 패널에는 에이전트 산출물(승인 대기 초안)을 넣지 않는다.
+  // 에이전트 초안·제안은 "승인 인박스"에만 모인다 (사람 공간에는 승인된 것만 존재).
+  // 우선순위: 나에게 온 확인 요청 → risk → 미실행 결정 → 정체 → 나머지
   const priority = signalItems.filter((s) => s.toMe || s.type === "risk" || s.decidedStale || s.stalled);
   const rest = signalItems.filter((s) => !priority.includes(s));
-  const signals: HomeSignal[] = [...priority, ...draftItems, ...rest]
+  const signals: HomeSignal[] = [...priority, ...rest]
     .slice(0, 10)
     .map(({ id, kind, type, title, meta, badge, badgeLabel, agent, stalled }) => ({
       id,

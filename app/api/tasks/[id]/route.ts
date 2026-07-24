@@ -64,6 +64,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
     if (payload.startDate !== undefined) set("start_date", isDate(payload.startDate) ? payload.startDate : null);
     if (payload.dueDate !== undefined) set("due_date", isDate(payload.dueDate) ? payload.dueDate : null);
+    if (payload.areaId !== undefined && payload.areaId) set("area_id", Number(payload.areaId));
+    if (["team", "personal", "routine"].includes(payload.workType)) set("work_type", payload.workType);
 
     let statusLog = "";
     if (payload.status !== undefined) {

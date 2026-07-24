@@ -50,7 +50,22 @@ export interface Project {
   color_key: string | null;
   notion_url: string | null;
   is_active: boolean;
+  area_id: number;
 }
+
+export interface Area {
+  id: number;
+  name: string;
+  color_key: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface AreaWithProjects extends Area {
+  projects: Project[];
+}
+
+export type WorkType = "team" | "personal" | "routine";
 
 export interface Goal {
   id: number;
