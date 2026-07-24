@@ -15,17 +15,20 @@ function CountBadge({ n, warn }: { n: number; warn?: boolean }) {
   return <span className={`count${warn ? " warn" : ""}`}>{n}</span>;
 }
 
-// 빈 상태 일러스트 슬롯 — 파일이 없으면 onError로 이미지를 숨겨 깨진 이미지 없이 텍스트만 남는다.
+// 빈 상태 일러스트 슬롯 — 이미지는 기본 숨김(display:none)이며 로드 성공 시에만 노출한다.
+// 파일이 없으면(404) onLoad가 오지 않아 숨김 그대로 → 깨진 이미지 아이콘도, 빈 여백도 없이
+// 텍스트만 남는다. /assets/illust/*.png 파일이 도착하면 자동으로 나타난다 (P1-3).
 function EmptyState({ img, children }: { img: string; children: React.ReactNode }) {
+  const [loaded, setLoaded] = useState(false);
   return (
     <div className="empty-state">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={`/assets/illust/${img}`}
         alt=""
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).style.display = "none";
-        }}
+        style={{ display: loaded ? "block" : "none" }}
+        onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(false)}
       />
       <p className="muted">{children}</p>
     </div>
