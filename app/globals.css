@@ -517,13 +517,15 @@ body {
 }
 
 /* ── 사이드바 ── */
-.side { background: var(--bg-rail); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 12px 10px; overflow: hidden; }
-.side a { display: flex; align-items: center; gap: 9px; padding: 6.5px 8px; border-radius: var(--r-s); color: var(--mid); text-decoration: none; font-size: 12.5px; white-space: nowrap; transition: .15s; }
+.side { background: var(--bg-rail); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 12px 12px; overflow: hidden; }
+/* 항목 34px / 13.5px, 좌측 정렬 기준 통일(아이콘 폭 고정) */
+.side a { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 6px 9px; border-left: 3px solid transparent; border-radius: var(--r-s); color: var(--mid); text-decoration: none; font-size: var(--fs-row); white-space: nowrap; transition: .15s; }
 .side a:hover { background: var(--glass); color: var(--hi); }
-.side a[aria-current="page"] { background: rgba(75, 141, 248, .13); color: #B9D2FD; }
-.side a:focus-visible { outline: 2px solid var(--edu); outline-offset: 1px; }
-.side a svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 16px; }
-.side .cnt { margin-left: auto; font-family: var(--f-d); font-size: 10px; color: var(--lo); }
+/* 활성: 좌측 3px 브랜드 레드 바 + 배경 틴트 (기존 파란 박스 제거) */
+.side a[aria-current="page"] { background: rgba(227, 30, 36, .10); border-left-color: var(--brand); color: var(--hi); font-weight: 500; }
+.side a:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.side a svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 17px; }
+.side .cnt { margin-left: auto; font-family: var(--f-d); font-size: var(--fs-badge); color: var(--lo); }
 .side .cnt.alert { color: var(--danger); }
 .side .sp { flex: 1; min-height: 10px; }
 
@@ -540,10 +542,12 @@ body {
 .kbar svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; flex: 0 0 14px; }
 .kbar kbd { margin-left: auto; font-family: var(--f-d); font-size: 9.5px; border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; }
 
-.grp { margin-top: 9px; }
-.grp > summary { list-style: none; display: flex; align-items: center; gap: 5px; cursor: pointer; font-family: var(--f-d); font-size: 9.5px; letter-spacing: .06em; color: var(--lo); padding: 5px 7px; border-radius: 6px; }
-/* P1-1 — 그룹 라벨 대비 상향: 라벨 텍스트만 한 단계 밝게(--lo → --mid). 셰브런은 --lo 유지 */
-.grp > summary .gname { color: var(--mid); }
+/* 그룹 사이 1px 구분선 (여백만으로 구분하지 않음) */
+.grp { margin-top: 7px; padding-top: 7px; border-top: 1px solid rgba(255, 255, 255, .06); }
+.grp:first-of-type { border-top: 0; }
+.grp > summary { list-style: none; display: flex; align-items: center; gap: 6px; cursor: pointer; font-family: var(--f-d); font-size: var(--fs-badge); letter-spacing: .06em; color: var(--mid); padding: 5px 7px; border-radius: 6px; }
+/* 그룹 라벨 대비 상향 — 11.5px / var(--text-mid) */
+.grp > summary .gname { color: var(--text-mid); }
 .grp > summary::-webkit-details-marker { display: none; }
 .grp > summary:hover { color: var(--mid); background: var(--glass); }
 .grp > summary .cv { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2; transition: transform .18s; }

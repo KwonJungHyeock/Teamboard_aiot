@@ -357,6 +357,74 @@
   .hv .rp-prose, .hv .rp-list li, .hv .rp-table td { color: #111; }
 }
 
+/* ═══════════════════ UI 개편 (2026-07) — 실제 구현 기준 ═══════════════════
+   위 프로토타입 추출 블록을 소스 순서로 오버라이드한다. 프로토타입 index.html은
+   더 이상 기준이 아니다. 타입 스케일·패널화·데이터그리드·레이아웃 재배치. */
+
+/* ── 타이포 (10px 이하 금지 · line-height 1.45 통일) ── */
+.hv{line-height:var(--lh)}
+.hv .crumb{font-size:var(--fs-meta)}
+.hv .head h1{font-size:var(--fs-page-title);line-height:1.25}
+.hv .head .eb{font-size:var(--fs-meta)}
+.hv .head p{font-size:var(--fs-body)}
+.hv .seg button{font-size:var(--fs-meta);padding:5px 12px}
+.hv .iconbtn svg{width:17px;height:17px}
+
+/* ── 지표 카드 ── */
+.hv .metrics{gap:10px;margin-bottom:10px}
+.hv .mc{border-radius:var(--r);padding:12px 14px;background:var(--bg-surface)}
+.hv .mc .l{font-size:var(--fs-meta)}
+.hv .mc .v{font-size:var(--fs-metric)}
+.hv .mc .v em{font-size:var(--fs-meta)}
+.hv .mc .d{font-size:var(--fs-meta)}
+
+/* ── 패널 (구 카드 → 문서 카드 느낌 제거) ── */
+.hv .card{border-radius:var(--r);border:1px solid rgba(255,255,255,.10);background:var(--bg-surface);padding:12px 14px;box-shadow:none}
+.hv .ch{height:38px;margin:-12px -14px 12px;padding:0 14px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.10);border-radius:var(--r) var(--r) 0 0;box-sizing:border-box;margin-bottom:12px}
+.hv .ch h2{font-size:var(--fs-panel-title)}
+.hv .ch .sub{font-size:var(--fs-meta)}
+.hv .stack{gap:10px}
+
+/* ── 테이블 = 데이터 그리드 (행 36px · 구분선 · 정렬) ── */
+.hv th{font-size:var(--fs-meta);padding:0 8px 8px}
+.hv td{font-size:var(--fs-row);height:36px;padding:0 8px;border-bottom:1px solid rgba(255,255,255,.05)}
+.hv .pj{font-size:var(--fs-meta)}
+.hv .st{font-size:var(--fs-badge)}
+.hv .due{font-size:var(--fs-meta)}
+
+/* ── 시그널·활동 = 정렬된 행 (아이콘 20px 고정 → 텍스트 시작 x 통일, 배지 우측) ── */
+.hv .sig{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;column-gap:8px;gap:0;min-height:36px;padding:8px 0;border-top:1px solid rgba(255,255,255,.05)}
+.hv .sig .dt{justify-self:center;margin:0}
+.hv .sig .bd{min-width:0}
+.hv .sig .tt{font-size:var(--fs-row)}
+.hv .sig .mt{font-size:var(--fs-meta);margin-top:2px}
+.hv .sig .bg{justify-self:end;font-size:var(--fs-badge)}
+.hv .atag{font-size:var(--fs-badge)}
+.hv .tabs{gap:6px;margin-bottom:8px}
+.hv .tab{font-size:var(--fs-meta);padding:4px 12px}
+.hv .tab .n{font-size:var(--fs-badge)}
+
+/* ── 허들 (컴팩트 행) ── */
+.hv .hud{padding:10px 12px;border-radius:var(--r-s)}
+.hv .hud .h{font-size:var(--fs-row)}
+.hv .hud .b{font-size:var(--fs-meta);line-height:var(--lh);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hv .hud .f{font-size:var(--fs-meta)}
+.hv .acts{gap:8px}
+.hv .acts button{font-size:var(--fs-badge);padding:4px 12px}
+
+/* ── 목표·프로젝트 진행 텍스트 ── */
+.hv .pr-t{font-size:var(--fs-meta)}
+.hv .pr-t span:last-child{font-size:var(--fs-meta)}
+
+/* ── 버튼: 가로 꽉 채움 금지 · 최상위 CTA 브랜드 레드 솔리드 ── */
+.hv .newbtn{width:auto;height:32px;padding:0 16px;font-size:var(--fs-body);background:var(--brand);box-shadow:none}
+.hv .newbtn:hover{filter:brightness(1.08)}
+
+/* ── 레이아웃: 타임라인 전폭 + 균형 2열 (좌측 빈 공간 제거) ── */
+.hv .fullrow{margin-bottom:10px}
+.hv .cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+@media(max-width:1100px){.hv .cols{grid-template-columns:minmax(0,1fr)}}
+
 /* ── 자료 링크 카드 (Phase 5) — 메타데이터만, 본문 없음 ── */
 .hv .acards{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
 .hv .acard{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;min-width:0}

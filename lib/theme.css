@@ -7,10 +7,24 @@
   --hi:#EAEEF7; --mid:#98A2B8; --lo:#5C6680;
   --edu:#4B8DF8; --play:#8B5CF6; --train:#2DD4BF; --team:#7C8AA5;
   --warn:#F5A524; --danger:#F87171; --ok:#34D399;
-  --r:14px; --r-s:9px;
+  --r:8px; --r-s:5px;
   --f-ui:'Pretendard','Pretendard Variable',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
   --f-d:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-  --side-w:216px;
+  --side-w:232px;
+
+  /* 타입 스케일 (UI 개편) — 10px 이하 금지, line-height 1.45 통일.
+     home.css / globals.css 는 이 변수로 폰트 크기를 참조한다. */
+  --fs-page-title:22px;
+  --fs-metric:26px;
+  --fs-panel-title:15px;
+  --fs-body:14px;
+  --fs-row:13.5px;
+  --fs-meta:12px;
+  --fs-badge:11.5px;
+  --lh:1.45;
+  /* text 별칭 — 개편 지시가 --text-mid/--text-lo 로 참조 (기존 --mid/--lo 매핑) */
+  --text-mid:var(--mid);
+  --text-lo:var(--lo);
 
   --asset-grain:url('/assets/texture/grain.png');
   /* mesh-brand.webp 전달 전까지 mesh.webp 로 자연 degrade — 위 레이어(brand)가 404면
