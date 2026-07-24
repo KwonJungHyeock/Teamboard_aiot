@@ -10,18 +10,23 @@
   --r:8px; --r-s:5px;
   --f-ui:'Pretendard','Pretendard Variable',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
   --f-d:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-  --side-w:232px;
+  --side-w:248px;
 
-  /* 타입 스케일 (UI 개편) — 10px 이하 금지, line-height 1.45 통일.
+  /* 타입 스케일 (UI 개편 2차 — 110%를 기본으로). 10px 이하 금지, line-height 1.45 통일.
      home.css / globals.css 는 이 변수로 폰트 크기를 참조한다. */
-  --fs-page-title:22px;
-  --fs-metric:26px;
-  --fs-panel-title:15px;
-  --fs-body:14px;
-  --fs-row:13.5px;
-  --fs-meta:12px;
-  --fs-badge:11.5px;
+  --fs-page-title:24px;
+  --fs-metric:29px;
+  --fs-panel-title:16px;
+  --fs-body:15px;
+  --fs-row:15px;
+  --fs-meta:13px;
+  --fs-badge:12.5px;
   --lh:1.45;
+  /* 컨트롤 높이 — 행 40 / 패널 헤더 42 / 버튼 표준 36 · 컴팩트 30 */
+  --row-h:40px;
+  --panel-h:42px;
+  --btn-h:36px;
+  --btn-h-sm:30px;
   /* text 별칭 — 개편 지시가 --text-mid/--text-lo 로 참조 (기존 --mid/--lo 매핑) */
   --text-mid:var(--mid);
   --text-lo:var(--lo);

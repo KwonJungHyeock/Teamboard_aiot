@@ -15,7 +15,7 @@ function sparkPoints(series: number[]): string {
   return series
     .map((v, i) => {
       const x = 2 + (58 / Math.max(series.length - 1, 1)) * i;
-      const y = span === 0 ? 13 : 21 - ((v - min) / span) * 17; // 프로토타입 y범위 4~21
+      const y = span === 0 ? 17 : 29 - ((v - min) / span) * 25; // y범위 4~29 (높이 34)
       return `${Math.round(x)},${Math.round(y * 10) / 10}`;
     })
     .join(" ");
@@ -35,11 +35,11 @@ export default function MetricCards({ metrics }: { metrics: Metric[] }) {
               </div>
               <div className={`d ${m.deltaTone}`}>{m.deltaText}</div>
             </div>
-            <svg viewBox="0 0 62 25" aria-hidden="true">
+            <svg viewBox="0 0 62 34" aria-hidden="true">
               <polyline
                 fill="none"
                 style={{ stroke: SPARK_COLOR[m.key] ?? "var(--edu)" }}
-                strokeWidth="1.6"
+                strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 points={sparkPoints(m.spark)}

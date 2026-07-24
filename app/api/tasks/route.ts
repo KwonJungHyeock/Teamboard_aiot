@@ -1,5 +1,5 @@
 // 업무 API (Phase 5) — GET: 목록(필터) + 인박스(proposed), POST: 생성.
-// status='proposed'는 부사수 제안 상태 — 홈·캘린더·타임라인 집계에서 제외되고
+// status='proposed'는 에이전트 제안 상태 — 홈·캘린더·타임라인 집계에서 제외되고
 // /tasks 인박스에서만 노출된다 (CHANGE-GUIDE Phase 5-1).
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
@@ -26,6 +26,7 @@ export interface TaskListRow {
   colorKey: string | null;
   assigneeId: number | null;
   assigneeName: string | null;
+  startDate: string | null;
   dueDate: string | null;
   goalIds: number[];
   createdByName: string | null;
@@ -81,13 +82,15 @@ export async function GET(request: Request) {
       color_key: string | null;
       assignee_id: number | null;
       assignee_name: string | null;
+      start_date: string | null;
       due_date: string | null;
       goal_ids: number[] | null;
       created_by_name: string | null;
     }>(
       `SELECT t.id, t.title, t.description, t.status, t.priority, t.origin,
               t.project_id, p.name AS project_name, p.color_key,
-              t.assignee_id, a.display_name AS assignee_name, t.due_date::text,
+              t.assignee_id, a.display_name AS assignee_name,
+              t.start_date::text, t.due_date::text,
               array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
               c.display_name AS created_by_name
        FROM task t
@@ -102,7 +105,7 @@ export async function GET(request: Request) {
       params
     );
 
-    // 인박스 — 부사수 제안(proposed) 업무. 목록 필터와 무관하게 항상 함께 반환
+    // 인박스 — 에이전트 제안(proposed) 업무. 목록 필터와 무관하게 항상 함께 반환
     const inboxRows = await query<{
       id: number;
       title: string;
@@ -138,6 +141,7 @@ export async function GET(request: Request) {
       colorKey: r.color_key,
       assigneeId: r.assignee_id,
       assigneeName: r.assignee_name,
+      startDate: r.start_date,
       dueDate: r.due_date,
       goalIds: r.goal_ids ?? [],
       createdByName: r.created_by_name,
@@ -172,19 +176,23 @@ export async function POST(request: Request) {
     const priority = (PRIORITIES as readonly string[]).includes(payload.priority)
       ? payload.priority
       : "mid";
-    const dueDate =
-      typeof payload.dueDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(payload.dueDate)
-        ? payload.dueDate
-        : null;
+    const isDate = (v: unknown): v is string =>
+      typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    const dueDate = isDate(payload.dueDate) ? payload.dueDate : null;
+    const startDate = isDate(payload.startDate) ? payload.startDate : null;
+    if (startDate && dueDate && startDate > dueDate) {
+      return NextResponse.json({ error: "시작일이 마감일보다 늦을 수 없습니다." }, { status: 400 });
+    }
 
     const task = await queryOne<{ id: number }>(
-      `INSERT INTO task (project_id, title, description, status, assignee_id, due_date, priority, origin, created_by)
-       VALUES ($1,$2,$3,'todo',$4,$5,$6,'human',$7) RETURNING id`,
+      `INSERT INTO task (project_id, title, description, status, assignee_id, start_date, due_date, priority, origin, created_by)
+       VALUES ($1,$2,$3,'todo',$4,$5,$6,$7,'human',$8) RETURNING id`,
       [
         payload.projectId ? Number(payload.projectId) : null,
         title,
         String(payload.description ?? "").slice(0, 4000),
         payload.assigneeId ? Number(payload.assigneeId) : session.id,
+        startDate,
         dueDate,
         priority,
         session.id,

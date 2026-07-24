@@ -1,6 +1,6 @@
 "use client";
 
-// 화면 A — 내 부사수 (PRD 6장)
+// 화면 A — 내 에이전트 (PRD 6장)
 import { useCallback, useEffect, useState } from "react";
 import ApproveModal from "./ApproveModal";
 import { NOTION_WORK_AREAS, TASK_TYPES } from "@/lib/types";
@@ -93,7 +93,7 @@ export default function AssistantView({ user }: { user: SessionUser }) {
     return () => clearInterval(timer);
   }, [refresh]);
 
-  // 월간 보고 초안(monthly_report)은 /reports에서 승인한다. 부사수 화면에는 부수 업무 초안만.
+  // 월간 보고 초안(monthly_report)은 /reports에서 승인한다. 에이전트 화면에는 부수 업무 초안만.
   const working = drafts.filter((d) => d.status === "working" && d.task_type !== "monthly_report");
   const pending = drafts.filter((d) => d.status === "pending" && d.task_type !== "monthly_report");
   const rejected = drafts.filter((d) => d.status === "rejected" && d.task_type !== "monthly_report");
@@ -149,7 +149,7 @@ export default function AssistantView({ user }: { user: SessionUser }) {
 
   return (
     <div>
-      {/* 부사수 헤더 */}
+      {/* 에이전트 헤더 */}
       <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <div
           style={{
@@ -167,15 +167,15 @@ export default function AssistantView({ user }: { user: SessionUser }) {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 800, fontSize: 17 }}>
-            {assistant?.name ?? "부사수"}{" "}
+            {assistant?.name ?? "에이전트"}{" "}
             <span className={`badge ${statusColor}`}>{assistantStatus}</span>
           </div>
           <div className="muted">
-            {user.name}의 AI 부사수 · 초안만 작성하며, 승인 없이는 Notion에 기록하지 않습니다.
+            {user.name}의 AI 에이전트 · 초안만 작성하며, 승인 없이는 Notion에 기록하지 않습니다.
           </div>
         </div>
         <button className="btn small" onClick={() => setShowSettings((v) => !v)}>
-          {showSettings ? "설정 닫기" : "내 부사수 설정"}
+          {showSettings ? "설정 닫기" : "에이전트 설정"}
         </button>
       </div>
 
@@ -190,9 +190,9 @@ export default function AssistantView({ user }: { user: SessionUser }) {
       )}
 
       <div className="grid cols-2 section-gap">
-        {/* 부수 업무 맡기기 */}
+        {/* 에이전트에게 위임 */}
         <div className="card">
-          <h2>부수 업무 맡기기</h2>
+          <h2>에이전트에게 위임</h2>
           <div className="chips" style={{ marginBottom: 12 }}>
             {TASK_TYPES.map((t) => (
               <button
@@ -207,7 +207,7 @@ export default function AssistantView({ user }: { user: SessionUser }) {
           </div>
           <textarea
             rows={4}
-            placeholder={`부사수에게 맡길 ${taskType} 내용을 입력하세요.\n예: "아두이노 교육 키트 시장 동향 조사"`}
+            placeholder={`에이전트에게 맡길 ${taskType} 내용을 입력하세요.\n예: "아두이노 교육 키트 시장 동향 조사"`}
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
           />
@@ -217,7 +217,7 @@ export default function AssistantView({ user }: { user: SessionUser }) {
               disabled={delegating || !instruction.trim()}
               onClick={() => delegate()}
             >
-              {delegating ? "부사수 작성 중..." : "위임하기"}
+              {delegating ? "에이전트 작성 중..." : "위임하기"}
             </button>
           </div>
 
@@ -260,13 +260,13 @@ export default function AssistantView({ user }: { user: SessionUser }) {
         </div>
       </div>
 
-      {/* 내 초안 · 승인 대기 (내 부사수가 올린 초안) */}
+      {/* 내 초안 · 승인 대기 (내 에이전트가 올린 초안) */}
       <div className="card section-gap">
         <h2>
           내 초안 · 승인 대기 <CountBadge n={pending.length} warn />
         </h2>
         <p className="muted" style={{ marginBottom: 10 }}>
-          내 부사수가 올린 초안입니다. 승인해야 Notion에 기록됩니다.
+          내 에이전트가 올린 초안입니다. 승인해야 Notion에 기록됩니다.
         </p>
         {pending.length === 0 && (
           <EmptyState img="empty-drafts.png">
@@ -328,14 +328,14 @@ export default function AssistantView({ user }: { user: SessionUser }) {
         ))}
       </div>
 
-      {/* 팀 초안 — lead 전용. 팀원 부사수 초안 승인/반려 (구 /control 승인 처리 흡수) */}
+      {/* 팀 초안 — lead 전용. 팀원 에이전트 초안 승인/반려 (구 /control 승인 처리 흡수) */}
       {user.role === "lead" && (
         <div className="card section-gap">
           <h2>
             팀원 초안 · 승인 대기 (팀장) <CountBadge n={teamDrafts.length} warn />
           </h2>
           <p className="muted" style={{ marginBottom: 10 }}>
-            팀원 부사수가 올린 초안입니다. 승인해야 Notion에 기록됩니다.
+            팀원 에이전트가 올린 초안입니다. 승인해야 Notion에 기록됩니다.
           </p>
           {teamDrafts.length === 0 && (
             <EmptyState img="empty-drafts.png">승인 대기 중인 팀원 초안이 없습니다.</EmptyState>
@@ -498,7 +498,7 @@ function SettingsCard({
 
   return (
     <div className="card section-gap">
-      <h2>내 부사수 설정</h2>
+      <h2>에이전트 설정</h2>
       <div className="grid cols-2">
         <div className="field">
           <label>이름</label>

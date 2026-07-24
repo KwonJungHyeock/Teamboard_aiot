@@ -175,15 +175,21 @@ select:focus {
   }
 }
 
-/* 버튼 */
+/* 버튼 (UI 개편 — 기능 비중으로 위계. 모두 width:auto · nowrap) */
 .btn {
-  border: 1px solid var(--border);
-  background: var(--bg-elev);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  white-space: nowrap;
+  height: var(--btn-h);
+  border: 1px solid var(--line-hi);
+  background: transparent;
   color: var(--text);
-  border-radius: 8px;
-  padding: 8px 16px;
+  border-radius: 6px;
+  padding: 0 16px; /* 보조: 아웃라인 */
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--fs-row);
 }
 
 .btn:hover {
@@ -196,9 +202,11 @@ select:focus {
 }
 
 .btn.primary {
+  /* 주요: 브랜드 레드 솔리드 (한 화면에 1종) */
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+  padding: 0 20px;
 }
 
 .btn.primary:hover {
@@ -210,8 +218,10 @@ select:focus {
 }
 
 .btn.small {
-  padding: 5px 11px;
-  font-size: 13px;
+  /* 행 내부 액션: 컴팩트 텍스트 버튼 */
+  height: var(--btn-h-sm);
+  padding: 0 12px;
+  font-size: var(--fs-badge);
 }
 
 /* 뱃지 */
@@ -519,7 +529,7 @@ body {
 /* ── 사이드바 ── */
 .side { background: var(--bg-rail); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 12px 12px; overflow: hidden; }
 /* 항목 34px / 13.5px, 좌측 정렬 기준 통일(아이콘 폭 고정) */
-.side a { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 6px 9px; border-left: 3px solid transparent; border-radius: var(--r-s); color: var(--mid); text-decoration: none; font-size: var(--fs-row); white-space: nowrap; transition: .15s; }
+.side a { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 7px 9px; border-left: 3px solid transparent; border-radius: var(--r-s); color: var(--mid); text-decoration: none; font-size: var(--fs-row); white-space: nowrap; transition: .15s; }
 .side a:hover { background: var(--glass); color: var(--hi); }
 /* 활성: 좌측 3px 브랜드 레드 바 + 배경 틴트 (기존 파란 박스 제거) */
 .side a[aria-current="page"] { background: rgba(227, 30, 36, .10); border-left-color: var(--brand); color: var(--hi); font-weight: 500; }

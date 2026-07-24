@@ -377,23 +377,25 @@
 .hv .mc .v{font-size:var(--fs-metric)}
 .hv .mc .v em{font-size:var(--fs-meta)}
 .hv .mc .d{font-size:var(--fs-meta)}
+/* 스파크라인 확대 — 추세 가독성 (25→34, 굵기 2) */
+.hv .mc svg{width:74px;height:34px;flex:0 0 74px}
 
 /* ── 패널 (구 카드 → 문서 카드 느낌 제거) ── */
 .hv .card{border-radius:var(--r);border:1px solid rgba(255,255,255,.10);background:var(--bg-surface);padding:12px 14px;box-shadow:none}
-.hv .ch{height:38px;margin:-12px -14px 12px;padding:0 14px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.10);border-radius:var(--r) var(--r) 0 0;box-sizing:border-box;margin-bottom:12px}
+.hv .ch{height:var(--panel-h);margin:-12px -14px 12px;padding:0 14px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.10);border-radius:var(--r) var(--r) 0 0;box-sizing:border-box;margin-bottom:12px}
 .hv .ch h2{font-size:var(--fs-panel-title)}
 .hv .ch .sub{font-size:var(--fs-meta)}
 .hv .stack{gap:10px}
 
 /* ── 테이블 = 데이터 그리드 (행 36px · 구분선 · 정렬) ── */
 .hv th{font-size:var(--fs-meta);padding:0 8px 8px}
-.hv td{font-size:var(--fs-row);height:36px;padding:0 8px;border-bottom:1px solid rgba(255,255,255,.05)}
+.hv td{font-size:var(--fs-row);height:var(--row-h);padding:0 8px;border-bottom:1px solid rgba(255,255,255,.05)}
 .hv .pj{font-size:var(--fs-meta)}
 .hv .st{font-size:var(--fs-badge)}
 .hv .due{font-size:var(--fs-meta)}
 
 /* ── 시그널·활동 = 정렬된 행 (아이콘 20px 고정 → 텍스트 시작 x 통일, 배지 우측) ── */
-.hv .sig{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;column-gap:8px;gap:0;min-height:36px;padding:8px 0;border-top:1px solid rgba(255,255,255,.05)}
+.hv .sig{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;column-gap:8px;gap:0;min-height:var(--row-h);padding:8px 0;border-top:1px solid rgba(255,255,255,.05)}
 .hv .sig .dt{justify-self:center;margin:0}
 .hv .sig .bd{min-width:0}
 .hv .sig .tt{font-size:var(--fs-row)}
@@ -419,6 +421,32 @@
 /* ── 버튼: 가로 꽉 채움 금지 · 최상위 CTA 브랜드 레드 솔리드 ── */
 .hv .newbtn{width:auto;height:32px;padding:0 16px;font-size:var(--fs-body);background:var(--brand);box-shadow:none}
 .hv .newbtn:hover{filter:brightness(1.08)}
+
+/* ── /tasks 필터 한 줄 인라인 + 공용 브랜드 버튼 + 상태 인라인 드롭다운 ── */
+.hv .tfilters{align-items:center;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+.hv .tfilters .tsearch{height:36px;width:220px;flex:0 0 220px;font-size:var(--fs-row);background:var(--bg-elevated);border:1px solid var(--line);border-radius:6px;color:var(--hi);padding:0 12px}
+.hv .tfilters select{height:36px;min-width:150px;font-size:var(--fs-meta)}
+/* 공용 버튼 — 주요(brand 솔리드) / 보조(아웃라인). 모두 width:auto · nowrap. */
+.hv .btn-brand{height:var(--btn-h);padding:0 20px;border:0;border-radius:6px;background:var(--brand);color:#fff;font-weight:600;font-size:var(--fs-row);white-space:nowrap;width:auto;cursor:pointer}
+.hv .btn-brand:hover{filter:brightness(1.08)}
+.hv .btn-brand:disabled{opacity:.5;cursor:not-allowed}
+.hv .btn-outline{height:var(--btn-h);padding:0 16px;border:1px solid var(--line-hi);border-radius:6px;background:transparent;color:var(--mid);font-weight:600;font-size:var(--fs-row);white-space:nowrap;width:auto;cursor:pointer}
+.hv .btn-outline:hover{border-color:var(--mid);color:var(--hi)}
+.hv .btn-outline:disabled{opacity:.5;cursor:not-allowed}
+.hv .stsel{height:30px;font-size:var(--fs-badge);background:var(--bg-elevated);border:1px solid var(--line);border-radius:5px;color:var(--mid);padding:0 6px;width:auto;min-width:78px}
+
+/* ── /reports 레이아웃 — 좌 280 고정 목록(생성기 포함) + 우 본문, 빈 상태 중앙 ── */
+.hv .rp-cols{grid-template-columns:280px minmax(0,1fr);gap:16px}
+.hv .rp-side .rp-gen{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.hv .rp-side .rp-gen select{flex:1 1 72px;min-width:72px;height:34px;font-size:var(--fs-meta)}
+.hv .rp-side .rp-gen .btn-brand{width:auto;flex:0 0 auto}
+.hv .rp-empty-center{min-height:340px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);border-radius:var(--r)}
+@media(max-width:900px){.hv .rp-cols{grid-template-columns:minmax(0,1fr)}}
+
+/* ── 업무 기간 바 (주·월 뷰) ── */
+.hv .ttrk{position:relative;margin-top:2px}
+.hv .tbar{position:absolute;border-radius:5px;display:flex;align-items:center;gap:5px;padding:0 8px;font-size:var(--fs-badge);color:#fff;white-space:nowrap;overflow:hidden;box-shadow:0 0 10px rgba(0,0,0,.25)}
+.hv .tdotm{position:absolute;width:9px;height:9px;border-radius:50%;box-shadow:0 0 7px rgba(0,0,0,.4)}
 
 /* ── 레이아웃: 타임라인 전폭 + 균형 2열 (좌측 빈 공간 제거) ── */
 .hv .fullrow{margin-bottom:10px}

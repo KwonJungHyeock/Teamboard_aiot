@@ -40,7 +40,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (draft.status !== "pending") {
       return NextResponse.json({ error: "승인 대기 상태의 초안이 아닙니다." }, { status: 409 });
     }
-    // 사수(담당자 본인) 또는 팀장만 승인 가능
+    // 담당자 본인 또는 팀장만 승인 가능
     if (draft.user_id !== session.id && session.role !== "lead") {
       return NextResponse.json({ error: "승인 권한이 없습니다." }, { status: 403 });
     }
@@ -60,7 +60,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
       status: pick(payload.status, NOTION_STATUSES, "진행"), // 승인 기본값: 진행
       priority: pick(payload.priority, NOTION_PRIORITIES, "Mid"),
       assigneeNotionId: draft.notion_user_id,
-      startDate: typeof payload.startDate === "string" && payload.startDate ? payload.startDate : today,
+      // start_date 없으면 시작일 속성 생략 (빈 문자열 → createTimelinePage가 미전송). due_date는 종료일.
+      startDate: typeof payload.startDate === "string" && payload.startDate ? payload.startDate : "",
       endDate: typeof payload.endDate === "string" && payload.endDate ? payload.endDate : today,
       memo: summaryLine.slice(0, 200),
       bodyMarkdown: draft.body,

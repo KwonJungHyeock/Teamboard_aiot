@@ -1,5 +1,5 @@
 // 구성원 관리 API (Phase 8) — lead 전용. GET: 목록, POST: 계정 발급.
-// 계정 발급 시 임시 비밀번호(must_change_pw=true) + 부사수 actor(type='agent') 자동 생성.
+// 계정 발급 시 임시 비밀번호(must_change_pw=true) + 에이전트 actor(type='agent') 자동 생성.
 // 하드 삭제 없음 — 비활성화는 [id] 라우트의 is_active=false.
 import { NextResponse } from "next/server";
 import { requireLiveLead } from "@/lib/auth";
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     const email = String(payload.email ?? "").trim().toLowerCase();
     const shortName = String(payload.shortName ?? "").trim().slice(0, 30) || null;
     const role = (ROLES as readonly string[]).includes(payload.role) ? payload.role : "member";
-    const assistantName = String(payload.assistantName ?? "").trim().slice(0, 60) || `${displayName}의 부사수`;
+    const assistantName = String(payload.assistantName ?? "").trim().slice(0, 60) || `${displayName}의 에이전트`;
 
     if (!displayName) return NextResponse.json({ error: "이름을 입력하세요." }, { status: 400 });
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       [human!.id, email, hashPassword(tempPw), role, payload.notionUserId ? String(payload.notionUserId) : null]
     );
 
-    // 2. 부사수 actor(type='agent') + agent_config 자동 생성
+    // 2. 에이전트 actor(type='agent') + agent_config 자동 생성
     const workAreas = Array.isArray(payload.workAreas) ? payload.workAreas.map(String) : [];
     const agent = await queryOne<{ id: number }>(
       `INSERT INTO actor (type, display_name, owner_actor_id) VALUES ('agent', $1, $2) RETURNING id`,

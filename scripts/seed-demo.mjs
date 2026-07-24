@@ -73,6 +73,15 @@ const tDone1 = await task(edu, "PoC 현장 테스트 준비", "done", kwon, -3, 
 const tDone2 = await task(train, "4~5장 평가문항 검수", "done", park, -1, "mid", "human", 9, 1);
 const tDone3 = await task(play, "로그인 화면 시안", "done", jo, -2, "mid", "human", 8, 3);
 
+// ── 업무 기간(시작일) — 주·월 뷰 기간 바 확인용. 운영 시드는 건드리지 않음 (데모 전용). ──
+const taskStarts = [
+  [tPoc, -5], [tCore, -1], [tPrd, 0], [tLoad, 3], [tCurr, 7],
+  [tHome, -1], [tEddie, 1], [tEval, -2], [tDb, 4], [tAx, 0],
+];
+for (const [id, off] of taskStarts) {
+  await q("UPDATE task SET start_date = $1 WHERE id = $2", [d(off), id]);
+}
+
 // ── 일정 (오늘) ──
 async function event(projectId, title, startAt, endAt, isTeam, participants) {
   const r = await q(

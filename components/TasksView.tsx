@@ -1,6 +1,6 @@
 "use client";
 
-// 업무 화면 (Phase 5) — 인박스(부사수 제안) + 필터 목록 + 상세 편집.
+// 업무 화면 (Phase 5) — 인박스(에이전트 제안) + 필터 목록 + 상세 편집.
 // 목록 테이블은 홈 "마감 임박"과 동일한 TaskTable을 재사용한다 (검수 포인트 6).
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/types";
@@ -18,6 +18,7 @@ interface TaskItem {
   colorKey: string | null;
   assigneeId: number | null;
   assigneeName: string | null;
+  startDate: string | null;
   dueDate: string | null;
   goalIds: number[];
   createdByName: string | null;
@@ -96,6 +97,7 @@ function TaskDetail({
   const [priority, setPriority] = useState(task.priority);
   const [projectId, setProjectId] = useState(task.projectId ?? 0);
   const [assigneeId, setAssigneeId] = useState(task.assigneeId ?? 0);
+  const [startDate, setStartDate] = useState(task.startDate ?? "");
   const [dueDate, setDueDate] = useState(task.dueDate ?? "");
   const [goalIds, setGoalIds] = useState<number[]>(task.goalIds);
   const [dropReason, setDropReason] = useState("");
@@ -110,6 +112,7 @@ function TaskDetail({
     setPriority(task.priority);
     setProjectId(task.projectId ?? 0);
     setAssigneeId(task.assigneeId ?? 0);
+    setStartDate(task.startDate ?? "");
     setDueDate(task.dueDate ?? "");
     setGoalIds(task.goalIds);
     setConfirmingDelete(false);
@@ -117,6 +120,10 @@ function TaskDetail({
   }, [task]);
 
   async function save() {
+    if (startDate && dueDate && startDate > dueDate) {
+      setError("시작일이 마감일보다 늦을 수 없습니다.");
+      return;
+    }
     setBusy(true);
     setError("");
     const res = await fetch(`/api/tasks/${task.id}`, {
@@ -129,6 +136,7 @@ function TaskDetail({
         priority,
         projectId: projectId || null,
         assigneeId: assigneeId || null,
+        startDate: startDate || null,
         dueDate: dueDate || null,
         goalIds, // 다중 선택 · 선택 사항 (빈 배열 허용)
         dropReason: status === "dropped" ? dropReason : undefined,
@@ -162,7 +170,7 @@ function TaskDetail({
     <section className="card tdetail" aria-label="업무 상세">
       <div className="ch">
         <h2>업무 상세</h2>
-        <span className="sub">#{task.id}{task.origin === "agent" ? " · 부사수 제안" : ""}</span>
+        <span className="sub">#{task.id}{task.origin === "agent" ? " · 에이전트 제안" : ""}</span>
         <span className="gsp" />
         <button className="lk mu" onClick={onClose}>
           닫기
@@ -219,7 +227,11 @@ function TaskDetail({
             </select>
           </div>
           <div className="tform-r">
-            <label>기한</label>
+            <label>시작일 (선택)</label>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </div>
+          <div className="tform-r">
+            <label>마감일 (선택)</label>
             <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
         </div>
@@ -296,6 +308,7 @@ function NewTaskForm({
   const [title, setTitle] = useState("");
   const [projectId, setProjectId] = useState(0);
   const [assigneeId, setAssigneeId] = useState(user.id);
+  const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [priority, setPriority] = useState("mid");
   const [busy, setBusy] = useState(false);
@@ -303,6 +316,10 @@ function NewTaskForm({
 
   async function submit() {
     if (!title.trim()) return;
+    if (startDate && dueDate && startDate > dueDate) {
+      setError("시작일이 마감일보다 늦을 수 없습니다.");
+      return;
+    }
     setBusy(true);
     setError("");
     const res = await fetch("/api/tasks", {
@@ -312,6 +329,7 @@ function NewTaskForm({
         title,
         projectId: projectId || null,
         assigneeId: assigneeId || null,
+        startDate: startDate || null,
         dueDate: dueDate || null,
         priority,
       }),
@@ -322,6 +340,7 @@ function NewTaskForm({
       return;
     }
     setTitle("");
+    setStartDate("");
     setDueDate("");
     onDone();
   }
@@ -349,7 +368,8 @@ function NewTaskForm({
           </option>
         ))}
       </select>
-      <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+      <input type="date" aria-label="시작일" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+      <input type="date" aria-label="마감일" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
       <select value={priority} onChange={(e) => setPriority(e.target.value)}>
         <option value="high">높음</option>
         <option value="mid">보통</option>
@@ -373,12 +393,15 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [search, setSearch] = useState("");
 
-  // 필터 (프로젝트 · 담당 · 상태 · 기한)
+  // 필터 (프로젝트 · 담당 · 상태 · 기한). 담당 기본값=본인 → "내 업무" 진입.
   const [fProject, setFProject] = useState("");
-  const [fAssignee, setFAssignee] = useState("");
+  const [fAssignee, setFAssignee] = useState(String(user.id));
   const [fStatus, setFStatus] = useState("");
   const [fDue, setFDue] = useState("");
+  const isMine = fAssignee === String(user.id);
 
   const load = useCallback(async () => {
     try {
@@ -433,9 +456,36 @@ export default function TasksView({ user }: { user: SessionUser }) {
     load();
   }
 
-  const rows: TaskTableRow[] = useMemo(
-    () =>
-      tasks.map((t) => {
+  // 인라인 상태 변경 (목록에서 즉시). 권한 규칙은 서버가 유지. 중단은 사유가 필요해 제외.
+  async function changeStatus(id: number, status: string) {
+    const res = await fetch(`/api/tasks/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) {
+      setError((await res.json()).error ?? "상태 변경 실패");
+      return;
+    }
+    load();
+  }
+
+  const goalTitleOf = useCallback(
+    (id: number) => monthGoals.find((g) => g.id === id)?.title,
+    [monthGoals]
+  );
+
+  const rows: TaskTableRow[] = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return tasks
+      .filter(
+        (t) =>
+          !q ||
+          t.title.toLowerCase().includes(q) ||
+          (t.projectName ?? "").toLowerCase().includes(q) ||
+          (t.assigneeName ?? "").toLowerCase().includes(q)
+      )
+      .map((t) => {
         const d = dday(t.dueDate, today);
         return {
           id: t.id,
@@ -444,12 +494,13 @@ export default function TasksView({ user }: { user: SessionUser }) {
           colorKey: t.colorKey,
           assigneeName: t.assigneeName,
           status: t.status,
+          priority: t.priority,
+          goalNames: t.goalIds.map(goalTitleOf).filter((x): x is string => !!x),
           dday: d.text,
           overdue: d.overdue && t.status !== "done" && t.status !== "dropped",
         };
-      }),
-    [tasks, today]
-  );
+      });
+  }, [tasks, today, search, goalTitleOf]);
 
   const selected = tasks.find((t) => t.id === selectedId) ?? null;
 
@@ -465,8 +516,12 @@ export default function TasksView({ user }: { user: SessionUser }) {
         <div className="head">
           <div>
             <div className="eb">TASKS</div>
-            <h1>업무</h1>
-            <p>부사수 제안은 인박스에서 승인해야 목록·홈·캘린더에 반영됩니다.</p>
+            <h1>{isMine ? "내 업무" : "업무"}</h1>
+            <p>
+              {isMine
+                ? "담당이 나인 업무만 보고 있습니다. 담당을 ‘전체 담당’으로 바꾸면 전체를 조회합니다."
+                : "에이전트 제안은 인박스에서 승인해야 목록·홈·캘린더에 반영됩니다."}
+            </p>
           </div>
         </div>
 
@@ -475,7 +530,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
           <section className="card tinbox" aria-label="인박스">
             <div className="ch">
               <h2>인박스</h2>
-              <span className="sub">부사수 제안 {inbox.length}건 — 승인 시 업무로 전환</span>
+              <span className="sub">에이전트 제안 {inbox.length}건 — 승인 시 업무로 전환</span>
             </div>
             {inbox.map((item) => (
               <div key={item.id} className="tinbox-row">
@@ -500,7 +555,14 @@ export default function TasksView({ user }: { user: SessionUser }) {
           </section>
         )}
 
+        {/* 필터 — 한 줄 인라인: 검색 + 셀렉트 + 우측 새 업무 버튼 */}
         <div className="tfilters">
+          <input
+            className="tsearch"
+            placeholder="업무·프로젝트·담당 검색"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
           <select value={fProject} onChange={(e) => setFProject(e.target.value)}>
             <option value="">전체 프로젝트</option>
             {projects.map((p) => (
@@ -531,16 +593,24 @@ export default function TasksView({ user }: { user: SessionUser }) {
               </option>
             ))}
           </select>
+          <span className="gsp" />
+          <button className="btn-brand" onClick={() => setShowNew((s) => !s)}>
+            ＋ 새 업무
+          </button>
         </div>
+
+        {showNew && <NewTaskForm actors={actors} projects={projects} user={user} onDone={() => { setShowNew(false); load(); }} />}
 
         {loading && <p className="gempty">불러오는 중...</p>}
         {error && <p className="gerr">{error}</p>}
         {!loading && (
           <TaskTable
             rows={rows}
-            title="업무 목록"
+            title={isMine ? "내 업무" : "업무 목록"}
             sub={`${rows.length}건`}
             emptyText="조건에 맞는 업무가 없습니다."
+            variant="full"
+            onStatusChange={changeStatus}
             onRowClick={(id) => setSelectedId((prev) => (prev === id ? null : id))}
             selectedId={selectedId}
           />
@@ -556,8 +626,6 @@ export default function TasksView({ user }: { user: SessionUser }) {
             onClose={() => setSelectedId(null)}
           />
         )}
-
-        <NewTaskForm actors={actors} projects={projects} user={user} onDone={load} />
       </div>
     </div>
   );

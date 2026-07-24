@@ -132,26 +132,7 @@ export default function ReportsView() {
           <div>
             <div className="eb">REPORTS</div>
             <h1>월간 보고</h1>
-            <p>모든 수치는 DB 집계 값이며, 부사수는 서술만 작성합니다. 승인 시 Notion에 기록됩니다.</p>
-          </div>
-          <div className="rp-gen no-print">
-            <select value={genYear} onChange={(e) => setGenYear(Number(e.target.value))}>
-              {[now.getUTCFullYear() - 1, now.getUTCFullYear()].map((y) => (
-                <option key={y} value={y}>
-                  {y}년
-                </option>
-              ))}
-            </select>
-            <select value={genMonth} onChange={(e) => setGenMonth(Number(e.target.value))}>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>
-                  {m}월
-                </option>
-              ))}
-            </select>
-            <button className="gbtn" disabled={busy} onClick={generate}>
-              보고서 생성
-            </button>
+            <p>모든 수치는 DB 집계 값이며, 에이전트는 서술만 작성합니다. 승인 시 Notion에 기록됩니다.</p>
           </div>
         </div>
 
@@ -161,8 +142,28 @@ export default function ReportsView() {
         <div className="rp-cols">
           <aside className="rp-side no-print">
             <div className="ch">
-              <h2>월별</h2>
+              <h2>월별 보고서</h2>
               <span className="sub">{list.length}건</span>
+            </div>
+            {/* 생성기 — 연·월 선택 + 생성 버튼 (조작 대상이 명확하도록 목록 패널로 이동) */}
+            <div className="rp-gen">
+              <select value={genYear} onChange={(e) => setGenYear(Number(e.target.value))}>
+                {[now.getUTCFullYear() - 1, now.getUTCFullYear()].map((y) => (
+                  <option key={y} value={y}>
+                    {y}년
+                  </option>
+                ))}
+              </select>
+              <select value={genMonth} onChange={(e) => setGenMonth(Number(e.target.value))}>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m}>
+                    {m}월
+                  </option>
+                ))}
+              </select>
+              <button className="btn-brand" disabled={busy} onClick={generate}>
+                보고서 생성
+              </button>
             </div>
             {list.length === 0 && <p className="gempty">생성된 보고서가 없습니다.</p>}
             {list.map((r) => (
@@ -174,13 +175,19 @@ export default function ReportsView() {
                 <b>
                   {r.year}년 {r.month}월
                 </b>
+                <span className="gsp" />
+                {r.approvedAt && <em className="rp-by">{r.approvedAt.slice(0, 10)}</em>}
                 <span className={`rp-st ${r.status}`}>{r.status === "approved" ? "승인" : "초안"}</span>
               </button>
             ))}
           </aside>
 
           <div className="rp-main">
-            {!detail && <p className="gempty">왼쪽에서 보고서를 선택하거나 새로 생성하세요.</p>}
+            {!detail && (
+              <div className="rp-empty-center">
+                <p className="gempty">왼쪽에서 보고서를 선택하거나 새로 생성하세요.</p>
+              </div>
+            )}
             {detail && (
               <>
                 <div className="rp-actions no-print">

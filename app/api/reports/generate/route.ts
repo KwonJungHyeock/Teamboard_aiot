@@ -33,10 +33,10 @@ export async function POST(request: Request) {
       sections: REPORT_SECTIONS,
     });
 
-    // 3. 초안 저장 — 부사수(에이전트) 명의, 승인 대기
+    // 3. 초안 저장 — 에이전트(에이전트) 명의, 승인 대기
     const assistant = await getAssistantByOwner(session.id);
     if (!assistant) {
-      return NextResponse.json({ error: "보고 작성 부사수를 찾을 수 없습니다." }, { status: 400 });
+      return NextResponse.json({ error: "보고 작성 에이전트를 찾을 수 없습니다." }, { status: 400 });
     }
     const body = renderReportMarkdown(data, narration);
     const title = `${data.periodLabel} 월간 보고`;

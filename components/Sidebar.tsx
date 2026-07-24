@@ -4,7 +4,7 @@
 // 그룹: 내 작업 / 목표·보고 / 프로젝트(동적) / 협업 / 관리(lead)
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import type { Project, SessionUser } from "@/lib/types";
 
 const RAIL_KEY = "tb.rail";
@@ -113,7 +113,6 @@ export default function Sidebar({
   projects: Project[];
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [rail, setRail] = useState(false);
 
   useEffect(() => {
@@ -131,12 +130,6 @@ export default function Sidebar({
 
   function openPalette() {
     window.dispatchEvent(new CustomEvent("tb:open-palette"));
-  }
-
-  async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
   }
 
   const isLead = user.role === "lead";
@@ -176,7 +169,7 @@ export default function Sidebar({
         <NavLink href="/" icon={IC.home} label="홈" current={cur("/")} />
         <NavLink href="/tasks" icon={IC.tasks} label="내 업무" current={cur("/tasks")} />
         <NavLink href="/calendar" icon={IC.calendar} label="캘린더" current={cur("/calendar")} />
-        <NavLink href="/assistant" icon={IC.bot} label="내 부사수" current={cur("/assistant")} />
+        <NavLink href="/assistant" icon={IC.bot} label="My Agent" current={cur("/assistant")} />
       </details>
 
       <details className="grp" open>
@@ -239,13 +232,14 @@ export default function Sidebar({
 
       <div className="sp" />
 
-      <button className="acct" onClick={logout} title="로그아웃">
+      {/* 계정 블록 클릭 → 개별 프로필 (로그아웃은 프로필 화면 상단) */}
+      <Link className="acct" href="/profile" aria-current={cur("/profile") ? "page" : undefined} title="내 프로필">
         <span className="av">{user.name.slice(0, 1)}</span>
         <div>
           <b>{user.name}</b>
-          <span>{user.role === "lead" ? "LEAD" : user.role.toUpperCase()} · 로그아웃</span>
+          <span>{user.role === "lead" ? "LEAD" : user.role.toUpperCase()} · 프로필</span>
         </div>
-      </button>
+      </Link>
     </aside>
   );
 }

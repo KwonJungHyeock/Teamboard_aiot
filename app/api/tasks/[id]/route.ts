@@ -18,8 +18,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const taskId = Number(params.id);
     const payload = await request.json();
 
-    const task = await queryOne<{ id: number; title: string; status: string; assignee_id: number | null }>(
-      "SELECT id, title, status, assignee_id FROM task WHERE id = $1 AND is_active = true",
+    const task = await queryOne<{
+      id: number; title: string; status: string; assignee_id: number | null;
+      start_date: string | null; due_date: string | null;
+    }>(
+      "SELECT id, title, status, assignee_id, start_date::text, due_date::text FROM task WHERE id = $1 AND is_active = true",
       [taskId]
     );
     if (!task) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
@@ -49,14 +52,18 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if ((PRIORITIES as readonly string[]).includes(payload.priority)) set("priority", payload.priority);
     if (payload.projectId !== undefined) set("project_id", payload.projectId ? Number(payload.projectId) : null);
     if (payload.assigneeId !== undefined) set("assignee_id", payload.assigneeId ? Number(payload.assigneeId) : null);
-    if (payload.dueDate !== undefined) {
-      set(
-        "due_date",
-        typeof payload.dueDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(payload.dueDate)
-          ? payload.dueDate
-          : null
-      );
+    const isDate = (v: unknown): v is string =>
+      typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    // 병합값 기준으로 시작일<=마감일 검증 (한쪽만 수정해도 정합성 유지)
+    const nextStart =
+      payload.startDate !== undefined ? (isDate(payload.startDate) ? payload.startDate : null) : task.start_date;
+    const nextDue =
+      payload.dueDate !== undefined ? (isDate(payload.dueDate) ? payload.dueDate : null) : task.due_date;
+    if (nextStart && nextDue && nextStart > nextDue) {
+      return NextResponse.json({ error: "시작일이 마감일보다 늦을 수 없습니다." }, { status: 400 });
     }
+    if (payload.startDate !== undefined) set("start_date", isDate(payload.startDate) ? payload.startDate : null);
+    if (payload.dueDate !== undefined) set("due_date", isDate(payload.dueDate) ? payload.dueDate : null);
 
     let statusLog = "";
     if (payload.status !== undefined) {
@@ -91,9 +98,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       if (payload.status === "done") set("completed_at", new Date().toISOString());
       else set("completed_at", null);
       if (task.status === "proposed" && payload.status === "todo") {
-        statusLog = `${session.name}이(가) 부사수 제안 업무 승인 — "${task.title}"`;
+        statusLog = `${session.name}이(가) 에이전트 제안 업무 승인 — "${task.title}"`;
       } else if (task.status === "proposed" && payload.status === "dropped") {
-        statusLog = `${session.name}이(가) 부사수 제안 업무 기각 — "${task.title}"`;
+        statusLog = `${session.name}이(가) 에이전트 제안 업무 기각 — "${task.title}"`;
       } else if (payload.status === "dropped") {
         statusLog = `${session.name}이(가) 업무 중단 — "${task.title}" (사유: ${dropReason})`;
       } else {

@@ -99,9 +99,9 @@ export default function HomeView({
           <div className="stack">
             <TaskTable
               rows={summary.dueSoon}
-              title="마감 임박"
-              sub={`7일 이내 · ${summary.dueSoon.length}건`}
-              emptyText="7일 이내 마감 업무가 없습니다."
+              title="지연 · 마감 임박"
+              sub={`지연 ${summary.dueSoon.filter((t) => t.overdue).length} · 7일 이내 ${summary.dueSoon.filter((t) => !t.overdue).length}`}
+              emptyText="지연·마감 임박 업무가 없습니다."
             />
 
             {/* 프로젝트 진행 — 구 관제뷰 "프로젝트별 진행률" 흡수 */}
