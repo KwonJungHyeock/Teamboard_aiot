@@ -13,7 +13,9 @@
   --side-w:216px;
 
   --asset-grain:url('/assets/texture/grain.png');
-  --asset-mesh:url('/assets/texture/mesh.webp');
+  /* mesh-brand.webp 전달 전까지 mesh.webp 로 자연 degrade — 위 레이어(brand)가 404면
+     아래 레이어(mesh)가 그대로 비쳐 배경이 깨지지 않는다. 파일 도착 시 자동 적용. */
+  --asset-mesh:url('/assets/texture/mesh-brand.webp'), url('/assets/texture/mesh.webp');
 
   /* SPEC 8.1 브랜드 토큰 — 프로토타입 :root에는 없어 SPEC 기준으로 추가.
      용법: 로고·주요 CTA 솔리드에만 (SPEC 8.2 레드 용법 분리 규칙) */

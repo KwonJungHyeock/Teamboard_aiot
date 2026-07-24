@@ -8,6 +8,44 @@ import type { ActivityEntry, AssistantSettings, Draft, SessionUser, TaskType } f
 
 type DraftRow = Draft & { user_name?: string; assistant_name?: string };
 
+// 카운트 배지 — 0이면 렌더하지 않음(숨김). warn=true 는 조치 필요(승인 대기 등) → 경고색.
+// 브랜드 레드는 카운트에 쓰지 않는다 (D-016 확장 · globals.css .count 규칙).
+function CountBadge({ n, warn }: { n: number; warn?: boolean }) {
+  if (n <= 0) return null;
+  return <span className={`count${warn ? " warn" : ""}`}>{n}</span>;
+}
+
+// 빈 상태 일러스트 슬롯 — 파일이 없으면 onError로 이미지를 숨겨 깨진 이미지 없이 텍스트만 남는다.
+function EmptyState({ img, children }: { img: string; children: React.ReactNode }) {
+  return (
+    <div className="empty-state">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/assets/illust/${img}`}
+        alt=""
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).style.display = "none";
+        }}
+      />
+      <p className="muted">{children}</p>
+    </div>
+  );
+}
+
+// 활동 로그 시각 — 오늘이면 HH:MM:SS, 그 외 날짜는 MM-DD HH:MM (JetBrains Mono·자리수 정렬).
+function fmtLogTime(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  return sameDay
+    ? `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+    : `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 export default function AssistantView({ user }: { user: SessionUser }) {
   const [assistant, setAssistant] = useState<AssistantSettings | null>(null);
   const [drafts, setDrafts] = useState<DraftRow[]>([]);
@@ -172,7 +210,7 @@ export default function AssistantView({ user }: { user: SessionUser }) {
           />
           <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
             <button
-              className="btn primary"
+              className="btn"
               disabled={delegating || !instruction.trim()}
               onClick={() => delegate()}
             >
@@ -182,9 +220,11 @@ export default function AssistantView({ user }: { user: SessionUser }) {
 
           {/* 진행 중 업무 */}
           <h2 style={{ marginTop: 20 }}>
-            진행 중 업무 <span className="count">{working.length}</span>
+            진행 중 업무 <CountBadge n={working.length} />
           </h2>
-          {working.length === 0 && <p className="muted">지금 처리 중인 위임 업무가 없습니다.</p>}
+          {working.length === 0 && (
+            <EmptyState img="empty-tasks.png">지금 처리 중인 위임 업무가 없습니다.</EmptyState>
+          )}
           {working.map((d) => (
             <div className="item" key={d.id}>
               <div className="title">
@@ -200,16 +240,16 @@ export default function AssistantView({ user }: { user: SessionUser }) {
           ))}
         </div>
 
-        {/* 실시간 활동 로그 */}
-        <div className="card">
+        {/* 실시간 활동 로그 — 내용 높이만 차지(왼쪽 카드에 늘어나지 않도록 align-self: start) */}
+        <div className="card" style={{ alignSelf: "start" }}>
           <h2>실시간 활동 로그</h2>
           <div className="log">
-            {activity.length === 0 && <p className="muted">아직 활동이 없습니다.</p>}
+            {activity.length === 0 && (
+              <EmptyState img="empty-log.png">아직 활동이 없습니다.</EmptyState>
+            )}
             {activity.map((entry) => (
               <div className="row" key={entry.id}>
-                <span className="time">
-                  {new Date(entry.created_at).toLocaleTimeString("ko-KR", { hour12: false })}
-                </span>
+                <span className="time">{fmtLogTime(entry.created_at)}</span>
                 <span className={`lv-${entry.level}`}>{entry.message}</span>
               </div>
             ))}
@@ -217,13 +257,18 @@ export default function AssistantView({ user }: { user: SessionUser }) {
         </div>
       </div>
 
-      {/* 보고 대기 (승인 게이트) */}
+      {/* 내 초안 · 승인 대기 (내 부사수가 올린 초안) */}
       <div className="card section-gap">
         <h2>
-          보고 대기 · 승인 게이트 <span className="count">{pending.length}</span>
+          내 초안 · 승인 대기 <CountBadge n={pending.length} warn />
         </h2>
+        <p className="muted" style={{ marginBottom: 10 }}>
+          내 부사수가 올린 초안입니다. 승인해야 Notion에 기록됩니다.
+        </p>
         {pending.length === 0 && (
-          <p className="muted">승인 대기 중인 초안이 없습니다. 승인된 것만 Notion에 기록됩니다.</p>
+          <EmptyState img="empty-drafts.png">
+            승인 대기 중인 초안이 없습니다. 승인된 것만 Notion에 기록됩니다.
+          </EmptyState>
         )}
         {pending.map((d) => (
           <div className="item" key={d.id}>
@@ -284,12 +329,14 @@ export default function AssistantView({ user }: { user: SessionUser }) {
       {user.role === "lead" && (
         <div className="card section-gap">
           <h2>
-            팀 초안 · 승인 대기 <span className="count">{teamDrafts.length}</span>
+            팀원 초안 · 승인 대기 (팀장) <CountBadge n={teamDrafts.length} warn />
           </h2>
           <p className="muted" style={{ marginBottom: 10 }}>
             팀원 부사수가 올린 초안입니다. 승인해야 Notion에 기록됩니다.
           </p>
-          {teamDrafts.length === 0 && <p className="muted">승인 대기 중인 팀원 초안이 없습니다.</p>}
+          {teamDrafts.length === 0 && (
+            <EmptyState img="empty-drafts.png">승인 대기 중인 팀원 초안이 없습니다.</EmptyState>
+          )}
           {teamDrafts.map((d) => (
             <div className="item" key={d.id}>
               <div className="title">
@@ -353,7 +400,7 @@ export default function AssistantView({ user }: { user: SessionUser }) {
       {rejected.length > 0 && (
         <div className="card section-gap">
           <h2>
-            반려됨 · 재작업 대기 <span className="count">{rejected.length}</span>
+            반려됨 · 재작업 대기 <CountBadge n={rejected.length} warn />
           </h2>
           {rejected.map((d) => (
             <div className="item" key={d.id}>
