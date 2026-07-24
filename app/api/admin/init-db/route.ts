@@ -1,9 +1,10 @@
-// TEMPORARY — 프로덕션 초기화 성공 직후 삭제. ALLOW_DB_INIT 이중 잠금 적용.
+// TEMPORARY — 2차 운영 초기화 완료 후 삭제. ALLOW_DB_INIT 이중 잠금.
 // Claude Code 실행 환경에서 Neon(5432)에 직접 접속이 불가하여, 배포된 앱이
-// 대신 스키마 적용 + 운영 시드 + 데모 시드를 실행하기 위한 임시 경로다.
+// 대신 스키마 적용 + 운영 시드 (+ 선택적 데모 시드)를 실행하기 위한 임시 경로다.
 // 이중 잠금:
 //   ① 환경변수 ALLOW_DB_INIT === "true" 가 아니면 404 (존재 자체를 숨김)
 //   ② 헤더 x-admin-secret 을 AUTH_SECRET 과 대조, 불일치 시 404
+// 데모 시드는 ?demo=true 쿼리일 때만 실행한다 (기본: 스키마 + 운영 시드만).
 // 모든 호출 시도는 성공·실패 모두 activity_log(warn, 호출 IP 포함)에 기록한다.
 // 실행 로직은 기존 스크립트(scripts/init-db.mjs, scripts/seed-demo.mjs)를
 // 자식 프로세스로 그대로 실행한다 — 로컬 경로와 로직 중복을 만들지 않는다.
@@ -64,17 +65,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
+  // 데모 시드 포함 여부 — ?demo=true 일 때만
+  const withDemo = new URL(request.url).searchParams.get("demo") === "true";
+
   await safeLog({
     userId: null,
-    message: `admin/init-db 실행 시작 (IP: ${ip})`,
+    message: `admin/init-db 실행 시작 (demo=${withDemo}, IP: ${ip})`,
     level: "warn",
   });
 
   const logs: { step: string; ok: boolean; output: string }[] = [];
   const steps: [string, string][] = [
     ["schema+운영시드", path.join(process.cwd(), "scripts", "init-db.mjs")],
-    ["데모시드", path.join(process.cwd(), "scripts", "seed-demo.mjs")],
   ];
+  if (withDemo) steps.push(["데모시드", path.join(process.cwd(), "scripts", "seed-demo.mjs")]);
 
   for (const [step, script] of steps) {
     try {

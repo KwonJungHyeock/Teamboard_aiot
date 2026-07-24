@@ -1,4 +1,4 @@
-// TEMPORARY — init-db 라우트와 함께 삭제. Notion DB 속성 허용값 대조.
+// TEMPORARY — 2차 운영 초기화 완료 후 삭제. ALLOW_DB_INIT 이중 잠금. Notion DB 속성 허용값·타입 대조.
 // 코드가 보내는 값(lib/notion-schema)과 실제 Notion data source 선택지를 비교해
 // 불일치를 목록으로 반환한다. 운영 첫날 승인 실패(선택지 없음)를 사전에 잡기 위함.
 // 이중 잠금: ① ALLOW_DB_INIT === "true" 아니면 404 ② x-admin-secret 불일치 404.
