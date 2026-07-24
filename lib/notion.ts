@@ -2,7 +2,7 @@
 // 삭제 금지 원칙: 페이지 삭제 API는 사용하지 않는다 (PRD 11장).
 import { queryOne } from "./db";
 import type { TimelineItem } from "./types";
-import { NP } from "./notion-schema";
+import { NP, applyAreaPrefix } from "./notion-schema";
 
 const NOTION_API = "https://api.notion.com/v1";
 const NOTION_VERSION = "2025-09-03"; // data_source 지원 버전
@@ -64,6 +64,14 @@ export async function getDataSourceSchema(): Promise<
   return out;
 }
 
+/** 워크스페이스 사용자 목록 (Phase 9 검증용) — init-db의 notion_user_id 매핑 대조에 사용 */
+export async function getWorkspaceUsers(): Promise<{ id: string; name: string; type: string }[]> {
+  const data = await notionFetch(`/users`);
+  return (data.results ?? [])
+    .filter((u: any) => u.type === "person")
+    .map((u: any) => ({ id: u.id, name: u.name ?? "", type: u.type }));
+}
+
 function plainText(richText: any[] | undefined): string {
   return (richText ?? []).map((t: any) => t?.plain_text ?? "").join("");
 }
@@ -73,9 +81,8 @@ function pageToTimelineItem(page: any): TimelineItem {
   return {
     pageId: page.id,
     title: plainText(props["업무명"]?.title) || "(제목 없음)",
-    category: props["구분"]?.select?.name ?? null,
+    workArea: props["업무 구분"]?.select?.name ?? null,
     workType: props["업무유형"]?.select?.name ?? null,
-    areas: (props["업무 구분"]?.multi_select ?? []).map((s: any) => s.name),
     status: props["상태"]?.status?.name ?? null,
     priority: props["우선순위"]?.select?.name ?? null,
     assignees: (props["담당자"]?.people ?? []).map((p: any) => ({
@@ -108,10 +115,9 @@ export async function queryTimeline(): Promise<TimelineItem[]> {
 
 export interface CreateTimelinePageParams {
   title: string;
-  category: string; // 구분: 팀 메인 | 개인 상시
+  workArea: string; // 업무 구분(단일 select): R&D | 플랫폼 | ... | 기타
   workType: string; // 업무유형: 팀업무 | 개인업무 | 상시업무
-  areas: string[]; // 업무 구분
-  status: string; // 대기 | 진행 | 완료
+  status: string; // 상태(status 타입): 대기 | 진행 | 완료
   priority: string; // High | Mid | Low
   assigneeNotionId: string | null;
   startDate: string; // YYYY-MM-DD
@@ -150,13 +156,14 @@ export async function createTimelinePage(
   params: CreateTimelinePageParams
 ): Promise<{ pageId: string; url: string | null }> {
   const dsId = await getTimelineDataSourceId();
-  // 속성 이름은 lib/notion-schema.ts(NP)를 단일 소스로 사용 — 흩어진 문자열 제거
+  // 업무명에 업무 구분 접두어 자동 삽입 (팀 관례 "[플랫폼] 제목", 중복 방지)
+  const finalTitle = applyAreaPrefix(params.title, params.workArea).slice(0, 200);
+  // 속성 이름은 lib/notion-schema.ts(NP)를 단일 소스로 사용. "구분" 속성은 실제 DB에 없어 전송하지 않음.
   const properties: any = {
-    [NP.title]: { title: [{ type: "text", text: { content: params.title.slice(0, 200) } }] },
-    [NP.category]: { select: { name: params.category } },
+    [NP.title]: { title: [{ type: "text", text: { content: finalTitle } }] },
     [NP.workType]: { select: { name: params.workType } },
-    [NP.areas]: { multi_select: params.areas.map((name) => ({ name })) },
-    [NP.status]: { status: { name: params.status } },
+    [NP.workArea]: { select: { name: params.workArea } }, // 업무 구분 = 단일 select
+    [NP.status]: { status: { name: params.status } }, // 상태 = status 타입 (select 아님)
     [NP.priority]: { select: { name: params.priority } },
     [NP.startDate]: { date: { start: params.startDate } },
     [NP.endDate]: { date: { start: params.endDate } },

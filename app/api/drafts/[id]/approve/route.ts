@@ -6,8 +6,7 @@ import { createTimelinePage } from "@/lib/notion";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
 import {
-  NOTION_AREAS,
-  NOTION_CATEGORIES,
+  NOTION_WORK_AREAS,
   NOTION_PRIORITIES,
   NOTION_STATUSES,
   NOTION_WORK_TYPES,
@@ -47,21 +46,23 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
 
     const today = new Date().toISOString().slice(0, 10);
-    const areasInput = Array.isArray(payload.areas)
-      ? payload.areas.filter((a: unknown) => (NOTION_AREAS as readonly string[]).includes(a as string))
-      : [];
+    // 초안 본문 첫 의미 줄을 메모(목록 뷰용 한 줄 요약)로 사용
+    const summaryLine =
+      draft.body
+        .split("\n")
+        .map((l) => l.trim())
+        .find((l) => l && !l.startsWith("#") && !l.startsWith("---")) ?? draft.title;
 
     const { pageId, url } = await createTimelinePage({
-      title: draft.title,
-      category: pick(payload.category, NOTION_CATEGORIES, "개인 상시"),
+      title: draft.title, // 업무 구분 접두어는 createTimelinePage가 삽입
       workType: pick(payload.workType, NOTION_WORK_TYPES, "개인업무"),
-      areas: areasInput.length ? areasInput : ["기타"],
-      status: pick(payload.status, NOTION_STATUSES, "완료"),
+      workArea: pick(payload.workArea, NOTION_WORK_AREAS, "기타"),
+      status: pick(payload.status, NOTION_STATUSES, "진행"), // 승인 기본값: 진행
       priority: pick(payload.priority, NOTION_PRIORITIES, "Mid"),
       assigneeNotionId: draft.notion_user_id,
       startDate: typeof payload.startDate === "string" && payload.startDate ? payload.startDate : today,
       endDate: typeof payload.endDate === "string" && payload.endDate ? payload.endDate : today,
-      memo: `팀보드 부사수 초안 승인 기록 (${draft.task_type})`,
+      memo: summaryLine.slice(0, 200),
       bodyMarkdown: draft.body,
     });
 

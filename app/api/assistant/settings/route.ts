@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { query, getAssistantByOwner } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
-import { NOTION_AREAS } from "@/lib/types";
+import { NOTION_WORK_AREAS } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ export async function PUT(request: Request) {
     const reportStyle = payload.reportStyle === "detailed" ? "detailed" : "brief";
     const workAreas = Array.isArray(payload.workAreas)
       ? payload.workAreas.filter((a: unknown) =>
-          (NOTION_AREAS as readonly string[]).includes(a as string)
+          (NOTION_WORK_AREAS as readonly string[]).includes(a as string)
         )
       : [];
     const autoScope = String(payload.autoScope ?? "own").slice(0, 50);

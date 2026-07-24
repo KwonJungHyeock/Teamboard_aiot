@@ -3,7 +3,7 @@
 // 화면 A — 내 부사수 (PRD 6장)
 import { useCallback, useEffect, useState } from "react";
 import ApproveModal from "./ApproveModal";
-import { NOTION_AREAS, TASK_TYPES } from "@/lib/types";
+import { NOTION_WORK_AREAS, TASK_TYPES } from "@/lib/types";
 import type { ActivityEntry, AssistantSettings, Draft, SessionUser, TaskType } from "@/lib/types";
 
 type DraftRow = Draft & { user_name?: string; assistant_name?: string };
@@ -468,7 +468,7 @@ function SettingsCard({
       <div className="field">
         <label>담당 업무 영역</label>
         <div className="chips">
-          {NOTION_AREAS.map((area) => (
+          {NOTION_WORK_AREAS.map((area) => (
             <button
               key={area}
               type="button"

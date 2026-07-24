@@ -165,9 +165,8 @@ export interface Draft {
 export interface TimelineItem {
   pageId: string;
   title: string;
-  category: string | null;
+  workArea: string | null; // 업무 구분 (단일 select)
   workType: string | null;
-  areas: string[];
   status: string | null;
   priority: string | null;
   assignees: { id: string; name: string }[];
@@ -189,11 +188,10 @@ export interface ActivityEntry {
 
 export const TASK_TYPES: TaskType[] = ["자료조사", "회의록", "내용정리", "반복업무"];
 
-// Notion 속성 허용값 — 단일 소스는 lib/notion-schema.ts. 기존 import 호환을 위해 재수출.
+// Notion 속성 허용값 — 폴백 소스는 lib/notion-schema.ts. 기존 import 호환을 위해 재수출.
 export {
-  NOTION_CATEGORIES,
   NOTION_WORK_TYPES,
-  NOTION_AREAS,
+  NOTION_WORK_AREAS,
   NOTION_STATUSES,
   NOTION_PRIORITIES,
 } from "./notion-schema";

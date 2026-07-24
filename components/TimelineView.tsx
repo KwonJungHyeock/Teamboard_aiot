@@ -28,7 +28,7 @@ export default function TimelineView() {
     [items]
   );
   const areas = useMemo(
-    () => Array.from(new Set(items.flatMap((i) => i.areas))).sort(),
+    () => Array.from(new Set(items.map((i) => i.workArea).filter((a): a is string => !!a))).sort(),
     [items]
   );
 
@@ -36,7 +36,7 @@ export default function TimelineView() {
     if (statusFilter !== "전체" && item.status !== statusFilter) return false;
     if (assigneeFilter !== "전체" && !item.assignees.some((a) => a.name === assigneeFilter))
       return false;
-    if (areaFilter !== "전체" && !item.areas.includes(areaFilter)) return false;
+    if (areaFilter !== "전체" && item.workArea !== areaFilter) return false;
     return true;
   });
 
@@ -132,7 +132,7 @@ export default function TimelineView() {
                       {item.priority ?? "—"}
                     </span>
                   </td>
-                  <td>{item.areas.join(", ") || "—"}</td>
+                  <td>{item.workArea || "—"}</td>
                   <td style={{ fontFamily: "var(--mono)", fontSize: 12 }}>
                     {item.startDate ?? "?"} ~ {item.endDate ?? "?"}
                   </td>

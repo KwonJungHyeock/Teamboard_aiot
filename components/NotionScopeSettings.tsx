@@ -3,6 +3,91 @@
 // Notion 연동 범위 (팀장 전용). 다중 DB 선택은 2차 — UI만 배치, 비활성 (PRD 5장)
 import { useEffect, useState } from "react";
 
+interface DriftItem {
+  property: string;
+  added: string[];
+  removed: string[];
+}
+
+/** Notion 스키마 캐시 상태 + 새로고침 (Phase 9 구조 개선) */
+function NotionSchemaCard() {
+  const [source, setSource] = useState<string>("");
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [drift, setDrift] = useState<DriftItem[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  function apply(d: { source?: string; updatedAt?: string | null; drift?: DriftItem[] }) {
+    setSource(d.source ?? "");
+    setUpdatedAt(d.updatedAt ?? null);
+    setDrift(d.drift ?? []);
+    setLoaded(true);
+  }
+
+  useEffect(() => {
+    fetch("/api/notion/schema").then((r) => r.json()).then(apply).catch(() => setLoaded(true));
+  }, []);
+
+  async function refresh() {
+    setBusy(true);
+    const res = await fetch("/api/settings/notion-schema-refresh", { method: "POST" });
+    const data = await res.json();
+    setBusy(false);
+    if (res.ok) apply(data);
+  }
+
+  const sourceLabel: Record<string, string> = {
+    notion: "Notion 실시간",
+    cache: "캐시",
+    fallback: "코드 폴백",
+  };
+
+  return (
+    <div className="card">
+      <h2>Notion 속성 스키마</h2>
+      <p className="muted" style={{ marginBottom: 12 }}>
+        승인 시 드롭다운 선택지는 Notion에서 조회해 24시간 캐시합니다. 팀장이 Notion 속성값을
+        바꾸면 여기서 새로고침하세요. 조회 실패 시 캐시·코드 폴백으로 안전하게 동작합니다.
+      </p>
+      {loaded && (
+        <p className="muted" style={{ fontSize: 12.5 }}>
+          현재 출처: <strong>{sourceLabel[source] ?? source ?? "-"}</strong>
+          {updatedAt ? ` · 갱신 ${new Date(updatedAt).toLocaleString("ko-KR")}` : ""}
+        </p>
+      )}
+      {drift.length > 0 && (
+        <div
+          style={{
+            marginTop: 10,
+            padding: "9px 12px",
+            background: "rgba(245,165,36,.12)",
+            border: "1px solid rgba(245,165,36,.3)",
+            borderRadius: 8,
+            fontSize: 12.5,
+            color: "#F5A524",
+          }}
+        >
+          <strong>Notion 속성이 코드 기본값과 다릅니다:</strong>
+          <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+            {drift.map((d) => (
+              <li key={d.property}>
+                {d.property}
+                {d.added.length ? ` · 추가됨: ${d.added.join(", ")}` : ""}
+                {d.removed.length ? ` · 없어짐: ${d.removed.join(", ")}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+        <button className="btn" onClick={refresh} disabled={busy}>
+          {busy ? "새로고침 중..." : "Notion 스키마 새로고침"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function NotionScopeSettings() {
   const [dataSourceId, setDataSourceId] = useState("");
   const [label, setLabel] = useState("");
@@ -41,6 +126,7 @@ export default function NotionScopeSettings() {
 
   return (
     <div className="grid cols-2">
+      <NotionSchemaCard />
       <div className="card">
         <h2>Notion 연동 범위 (팀장 전용)</h2>
         <p className="muted" style={{ marginBottom: 14 }}>

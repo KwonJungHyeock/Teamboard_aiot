@@ -44,12 +44,11 @@ export async function POST(_request: Request, { params }: { params: { id: string
     const monthEnd = new Date(Date.UTC(report.period_year, report.period_month, 0)).toISOString().slice(0, 10);
     const monthStart = `${report.period_year}-${String(report.period_month).padStart(2, "0")}-01`;
 
-    // 기존 승인 라우트와 동일한 Notion 기록 경로 재사용
+    // 기존 승인 라우트와 동일한 Notion 기록 경로 재사용 (실제 스키마: 구분 없음, 업무 구분 단일 select)
     const { pageId, url } = await createTimelinePage({
       title: draft.title,
-      category: "팀 메인",
       workType: "팀업무",
-      areas: ["플랫폼"],
+      workArea: "플랫폼",
       status: "완료",
       priority: "High",
       assigneeNotionId: draft.notion_user_id,

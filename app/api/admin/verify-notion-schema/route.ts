@@ -5,7 +5,7 @@
 // 토큰이 없으면 명확한 안내를 반환한다(실패가 아니라 준비 안내).
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
-import { getDataSourceSchema } from "@/lib/notion";
+import { getDataSourceSchema, getWorkspaceUsers } from "@/lib/notion";
 import { NOTION_SELECT_PROPERTIES, NOTION_TIMELINE_SCHEMA, type NotionPropertySpec } from "@/lib/notion-schema";
 import { logActivity } from "@/lib/activity";
 
@@ -98,12 +98,20 @@ export async function GET(request: Request) {
       }
     }
 
+    // 담당자(people) 매핑 대조용 — 워크스페이스 사용자 목록 (init-db notion_user_id와 대조)
+    let notionUsers: { id: string; name: string; type: string }[] = [];
+    try {
+      notionUsers = await getWorkspaceUsers();
+    } catch {
+      /* 사용자 목록 조회 실패는 치명 아님 */
+    }
+
     await safeLog({
       userId: null,
       message: `verify-notion-schema 실행 — 불일치 ${mismatches.length}건 (IP: ${ip})`,
       level: "warn",
     });
-    return NextResponse.json({ ready: true, ok: mismatches.length === 0, mismatches });
+    return NextResponse.json({ ready: true, ok: mismatches.length === 0, mismatches, notionUsers });
   } catch (error: any) {
     return NextResponse.json(
       { ready: true, ok: false, error: error?.message ?? "Notion 스키마 조회 실패" },
