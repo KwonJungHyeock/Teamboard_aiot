@@ -19,7 +19,7 @@ const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD || "teamboard123!";
 
 const TEAM = [
   {
-    email: "jhkwon@robodyne.co.kr",
+    email: "kwonjunghyeock@robodyne.co.kr",
     name: "권정혁",
     shortName: "정혁",
     role: "lead",
@@ -28,7 +28,7 @@ const TEAM = [
     workAreas: ["R&D"],
   },
   {
-    email: "jhpark@robodyne.co.kr",
+    email: "meotto@robodyne.co.kr",
     name: "박주희",
     shortName: "주희",
     role: "member",
@@ -37,7 +37,7 @@ const TEAM = [
     workAreas: ["교육자료"],
   },
   {
-    email: "syjo@robodyne.co.kr",
+    email: "sycho09@robodyne.co.kr",
     name: "조서연",
     shortName: "서연",
     role: "member",
@@ -78,21 +78,24 @@ console.log("스키마 적용 완료");
 
 // ── 팀원(human actor + account) + 부사수(agent actor + agent_config) ──
 for (const member of TEAM) {
-  // 이메일로 기존 계정 탐색 → 있으면 갱신, 없으면 actor부터 생성
-  const existing = await pool.query("SELECT actor_id FROM account WHERE email = $1", [
-    member.email,
-  ]);
+  // 사람은 display_name으로 식별(안정 키). 이렇게 하면 이메일이 바뀌어도
+  // 기존 사람의 email을 갱신할 뿐 계정을 중복 생성하지 않는다.
+  const existing = await pool.query(
+    "SELECT id FROM actor WHERE type = 'human' AND display_name = $1 ORDER BY id LIMIT 1",
+    [member.name]
+  );
 
   let humanId;
   if (existing.rows.length > 0) {
-    humanId = existing.rows[0].actor_id;
+    humanId = existing.rows[0].id;
     await pool.query(
-      "UPDATE actor SET display_name = $1, short_name = $2, is_active = true WHERE id = $3",
-      [member.name, member.shortName ?? null, humanId]
+      "UPDATE actor SET short_name = $1, is_active = true WHERE id = $2",
+      [member.shortName ?? null, humanId]
     );
+    // email 포함 갱신 (email 변경 시 여기서 반영). password_hash는 기존 유지.
     await pool.query(
-      "UPDATE account SET role = $1, notion_user_id = $2 WHERE actor_id = $3",
-      [member.role, member.notionUserId, humanId]
+      "UPDATE account SET email = $1, role = $2, notion_user_id = $3 WHERE actor_id = $4",
+      [member.email, member.role, member.notionUserId, humanId]
     );
   } else {
     const inserted = await pool.query(
