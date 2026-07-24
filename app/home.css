@@ -425,7 +425,9 @@
 /* ── /tasks 필터 한 줄 인라인 + 공용 브랜드 버튼 + 상태 인라인 드롭다운 ── */
 .hv .tfilters{align-items:center;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
 .hv .tfilters .tsearch{height:36px;width:220px;flex:0 0 220px;font-size:var(--fs-row);background:var(--bg-elevated);border:1px solid var(--line);border-radius:6px;color:var(--hi);padding:0 12px}
-.hv .tfilters select{height:36px;min-width:150px;font-size:var(--fs-meta)}
+/* globals의 select{width:100%} 를 눌러 한 줄 인라인으로 (고정 폭) */
+.hv .tfilters select{height:36px;width:172px;flex:0 0 auto;min-width:150px;font-size:var(--fs-meta)}
+.hv .tnew input,.hv .tnew select{width:auto}
 /* 공용 버튼 — 주요(brand 솔리드) / 보조(아웃라인). 모두 width:auto · nowrap. */
 .hv .btn-brand{height:var(--btn-h);padding:0 20px;border:0;border-radius:6px;background:var(--brand);color:#fff;font-weight:600;font-size:var(--fs-row);white-space:nowrap;width:auto;cursor:pointer}
 .hv .btn-brand:hover{filter:brightness(1.08)}
