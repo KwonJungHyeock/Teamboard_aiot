@@ -7,8 +7,8 @@
 export interface NotionPropertySpec {
   /** Notion DB의 실제 속성 이름 (한글) */
   property: string;
-  /** Notion 속성 타입 */
-  type: "select" | "multi_select" | "status" | "people" | "date" | "title" | "rich_text";
+  /** Notion 속성 타입. "unknown" = 토큰 확인 전까지 select/multi_select 미확정 */
+  type: "select" | "multi_select" | "status" | "people" | "date" | "title" | "rich_text" | "unknown";
   /** select/multi_select/status의 허용 선택지 (없으면 자유값) */
   options?: readonly string[];
   /** 코드가 이 속성을 채우는 방식 설명 */
@@ -21,10 +21,14 @@ export const NOTION_WORK_TYPES = ["팀업무", "개인업무", "상시업무"] a
 export const NOTION_STATUSES = ["대기", "진행", "완료"] as const; // status 타입 — API로 옵션 추가/삭제 불가, 이름만 지정
 export const NOTION_PRIORITIES = ["High", "Mid", "Low"] as const;
 
-/** 승인 시 createTimelinePage가 채우는 속성 스키마 (property 이름·타입·허용값) — 실제 코드·DB와 일치 */
+/**
+ * 승인 시 createTimelinePage가 채우는 속성 스키마 (property 이름·타입·허용값) — 폴백.
+ * 주의: "업무 구분"은 스크린샷으로 select/multi_select를 확정할 수 없어 type:"unknown"으로 둔다.
+ * 실제 타입은 토큰 등록 후 Notion 동적 조회로 확정되며, 페이로드는 확정된 타입으로 분기한다.
+ */
 export const NOTION_TIMELINE_SCHEMA = {
   title: { property: "업무명", type: "title", note: "초안 제목 (업무 구분 접두어 자동 삽입)" },
-  workArea: { property: "업무 구분", type: "select", options: NOTION_WORK_AREAS },
+  workArea: { property: "업무 구분", type: "unknown", options: NOTION_WORK_AREAS, note: "select/multi_select 미확정 — Notion 조회로 확정" },
   status: { property: "상태", type: "status", options: NOTION_STATUSES },
   priority: { property: "우선순위", type: "select", options: NOTION_PRIORITIES },
   workType: { property: "업무유형", type: "select", options: NOTION_WORK_TYPES },
@@ -61,4 +65,50 @@ export function applyAreaPrefix(title: string, workArea: string | null | undefin
   if (/^\[.+?\]/.test(t)) return t; // 이미 [xxx] 접두어 있음
   if (!workArea) return t;
   return `[${workArea}] ${t}`;
+}
+
+export class UnknownPropertyTypeError extends Error {
+  constructor(public property: string) {
+    super(
+      `Notion 속성 "${property}"의 타입이 확정되지 않았습니다. 설정에서 "Notion 스키마 새로고침"을 실행하세요.`
+    );
+  }
+}
+
+/**
+ * 타입 기반 Notion 속성값 생성 — 단일 소스. 어떤 타입이든 코드 수정 없이 페이로드를 만든다.
+ *   select → {select:{name}} / multi_select → {multi_select:[{name}]} / status → {status:{name}}
+ *   people → {people:[{id}]} / date → {date:{start}} / title·rich_text → 텍스트
+ * value는 배열 또는 단일값을 받아 타입에 맞게 정규화한다.
+ * type이 "unknown"이면 확정 전이므로 예외를 던진다(승인 라우트에서 안내로 변환).
+ */
+export function buildPropertyValue(
+  property: string,
+  type: string,
+  value: string | string[] | null | undefined
+): any {
+  const arr = (Array.isArray(value) ? value : value == null ? [] : [value]).filter(
+    (v) => v !== "" && v != null
+  ) as string[];
+  const first = arr[0] ?? "";
+  switch (type) {
+    case "select":
+      return first ? { select: { name: first } } : { select: null };
+    case "multi_select":
+      return { multi_select: arr.map((name) => ({ name })) };
+    case "status":
+      return first ? { status: { name: first } } : undefined;
+    case "people":
+      return { people: arr.map((id) => ({ id })) };
+    case "date":
+      return first ? { date: { start: first } } : undefined;
+    case "title":
+      return { title: [{ type: "text", text: { content: first.slice(0, 200) } }] };
+    case "rich_text":
+      return { rich_text: [{ type: "text", text: { content: first.slice(0, 2000) } }] };
+    case "unknown":
+      throw new UnknownPropertyTypeError(property);
+    default:
+      throw new Error(`알 수 없는 Notion 속성 타입: ${type} (${property})`);
+  }
 }

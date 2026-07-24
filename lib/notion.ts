@@ -2,7 +2,7 @@
 // 삭제 금지 원칙: 페이지 삭제 API는 사용하지 않는다 (PRD 11장).
 import { queryOne } from "./db";
 import type { TimelineItem } from "./types";
-import { NP, applyAreaPrefix } from "./notion-schema";
+import { applyAreaPrefix, buildPropertyValue, NOTION_TIMELINE_SCHEMA } from "./notion-schema";
 
 const NOTION_API = "https://api.notion.com/v1";
 const NOTION_VERSION = "2025-09-03"; // data_source 지원 버전
@@ -81,7 +81,11 @@ function pageToTimelineItem(page: any): TimelineItem {
   return {
     pageId: page.id,
     title: plainText(props["업무명"]?.title) || "(제목 없음)",
-    workArea: props["업무 구분"]?.select?.name ?? null,
+    // 업무 구분은 select/multi_select 어느 쪽이든 읽는다 (타입 미확정 대비)
+    workArea:
+      props["업무 구분"]?.select?.name ??
+      props["업무 구분"]?.multi_select?.[0]?.name ??
+      null,
     workType: props["업무유형"]?.select?.name ?? null,
     status: props["상태"]?.status?.name ?? null,
     priority: props["우선순위"]?.select?.name ?? null,
@@ -115,7 +119,7 @@ export async function queryTimeline(): Promise<TimelineItem[]> {
 
 export interface CreateTimelinePageParams {
   title: string;
-  workArea: string; // 업무 구분(단일 select): R&D | 플랫폼 | ... | 기타
+  workAreas: string[]; // 업무 구분 — 배열로 유지(실제가 select면 첫 원소, multi_select면 전체 사용)
   workType: string; // 업무유형: 팀업무 | 개인업무 | 상시업무
   status: string; // 상태(status 타입): 대기 | 진행 | 완료
   priority: string; // High | Mid | Low
@@ -156,26 +160,34 @@ export async function createTimelinePage(
   params: CreateTimelinePageParams
 ): Promise<{ pageId: string; url: string | null }> {
   const dsId = await getTimelineDataSourceId();
-  // 업무명에 업무 구분 접두어 자동 삽입 (팀 관례 "[플랫폼] 제목", 중복 방지)
-  const finalTitle = applyAreaPrefix(params.title, params.workArea).slice(0, 200);
-  // 속성 이름은 lib/notion-schema.ts(NP)를 단일 소스로 사용. "구분" 속성은 실제 DB에 없어 전송하지 않음.
-  const properties: any = {
-    [NP.title]: { title: [{ type: "text", text: { content: finalTitle } }] },
-    [NP.workType]: { select: { name: params.workType } },
-    [NP.workArea]: { select: { name: params.workArea } }, // 업무 구분 = 단일 select
-    [NP.status]: { status: { name: params.status } }, // 상태 = status 타입 (select 아님)
-    [NP.priority]: { select: { name: params.priority } },
-    [NP.startDate]: { date: { start: params.startDate } },
-    [NP.endDate]: { date: { start: params.endDate } },
+
+  // 실제 스키마(타입+선택지)를 캐시/Notion에서 해석 — 동적 import로 순환 참조 회피.
+  // "업무 구분"이 select인지 multi_select인지는 여기서 확정된 타입으로 분기한다.
+  const { getResolvedSchema } = await import("./notion-schema-cache");
+  const { schema } = await getResolvedSchema();
+  const typeOf = (spec: { property: string; type: string }) =>
+    schema[spec.property]?.type ?? spec.type;
+
+  const prefixArea = params.workAreas[0]; // 접두어는 대표(첫) 업무 구분 값
+  const finalTitle = applyAreaPrefix(params.title, prefixArea).slice(0, 200);
+
+  // 모든 속성을 타입 기반 buildPropertyValue로 생성 (타입이 바뀌어도 코드 수정 불필요).
+  // "구분" 속성은 실제 DB에 없어 전송하지 않는다.
+  const S = NOTION_TIMELINE_SCHEMA;
+  const properties: any = {};
+  const put = (spec: { property: string; type: string }, value: string | string[]) => {
+    const built = buildPropertyValue(spec.property, typeOf(spec), value);
+    if (built !== undefined) properties[spec.property] = built;
   };
-  if (params.assigneeNotionId) {
-    properties[NP.assignee] = { people: [{ id: params.assigneeNotionId }] };
-  }
-  if (params.memo) {
-    properties[NP.memo] = {
-      rich_text: [{ type: "text", text: { content: params.memo.slice(0, 2000) } }],
-    };
-  }
+  put(S.title, finalTitle);
+  put(S.workArea, params.workAreas); // 배열 전달 — select면 첫 원소, multi_select면 전체
+  put(S.workType, params.workType);
+  put(S.status, params.status);
+  put(S.priority, params.priority);
+  put(S.startDate, params.startDate);
+  put(S.endDate, params.endDate);
+  if (params.assigneeNotionId) put(S.assignee, params.assigneeNotionId);
+  if (params.memo) put(S.memo, params.memo);
 
   const page = await notionFetch("/pages", {
     method: "POST",

@@ -56,7 +56,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const { pageId, url } = await createTimelinePage({
       title: draft.title, // 업무 구분 접두어는 createTimelinePage가 삽입
       workType: pick(payload.workType, NOTION_WORK_TYPES, "개인업무"),
-      workArea: pick(payload.workArea, NOTION_WORK_AREAS, "기타"),
+      workAreas: [pick(payload.workArea, NOTION_WORK_AREAS, "기타")], // 배열 유지(모달은 단일 선택)
       status: pick(payload.status, NOTION_STATUSES, "진행"), // 승인 기본값: 진행
       priority: pick(payload.priority, NOTION_PRIORITIES, "Mid"),
       assigneeNotionId: draft.notion_user_id,

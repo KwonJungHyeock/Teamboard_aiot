@@ -60,42 +60,52 @@ export async function GET(request: Request) {
 
   try {
     const actual = await getDataSourceSchema();
-    const mismatches: {
+    // 타입 대조 + 값 차집합을 함께 리포트 (속성명 / 코드 기대 타입 / Notion 실제 타입 / 일치 · 값 차집합)
+    const report: {
       property: string;
-      issue: string;
-      codeExpects?: string[];
-      notionHas?: string[];
-      missingInNotion?: string[];
+      codeType: string;
+      notionType: string | null;
+      typeMatch: boolean; // 코드가 unknown이면 "확정됨"으로 간주(true)
+      resolvedType?: string; // unknown이었다면 Notion에서 확정된 타입
+      codeOptions?: string[];
+      notionOptions?: string[];
+      missingInNotion?: string[]; // 코드에는 있으나 Notion에 없음 (승인 실패 위험)
+      extraInNotion?: string[]; // Notion에만 있는 값
     }[] = [];
+    const mismatches: { property: string; issue: string }[] = [];
 
-    for (const spec of NOTION_SELECT_PROPERTIES) {
+    for (const spec of Object.values(NOTION_TIMELINE_SCHEMA) as NotionPropertySpec[]) {
       const found = actual[spec.property];
       if (!found) {
-        mismatches.push({ property: spec.property, issue: "Notion에 해당 속성이 없음", codeExpects: [...spec.options] });
+        mismatches.push({ property: spec.property, issue: `Notion에 속성 없음 (코드 기대 타입 ${spec.type})` });
+        report.push({ property: spec.property, codeType: spec.type, notionType: null, typeMatch: false });
         continue;
       }
-      if (found.type !== spec.type) {
+      const isUnknown = spec.type === "unknown";
+      const typeMatch = isUnknown ? true : found.type === spec.type;
+      if (!typeMatch) {
         mismatches.push({ property: spec.property, issue: `타입 불일치 (코드 ${spec.type} ≠ Notion ${found.type})` });
       }
-      const missing = spec.options.filter((o) => !found.options.includes(o));
+      const codeOptions = spec.options ? [...spec.options] : undefined;
+      const missing = codeOptions?.filter((o) => !found.options.includes(o)) ?? [];
+      const extra = codeOptions ? found.options.filter((o) => !codeOptions.includes(o)) : [];
       if (missing.length > 0) {
         mismatches.push({
           property: spec.property,
-          issue: "코드가 보내는 값 중 Notion 선택지에 없는 항목",
-          missingInNotion: missing,
-          notionHas: found.options,
+          issue: `코드가 보내는 값 중 Notion 선택지에 없음: ${missing.join(", ")}`,
         });
       }
-    }
-
-    // people/date/title 등 비선택 속성의 존재 여부도 확인
-    const nonSelect = (Object.values(NOTION_TIMELINE_SCHEMA) as NotionPropertySpec[]).filter(
-      (s) => !s.options
-    );
-    for (const spec of nonSelect) {
-      if (!actual[spec.property]) {
-        mismatches.push({ property: spec.property, issue: `Notion에 속성 없음 (타입 ${spec.type})` });
-      }
+      report.push({
+        property: spec.property,
+        codeType: spec.type,
+        notionType: found.type,
+        typeMatch,
+        resolvedType: isUnknown ? found.type : undefined,
+        codeOptions,
+        notionOptions: found.options.length ? found.options : undefined,
+        missingInNotion: missing.length ? missing : undefined,
+        extraInNotion: extra.length ? extra : undefined,
+      });
     }
 
     // 담당자(people) 매핑 대조용 — 워크스페이스 사용자 목록 (init-db notion_user_id와 대조)
@@ -111,7 +121,16 @@ export async function GET(request: Request) {
       message: `verify-notion-schema 실행 — 불일치 ${mismatches.length}건 (IP: ${ip})`,
       level: "warn",
     });
-    return NextResponse.json({ ready: true, ok: mismatches.length === 0, mismatches, notionUsers });
+    // 확정된 "업무 구분" 타입을 눈에 띄게 안내
+    const workAreaType = report.find((r) => r.property === "업무 구분")?.notionType ?? null;
+    return NextResponse.json({
+      ready: true,
+      ok: mismatches.length === 0,
+      workAreaResolvedType: workAreaType, // select | multi_select — 확정 결과
+      report,
+      mismatches,
+      notionUsers,
+    });
   } catch (error: any) {
     return NextResponse.json(
       { ready: true, ok: false, error: error?.message ?? "Notion 스키마 조회 실패" },

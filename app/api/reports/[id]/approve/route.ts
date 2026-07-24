@@ -48,7 +48,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
     const { pageId, url } = await createTimelinePage({
       title: draft.title,
       workType: "팀업무",
-      workArea: "플랫폼",
+      workAreas: ["플랫폼"],
       status: "완료",
       priority: "High",
       assigneeNotionId: draft.notion_user_id,
