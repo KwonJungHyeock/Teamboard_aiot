@@ -49,6 +49,49 @@ function fmtLogTime(iso: string): string {
     : `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+// 에이전트 기여 측정 스트립 — 기여율·승인율·반려율 (전월 대비 + 참고선 20%).
+interface AgentRates {
+  referenceLine: number;
+  current: { contributionRate: number; approvalRate: number; rejectionRate: number };
+  previous: { contributionRate: number; approvalRate: number; rejectionRate: number };
+}
+function AgentMetricsStrip() {
+  const [m, setM] = useState<AgentRates | null>(null);
+  useEffect(() => {
+    fetch("/api/assistant/metrics")
+      .then((r) => r.json())
+      .then((d) => setM(d))
+      .catch(() => {});
+  }, []);
+  if (!m) return null;
+  const item = (label: string, cur: number, prev: number) => {
+    const delta = cur - prev;
+    const tone = delta > 0 ? "up" : delta < 0 ? "dn" : "fl";
+    return (
+      <div className="am-item" key={label}>
+        <div className="am-l">{label}</div>
+        <div className="am-v">{cur}%</div>
+        <div className={`am-d ${tone}`}>
+          전월 대비 {delta > 0 ? "+" : ""}{delta}%p
+        </div>
+      </div>
+    );
+  };
+  return (
+    <div className="card section-gap am-strip">
+      <div className="am-head">
+        에이전트 활용 현황
+        <span className="am-ref">참고선 {m.referenceLine}% · 목표치는 3개월 측정 후</span>
+      </div>
+      <div className="am-grid">
+        {item("기여율", m.current.contributionRate, m.previous.contributionRate)}
+        {item("승인율", m.current.approvalRate, m.previous.approvalRate)}
+        {item("반려율", m.current.rejectionRate, m.previous.rejectionRate)}
+      </div>
+    </div>
+  );
+}
+
 export default function AssistantView({ user }: { user: SessionUser }) {
   const [assistant, setAssistant] = useState<AssistantSettings | null>(null);
   const [drafts, setDrafts] = useState<DraftRow[]>([]);
@@ -178,6 +221,9 @@ export default function AssistantView({ user }: { user: SessionUser }) {
           {showSettings ? "설정 닫기" : "에이전트 설정"}
         </button>
       </div>
+
+      {/* 에이전트 기여 측정 (숫자로 관리) — 참고선 20%, 목표치는 3개월 측정 후 결정 */}
+      <AgentMetricsStrip />
 
       {showSettings && assistant && (
         <SettingsCard assistant={assistant} onSaved={(a) => setAssistant(a)} />
