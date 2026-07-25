@@ -93,6 +93,7 @@ function DemoDataCard() {
   const [counts, setCounts] = useState<{ total: number } | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -113,6 +114,16 @@ function DemoDataCard() {
     load();
   }
 
+  async function seedDemo() {
+    setSeeding(true); setError(""); setMessage("");
+    const res = await fetch("/api/admin/seed-demo", { method: "POST" });
+    const data = await res.json();
+    setSeeding(false);
+    if (!res.ok) { setError(data.error ?? "데모 시드 실패"); return; }
+    setMessage("데모 시드를 주입했습니다. (이미 주입돼 있으면 변화 없음)");
+    load();
+  }
+
   const total = counts?.total ?? 0;
 
   return (
@@ -128,7 +139,10 @@ function DemoDataCard() {
       {error && <p className="error-text">{error}</p>}
       {message && <p className="muted" style={{ color: "var(--green)" }}>{message}</p>}
       {!confirming ? (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
+          <button className="btn" onClick={seedDemo} disabled={seeding}>
+            {seeding ? "주입 중…" : "데모 시드 주입"}
+          </button>
           <button className="btn danger" onClick={() => setConfirming(true)} disabled={total === 0}>
             {total === 0 ? "비울 데모 데이터 없음" : "데모 데이터 비우기"}
           </button>
@@ -150,7 +164,7 @@ function DemoDataCard() {
   );
 }
 
-export default function NotionScopeSettings() {
+export default function NotionScopeSettings({ notionConnected = true }: { notionConnected?: boolean }) {
   const [dataSourceId, setDataSourceId] = useState("");
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
@@ -189,7 +203,18 @@ export default function NotionScopeSettings() {
   return (
     <div className="grid cols-2">
       <DemoDataCard />
-      <NotionSchemaCard />
+      {!notionConnected && (
+        <div className="card" style={{ gridColumn: "1 / -1" }}>
+          <h2>Notion 미연결 <span className="badge">선택 연동</span></h2>
+          <p className="muted" style={{ margin: 0 }}>
+            현재 Notion 토큰이 설정되지 않아 승인 내역은 <b style={{ color: "var(--hi)" }}>자체 DB에만</b> 기록됩니다.
+            업무 흐름은 완전히 동일하게 동작합니다. 환경변수 <code>NOTION_TOKEN</code> 을 설정하면 승인 시 Notion
+            타임라인에도 자동으로 기록되고, 아래 연동 설정·스키마 점검이 다시 나타납니다.
+          </p>
+        </div>
+      )}
+      {notionConnected && <NotionSchemaCard />}
+      {notionConnected && (
       <div className="card">
         <h2>Notion 연동 범위 (팀장 전용)</h2>
         <p className="muted" style={{ marginBottom: 14 }}>
@@ -220,7 +245,9 @@ export default function NotionScopeSettings() {
           </button>
         </div>
       </div>
+      )}
 
+      {notionConnected && (
       <div className="card" style={{ opacity: 0.55 }}>
         <h2>
           다중 DB 선택 <span className="badge">2차 예정</span>
@@ -238,6 +265,7 @@ export default function NotionScopeSettings() {
           DB 추가
         </button>
       </div>
+      )}
     </div>
   );
 }

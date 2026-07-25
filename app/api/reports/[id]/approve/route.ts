@@ -44,19 +44,29 @@ export async function POST(_request: Request, { params }: { params: { id: string
     const monthEnd = new Date(Date.UTC(report.period_year, report.period_month, 0)).toISOString().slice(0, 10);
     const monthStart = `${report.period_year}-${String(report.period_month).padStart(2, "0")}-01`;
 
-    // 기존 승인 라우트와 동일한 Notion 기록 경로 재사용 (실제 스키마: 구분 없음, 업무 구분 단일 select)
-    const { pageId, url } = await createTimelinePage({
-      title: draft.title,
-      workType: "팀업무",
-      workAreas: ["플랫폼"],
-      status: "완료",
-      priority: "High",
-      assigneeNotionId: draft.notion_user_id,
-      startDate: monthStart,
-      endDate: monthEnd,
-      memo: "팀보드 월간 보고 승인 기록 (monthly_report)",
-      bodyMarkdown: draft.body,
-    });
+    // Notion 기록은 미러(D-011) — 미연결이면 건너뛰고 자체 DB에만 확정(파트 Z), 실패해도 승인은 확정(파트 C).
+    const notionConnected = !!process.env.NOTION_TOKEN;
+    let pageId: string | null = null;
+    let url: string | null = null;
+    let notionError: string | null = null;
+    if (notionConnected) try {
+      const res = await createTimelinePage({
+        title: draft.title,
+        workType: "팀업무",
+        workAreas: ["플랫폼"],
+        status: "완료",
+        priority: "High",
+        assigneeNotionId: draft.notion_user_id,
+        startDate: monthStart,
+        endDate: monthEnd,
+        memo: "팀보드 월간 보고 승인 기록 (monthly_report)",
+        bodyMarkdown: draft.body,
+      });
+      pageId = res.pageId;
+      url = res.url;
+    } catch (e) {
+      notionError = e instanceof Error ? e.message : "Notion 기록 실패";
+    }
 
     await query(
       `UPDATE drafts SET status = 'approved', approver_id = $1, notion_page_id = $2, decided_at = now()
@@ -71,10 +81,12 @@ export async function POST(_request: Request, { params }: { params: { id: string
     await logActivity({
       userId: session.id,
       assistantId: draft.assistant_id,
-      message: `${session.name}이(가) ${report.period_year}년 ${report.period_month}월 월간 보고 승인 → Notion 기록`,
-      level: "success",
+      message: notionError
+        ? `${session.name}이(가) ${report.period_year}년 ${report.period_month}월 월간 보고 승인 — 저장 완료, Notion 기록 실패: ${notionError.slice(0, 200)}`
+        : `${session.name}이(가) ${report.period_year}년 ${report.period_month}월 월간 보고 승인${notionConnected ? " → Notion 기록" : " (자체 DB 확정, Notion 미연결)"}`,
+      level: notionError ? "error" : "success",
     });
-    return NextResponse.json({ ok: true, notionPageId: pageId, notionUrl: url });
+    return NextResponse.json({ ok: true, notionPageId: pageId, notionUrl: url, notionError, notionConnected });
   } catch (error) {
     return jsonError(error);
   }

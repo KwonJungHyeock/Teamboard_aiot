@@ -1,16 +1,17 @@
-// TEMPORARY — 2차 운영 초기화 완료 후 삭제. ALLOW_DB_INIT 이중 잠금. Notion DB 속성 허용값·타입 대조.
+// Notion DB 속성 허용값·타입 + 담당자 person 매핑 대조 (파트 X 이후 lead 세션 인증).
 // 코드가 보내는 값(lib/notion-schema)과 실제 Notion data source 선택지를 비교해
 // 불일치를 목록으로 반환한다. 운영 첫날 승인 실패(선택지 없음)를 사전에 잡기 위함.
-// 이중 잠금: ① ALLOW_DB_INIT === "true" 아니면 404 ② x-admin-secret 불일치 404.
+// 접근 제어: ALLOW_DB_INIT/x-admin-secret 폐기 → lead 세션만 허용(파트 X).
 // 토큰이 없으면 명확한 안내를 반환한다(실패가 아니라 준비 안내).
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "crypto";
+import { requireSession } from "@/lib/auth";
 import { getDataSourceSchema, getWorkspaceUsers } from "@/lib/notion";
 import { NOTION_SELECT_PROPERTIES, NOTION_TIMELINE_SCHEMA, type NotionPropertySpec } from "@/lib/notion-schema";
 import { logActivity } from "@/lib/activity";
 import { query } from "@/lib/db";
+import { jsonError } from "@/lib/api";
 
-// 로깅 실패가 잠금 응답 상태를 바꾸지 않도록 best-effort
+// 로깅 실패가 응답 상태를 바꾸지 않도록 best-effort
 async function safeLog(p: Parameters<typeof logActivity>[0]) {
   try { await logActivity(p); } catch { /* noop */ }
 }
@@ -19,34 +20,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-function secretMatches(given: string | null): boolean {
-  const expected = process.env.AUTH_SECRET ?? "";
-  if (!expected || !given) return false;
-  const a = Buffer.from(given);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
-function callerIp(request: Request): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown"
-  );
-}
-
-export async function GET(request: Request) {
-  const ip = callerIp(request);
-
-  // 잠금 ① — 존재 은폐
-  if (process.env.ALLOW_DB_INIT !== "true") {
-    await safeLog({ userId: null, message: `verify-notion-schema 차단 — ALLOW_DB_INIT 미설정 (IP: ${ip})`, level: "warn" });
-    return NextResponse.json({ error: "not found" }, { status: 404 });
-  }
-  // 잠금 ② — 시크릿
-  if (!secretMatches(request.headers.get("x-admin-secret"))) {
-    await safeLog({ userId: null, message: `verify-notion-schema 차단 — 시크릿 불일치 (IP: ${ip})`, level: "warn" });
-    return NextResponse.json({ error: "not found" }, { status: 404 });
+export async function GET() {
+  try {
+  const session = requireSession();
+  if (session.role !== "lead") {
+    return NextResponse.json({ error: "팀장만 사용할 수 있습니다." }, { status: 403 });
   }
 
   // 토큰 없으면 검증 불가 — 명확한 안내 (실패 아님)
@@ -143,8 +121,8 @@ export async function GET(request: Request) {
     const personUnmapped = personMapping.filter((p) => p.status !== "일치").length;
 
     await safeLog({
-      userId: null,
-      message: `verify-notion-schema 실행 — 불일치 ${mismatches.length}건 (IP: ${ip})`,
+      userId: session.id,
+      message: `${session.name}이(가) verify-notion-schema 실행 — 불일치 ${mismatches.length}건`,
       level: "warn",
     });
     // 확정된 "업무 구분" 타입을 눈에 띄게 안내
@@ -164,5 +142,8 @@ export async function GET(request: Request) {
       { ready: true, ok: false, error: error?.message ?? "Notion 스키마 조회 실패" },
       { status: 502 }
     );
+  }
+  } catch (error) {
+    return jsonError(error);
   }
 }

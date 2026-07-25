@@ -54,10 +54,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
         .find((l) => l && !l.startsWith("#") && !l.startsWith("---")) ?? draft.title;
 
     // Notion 기록은 미러(D-011) — 실패해도 승인 자체는 확정한다. 실패 시 오류를 표면화·기록.
+    // 파트 Z — 토큰 미연결이면 Notion 단계를 통째로 건너뛰고 자체 DB에만 확정(오류 아님).
+    const notionConnected = !!process.env.NOTION_TOKEN;
     let pageId: string | null = null;
     let notionUrl: string | null = null;
     let notionError: string | null = null;
-    try {
+    if (notionConnected) try {
       const res = await createTimelinePage({
         title: draft.title, // 업무 구분 접두어는 createTimelinePage가 삽입
         workType: pick(payload.workType, NOTION_WORK_TYPES, "개인업무"),
@@ -83,17 +85,20 @@ export async function POST(request: Request, { params }: { params: { id: string 
        WHERE id = $3`,
       [session.id, pageId, draftId]
     );
+    const logMsg = notionError
+      ? `${session.name}이(가) "${draft.title}" 승인 — 저장 완료, Notion 기록 실패: ${notionError.slice(0, 300)}`
+      : !notionConnected
+      ? `${session.name}이(가) "${draft.title}" 승인 → 자체 DB 확정 (Notion 미연결)`
+      : `${session.name}이(가) "${draft.title}" 승인 → Notion 타임라인 기록 완료`;
     await logActivity({
       userId: session.id,
       assistantId: draft.assistant_id,
-      message: notionError
-        ? `${session.name}이(가) "${draft.title}" 승인 — 저장 완료, Notion 기록 실패: ${notionError.slice(0, 300)}`
-        : `${session.name}이(가) "${draft.title}" 승인 → Notion 타임라인 기록 완료`,
+      message: logMsg,
       level: notionError ? "error" : "success",
     });
 
-    // 실패해도 HTTP 200 — 승인은 성공. UI가 notionError로 경고를 띄운다.
-    return NextResponse.json({ ok: true, notionPageId: pageId, notionUrl, notionError });
+    // 실패해도 HTTP 200 — 승인은 성공. UI가 notionError/notionConnected로 안내를 띄운다.
+    return NextResponse.json({ ok: true, notionPageId: pageId, notionUrl, notionError, notionConnected });
   } catch (error) {
     return jsonError(error);
   }

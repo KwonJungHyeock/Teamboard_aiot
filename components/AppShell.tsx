@@ -40,16 +40,18 @@ export default async function AppShell({
     getAreasWithProjects(),
     getInboxCount(current.id, current.role === "lead"),
   ]);
+  // 파트 Z — Notion 토큰 유무로 관련 UI 자동 분기(미연결 시 숨김)
+  const notionConnected = !!process.env.NOTION_TOKEN;
   return (
     <>
       <div className="bgfx" aria-hidden="true" />
       <div className="grain" aria-hidden="true" />
       <div className="app">
-        <Sidebar user={current} areas={areas} inboxCount={inboxCount} />
+        <Sidebar user={current} areas={areas} inboxCount={inboxCount} notionConnected={notionConnected} />
         <main className="main">{children}</main>
       </div>
       <TaskDetailPanel />
-      <CommandPalette role={current.role} />
+      <CommandPalette role={current.role} notionConnected={notionConnected} />
     </>
   );
 }

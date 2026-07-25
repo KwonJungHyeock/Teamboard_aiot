@@ -53,13 +53,15 @@ export default function ApproveModal({
   const [endDate, setEndDate] = useState(today);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notionConnected, setNotionConnected] = useState(true); // 기본 true → 확인 전 깜빡임 방지
 
-  // 선택지 동적 로드 (캐시/폴백)
+  // 선택지 동적 로드 (캐시/폴백) + Notion 연결 여부
   useEffect(() => {
     fetch("/api/notion/schema")
       .then((r) => r.json())
       .then((d) => {
         if (d?.options) setOptions({ ...FALLBACK, ...d.options });
+        if (typeof d?.notionConnected === "boolean") setNotionConnected(d.notionConnected);
       })
       .catch(() => {});
   }, []);
@@ -81,11 +83,13 @@ export default function ApproveModal({
         setError(data.error ?? "승인 실패");
         return;
       }
-      // Notion 기록은 미러(D-011) — 실패해도 승인은 확정됨. 실패 시 명확히 안내.
+      // Notion 기록은 미러(D-011) — 실패해도 승인은 확정됨. 미연결이면 Notion 단계 자체를 건너뜀.
       if (data.notionError) {
         onDone(
           `"${finalTitle}" 승인·저장 완료 — 다만 Notion 기록에 실패했습니다(${String(data.notionError).slice(0, 120)}). 업무는 정상 저장됐으니, Notion 토큰·권한 확인 후 다시 시도하세요.`
         );
+      } else if (!notionConnected) {
+        onDone(`"${finalTitle}" 승인 완료 — 저장되었습니다. (Notion 미연결)`);
       } else {
         onDone(`"${finalTitle}" 승인 완료 — Notion 타임라인에 기록되었습니다.`);
       }
@@ -99,15 +103,20 @@ export default function ApproveModal({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3>승인 → Notion 타임라인 기록</h3>
+        <h3>{notionConnected ? "승인 → Notion 타임라인 기록" : "승인 → 업무 확정"}</h3>
         <p className="muted" style={{ marginBottom: 10 }}>
           <span className="badge red">{draft.task_type}</span>{" "}
           {draft.user_name ? `담당 ${draft.user_name}` : ""}
         </p>
+        {!notionConnected && (
+          <p className="rp-notice-block" style={{ marginBottom: 10 }}>
+            Notion 미연결 — 승인하면 자체 DB에만 확정됩니다. 연결 시 승인 내역이 Notion에도 기록됩니다.
+          </p>
+        )}
 
         {/* 최종 업무명 미리보기 — 사용자가 확인 후 승인 */}
         <div className="field">
-          <label>Notion 업무명 (미리보기)</label>
+          <label>{notionConnected ? "Notion 업무명 (미리보기)" : "업무명 (미리보기)"}</label>
           <div
             style={{
               padding: "9px 12px",
@@ -170,7 +179,7 @@ export default function ApproveModal({
             취소
           </button>
           <button className="btn primary" onClick={approve} disabled={busy}>
-            {busy ? "기록 중..." : "승인하고 Notion에 기록"}
+            {busy ? "처리 중..." : notionConnected ? "승인하고 Notion에 기록" : "승인하고 저장"}
           </button>
         </div>
       </div>

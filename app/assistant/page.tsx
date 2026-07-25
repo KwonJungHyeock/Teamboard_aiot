@@ -10,7 +10,7 @@ export default function AssistantPage() {
   if (!user) redirect("/login");
   return (
     <AppShell user={user}>
-      <AssistantView user={user} />
+      <AssistantView user={user} notionConnected={!!process.env.NOTION_TOKEN} />
     </AppShell>
   );
 }

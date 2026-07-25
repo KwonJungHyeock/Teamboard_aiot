@@ -356,23 +356,3 @@ ALTER TABLE goal   ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT fal
 ALTER TABLE event  ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE signal ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE drafts ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT false;
-
--- ─── 인수인계 자료 (파트 Y) — 담당자별 인수인계 문서 + 포함 업무. 마이그레이션 0002와 동일. ───
--- db/schema.sql 은 전체 스키마 스냅샷(신규 DB용 init-db.mjs 참조). 실제 반영은 db/migrations 가 담당.
-CREATE TABLE IF NOT EXISTS handover (
-  id         SERIAL PRIMARY KEY,
-  author_id  INTEGER NOT NULL REFERENCES actor(id),
-  title      TEXT NOT NULL DEFAULT '',
-  content    TEXT NOT NULL DEFAULT '',
-  area_id    INTEGER REFERENCES area(id),
-  status     TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'shared')),
-  is_active  BOOLEAN NOT NULL DEFAULT true,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_handover_author ON handover(author_id, updated_at DESC);
-CREATE TABLE IF NOT EXISTS handover_task (
-  handover_id INTEGER NOT NULL REFERENCES handover(id),
-  task_id     INTEGER NOT NULL REFERENCES task(id),
-  PRIMARY KEY (handover_id, task_id)
-);

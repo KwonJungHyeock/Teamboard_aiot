@@ -76,6 +76,13 @@ const IC = {
       <path d="M19 14v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" />
     </>
   ),
+  handover: (
+    <>
+      <path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+      <path d="M14 3v5h5" />
+      <path d="M9 15h6M12 12v6M9.5 14.5 12 12l2.5 2.5" />
+    </>
+  ),
 };
 
 function Icon({ d }: { d: React.ReactNode }) {
@@ -118,10 +125,12 @@ export default function Sidebar({
   user,
   areas,
   inboxCount,
+  notionConnected = true,
 }: {
   user: SessionUser;
   areas: AreaWithProjects[];
   inboxCount: number;
+  notionConnected?: boolean;
 }) {
   const pathname = usePathname();
   const [rail, setRail] = useState(false);
@@ -182,6 +191,7 @@ export default function Sidebar({
         <NavLink href="/tasks" icon={IC.tasks} label="내 업무" current={cur("/tasks")} />
         <NavLink href="/calendar" icon={IC.calendar} label="캘린더" current={cur("/calendar")} />
         <NavLink href="/assistant" icon={IC.bot} label="My Agent" current={cur("/assistant")} />
+        <NavLink href="/handover" icon={IC.handover} label="인수인계" current={cur("/handover")} />
       </details>
 
       <details className="grp" open>
@@ -245,12 +255,15 @@ export default function Sidebar({
           </summary>
           <NavLink href="/members" icon={IC.members} label="구성원" current={cur("/members")} />
           <NavLink href="/settings" icon={IC.settings} label="설정" current={cur("/settings")} />
-          <NavLink
-            href="/timeline"
-            icon={IC.external}
-            label="Notion 타임라인"
-            current={cur("/timeline")}
-          />
+          {/* Notion 타임라인 — 미연결이면 숨김 (파트 Z) */}
+          {notionConnected && (
+            <NavLink
+              href="/timeline"
+              icon={IC.external}
+              label="Notion 타임라인"
+              current={cur("/timeline")}
+            />
+          )}
         </details>
       )}
 

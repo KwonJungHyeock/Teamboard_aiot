@@ -11,7 +11,8 @@ export async function GET() {
   try {
     requireSession();
     const result = await getResolvedSchema();
-    return NextResponse.json(result);
+    // 파트 Z — 토큰 유무로 Notion UI 자동 분기 (미연결 시 승인 모달의 Notion 문구 숨김)
+    return NextResponse.json({ ...result, notionConnected: !!process.env.NOTION_TOKEN });
   } catch (error) {
     return jsonError(error);
   }

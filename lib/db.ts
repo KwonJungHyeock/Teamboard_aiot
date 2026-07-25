@@ -1,5 +1,6 @@
 // DB 추상화 레이어 — Vercel Postgres가 아니어도 이 파일만 교체하면 됨 (PRD 10장)
 import { Pool, type QueryResultRow } from "pg";
+import { runMigrations } from "./migrate";
 
 let pool: Pool | null = null;
 
@@ -14,10 +15,25 @@ function getPool(): Pool {
   return pool;
 }
 
+// 자동 마이그레이션 (파트 X) — 프로세스당 1회. 최초 DB 접근이 미적용 마이그레이션을 적용한다.
+// 실패하면 캐시를 비워 다음 요청에서 재시도. TB_SKIP_MIGRATE=1 로 우회(시드 스크립트 등).
+let migratePromise: Promise<unknown> | null = null;
+function ensureMigrated(): Promise<unknown> {
+  if (process.env.TB_SKIP_MIGRATE === "1") return Promise.resolve();
+  if (!migratePromise) {
+    migratePromise = runMigrations(getPool()).catch((err) => {
+      migratePromise = null; // 다음 요청에서 재시도
+      throw err;
+    });
+  }
+  return migratePromise;
+}
+
 export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params: unknown[] = []
 ): Promise<T[]> {
+  await ensureMigrated();
   const result = await getPool().query<T>(text, params as any[]);
   return result.rows;
 }

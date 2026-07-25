@@ -31,7 +31,7 @@ interface ReportDetail {
   narration: Record<string, string>;
 }
 
-export default function ReportsView() {
+export default function ReportsView({ notionConnected = true }: { notionConnected?: boolean }) {
   const now = new Date();
   const [list, setList] = useState<ReportListItem[]>([]);
   const [genYear, setGenYear] = useState(now.getUTCFullYear());
@@ -112,7 +112,7 @@ export default function ReportsView() {
       setError(data.error ?? "승인 실패");
       return;
     }
-    setNotice("승인 완료 — Notion 타임라인에 기록되었습니다.");
+    setNotice(notionConnected ? "승인 완료 — Notion 타임라인에 기록되었습니다." : "승인 완료 — 저장되었습니다.");
     await loadList();
     await openReport(detail.report.id);
   }
@@ -132,7 +132,7 @@ export default function ReportsView() {
           <div>
             <div className="eb">REPORTS</div>
             <h1>월간 보고</h1>
-            <p>모든 수치는 DB 집계 값이며, 에이전트는 서술만 작성합니다. 승인 시 Notion에 기록됩니다.</p>
+            <p>모든 수치는 DB 집계 값이며, 에이전트는 서술만 작성합니다. 승인 시 {notionConnected ? "Notion에 기록됩니다." : "확정됩니다."}</p>
           </div>
         </div>
 
@@ -207,7 +207,7 @@ export default function ReportsView() {
                   </a>
                   {canApprove && (
                     <button className="gbtn" disabled={busy} onClick={approve}>
-                      승인 · Notion 기록
+                      {notionConnected ? "승인 · Notion 기록" : "승인 · 확정"}
                     </button>
                   )}
                   <span className="gsp" />

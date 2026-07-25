@@ -9,9 +9,10 @@ export default function SettingsPage() {
   const user = getSession();
   if (!user) redirect("/login");
   if (user.role !== "lead") redirect("/assistant");
+  const notionConnected = !!process.env.NOTION_TOKEN;
   return (
     <AppShell user={user}>
-      <NotionScopeSettings />
+      <NotionScopeSettings notionConnected={notionConnected} />
     </AppShell>
   );
 }

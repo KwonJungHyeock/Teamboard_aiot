@@ -92,7 +92,9 @@ function AgentMetricsStrip() {
   );
 }
 
-export default function AssistantView({ user }: { user: SessionUser }) {
+export default function AssistantView({ user, notionConnected = true }: { user: SessionUser; notionConnected?: boolean }) {
+  // 파트 Z — Notion 미연결 시 "Notion 기록" 문구를 중립 표현으로
+  const recPhrase = notionConnected ? "Notion에 기록" : "기록";
   const [assistant, setAssistant] = useState<AssistantSettings | null>(null);
   const [drafts, setDrafts] = useState<DraftRow[]>([]);
   const [teamDrafts, setTeamDrafts] = useState<DraftRow[]>([]); // lead 전용 — 팀원 초안 (scope=all)
@@ -214,7 +216,7 @@ export default function AssistantView({ user }: { user: SessionUser }) {
             <span className={`badge ${statusColor}`}>{assistantStatus}</span>
           </div>
           <div className="muted">
-            {user.name}의 AI 에이전트 · 초안만 작성하며, 승인 없이는 Notion에 기록하지 않습니다.
+            {user.name}의 AI 에이전트 · 초안만 작성하며, 승인 없이는 {notionConnected ? "Notion에 " : ""}기록하지 않습니다.
           </div>
         </div>
         <button className="btn small" onClick={() => setShowSettings((v) => !v)}>
@@ -312,11 +314,11 @@ export default function AssistantView({ user }: { user: SessionUser }) {
           내 초안 · 승인 대기 <CountBadge n={pending.length} warn />
         </h2>
         <p className="muted" style={{ marginBottom: 10 }}>
-          내 에이전트가 올린 초안입니다. 승인해야 Notion에 기록됩니다.
+          내 에이전트가 올린 초안입니다. 승인해야 {recPhrase}됩니다.
         </p>
         {pending.length === 0 && (
           <EmptyState img="empty-drafts.png">
-            승인 대기 중인 초안이 없습니다. 승인된 것만 Notion에 기록됩니다.
+            승인 대기 중인 초안이 없습니다. 승인된 것만 {recPhrase}됩니다.
           </EmptyState>
         )}
         {pending.map((d) => (
@@ -381,7 +383,7 @@ export default function AssistantView({ user }: { user: SessionUser }) {
             팀원 초안 · 승인 대기 (팀장) <CountBadge n={teamDrafts.length} warn />
           </h2>
           <p className="muted" style={{ marginBottom: 10 }}>
-            팀원 에이전트가 올린 초안입니다. 승인해야 Notion에 기록됩니다.
+            팀원 에이전트가 올린 초안입니다. 승인해야 {recPhrase}됩니다.
           </p>
           {teamDrafts.length === 0 && (
             <EmptyState img="empty-drafts.png">승인 대기 중인 팀원 초안이 없습니다.</EmptyState>
@@ -468,7 +470,7 @@ export default function AssistantView({ user }: { user: SessionUser }) {
       {/* 최근 승인 기록 */}
       {decided.length > 0 && (
         <div className="card section-gap">
-          <h2>최근 승인 → Notion 기록</h2>
+          <h2>최근 승인{notionConnected ? " → Notion 기록" : ""}</h2>
           {decided.map((d) => (
             <div className="item" key={d.id}>
               <div className="title">{d.title}</div>

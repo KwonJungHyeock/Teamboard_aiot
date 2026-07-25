@@ -1,18 +1,16 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import AppShell from "@/components/AppShell";
-import TimelineView from "@/components/TimelineView";
+import HandoverView from "@/components/HandoverView";
 
 export const dynamic = "force-dynamic";
 
-export default function TimelinePage() {
+export default function HandoverPage() {
   const user = getSession();
   if (!user) redirect("/login");
-  // 파트 Z — Notion 미연결이면 이 뷰는 보여줄 데이터가 없다. 홈으로 안내.
-  if (!process.env.NOTION_TOKEN) redirect("/");
   return (
     <AppShell user={user}>
-      <TimelineView />
+      <HandoverView user={user} />
     </AppShell>
   );
 }

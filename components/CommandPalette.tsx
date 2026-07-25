@@ -12,6 +12,7 @@ interface PaletteItem {
   href: string;
   keywords: string; // 검색 보조어 (영문·초성 등)
   leadOnly?: boolean;
+  notionOnly?: boolean; // Notion 연결 시에만 노출 (파트 Z)
 }
 
 // ── 이동 ──
@@ -24,6 +25,7 @@ const NAV_ITEMS: PaletteItem[] = [
   { label: "월간 보고", href: "/reports", keywords: "report 보고서 월말", leadOnly: true },
   { label: "시그널", href: "/signals", keywords: "signal 결정 리뷰 메모 리스크" },
   { label: "허들", href: "/huddle", keywords: "huddle 공유 코멘트" },
+  { label: "인수인계", href: "/handover", keywords: "handover 인수 인계 이관 퇴사 휴가" },
 ];
 
 // ── 만들기 ──
@@ -37,7 +39,7 @@ const CREATE_ITEMS: PaletteItem[] = [
 const ADMIN_ITEMS: PaletteItem[] = [
   { label: "구성원 관리", href: "/members", keywords: "member 계정 발급", leadOnly: true },
   { label: "설정", href: "/settings", keywords: "settings notion 연동", leadOnly: true },
-  { label: "Notion 타임라인 (보조)", href: "/timeline", keywords: "notion timeline 미러", leadOnly: true },
+  { label: "Notion 타임라인 (보조)", href: "/timeline", keywords: "notion timeline 미러", leadOnly: true, notionOnly: true },
 ];
 
 const SECTIONS: { title: string; items: PaletteItem[] }[] = [
@@ -46,7 +48,7 @@ const SECTIONS: { title: string; items: PaletteItem[] }[] = [
   { title: "관리", items: ADMIN_ITEMS },
 ];
 
-export default function CommandPalette({ role }: { role: Role }) {
+export default function CommandPalette({ role, notionConnected = true }: { role: Role; notionConnected?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -63,11 +65,12 @@ export default function CommandPalette({ role }: { role: Role }) {
       title,
       items: items.filter((item) => {
         if (item.leadOnly && role !== "lead") return false;
+        if (item.notionOnly && !notionConnected) return false;
         if (!needle) return true;
         return (item.label + " " + item.keywords).toLowerCase().includes(needle);
       }),
     })).filter((section) => section.items.length > 0);
-  }, [q, role]);
+  }, [q, role, notionConnected]);
 
   const flat = useMemo(() => sections.flatMap((s) => s.items), [sections]);
 

@@ -523,3 +523,42 @@
 .hv .acard-t{font-size:12.5px;color:var(--hi);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hv .acard-t:hover{text-decoration:underline}
 .hv .acard-u{font-style:normal;font-size:10.5px;color:var(--lo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:32%}
+
+/* ── 인수인계 (파트 Y) — 목록 재사용(rp-*) + 문서 편집/미리보기 ── */
+.hv .ho-sec-h{display:flex;align-items:center;gap:8px;font-size:var(--fs-meta);color:var(--lo);font-family:var(--f-d);letter-spacing:.06em;margin:0 0 8px;padding:0 4px}
+.hv .ho-sec-h span{color:var(--mid)}
+.hv .ho-edit{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}
+.hv .ho-content{font-size:var(--fs-row);background:var(--bg-elevated);border:1px solid var(--line);border-radius:6px;color:var(--hi);padding:10px 12px;font-family:inherit;line-height:1.6;resize:vertical}
+.hv .ho-tasks{display:flex;flex-direction:column;gap:2px;max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:6px;padding:6px}
+.hv .ho-task-pick{display:flex;align-items:center;gap:8px;font-size:var(--fs-row);color:var(--mid);cursor:pointer;padding:5px 6px;border-radius:5px}
+.hv .ho-task-pick:hover{background:var(--glass)}
+.hv .ho-task-pick input{width:auto;height:auto}
+.hv .ho-task-pick span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hv .ho-task-pick em{font-style:normal;font-family:var(--f-d);font-size:var(--fs-badge);color:var(--lo)}
+.hv .ho-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px dashed var(--line)}
+.hv .ho-doc{background:var(--bg-elevated);border:1px solid var(--line);border-radius:var(--r-s);padding:26px}
+.hv .ho-title{font-size:20px;color:var(--hi);margin:0 0 6px}
+.hv .ho-meta{font-family:var(--f-d);font-size:var(--fs-meta);color:var(--lo);margin:0 0 16px}
+.hv .ho-body{font-size:var(--fs-row);color:var(--mid);line-height:1.7;margin:0 0 18px;white-space:pre-wrap;font-family:inherit}
+.hv .ho-h2{font-size:15px;color:var(--hi);border-bottom:1px solid var(--line);padding-bottom:6px;margin:18px 0 10px}
+.hv .ho-empty{font-size:var(--fs-meta);color:var(--lo)}
+.hv .ho-task{padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.hv .ho-task:last-child{border-bottom:0}
+.hv .ho-task-h{display:flex;flex-direction:column;gap:2px}
+.hv .ho-task-h b{font-size:var(--fs-row);color:var(--hi);font-weight:600}
+.hv .ho-task-m{font-family:var(--f-d);font-size:var(--fs-meta);color:var(--lo)}
+.hv .ho-arts{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+.hv .ho-arts li{font-size:var(--fs-meta);color:var(--mid)}
+.hv .ho-arts a{color:var(--edu);text-decoration:none}
+.hv .ho-arts a:hover{text-decoration:underline}
+.hv .ho-akind{font-family:var(--f-d);font-size:var(--fs-badge);border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--lo)}
+
+/* 인쇄(PDF) — 인수인계 문서 본문만 (사이드바·편집 UI 숨김) */
+@media print {
+  .side, .tdp, .tdp-backdrop { display: none !important; }
+  .hv .ho-edit, .hv .rp-side, .hv .ho-empty { display: none !important; }
+  .hv .rp-cols { grid-template-columns: 1fr; }
+  .hv .ho-doc { border: 0; padding: 0; background: #fff; color: #000; }
+  .hv .ho-title, .hv .ho-h2, .hv .ho-task-h b { color: #000; }
+  .hv .ho-body, .hv .ho-task-m, .hv .ho-arts li, .hv .ho-meta { color: #111; }
+}

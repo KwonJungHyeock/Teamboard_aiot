@@ -12,7 +12,7 @@ export default async function Page() {
   if (live.user.role !== "lead") redirect("/assistant");
   return (
     <AppShell user={live.user}>
-      <ReportsView />
+      <ReportsView notionConnected={!!process.env.NOTION_TOKEN} />
     </AppShell>
   );
 }
