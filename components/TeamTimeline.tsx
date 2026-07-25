@@ -133,11 +133,12 @@ function EventTrack({
 }
 
 // ── 업무 기간 바 (주·월 뷰) — 이벤트 배치 로직을 그대로 재사용, 3줄까지 쌓고 초과 +N ──
+// 밝은 변형(--*-hi) — 어두운 카드 위에서 탁하지 않게 (파트 2.5)
 const BAR_COLOR: Record<string, string> = {
-  edu: "#4B8DF8",
-  play: "#8B5CF6",
-  train: "#2DD4BF",
-  team: "#7C8AA5",
+  edu: "#6BA6FF",
+  play: "#A480FF",
+  train: "#45E3CE",
+  team: "#8C9AB5",
 };
 const barColor = (colorKey: string | null, late: boolean): string =>
   late ? "#F87171" : BAR_COLOR[colorKey ?? "team"] ?? "#7C8AA5";

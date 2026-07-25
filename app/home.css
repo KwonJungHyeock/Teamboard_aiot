@@ -372,16 +372,18 @@
 
 /* ── 지표 카드 ── */
 .hv .metrics{gap:var(--card-gap);margin-bottom:var(--card-gap)}
-.hv .mc{border-radius:var(--r);padding:var(--card-pad-y) var(--card-pad-x);background:var(--bg-surface)}
+.hv .mc{border-radius:var(--r);padding:var(--card-pad-y) var(--card-pad-x);background:var(--bg-surface);box-shadow:var(--card-shadow)}
 .hv .mc .l{font-size:var(--fs-meta)}
 .hv .mc .v{font-size:var(--fs-metric)}
 .hv .mc .v em{font-size:var(--fs-meta)}
 .hv .mc .d{font-size:var(--fs-meta)}
 /* 스파크라인 확대 — 추세 가독성 (34→42, 굵기 2.4) */
 .hv .mc svg{width:90px;height:42px;flex:0 0 90px}
+/* 진행률 바 — 빈 트랙도 보이게 (파트 2.5) */
+.hv .bar{background:var(--track-bg)}
 
 /* ── 패널 (구 카드 → 문서 카드 느낌 제거) ── */
-.hv .card{border-radius:var(--r);border:1px solid rgba(255,255,255,.10);background:var(--bg-surface);padding:var(--card-pad-y) var(--card-pad-x);box-shadow:none}
+.hv .card{border-radius:var(--r);border:1px solid var(--line);background:var(--bg-surface);padding:var(--card-pad-y) var(--card-pad-x);box-shadow:var(--card-shadow)}
 .hv .ch{height:var(--panel-h);margin:calc(-1 * var(--card-pad-y)) calc(-1 * var(--card-pad-x)) var(--card-pad-y);padding:0 var(--card-pad-x);background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.10);border-radius:var(--r) var(--r) 0 0;box-sizing:border-box}
 .hv .ch h2{font-size:var(--fs-panel-title)}
 .hv .ch .sub{font-size:var(--fs-meta)}

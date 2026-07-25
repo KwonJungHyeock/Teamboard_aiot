@@ -121,10 +121,11 @@ select:focus {
 
 /* 카드 */
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
   padding: 20px;
+  box-shadow: var(--card-shadow);
 }
 
 .card h2 {

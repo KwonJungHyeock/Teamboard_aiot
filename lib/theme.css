@@ -2,10 +2,16 @@
    값 변경 금지 (CHANGE-GUIDE Phase 0). 에셋 두 줄은 프로토타입 주석의 지시대로
    데이터 URI → 파일 경로로 교체 (Next.js public/ 기준 절대 경로). */
 :root{
-  --bg-canvas:#070A11; --bg-surface:#0D121E; --bg-elevated:#141A28; --bg-rail:#090D16;
-  --glass:rgba(255,255,255,.032); --line:rgba(255,255,255,.07); --line-hi:rgba(255,255,255,.14);
+  /* 명암·레이어 개편 (파트 2.5) — 배경<카드<입력요소 3단계 명도 위계. 순수 검정 금지(최저 #0A0E17). */
+  --bg-canvas:#0A0E17; --bg-surface:#161C2B; --bg-elevated:#1E2536; --bg-rail:#090D16;
+  --glass:rgba(255,255,255,.032); --line:rgba(255,255,255,.10); --line-hi:rgba(255,255,255,.18);
   --hi:#EAEEF7; --mid:#98A2B8; --lo:#5C6680;
   --edu:#4B8DF8; --play:#8B5CF6; --train:#2DD4BF; --team:#7C8AA5;
+  /* 어두운 카드 위에서 탁해지지 않도록 채도 올린 밝은 변형 (칩·기간바용) */
+  --edu-hi:#6BA6FF; --play-hi:#A480FF; --train-hi:#45E3CE;
+  /* 카드 입체감 — top 하이라이트(inset) + 약한 그림자 (다크에서 층 분리) */
+  --card-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 1px 3px rgba(0,0,0,.4);
+  --track-bg:rgba(255,255,255,.09);
   --warn:#F5A524; --danger:#F87171; --ok:#34D399;
   --r:8px; --r-s:5px;
   --f-ui:'Pretendard','Pretendard Variable',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
