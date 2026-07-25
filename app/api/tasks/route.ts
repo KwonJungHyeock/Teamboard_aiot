@@ -197,7 +197,19 @@ export async function POST(request: Request) {
     if (startDate && dueDate && startDate > dueDate) {
       return NextResponse.json({ error: "시작일이 마감일보다 늦을 수 없습니다." }, { status: 400 });
     }
-    const areaId = payload.areaId ? Number(payload.areaId) : null;
+    let areaId = payload.areaId ? Number(payload.areaId) : null;
+    if (!areaId) {
+      // 빠른 생성(⌘K 제목만) — 본인 소속 영역 우선, 없으면 첫 활성 영역으로 기본 배치
+      const fallback = await queryOne<{ id: number }>(
+        `SELECT a.id FROM area a
+         LEFT JOIN actor_area aa ON aa.area_id = a.id AND aa.actor_id = $1
+         WHERE a.is_active = true
+         ORDER BY (aa.actor_id IS NULL), a.sort_order, a.id
+         LIMIT 1`,
+        [session.id]
+      );
+      areaId = fallback?.id ?? null;
+    }
     if (!areaId) return NextResponse.json({ error: "업무 영역을 선택하세요." }, { status: 400 });
     const workType = (WORK_TYPES as readonly string[]).includes(payload.workType) ? payload.workType : "team";
 

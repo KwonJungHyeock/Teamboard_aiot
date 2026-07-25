@@ -253,6 +253,7 @@ export default function TeamTimeline({
   anchor,
   isLead,
   expanded = false,
+  onEmptyCreate,
 }: {
   lanes: Lane[];
   initialEvents: LaneEvent[];
@@ -261,6 +262,7 @@ export default function TeamTimeline({
   anchor: string;
   isLead: boolean;
   expanded?: boolean;
+  onEmptyCreate?: (opts: { actorId: number; date: string }) => void;
 }) {
   const range = useMemo(() => rangeFor(view, anchor), [view, anchor]);
   const isInitialRange = view === "day" && anchor === today;
@@ -340,18 +342,23 @@ export default function TeamTimeline({
           ))}
         </div>
 
-        {/* 팀 공통 레인 */}
-        <div className="ln">
-          <div className="ln-n tm">
-            <span className="w">팀 공통</span>
+        {/* 팀 공통 레인 — 일정 없으면 숨김 (빈 레인 공간 낭비 방지, 파트 3) */}
+        {teamEvents.length > 0 && (
+          <div className="ln">
+            <div className="ln-n tm">
+              <span className="w">팀 공통</span>
+            </div>
+            <div className="ln-b">
+              <EventTrack events={teamEvents} view={view} from={range.from} />
+            </div>
           </div>
-          <div className="ln-b">
-            <EventTrack events={teamEvents} view={view} from={range.from} />
-          </div>
-        </div>
+        )}
 
-        {/* 팀원 레인 — actor 기준 동적 */}
-        {lanes.map((lane, index) => (
+        {/* 팀원 레인 — actor 기준 동적. 업무·일정 모두 없는 레인은 숨김 */}
+        {lanes.map((lane, index) => {
+          const laneEvents = personal(lane.actorId);
+          if (lane.tasks.length === 0 && laneEvents.length === 0) return null;
+          return (
           <div className="ln" key={lane.actorId}>
             <div className="ln-n">
               <span
@@ -371,9 +378,19 @@ export default function TeamTimeline({
                   title={lane.assistantStatus === "working" ? "에이전트 작동중" : "에이전트 보고 대기"}
                 />
               )}
+              {onEmptyCreate && (
+                <button
+                  className="ln-add"
+                  onClick={() => onEmptyCreate({ actorId: lane.actorId, date: anchor })}
+                  title={`${lane.name}에게 업무 추가`}
+                  aria-label={`${lane.name}에게 업무 추가`}
+                >
+                  ＋
+                </button>
+              )}
             </div>
             <div className="ln-b">
-              <EventTrack events={personal(lane.actorId)} view={view} from={range.from} />
+              <EventTrack events={laneEvents} view={view} from={range.from} />
               {view === "day" ? (
                 // 일 뷰: 종일 칩. start_date 있으면 표시일이 [start, due] 구간 안일 때만 노출.
                 (() => {
@@ -400,6 +417,15 @@ export default function TeamTimeline({
                       {dayTasks.length > chipLimit && (
                         <span className="chip">+{dayTasks.length - chipLimit}</span>
                       )}
+                      {onEmptyCreate && (
+                        <button
+                          className="chip add"
+                          onClick={() => onEmptyCreate({ actorId: lane.actorId, date: anchor })}
+                          title="이 날짜에 업무 추가"
+                        >
+                          ＋ 추가
+                        </button>
+                      )}
                     </div>
                   );
                 })()
@@ -409,7 +435,8 @@ export default function TeamTimeline({
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {nowFrac !== null && (

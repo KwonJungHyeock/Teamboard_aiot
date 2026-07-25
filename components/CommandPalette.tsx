@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Role } from "@/lib/types";
+import { openTaskPanel, notifyTaskUpdated } from "@/lib/task-panel";
 
 interface PaletteItem {
   label: string;
@@ -50,7 +51,11 @@ export default function CommandPalette({ role }: { role: Role }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(0);
+  const [creating, setCreating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // ⌘K 빠른 생성 — 입력한 텍스트를 제목으로 업무 즉시 생성(영역은 서버 기본값), 후 상세 패널 열기
+  const quickTitle = q.trim();
 
   const sections = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -105,21 +110,45 @@ export default function CommandPalette({ role }: { role: Role }) {
     router.push(item.href);
   }
 
+  const createQuickTask = useCallback(async () => {
+    const title = quickTitle;
+    if (!title || creating) return;
+    setCreating(true);
+    const res = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }), // 영역은 서버 기본값 배치 (본인 소속 영역 우선)
+    });
+    setCreating(false);
+    if (!res.ok) return;
+    const { id } = await res.json();
+    close();
+    notifyTaskUpdated();
+    openTaskPanel(id);
+  }, [quickTitle, creating, close]);
+
+  // sel=0은 quickTitle이 있을 때 "새 업무" 액션, 이후 인덱스는 flat 항목
+  const hasQuick = quickTitle.length > 0;
   function onInputKey(event: React.KeyboardEvent) {
+    const max = flat.length - 1 + (hasQuick ? 1 : 0);
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setSel((v) => Math.min(v + 1, flat.length - 1));
+      setSel((v) => Math.min(v + 1, max));
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       setSel((v) => Math.max(v - 1, 0));
-    } else if (event.key === "Enter" && flat[sel]) {
-      go(flat[sel]);
+    } else if (event.key === "Enter") {
+      if (hasQuick && sel === 0) createQuickTask();
+      else {
+        const item = flat[sel - (hasQuick ? 1 : 0)];
+        if (item) go(item);
+      }
     }
   }
 
   if (!open) return null;
 
-  let index = -1;
+  let index = hasQuick ? 0 : -1;
   return (
     <div className={`ovl on`} onClick={close}>
       <div className="pal" role="dialog" aria-label="빠른 이동" onClick={(e) => e.stopPropagation()}>
@@ -133,7 +162,20 @@ export default function CommandPalette({ role }: { role: Role }) {
           onKeyDown={onInputKey}
         />
         <div className="list">
-          {flat.length === 0 && <div className="empty">일치하는 항목이 없습니다</div>}
+          {hasQuick && (
+            <div>
+              <div className="sec">빠른 생성</div>
+              <div
+                className={`it ${sel === 0 ? "sel" : ""}`}
+                onMouseEnter={() => setSel(0)}
+                onClick={createQuickTask}
+              >
+                {creating ? "만드는 중…" : `＋ 새 업무: “${quickTitle}”`}
+                <span className="k">enter</span>
+              </div>
+            </div>
+          )}
+          {flat.length === 0 && !hasQuick && <div className="empty">일치하는 항목이 없습니다</div>}
           {sections.map((section) => (
             <div key={section.title}>
               <div className="sec">{section.title}</div>

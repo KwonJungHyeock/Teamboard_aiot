@@ -6,9 +6,11 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   TASK_PANEL_EVENT,
-  currentTaskParam,
+  currentTaskRef,
   closeTaskPanel,
   notifyTaskUpdated,
+  openTaskPanel,
+  type NewTaskPrefill,
 } from "@/lib/task-panel";
 
 interface TaskDetail {
@@ -37,8 +39,16 @@ function fmt(iso: string): string {
   return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+interface Draft {
+  title: string; areaId: number; projectId: number; assigneeId: number;
+  priority: string; workType: string; startDate: string; dueDate: string; description: string;
+}
+
 export default function TaskDetailPanel() {
-  const [openId, setOpenId] = useState<number | null>(null);
+  const [openId, setOpenId] = useState<number | "new" | null>(null);
+  const [prefill, setPrefill] = useState<NewTaskPrefill>({});
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [creating, setCreating] = useState(false);
   const [t, setT] = useState<TaskDetail | null>(null);
   const [sel, setSel] = useState<Selectors | null>(null);
   const [comments, setComments] = useState<Cmt[]>([]);
@@ -51,11 +61,16 @@ export default function TaskDetailPanel() {
 
   // ── 열림 상태 소스: URL ?task + 이벤트 + 뒤로가기 ──
   useEffect(() => {
-    const sync = () => setOpenId(currentTaskParam());
+    const sync = () => setOpenId(currentTaskRef());
     sync();
     const onEvent = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      setOpenId(typeof detail === "number" ? detail : detail === null ? null : currentTaskParam());
+      if (detail && typeof detail === "object" && detail.mode === "new") {
+        setPrefill(detail.prefill ?? {});
+        setOpenId("new");
+      } else {
+        setOpenId(typeof detail === "number" ? detail : detail === null ? null : currentTaskRef());
+      }
     };
     window.addEventListener(TASK_PANEL_EVENT, onEvent);
     window.addEventListener("popstate", sync);
@@ -80,10 +95,58 @@ export default function TaskDetailPanel() {
   useEffect(() => {
     if (openId == null) { setT(null); setErr(""); return; }
     setErr(""); setDropping(false); setDropReason("");
+    if (!sel) fetch("/api/meta/selectors").then((r) => r.json()).then(setSel).catch(() => {});
+    if (openId === "new") { setT(null); return; }
     loadDetail(openId);
     loadComments(openId);
-    if (!sel) fetch("/api/meta/selectors").then((r) => r.json()).then(setSel).catch(() => {});
   }, [openId, loadDetail, loadComments, sel]);
+
+  // 새 업무 초안 초기화 (진입 시 1회) + 영역 기본값은 selectors 도착 후 채움
+  useEffect(() => {
+    if (openId === "new") {
+      setDraft((d) =>
+        d ?? {
+          title: "", areaId: prefill.areaId ?? 0, projectId: prefill.projectId ?? 0,
+          assigneeId: prefill.assigneeId ?? 0, priority: "mid",
+          workType: prefill.workType ?? "team",
+          startDate: prefill.startDate ?? "", dueDate: prefill.dueDate ?? "", description: "",
+        }
+      );
+    } else {
+      setDraft(null);
+      setCreating(false);
+    }
+  }, [openId, prefill]);
+  useEffect(() => {
+    if (openId === "new" && sel && draft && !draft.areaId) {
+      setDraft({ ...draft, areaId: sel.areas[0]?.id ?? 0 });
+    }
+  }, [openId, sel, draft]);
+
+  async function createTask() {
+    if (!draft || !draft.title.trim()) { setErr("제목을 입력하세요."); return; }
+    setCreating(true); setErr("");
+    const res = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: draft.title.trim(),
+        areaId: draft.areaId || undefined,
+        projectId: draft.projectId || undefined,
+        assigneeId: draft.assigneeId || undefined,
+        workType: draft.workType,
+        priority: draft.priority,
+        startDate: draft.startDate || undefined,
+        dueDate: draft.dueDate || undefined,
+        description: draft.description,
+      }),
+    });
+    setCreating(false);
+    if (!res.ok) { setErr((await res.json()).error ?? "생성 실패"); return; }
+    const { id } = await res.json();
+    notifyTaskUpdated();
+    openTaskPanel(id); // 생성된 업무 상세로 전환
+  }
 
   // ESC 닫기
   useEffect(() => {
@@ -94,7 +157,7 @@ export default function TaskDetailPanel() {
   }, [openId]);
 
   async function patch(fields: Record<string, unknown>) {
-    if (!openId) return;
+    if (typeof openId !== "number") return;
     setSave("saving"); setErr("");
     const res = await fetch(`/api/tasks/${openId}`, {
       method: "PATCH",
@@ -115,7 +178,7 @@ export default function TaskDetailPanel() {
   }
 
   async function addComment() {
-    if (!openId || !newComment.trim()) return;
+    if (typeof openId !== "number" || !newComment.trim()) return;
     const res = await fetch(`/api/tasks/${openId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -129,7 +192,7 @@ export default function TaskDetailPanel() {
   }
 
   async function softDelete() {
-    if (!openId) return;
+    if (typeof openId !== "number") return;
     if (!window.confirm("이 업무를 삭제할까요? (소프트 삭제)")) return;
     const res = await fetch(`/api/tasks/${openId}`, {
       method: "PATCH",
@@ -148,15 +211,74 @@ export default function TaskDetailPanel() {
       <div className="tdp-backdrop" onClick={() => closeTaskPanel()} />
       <aside className="tdp" role="dialog" aria-label="업무 상세">
         <div className="tdp-head">
-          <span className="tdp-crumb">업무 상세 {t ? `· #${t.id}` : ""}</span>
+          <span className="tdp-crumb">
+            {openId === "new" ? "새 업무" : `업무 상세 ${t ? `· #${t.id}` : ""}`}
+          </span>
           <span className={`tdp-save ${save}`}>
             {save === "saving" ? "저장 중…" : save === "saved" ? "저장됨" : ""}
           </span>
           <button className="tdp-x" onClick={() => closeTaskPanel()} aria-label="닫기">✕</button>
         </div>
 
-        {!t && !err && <div className="tdp-body"><p className="tdp-muted">불러오는 중…</p></div>}
-        {err && !t && <div className="tdp-body"><p className="tdp-err">{err}</p></div>}
+        {/* ── 새 업무(빈 상태) — 파트 4 ── */}
+        {openId === "new" && draft && (
+          <div className="tdp-body">
+            {err && <p className="tdp-err">{err}</p>}
+            <input
+              className="tdp-title"
+              autoFocus
+              placeholder="새 업무 제목"
+              value={draft.title}
+              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+              onKeyDown={(e) => { if (e.key === "Enter") createTask(); }}
+            />
+            <div className="tdp-grid">
+              <label>영역
+                <select value={draft.areaId} onChange={(e) => setDraft({ ...draft, areaId: Number(e.target.value), projectId: 0 })}>
+                  {sel?.areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </label>
+              <label>업무유형
+                <select value={draft.workType} onChange={(e) => setDraft({ ...draft, workType: e.target.value })}>
+                  {WORKTYPE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </label>
+              <label>프로젝트
+                <select value={draft.projectId} onChange={(e) => setDraft({ ...draft, projectId: Number(e.target.value) })}>
+                  <option value={0}>없음</option>
+                  {sel?.projects.filter((p) => p.areaId === draft.areaId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </label>
+              <label>담당
+                <select value={draft.assigneeId} onChange={(e) => setDraft({ ...draft, assigneeId: Number(e.target.value) })}>
+                  <option value={0}>미지정</option>
+                  {sel?.actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </label>
+              <label>우선순위
+                <select value={draft.priority} onChange={(e) => setDraft({ ...draft, priority: e.target.value })}>
+                  {PRIORITY.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </label>
+              <label>시작일
+                <input type="date" value={draft.startDate} onChange={(e) => setDraft({ ...draft, startDate: e.target.value })} />
+              </label>
+              <label>마감일
+                <input type="date" value={draft.dueDate} onChange={(e) => setDraft({ ...draft, dueDate: e.target.value })} />
+              </label>
+            </div>
+            <div className="tdp-sec">
+              <div className="tdp-sec-h">설명 <em>(선택)</em></div>
+              <textarea className="tdp-desc" rows={4} value={draft.description}
+                placeholder="업무 설명을 입력하세요…"
+                onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
+            </div>
+            <p className="tdp-muted">만든 뒤 상세 화면에서 목표 연결·코멘트를 추가할 수 있습니다.</p>
+          </div>
+        )}
+
+        {openId !== "new" && !t && !err && <div className="tdp-body"><p className="tdp-muted">불러오는 중…</p></div>}
+        {openId !== "new" && err && !t && <div className="tdp-body"><p className="tdp-err">{err}</p></div>}
 
         {t && (
           <div className="tdp-body">
@@ -272,6 +394,16 @@ export default function TaskDetailPanel() {
                 <button className="btn small primary" onClick={addComment} disabled={!newComment.trim()}>등록</button>
               </div>
             </div>
+          </div>
+        )}
+
+        {openId === "new" && (
+          <div className="tdp-foot">
+            <button className="btn small primary" disabled={creating || !draft?.title.trim()} onClick={createTask}>
+              {creating ? "만드는 중…" : "만들기"}
+            </button>
+            <span style={{ flex: 1 }} />
+            <button className="btn small ghost" onClick={() => closeTaskPanel()}>취소</button>
           </div>
         )}
 

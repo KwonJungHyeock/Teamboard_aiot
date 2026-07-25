@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { HomeSummary } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
 import TeamTimeline, { type TimelineView } from "./TeamTimeline";
+import { openNewTaskPanel } from "@/lib/task-panel";
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(`${dateStr}T00:00:00Z`);
@@ -84,6 +85,9 @@ export default function CalendarView({
           anchor={anchor}
           isLead={user.role === "lead"}
           expanded
+          onEmptyCreate={({ actorId, date }) =>
+            openNewTaskPanel({ assigneeId: actorId, dueDate: date })
+          }
         />
       </div>
     </div>

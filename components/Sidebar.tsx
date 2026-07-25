@@ -203,7 +203,10 @@ export default function Sidebar({
         {/* 영역 7종 나열, 각 영역 아래 소속 프로젝트를 들여쓰기로 표시 (is_active=false 는 서버에서 제외) */}
         {areas.map((area) => (
           <div key={area.id}>
-            <Link href={`/tasks?area=${area.id}`}>
+            <Link
+              href={`/areas/${area.id}`}
+              aria-current={pathname === `/areas/${area.id}` ? "page" : undefined}
+            >
               <span className={`pjdot ${area.color_key ?? "team"}`} />
               <span>{area.name}</span>
             </Link>

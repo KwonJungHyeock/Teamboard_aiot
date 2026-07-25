@@ -6,6 +6,8 @@ import { useMemo, useState } from "react";
 import type { HomeSummary } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
 import MetricCards from "./MetricCards";
+import NewMenu from "./NewMenu";
+import RingGauge from "./RingGauge";
 import SignalPanel from "./SignalPanel";
 import TaskTable from "./TaskTable";
 import TeamTimeline, { type TimelineView } from "./TeamTimeline";
@@ -54,9 +56,7 @@ export default function HomeView({
             <path d="M20 20l-3.5-3.5" />
           </svg>
         </button>
-        <button className="newbtn" onClick={openPalette}>
-          ＋ 새로 만들기
-        </button>
+        <NewMenu />
       </div>
 
       <div className="wrap">
@@ -83,7 +83,8 @@ export default function HomeView({
 
         <MetricCards metrics={summary.metrics} />
 
-        {/* 팀 타임라인 — 전폭 (레이아웃 재배치) */}
+        {/* ── 1순위: 항상 크게 ── */}
+        {/* 팀 타임라인 — 전폭 */}
         <div className="fullrow">
           <TeamTimeline
             lanes={summary.lanes}
@@ -95,129 +96,200 @@ export default function HomeView({
           />
         </div>
 
+        {/* 지연·마감 임박 + 시그널 — 2열 (홈에서 가장 자주 보는 두 축) */}
         <div className="cols">
-          {/* 좌: 마감 임박 / 프로젝트 진행 */}
+          <TaskTable
+            rows={summary.dueSoon}
+            title="지연 · 마감 임박"
+            sub={`지연 ${summary.dueSoon.filter((t) => t.overdue).length} · 7일 이내 ${summary.dueSoon.filter((t) => !t.overdue).length}`}
+            emptyText="지연·마감 임박 업무가 없습니다."
+            onRowClick={(id) => openTaskPanel(id)}
+          />
+          <SignalPanel items={summary.signals} stalledCount={summary.stalledCount} />
+        </div>
+
+        {/* ── 2순위(요약+링, 클릭 시 확대) 좌 · 3순위(허들 접힘) 우 ── */}
+        <div className="cols">
           <div className="stack">
-            <TaskTable
-              rows={summary.dueSoon}
-              title="지연 · 마감 임박"
-              sub={`지연 ${summary.dueSoon.filter((t) => t.overdue).length} · 7일 이내 ${summary.dueSoon.filter((t) => !t.overdue).length}`}
-              emptyText="지연·마감 임박 업무가 없습니다."
-              onRowClick={(id) => openTaskPanel(id)}
+            <SummaryProgress
+              title="프로젝트 진행"
+              sub={`W${summary.isoWeek}`}
+              rows={summary.projectProgress.map((p) => ({
+                id: `p${p.id}`,
+                label: p.name,
+                percent: p.percent,
+                colorKey: p.colorKey,
+                meta: p.total > 0 ? `${p.done}/${p.total}` : undefined,
+              }))}
+              done={summary.projectProgress.reduce((a, p) => a + p.done, 0)}
+              total={summary.projectProgress.reduce((a, p) => a + p.total, 0)}
+              emptyText="진행 중인 프로젝트가 없습니다."
             />
-
-            {/* 프로젝트 진행 — 구 관제뷰 "프로젝트별 진행률" 흡수 */}
-            <section className="card" aria-label="프로젝트 진행">
-              <div className="ch">
-                <h2>프로젝트 진행</h2>
-                <span className="sub">W{summary.isoWeek}</span>
-              </div>
-              {summary.projectProgress.map((project) => (
-                <div className="pr" key={project.id}>
-                  <div className="pr-t">
-                    <span>{project.name}</span>
-                    <span>
-                      {project.percent === null ? "-" : `${project.percent}%`}
-                      {project.total > 0 && (
-                        <span style={{ color: "var(--lo)", marginLeft: 6 }}>
-                          {project.done}/{project.total}
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <div className="bar">
-                    <i
-                      className={project.colorKey ?? "edu"}
-                      style={{ width: `${Math.min(project.percent ?? 0, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </section>
-
-            {/* 이번 달 목표 — 좌우 높이 균형을 위해 좌측 배치 (#6 balance rule) */}
-            <section className="card" aria-label="이번 달 목표">
-              <div className="ch">
-                <h2>이번 달 목표</h2>
-                <span className="sub">{summary.monthGoals.length}개</span>
-              </div>
-              {summary.monthGoals.length === 0 && (
-                <p style={{ color: "var(--lo)", fontSize: 12 }}>
-                  이번 달 목표가 없습니다. 목표 화면에서 추가하세요.
-                </p>
-              )}
-              {summary.monthGoals.map((goal) => (
-                <div className="pr" key={goal.id}>
-                  <div className="pr-t">
-                    <span>{goal.title}</span>
-                    <span>
-                      {goal.droppedCount > 0 && <em className="gdrop">중단 {goal.droppedCount}건</em>}
-                      {goal.progress === null ? "-" : `${goal.progress}%`}
-                    </span>
-                  </div>
-                  <div className="bar">
-                    <i
-                      className={goal.colorKey ?? "edu"}
-                      style={{ width: `${Math.min(goal.progress ?? 0, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </section>
+            <SummaryProgress
+              title="이번 달 목표"
+              sub={`${summary.monthGoals.length}개`}
+              rows={summary.monthGoals.map((g) => ({
+                id: `g${g.id}`,
+                label: g.title,
+                percent: g.progress,
+                colorKey: g.colorKey,
+                meta: g.droppedCount > 0 ? `중단 ${g.droppedCount}` : undefined,
+              }))}
+              emptyText="이번 달 목표가 없습니다. 목표 화면에서 추가하세요."
+            />
           </div>
 
-          {/* 우: 시그널 / 허들 */}
-          <div className="stack">
-            {/* 시그널 패널 — /signals와 공유하는 SignalPanel (Phase 6), 정렬은 서버 */}
-            <SignalPanel items={summary.signals} stalledCount={summary.stalledCount} />
-
-            {/* 허들 피드 */}
-            <section className="card" aria-label="허들">
-              <div className="ch">
-                <h2>허들</h2>
-                <span className="sub">공유 {summary.huddles.length}</span>
-              </div>
-              {summary.huddles.length === 0 && (
-                <p style={{ color: "var(--lo)", fontSize: 12 }}>
-                  공유된 메모가 없습니다. 시그널에서 메모를 허들로 보내보세요.
-                </p>
-              )}
-              {summary.huddles.map((huddle) => (
-                <div className="hud" key={huddle.id}>
-                  <div className="h">{huddle.title}</div>
-                  <div className="b">{huddle.body}</div>
-                  <div className="f">
-                    <span className="w">
-                      <span
-                        className="av"
-                        style={{
-                          width: 15,
-                          height: 15,
-                          flexBasis: 15,
-                          fontSize: 8.5,
-                          background: "linear-gradient(140deg,var(--edu),var(--play))",
-                        }}
-                      >
-                        {huddle.authorName.slice(0, 1)}
-                      </span>
-                      {huddle.authorName}
-                    </span>
-                    <span>코멘트 {huddle.commentCount}</span>
-                    <span className="acts">
-                      <button className="p" disabled title="Phase 6에서 제공">
-                        결정으로 승격
-                      </button>
-                      <button disabled title="Phase 6에서 제공">
-                        Task 생성
-                      </button>
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </section>
-          </div>
+          {/* 허들 — 3순위. 접힌 상태로 최근 1건만, 나머지는 펼치기 */}
+          <HuddleFeed huddles={summary.huddles} />
         </div>
       </div>
     </div>
+  );
+}
+
+// ── 2순위 요약 카드 — 한 줄 요약 + 링 게이지 하나. 클릭 시 개별 진행률 바 확대 ──
+type SummaryRow = {
+  id: string;
+  label: string;
+  percent: number | null;
+  colorKey?: string | null;
+  meta?: string;
+};
+
+function SummaryProgress({
+  title,
+  sub,
+  rows,
+  done,
+  total,
+  emptyText,
+}: {
+  title: string;
+  sub: string;
+  rows: SummaryRow[];
+  done?: number;
+  total?: number;
+  emptyText: string;
+}) {
+  const [open, setOpen] = useState(false);
+  // 집계 진행률 — done/total(가중) 우선, 없으면 percent 단순 평균.
+  const withPct = rows.filter((r) => r.percent !== null);
+  const overall =
+    total && total > 0
+      ? Math.round(((done ?? 0) / total) * 100)
+      : withPct.length > 0
+      ? Math.round(withPct.reduce((a, r) => a + (r.percent ?? 0), 0) / withPct.length)
+      : null;
+  const topColor = rows[0]?.colorKey ?? "edu";
+
+  return (
+    <section className="card sumcard" aria-label={title}>
+      <div className="ch">
+        <h2>{title}</h2>
+        <span className="sub">{sub}</span>
+      </div>
+      {rows.length === 0 ? (
+        <p style={{ color: "var(--lo)", fontSize: "var(--fs-meta)" }}>{emptyText}</p>
+      ) : (
+        <>
+          <button
+            className="sumhead"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+          >
+            <RingGauge percent={overall} colorKey={topColor ?? "edu"} />
+            <span className="suml">
+              <b>
+                {rows.length}개 · 평균 {overall === null ? "–" : `${overall}%`}
+              </b>
+              <em>
+                {total && total > 0 ? `완료 ${done}/${total} · ` : ""}
+                {open ? "접기" : "펼쳐 보기"}
+              </em>
+            </span>
+            <svg className={`sumcv ${open ? "on" : ""}`} viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 10l4 4 4-4" />
+            </svg>
+          </button>
+          {open && (
+            <div className="sumbody">
+              {rows.map((r) => (
+                <div className="pr" key={r.id}>
+                  <div className="pr-t">
+                    <span>{r.label}</span>
+                    <span>
+                      {r.meta && (
+                        <em className="gdrop" style={{ marginRight: 6 }}>
+                          {r.meta}
+                        </em>
+                      )}
+                      {r.percent === null ? "-" : `${r.percent}%`}
+                    </span>
+                  </div>
+                  <div className="bar">
+                    <i
+                      className={r.colorKey ?? "edu"}
+                      style={{ width: `${Math.min(r.percent ?? 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+// ── 3순위 허들 — 접힌 상태로 최근 1건, 나머지는 "더 보기" ──
+function HuddleFeed({
+  huddles,
+}: {
+  huddles: HomeSummary["huddles"];
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? huddles : huddles.slice(0, 1);
+  return (
+    <section className="card huddle-lo" aria-label="허들">
+      <div className="ch">
+        <h2>허들</h2>
+        <span className="sub">공유 {huddles.length}</span>
+      </div>
+      {huddles.length === 0 && (
+        <p style={{ color: "var(--lo)", fontSize: "var(--fs-meta)" }}>
+          공유된 메모가 없습니다. 시그널에서 메모를 허들로 보내보세요.
+        </p>
+      )}
+      {visible.map((huddle) => (
+        <div className="hud" key={huddle.id}>
+          <div className="h">{huddle.title}</div>
+          <div className="b">{huddle.body}</div>
+          <div className="f">
+            <span className="w">
+              <span
+                className="av"
+                style={{
+                  width: 18,
+                  height: 18,
+                  flexBasis: 18,
+                  fontSize: 10.5,
+                  background: "linear-gradient(140deg,var(--edu),var(--play))",
+                }}
+              >
+                {huddle.authorName.slice(0, 1)}
+              </span>
+              {huddle.authorName}
+            </span>
+            <span>코멘트 {huddle.commentCount}</span>
+          </div>
+        </div>
+      ))}
+      {huddles.length > 1 && (
+        <button className="lk mu" style={{ marginTop: 10 }} onClick={() => setExpanded((v) => !v)}>
+          {expanded ? "접기" : `+ ${huddles.length - 1}건 더 보기`}
+        </button>
+      )}
+    </section>
   );
 }

@@ -89,11 +89,13 @@ export function toPanelItem(s: ApiSignal): SignalPanelItem {
 function NewSignalForm({
   actors,
   onDone,
+  initialType = "memo",
 }: {
   actors: { id: number; name: string }[];
   onDone: () => void;
+  initialType?: string;
 }) {
-  const [type, setType] = useState("memo");
+  const [type, setType] = useState(initialType);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [targetActorId, setTargetActorId] = useState(0);
@@ -173,6 +175,12 @@ export default function SignalsView({ user }: { user: SessionUser }) {
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showClosed, setShowClosed] = useState(false);
+  // "+ 새로 만들기 > 시그널/메모" 진입 시 작성 폼 유형 프리셋 (파트 4)
+  const [composerType, setComposerType] = useState("memo");
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("type");
+    if (q && ["memo", "decision", "review", "risk"].includes(q)) setComposerType(q);
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -250,7 +258,7 @@ export default function SignalsView({ user }: { user: SessionUser }) {
           />
         )}
 
-        <NewSignalForm actors={actors} onDone={load} />
+        <NewSignalForm actors={actors} onDone={load} initialType={composerType} />
       </div>
     </div>
   );

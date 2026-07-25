@@ -93,6 +93,48 @@ for (const [id, off] of taskStarts) {
   await q("UPDATE task SET start_date = $1 WHERE id = $2", [d(off), id]);
 }
 
+// ── 업무 설명(마크다운) — 상세 패널 "설명" 영역 확인용 (파트 5 보강) ──
+const descriptions = [
+  [tPoc, "## 목표\nPoC 결과를 리포트로 정리해 내부 공유 + 전북교육청 회신.\n\n## 체크리스트\n- [x] 로그 수집\n- [ ] 지표 표 작성\n- [ ] 배포(Notion)"],
+  [tCore, "core 패키지 공개 인터페이스를 확정한다. 동적 로딩 여부는 시그널 결정 대기 중."],
+  [tPrd, "팀보드 PRD 초안. 홈·업무·시그널·목표 4개 축의 화면 흐름과 권한 규칙 포함."],
+  [tHome, "홈 대시보드 컴포넌트 1차. 링 게이지·타임라인 밀도 재배분 반영 후 리뷰 요청."],
+  [tRnd1, "AIoT 센서 모듈 후보 3종 비교(전류·정확도·단가). 선행조사와 병행."],
+  [tEval, "6~7장 수행평가 문항 초안. 난이도 3단계 루브릭 공통안 적용 예정."],
+];
+for (const [id, body] of descriptions) {
+  await q("UPDATE task SET description = $1 WHERE id = $2", [body, id]);
+}
+
+// ── 업무 코멘트 + 활동 로그(업무 귀속) — 상세 패널 코멘트·타임라인 확인용 (파트 5) ──
+async function taskComment(taskId, author, body, daysAgo) {
+  await q(
+    `INSERT INTO task_comment (task_id, author_id, body, created_at)
+     VALUES ($1,$2,$3, now() - ($4 || ' days')::interval)`,
+    [taskId, author, body, daysAgo]
+  );
+}
+async function taskLog(taskId, userId, message, level, daysAgo) {
+  await q(
+    `INSERT INTO activity_log (user_id, task_id, message, level, created_at)
+     VALUES ($1,$2,$3,$4, now() - ($5 || ' days')::interval)`,
+    [userId, taskId, message, level, daysAgo]
+  );
+}
+// tPoc — 논의가 오간 업무
+await taskLog(tPoc, kwon, "권정혁이(가) 업무 생성 — \"PoC 결과 리포트 작성 및 배포\"", "info", 10);
+await taskLog(tPoc, kwon, "상태 변경 todo → doing", "info", 6);
+await taskComment(tPoc, park, "현장 로그 CSV 공유드렸어요. 채널 확인 부탁해요.", 5);
+await taskComment(tPoc, kwon, "지표 표는 내일 오전까지 채우겠습니다.", 4);
+await taskComment(tPoc, jo, "리포트 표지 디자인 필요하면 말씀 주세요.", 3);
+// tHome — 리뷰 대기 업무
+await taskLog(tHome, jo, "조서연이(가) 업무 생성 — \"홈 대시보드 컴포넌트 1차\"", "info", 8);
+await taskLog(tHome, jo, "상태 변경 doing → review", "success", 2);
+await taskComment(tHome, kwon, "링 게이지 색이 배경에 묻히지 않는지만 확인해주세요.", 2);
+await taskComment(tHome, jo, "명암 개편 반영해서 재배포했습니다. 재확인 부탁해요.", 1);
+// tRnd1 — 영역(R&D) 업무
+await taskComment(tRnd1, kwon, "센서 후보 3종 단가표 정리 중. 정확도 데이터는 park가 확인.", 2);
+
 // ── 일정 (오늘) ──
 async function event(projectId, title, startAt, endAt, isTeam, participants) {
   const r = await q(
@@ -231,5 +273,5 @@ await q(
 );
 
 await q("INSERT INTO config (key, value) VALUES ('demo_seeded', 'true')");
-console.log("데모 시드 완료 — 업무 13 · 일정 5 · 목표 3 · 시그널 8 · 코멘트 12 · 승인 대기 초안 1");
+console.log("데모 시드 완료 — 업무 13 · 일정 5 · 목표 3 · 시그널 8 · 시그널코멘트 12 · 업무설명 6 · 업무코멘트 6 · 승인 대기 초안 1");
 await pool.end();
