@@ -48,6 +48,18 @@ const TEAM = [
     workAreas: ["디자인"],
     actorAreas: ["디자인", "플랫폼"],
   },
+  // 기획자용 관리자 계정 (자동 로그인 링크로 접속). 비밀번호는 나중에 교체 예정.
+  {
+    email: "robodynesystems",
+    name: "ROBODYNE 관리자",
+    shortName: "관리자",
+    role: "lead",
+    notionUserId: null,
+    password: "robodyne",
+    assistantName: "관리자의 에이전트",
+    workAreas: ["R&D"],
+    actorAreas: ["플랫폼", "R&D"],
+  },
 ];
 
 // 프로젝트 3종 — 모두 area=플랫폼. "AI 트레이너"는 "AI 학습추론모델"로 개명.
@@ -109,7 +121,7 @@ for (const member of TEAM) {
     await pool.query(
       `INSERT INTO account (actor_id, email, password_hash, role, notion_user_id)
        VALUES ($1, $2, $3, $4, $5)`,
-      [humanId, member.email, hashPassword(DEFAULT_PASSWORD), member.role, member.notionUserId]
+      [humanId, member.email, hashPassword(member.password ?? DEFAULT_PASSWORD), member.role, member.notionUserId]
     );
   }
 
