@@ -32,7 +32,7 @@ export async function queryOne<T extends QueryResultRow = QueryResultRow>(
 
 // ─── 신규 스키마 공통 헬퍼 (조회는 is_active=true 기본) ───
 
-import type { Actor, Project } from "./types";
+import type { Actor, Area, AreaWithProjects, Project } from "./types";
 
 /** 활성 팀원(human) 목록 — 캘린더 레인·구성원 목록 등의 기준 */
 export async function getActiveHumans(): Promise<Actor[]> {
@@ -44,6 +44,31 @@ export async function getActiveHumans(): Promise<Actor[]> {
 /** 활성 프로젝트 목록 — 사이드바 동적 렌더 등 */
 export async function getActiveProjects(): Promise<Project[]> {
   return query<Project>(`SELECT * FROM project WHERE is_active = true ORDER BY id`);
+}
+
+/** 활성 업무 영역 목록 (sort_order) — 사이드바·필터·폼 */
+export async function getActiveAreas(): Promise<Area[]> {
+  return query<Area>(
+    `SELECT id, name, color_key, sort_order, is_active FROM area
+     WHERE is_active = true ORDER BY sort_order, id`
+  );
+}
+
+/** 영역 + 소속 프로젝트 (사이드바 "업무 영역" 트리) */
+export async function getAreasWithProjects(): Promise<AreaWithProjects[]> {
+  const [areas, projects] = await Promise.all([getActiveAreas(), getActiveProjects()]);
+  return areas.map((a) => ({ ...a, projects: projects.filter((p) => p.area_id === a.id) }));
+}
+
+/** 승인 인박스 카운트 — 에이전트 제안 업무(proposed) + 승인 대기 초안(pending).
+ *  lead 는 전체, 그 외는 본인(담당/소유) 기준. */
+export async function getInboxCount(viewerId: number, isLead: boolean): Promise<number> {
+  const row = await queryOne<{ n: string }>(
+    `SELECT (SELECT count(*) FROM task WHERE is_active = true AND status = 'proposed' AND ($2 OR assignee_id = $1))
+          + (SELECT count(*) FROM drafts WHERE status = 'pending' AND ($2 OR user_id = $1)) AS n`,
+    [viewerId, isLead]
+  );
+  return Number(row?.n ?? 0);
 }
 
 /** owner(human actor) 기준 에이전트 설정 조회 — 기존 AssistantSettings 형태 유지 */

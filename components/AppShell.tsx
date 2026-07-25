@@ -1,6 +1,6 @@
 // 공통 셸 (Phase 2) — 배경 레이어 + 사이드바 + 본문 + 커맨드 팔레트
 import { redirect } from "next/navigation";
-import { getActiveProjects } from "@/lib/db";
+import { getAreasWithProjects, getInboxCount } from "@/lib/db";
 import { getLiveSession } from "@/lib/auth";
 import type { SessionUser } from "@/lib/types";
 import Sidebar from "./Sidebar";
@@ -35,13 +35,16 @@ export default async function AppShell({
     );
   }
 
-  const projects = await getActiveProjects();
+  const [areas, inboxCount] = await Promise.all([
+    getAreasWithProjects(),
+    getInboxCount(current.id, current.role === "lead"),
+  ]);
   return (
     <>
       <div className="bgfx" aria-hidden="true" />
       <div className="grain" aria-hidden="true" />
       <div className="app">
-        <Sidebar user={current} projects={projects} />
+        <Sidebar user={current} areas={areas} inboxCount={inboxCount} />
         <main className="main">{children}</main>
       </div>
       <CommandPalette role={current.role} />

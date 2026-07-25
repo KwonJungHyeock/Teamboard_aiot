@@ -448,6 +448,62 @@ table.tl tr:hover td {
   font-size: 13.5px;
 }
 
+/* 에이전트 기여 측정 스트립 (My Agent 상단) */
+.am-strip .am-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.am-strip .am-ref {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+.am-strip .am-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.am-strip .am-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--bg-elev);
+}
+.am-strip .am-l {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.am-strip .am-v {
+  font-family: var(--mono);
+  font-size: 24px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+.am-strip .am-d {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  margin-top: 2px;
+}
+.am-strip .am-d.up {
+  color: var(--green);
+}
+.am-strip .am-d.dn {
+  color: var(--accent);
+}
+.am-strip .am-d.fl {
+  color: var(--text-dim);
+}
+@media (max-width: 700px) {
+  .am-strip .am-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* 빈 상태 — 일러스트 슬롯. 파일(/assets/illust/*.png)이 없으면 onError로 이미지를 숨겨
    깨진 이미지 없이 텍스트만 남는다 (P1-3). */
 .empty-state {
@@ -571,6 +627,10 @@ body {
 .pjdot.team { background: var(--team); }
 .moreln { display: block; padding: 5px 8px 5px 30px; font-size: 11.5px; color: var(--lo); text-decoration: none; }
 .moreln:hover { color: var(--mid); }
+/* 업무 영역 트리 — 소속 프로젝트 들여쓰기 */
+.side a.subproj { padding-left: 30px; font-size: 12.5px; color: var(--lo); min-height: 30px; }
+.side a.subproj .pjdot { width: 6px; height: 6px; flex-basis: 6px; }
+.side a.subproj:hover { color: var(--hi); }
 
 .acct { display: flex; align-items: center; gap: 9px; padding: 8px; border-radius: var(--r-s); border: 1px solid var(--line); background: var(--glass); cursor: pointer; width: 100%; font-family: inherit; text-align: left; color: inherit; }
 .acct:hover { border-color: var(--line-hi); }
