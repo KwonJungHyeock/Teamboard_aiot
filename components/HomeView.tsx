@@ -3,8 +3,10 @@
 // 홈 대시보드 (Phase 3) — SPEC 4.1의 6요소를 프로토타입 레이아웃 그대로 조립.
 // ③ "이번 달 목표 진척"은 SPEC 우선 규칙에 따라 프로토타입의 "프로젝트 진행" 자리를 대체.
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import type { HomeSummary } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
+import EmptyState from "./EmptyState";
 import MetricCards from "./MetricCards";
 import NewMenu from "./NewMenu";
 import RingGauge from "./RingGauge";
@@ -102,7 +104,8 @@ export default function HomeView({
             rows={summary.dueSoon}
             title="지연 · 마감 임박"
             sub={`지연 ${summary.dueSoon.filter((t) => t.overdue).length} · 7일 이내 ${summary.dueSoon.filter((t) => !t.overdue).length}`}
-            emptyText="지연·마감 임박 업무가 없습니다."
+            emptyText="지연·마감 임박 업무가 없어요"
+            emptyHint="마감이 임박하거나 지난 업무가 없습니다. 좋은 상태예요."
             onRowClick={(id) => openTaskPanel(id)}
           />
           <SignalPanel items={summary.signals} stalledCount={summary.stalledCount} />
@@ -123,7 +126,9 @@ export default function HomeView({
               }))}
               done={summary.projectProgress.reduce((a, p) => a + p.done, 0)}
               total={summary.projectProgress.reduce((a, p) => a + p.total, 0)}
-              emptyText="진행 중인 프로젝트가 없습니다."
+              emptyText="아직 진행 중인 프로젝트가 없어요"
+              emptyHint="영역 공간에서 업무를 추가하면 소속 프로젝트 진행률이 여기에 모입니다."
+              emptyAction={<Link className="btn small primary" href="/projects">프로젝트 보기</Link>}
             />
             <SummaryProgress
               title="이번 달 목표"
@@ -135,7 +140,9 @@ export default function HomeView({
                 colorKey: g.colorKey,
                 meta: g.droppedCount > 0 ? `중단 ${g.droppedCount}` : undefined,
               }))}
-              emptyText="이번 달 목표가 없습니다. 목표 화면에서 추가하세요."
+              emptyText="이번 달 목표가 없어요"
+              emptyHint="연간·분기 목표 아래 이번 달 목표를 세우면 진척이 자동 집계됩니다."
+              emptyAction={<Link className="btn small primary" href="/goals">목표 세우기</Link>}
             />
           </div>
 
@@ -163,6 +170,8 @@ function SummaryProgress({
   done,
   total,
   emptyText,
+  emptyHint,
+  emptyAction,
 }: {
   title: string;
   sub: string;
@@ -170,6 +179,8 @@ function SummaryProgress({
   done?: number;
   total?: number;
   emptyText: string;
+  emptyHint?: string;
+  emptyAction?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   // 집계 진행률 — done/total(가중) 우선, 없으면 percent 단순 평균.
@@ -189,7 +200,7 @@ function SummaryProgress({
         <span className="sub">{sub}</span>
       </div>
       {rows.length === 0 ? (
-        <p style={{ color: "var(--lo)", fontSize: "var(--fs-meta)" }}>{emptyText}</p>
+        <EmptyState compact title={emptyText} hint={emptyHint} action={emptyAction} />
       ) : (
         <>
           <button
@@ -257,9 +268,12 @@ function HuddleFeed({
         <span className="sub">공유 {huddles.length}</span>
       </div>
       {huddles.length === 0 && (
-        <p style={{ color: "var(--lo)", fontSize: "var(--fs-meta)" }}>
-          공유된 메모가 없습니다. 시그널에서 메모를 허들로 보내보세요.
-        </p>
+        <EmptyState
+          compact
+          title="공유된 허들이 없어요"
+          hint="시그널에서 메모를 허들로 보내면 팀이 함께 볼 결정·논의로 올라옵니다."
+          action={<Link className="btn small" href="/signals">시그널로 가기</Link>}
+        />
       )}
       {visible.map((huddle) => (
         <div className="hud" key={huddle.id}>

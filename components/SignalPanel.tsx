@@ -6,6 +6,7 @@
 // 투명도 90%(CSS) / 승인 대기 배지(.bg.wait)
 import { useMemo, useState } from "react";
 import type { SignalType } from "@/lib/types";
+import EmptyState from "./EmptyState";
 
 export interface SignalPanelItem {
   id: number;
@@ -72,9 +73,11 @@ export default function SignalPanel({
       </div>
       <div>
         {visible.length === 0 && (
-          <p style={{ color: "var(--lo)", fontSize: 12, padding: "8px 0" }}>
-            표시할 시그널이 없습니다.
-          </p>
+          <EmptyState
+            compact
+            title={tab === "all" ? "아직 시그널이 없어요" : "이 유형의 시그널이 없어요"}
+            hint="결정이 필요한 논의·확인 요청·리스크·메모를 시그널로 남기면 팀 전체가 흐름을 추적할 수 있어요."
+          />
         )}
         {visible.map((signal) => {
           const clickable = onSelect && signal.kind === "signal";

@@ -88,6 +88,68 @@ function NotionSchemaCard() {
   );
 }
 
+/** 데모 데이터 비우기 (파트 A, 팀장 전용) — is_demo=true 레코드만 소프트 삭제 */
+function DemoDataCard() {
+  const [counts, setCounts] = useState<{ total: number } | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const load = () =>
+    fetch("/api/admin/clear-demo")
+      .then((r) => r.json())
+      .then((d) => setCounts(d))
+      .catch(() => {});
+  useEffect(() => { load(); }, []);
+
+  async function clearDemo() {
+    setBusy(true); setError(""); setMessage("");
+    const res = await fetch("/api/admin/clear-demo", { method: "POST" });
+    const data = await res.json();
+    setBusy(false); setConfirming(false);
+    if (!res.ok) { setError(data.error ?? "실패"); return; }
+    setMessage(`데모 데이터 ${data.total}건을 비웠습니다. 이제 실제 업무를 입력하세요.`);
+    load();
+  }
+
+  const total = counts?.total ?? 0;
+
+  return (
+    <div className="card">
+      <h2>데모 데이터 비우기 <span className="badge">팀장 전용</span></h2>
+      <p className="muted" style={{ marginBottom: 14 }}>
+        <code>db:seed-demo</code>로 채운 예시 데이터(업무·목표·일정·시그널·초안)만 한 번에 비웁니다.
+        실제 계정·영역·프로젝트·설정은 그대로 유지됩니다. 실제 업무를 입력하기 전에 한 번 실행하세요.
+      </p>
+      <p className="muted" style={{ marginBottom: 14 }}>
+        현재 남은 데모 레코드: <b style={{ color: "var(--hi)" }}>{total}건</b>
+      </p>
+      {error && <p className="error-text">{error}</p>}
+      {message && <p className="muted" style={{ color: "var(--green)" }}>{message}</p>}
+      {!confirming ? (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+          <button className="btn danger" onClick={() => setConfirming(true)} disabled={total === 0}>
+            {total === 0 ? "비울 데모 데이터 없음" : "데모 데이터 비우기"}
+          </button>
+        </div>
+      ) : (
+        <div style={{ marginTop: 10, padding: 12, border: "1px solid var(--line-hi)", borderRadius: 8 }}>
+          <p className="muted" style={{ marginBottom: 10, color: "var(--hi)" }}>
+            데모 {total}건을 비웁니다. 이 작업은 소프트 삭제이며 실제 업무 입력을 방해하지 않습니다. 진행할까요?
+          </p>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button className="btn" onClick={() => setConfirming(false)} disabled={busy}>취소</button>
+            <button className="btn danger" onClick={clearDemo} disabled={busy}>
+              {busy ? "비우는 중…" : "확인, 비우기"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function NotionScopeSettings() {
   const [dataSourceId, setDataSourceId] = useState("");
   const [label, setLabel] = useState("");
@@ -126,6 +188,7 @@ export default function NotionScopeSettings() {
 
   return (
     <div className="grid cols-2">
+      <DemoDataCard />
       <NotionSchemaCard />
       <div className="card">
         <h2>Notion 연동 범위 (팀장 전용)</h2>

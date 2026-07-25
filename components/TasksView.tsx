@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
-import { openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
+import { openNewTaskPanel, openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
 
 interface TaskItem {
   id: number;
@@ -482,7 +482,13 @@ export default function TasksView({ user }: { user: SessionUser }) {
             rows={rows}
             title={isMine ? "내 업무" : "업무 목록"}
             sub={`${rows.length}건`}
-            emptyText="조건에 맞는 업무가 없습니다."
+            emptyText="아직 업무가 없어요"
+            emptyHint="상단 필터를 조정하거나, 새 업무를 만들어 시작하세요."
+            emptyAction={
+              <button className="btn small primary" onClick={() => openNewTaskPanel()}>
+                ＋ 새 업무
+              </button>
+            }
             variant="full"
             onStatusChange={changeStatus}
             onRowClick={(id) => openTaskPanel(id)}

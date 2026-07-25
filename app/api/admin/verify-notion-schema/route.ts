@@ -8,6 +8,7 @@ import { timingSafeEqual } from "crypto";
 import { getDataSourceSchema, getWorkspaceUsers } from "@/lib/notion";
 import { NOTION_SELECT_PROPERTIES, NOTION_TIMELINE_SCHEMA, type NotionPropertySpec } from "@/lib/notion-schema";
 import { logActivity } from "@/lib/activity";
+import { query } from "@/lib/db";
 
 // 로깅 실패가 잠금 응답 상태를 바꾸지 않도록 best-effort
 async function safeLog(p: Parameters<typeof logActivity>[0]) {
@@ -116,6 +117,31 @@ export async function GET(request: Request) {
       /* 사용자 목록 조회 실패는 치명 아님 */
     }
 
+    // 담당자 person ID 대조 표 — 팀보드 담당(actor+account.notion_user_id) ↔ Notion person.
+    // 사람이 바로 읽을 수 있는 행 목록으로 반환(승인 시 담당자 미매핑을 사전에 발견).
+    const notionUserById = new Map(notionUsers.map((u) => [u.id, u.name]));
+    const members = await query<{
+      id: number; display_name: string; role: string; notion_user_id: string | null;
+    }>(
+      `SELECT a.id, a.display_name, a.role, ac.notion_user_id
+       FROM actor a
+       LEFT JOIN account ac ON ac.actor_id = a.id
+       WHERE a.type = 'human' AND a.is_active = true
+       ORDER BY a.id`
+    );
+    const personMapping = members.map((m) => {
+      const mapped = m.notion_user_id ? notionUserById.get(m.notion_user_id) ?? null : null;
+      return {
+        teamboardName: m.display_name,
+        role: m.role,
+        notionUserId: m.notion_user_id,
+        notionName: mapped,
+        // OK = 매핑값이 실제 워크스페이스 사용자와 일치 / 미설정 / 불일치(위험)
+        status: !m.notion_user_id ? "미설정" : mapped ? "일치" : "불일치",
+      };
+    });
+    const personUnmapped = personMapping.filter((p) => p.status !== "일치").length;
+
     await safeLog({
       userId: null,
       message: `verify-notion-schema 실행 — 불일치 ${mismatches.length}건 (IP: ${ip})`,
@@ -125,11 +151,13 @@ export async function GET(request: Request) {
     const workAreaType = report.find((r) => r.property === "업무 구분")?.notionType ?? null;
     return NextResponse.json({
       ready: true,
-      ok: mismatches.length === 0,
+      ok: mismatches.length === 0 && personUnmapped === 0,
       workAreaResolvedType: workAreaType, // select | multi_select — 확정 결과
       report,
       mismatches,
       notionUsers,
+      personMapping, // 팀보드 담당 ↔ Notion person 대조 표
+      personUnmapped, // 미설정·불일치 인원 수 (0이면 담당자 매핑 정상)
     });
   } catch (error: any) {
     return NextResponse.json(

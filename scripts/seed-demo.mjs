@@ -49,9 +49,9 @@ const at = (dayOffset, hhmm) => `${d(dayOffset)}T${hhmm}:00+09:00`;
 // ── 업무 (proposed 없음 — 홈·캘린더 노출 규칙 준수. 에이전트 기원 1건은 승인된 todo) ──
 async function task(projectId, title, status, assignee, dueOffset, priority = "mid", origin = "human", createdDaysAgo = 10, completedDaysAgo = null, areaName = "플랫폼", workType = "team") {
   const r = await q(
-    `INSERT INTO task (project_id, area_id, work_type, title, status, assignee_id, due_date, priority, origin, created_by, created_at, completed_at)
+    `INSERT INTO task (project_id, area_id, work_type, title, status, assignee_id, due_date, priority, origin, created_by, created_at, completed_at, is_demo)
      VALUES ($1,(SELECT id FROM area WHERE name=$2),$3,$4,$5,$6,$7,$8,$9,$10, now() - ($11 || ' days')::interval,
-             CASE WHEN $12::int IS NULL THEN NULL ELSE now() - ($12 || ' days')::interval END)
+             CASE WHEN $12::int IS NULL THEN NULL ELSE now() - ($12 || ' days')::interval END, true)
      RETURNING id`,
     [projectId, areaName, workType, title, status, assignee, dueOffset === null ? null : d(dueOffset), priority, origin, assignee, createdDaysAgo, completedDaysAgo]
   );
@@ -138,8 +138,8 @@ await taskComment(tRnd1, kwon, "센서 후보 3종 단가표 정리 중. 정확�
 // ── 일정 (오늘) ──
 async function event(projectId, title, startAt, endAt, isTeam, participants) {
   const r = await q(
-    `INSERT INTO event (project_id, title, start_at, end_at, is_team, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+    `INSERT INTO event (project_id, title, start_at, end_at, is_team, created_by, is_demo)
+     VALUES ($1,$2,$3,$4,$5,$6, true) RETURNING id`,
     [projectId, title, startAt, endAt, isTeam, kwon]
   );
   for (const p of participants) {
@@ -160,8 +160,8 @@ const monthEnd = new Date(Date.UTC(yy, mm, 0)).toISOString().slice(0, 10);
 
 async function goal({ periodType, start, end, title, parentId = null, projectId = null, mode = "auto", progress = 0, links = [] }) {
   const r = await q(
-    `INSERT INTO goal (parent_id, period_type, period_start, period_end, title, progress_mode, progress, owner_actor_id, project_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+    `INSERT INTO goal (parent_id, period_type, period_start, period_end, title, progress_mode, progress, owner_actor_id, project_id, is_demo)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, true) RETURNING id`,
     [parentId, periodType, start, end, title, mode, progress, kwon, projectId]
   );
   for (const t of links) await q("INSERT INTO goal_task (goal_id, task_id) VALUES ($1,$2)", [r.rows[0].id, t]);
@@ -203,8 +203,8 @@ await goal({ periodType: "month", start: monthStart, end: monthEnd, title: "키�
 // ── 시그널 ──
 async function signal(type, scope, title, body, author, status, daysAgo, projectId = null, taskId = null) {
   const r = await q(
-    `INSERT INTO signal (type, scope, title, body, author_id, project_id, task_id, status, created_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now() - ($9 || ' days')::interval, now())
+    `INSERT INTO signal (type, scope, title, body, author_id, project_id, task_id, status, created_at, updated_at, is_demo)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now() - ($9 || ' days')::interval, now(), true)
      RETURNING id`,
     [type, scope, title, body, author, projectId, taskId, status, daysAgo]
   );
@@ -267,8 +267,8 @@ for (let i = 0; i < 2; i++) await comment(hud2, [kwon, jo][i], `허들 코멘트
 // ── 에이전트 승인 대기 초안 1건 (시그널 패널의 에이전트 생성물 표시 검증) ──
 const parkAgent = await agentOf(park);
 await q(
-  `INSERT INTO drafts (assistant_id, user_id, task_type, instruction, title, body, status)
-   VALUES ($1,$2,'자료조사','PoC 로그 분석','PoC 로그에서 검증 태스크 3건 추출','## 요약\n- 데모','pending')`,
+  `INSERT INTO drafts (assistant_id, user_id, task_type, instruction, title, body, status, is_demo)
+   VALUES ($1,$2,'자료조사','PoC 로그 분석','PoC 로그에서 검증 태스크 3건 추출','## 요약\n- 데모','pending', true)`,
   [parkAgent, park]
 );
 

@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
 import GoalProgress from "./GoalProgress";
+import EmptyState from "./EmptyState";
 
 export interface LinkableTask {
   id: number;
@@ -444,9 +445,15 @@ export default function GoalTree({
   return (
     <div className="gtree">
       {years.length === 0 && (
-        <p className="gempty">
-          {year}년 연간 목표가 없습니다.{isLead ? " 아래에서 추가하세요." : ""}
-        </p>
+        <EmptyState
+          compact
+          title={`${year}년 목표가 아직 없어요`}
+          hint={
+            isLead
+              ? "연간 목표를 세우고 그 아래 분기·월 목표로 나누면 업무 진척이 자동으로 롤업됩니다. 아래에서 추가하세요."
+              : "팀장이 연간 목표를 세우면 여기에서 분기·월 목표와 진척을 볼 수 있어요."
+          }
+        />
       )}
 
       {years.map((yearGoal) => (

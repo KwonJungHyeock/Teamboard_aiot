@@ -81,7 +81,14 @@ export default function ApproveModal({
         setError(data.error ?? "승인 실패");
         return;
       }
-      onDone(`"${finalTitle}" 승인 완료 — Notion 타임라인에 기록되었습니다.`);
+      // Notion 기록은 미러(D-011) — 실패해도 승인은 확정됨. 실패 시 명확히 안내.
+      if (data.notionError) {
+        onDone(
+          `"${finalTitle}" 승인·저장 완료 — 다만 Notion 기록에 실패했습니다(${String(data.notionError).slice(0, 120)}). 업무는 정상 저장됐으니, Notion 토큰·권한 확인 후 다시 시도하세요.`
+        );
+      } else {
+        onDone(`"${finalTitle}" 승인 완료 — Notion 타임라인에 기록되었습니다.`);
+      }
     } catch {
       setError("서버에 연결할 수 없습니다.");
     } finally {

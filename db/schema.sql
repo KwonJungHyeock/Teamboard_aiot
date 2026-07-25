@@ -346,3 +346,13 @@ CREATE INDEX IF NOT EXISTS idx_task_comment_task ON task_comment(task_id, create
 -- 활동 로그를 업무에 연결 (상세 패널 활동 타임라인). 기존 로그는 NULL 유지.
 ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS task_id INTEGER REFERENCES task(id);
 CREATE INDEX IF NOT EXISTS idx_activity_task ON activity_log(task_id, created_at DESC);
+
+-- ─── 데모 데이터 격리 (파트 A) — db:seed-demo가 만든 레코드만 표시하는 순수 부가 플래그 ───
+-- 어떤 "조회" 쿼리도 is_demo 를 필터하지 않는다 → 실운영 안정화 후 컬럼 DROP만으로 안전하게 제거.
+-- "데모 비우기"는 기존 소프트 삭제(is_active=false)로 처리하므로 별도 복구 로직이 필요 없다.
+-- 운영 시드(actor/account/area/config/project)는 대상이 아니다.
+ALTER TABLE task   ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE goal   ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE event  ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE signal ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE drafts ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT false;

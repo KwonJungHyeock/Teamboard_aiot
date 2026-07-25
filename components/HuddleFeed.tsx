@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import type { ApiSignal } from "./SignalsView";
 import SignalThread from "./SignalThread";
+import EmptyState from "./EmptyState";
 
 function NewMemoForm({ onDone }: { onDone: () => void }) {
   const [title, setTitle] = useState("");
@@ -165,7 +166,10 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
               <span className="sub">공유 {huddles.length}건</span>
             </div>
             {huddles.length === 0 && (
-              <p className="gempty">공유된 메모가 없습니다. 메모를 허들로 보내보세요.</p>
+              <EmptyState
+                title="공유된 허들이 없어요"
+                hint="시그널에서 메모를 허들로 보내면, 팀이 함께 볼 결정·논의로 이 피드에 모입니다."
+              />
             )}
             {huddles.map((signal) => (
               <div

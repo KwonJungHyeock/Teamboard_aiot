@@ -112,7 +112,16 @@ export default function AreaView({ areaKey }: { areaKey: string }) {
                 variant="full"
                 title="업무"
                 sub={`${data.tasks.length}건 · 기본 유형 ${labelWorkType(area.defaultWorkType)}`}
-                emptyText="이 영역에 업무가 없습니다. 우측 상단에서 추가하세요."
+                emptyText="이 영역에 아직 업무가 없어요"
+                emptyHint={`"+ 이 영역에 업무 추가"로 ${area.name} 업무를 시작하세요. 영역·기본 업무유형이 미리 채워집니다.`}
+                emptyAction={
+                  <button
+                    className="btn small primary"
+                    onClick={() => openNewTaskPanel({ areaId: area.id, workType: area.defaultWorkType })}
+                  >
+                    ＋ 이 영역에 업무 추가
+                  </button>
+                }
                 onRowClick={(id) => openTaskPanel(id)}
               />
             )}

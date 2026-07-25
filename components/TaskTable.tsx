@@ -1,6 +1,7 @@
 // 업무 테이블 (Phase 3 마감 임박 → Phase 5 공용화) — 홈 "마감 임박"과 /tasks 목록이
 // 같은 컴포넌트를 재사용한다 (Phase 5 검수 포인트 6). 컬럼 폭 고정 (프로토타입 colgroup).
 // variant="full"(/tasks): 목표·우선순위 컬럼 추가 + 상태 인라인 드롭다운. compact(홈)은 5열 유지.
+import EmptyState from "./EmptyState";
 export interface TaskTableRow {
   id: number;
   title: string;
@@ -33,6 +34,8 @@ export default function TaskTable({
   title = "마감 임박",
   sub,
   emptyText = "표시할 업무가 없습니다.",
+  emptyHint,
+  emptyAction,
   onRowClick,
   selectedId,
   variant = "compact",
@@ -42,6 +45,9 @@ export default function TaskTable({
   title?: string;
   sub?: string;
   emptyText?: string;
+  /** 빈 상태 보조 문구 + 첫 행동 유도 (파트 B) */
+  emptyHint?: string;
+  emptyAction?: React.ReactNode;
   onRowClick?: (id: number) => void;
   selectedId?: number | null;
   variant?: "compact" | "full";
@@ -94,8 +100,8 @@ export default function TaskTable({
         <tbody>
           {rows.length === 0 && (
             <tr>
-              <td colSpan={colCount} style={{ color: "var(--lo)" }}>
-                {emptyText}
+              <td colSpan={colCount} style={{ padding: 0 }}>
+                <EmptyState title={emptyText} hint={emptyHint} action={emptyAction} compact />
               </td>
             </tr>
           )}

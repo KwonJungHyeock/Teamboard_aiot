@@ -53,20 +53,31 @@ export async function POST(request: Request, { params }: { params: { id: string 
         .map((l) => l.trim())
         .find((l) => l && !l.startsWith("#") && !l.startsWith("---")) ?? draft.title;
 
-    const { pageId, url } = await createTimelinePage({
-      title: draft.title, // 업무 구분 접두어는 createTimelinePage가 삽입
-      workType: pick(payload.workType, NOTION_WORK_TYPES, "개인업무"),
-      workAreas: [pick(payload.workArea, NOTION_WORK_AREAS, "기타")], // 배열 유지(모달은 단일 선택)
-      status: pick(payload.status, NOTION_STATUSES, "진행"), // 승인 기본값: 진행
-      priority: pick(payload.priority, NOTION_PRIORITIES, "Mid"),
-      assigneeNotionId: draft.notion_user_id,
-      // start_date 없으면 시작일 속성 생략 (빈 문자열 → createTimelinePage가 미전송). due_date는 종료일.
-      startDate: typeof payload.startDate === "string" && payload.startDate ? payload.startDate : "",
-      endDate: typeof payload.endDate === "string" && payload.endDate ? payload.endDate : today,
-      memo: summaryLine.slice(0, 200),
-      bodyMarkdown: draft.body,
-    });
+    // Notion 기록은 미러(D-011) — 실패해도 승인 자체는 확정한다. 실패 시 오류를 표면화·기록.
+    let pageId: string | null = null;
+    let notionUrl: string | null = null;
+    let notionError: string | null = null;
+    try {
+      const res = await createTimelinePage({
+        title: draft.title, // 업무 구분 접두어는 createTimelinePage가 삽입
+        workType: pick(payload.workType, NOTION_WORK_TYPES, "개인업무"),
+        workAreas: [pick(payload.workArea, NOTION_WORK_AREAS, "기타")], // 배열 유지(모달은 단일 선택)
+        status: pick(payload.status, NOTION_STATUSES, "진행"), // 승인 기본값: 진행
+        priority: pick(payload.priority, NOTION_PRIORITIES, "Mid"),
+        assigneeNotionId: draft.notion_user_id,
+        // start_date 없으면 시작일 속성 생략 (빈 문자열 → createTimelinePage가 미전송). due_date는 종료일.
+        startDate: typeof payload.startDate === "string" && payload.startDate ? payload.startDate : "",
+        endDate: typeof payload.endDate === "string" && payload.endDate ? payload.endDate : today,
+        memo: summaryLine.slice(0, 200),
+        bodyMarkdown: draft.body,
+      });
+      pageId = res.pageId;
+      notionUrl = res.url;
+    } catch (notionErr) {
+      notionError = notionErr instanceof Error ? notionErr.message : "Notion 기록 실패";
+    }
 
+    // 승인은 항상 확정(우리 DB가 원본). Notion 실패 시 notion_page_id는 NULL 유지.
     await query(
       `UPDATE drafts SET status = 'approved', approver_id = $1, notion_page_id = $2, decided_at = now()
        WHERE id = $3`,
@@ -75,11 +86,14 @@ export async function POST(request: Request, { params }: { params: { id: string 
     await logActivity({
       userId: session.id,
       assistantId: draft.assistant_id,
-      message: `${session.name}이(가) "${draft.title}" 승인 → Notion 타임라인 기록 완료`,
-      level: "success",
+      message: notionError
+        ? `${session.name}이(가) "${draft.title}" 승인 — 저장 완료, Notion 기록 실패: ${notionError.slice(0, 300)}`
+        : `${session.name}이(가) "${draft.title}" 승인 → Notion 타임라인 기록 완료`,
+      level: notionError ? "error" : "success",
     });
 
-    return NextResponse.json({ ok: true, notionPageId: pageId, notionUrl: url });
+    // 실패해도 HTTP 200 — 승인은 성공. UI가 notionError로 경고를 띄운다.
+    return NextResponse.json({ ok: true, notionPageId: pageId, notionUrl, notionError });
   } catch (error) {
     return jsonError(error);
   }
