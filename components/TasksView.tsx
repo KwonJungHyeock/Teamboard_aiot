@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
+import { openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
 
 interface TaskItem {
   id: number;
@@ -91,250 +92,6 @@ function dday(due: string | null, today: string): { text: string | null; overdue
   };
 }
 
-/** 업무 상세 — 속성 편집 + 목표 연결(다중 선택 · 선택 사항) + 소프트 삭제 */
-function TaskDetail({
-  task,
-  actors,
-  projects,
-  areas,
-  monthGoals,
-  onChanged,
-  onClose,
-}: {
-  task: TaskItem;
-  actors: Option[];
-  projects: ProjectOption[];
-  areas: AreaOption[];
-  monthGoals: MonthGoalOption[];
-  onChanged: () => void;
-  onClose: () => void;
-}) {
-  const [title, setTitle] = useState(task.title);
-  const [description, setDescription] = useState(task.description);
-  const [status, setStatus] = useState(task.status);
-  const [priority, setPriority] = useState(task.priority);
-  const [areaId, setAreaId] = useState(task.areaId);
-  const [workType, setWorkType] = useState(task.workType);
-  const [projectId, setProjectId] = useState(task.projectId ?? 0);
-  const [assigneeId, setAssigneeId] = useState(task.assigneeId ?? 0);
-  const [startDate, setStartDate] = useState(task.startDate ?? "");
-  const [dueDate, setDueDate] = useState(task.dueDate ?? "");
-  const [goalIds, setGoalIds] = useState<number[]>(task.goalIds);
-  const areaProjects = projects.filter((p) => p.areaId === areaId);
-  const [dropReason, setDropReason] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-
-  useEffect(() => {
-    setTitle(task.title);
-    setDescription(task.description);
-    setStatus(task.status);
-    setPriority(task.priority);
-    setAreaId(task.areaId);
-    setWorkType(task.workType);
-    setProjectId(task.projectId ?? 0);
-    setAssigneeId(task.assigneeId ?? 0);
-    setStartDate(task.startDate ?? "");
-    setDueDate(task.dueDate ?? "");
-    setGoalIds(task.goalIds);
-    setConfirmingDelete(false);
-    setError("");
-  }, [task]);
-
-  async function save() {
-    if (startDate && dueDate && startDate > dueDate) {
-      setError("시작일이 마감일보다 늦을 수 없습니다.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    const res = await fetch(`/api/tasks/${task.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title,
-        description,
-        status,
-        priority,
-        areaId,
-        workType,
-        projectId: projectId || null,
-        assigneeId: assigneeId || null,
-        startDate: startDate || null,
-        dueDate: dueDate || null,
-        goalIds, // 다중 선택 · 선택 사항 (빈 배열 허용)
-        dropReason: status === "dropped" ? dropReason : undefined,
-      }),
-    });
-    setBusy(false);
-    if (!res.ok) {
-      setError((await res.json()).error ?? "저장 실패");
-      return;
-    }
-    onChanged();
-  }
-
-  async function softDelete() {
-    setBusy(true);
-    const res = await fetch(`/api/tasks/${task.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: false }),
-    });
-    setBusy(false);
-    if (!res.ok) {
-      setError((await res.json()).error ?? "삭제 실패");
-      return;
-    }
-    onClose();
-    onChanged();
-  }
-
-  return (
-    <section className="card tdetail" aria-label="업무 상세">
-      <div className="ch">
-        <h2>업무 상세</h2>
-        <span className="sub">#{task.id}{task.origin === "agent" ? " · 에이전트 제안" : ""}</span>
-        <span className="gsp" />
-        <button className="lk mu" onClick={onClose}>
-          닫기
-        </button>
-      </div>
-      <div className="tform">
-        <div className="tform-r">
-          <label>제목</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} />
-        </div>
-        <div className="tform-r">
-          <label>설명</label>
-          <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
-        </div>
-        <div className="tform-grid">
-          <div className="tform-r">
-            <label>영역 (필수)</label>
-            <select value={areaId} onChange={(e) => setAreaId(Number(e.target.value))}>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="tform-r">
-            <label>업무유형</label>
-            <select value={workType} onChange={(e) => setWorkType(e.target.value)}>
-              <option value="team">팀업무</option>
-              <option value="personal">개인업무</option>
-              <option value="routine">상시업무</option>
-            </select>
-          </div>
-          <div className="tform-r">
-            <label>상태</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              {STATUS_OPTIONS.filter(([v]) => v).map(([v, l]) => (
-                <option key={v} value={v}>
-                  {l}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="tform-r">
-            <label>우선순위</label>
-            <select value={priority} onChange={(e) => setPriority(e.target.value)}>
-              <option value="high">높음</option>
-              <option value="mid">보통</option>
-              <option value="low">낮음</option>
-            </select>
-          </div>
-          <div className="tform-r">
-            <label>프로젝트 (영역 하위)</label>
-            <select value={projectId} onChange={(e) => setProjectId(Number(e.target.value))}>
-              <option value={0}>없음</option>
-              {areaProjects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="tform-r">
-            <label>담당</label>
-            <select value={assigneeId} onChange={(e) => setAssigneeId(Number(e.target.value))}>
-              <option value={0}>미지정</option>
-              {actors.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="tform-r">
-            <label>시작일 (선택)</label>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          </div>
-          <div className="tform-r">
-            <label>마감일 (선택)</label>
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-          </div>
-        </div>
-        {status === "dropped" && task.status !== "dropped" && (
-          <div className="tform-r">
-            <label>중단 사유 (필수)</label>
-            <input
-              placeholder="왜 중단하나요? 목표 진척 분모에서 제외됩니다."
-              value={dropReason}
-              onChange={(e) => setDropReason(e.target.value)}
-            />
-          </div>
-        )}
-        <div className="tform-r">
-          <label>목표 연결 (다중 선택 · 선택 사항)</label>
-        </div>
-        <div className="glinks">
-          {monthGoals.length === 0 && <p className="gempty">연결 가능한 월 목표가 없습니다.</p>}
-          {monthGoals.map((goal) => (
-            <label key={goal.id} className="glink">
-              <input
-                type="checkbox"
-                checked={goalIds.includes(goal.id)}
-                onChange={(e) =>
-                  setGoalIds((prev) =>
-                    e.target.checked ? [...prev, goal.id] : prev.filter((id) => id !== goal.id)
-                  )
-                }
-              />
-              {goal.title}
-              <em>{goal.month}</em>
-            </label>
-          ))}
-        </div>
-        {error && <p className="gerr">{error}</p>}
-        <div className="tform-a">
-          <button className="gbtn" onClick={save} disabled={busy || !title.trim()}>
-            저장
-          </button>
-          <span className="gsp" />
-          {!confirmingDelete ? (
-            <button className="gbtn mu" onClick={() => setConfirmingDelete(true)} disabled={busy}>
-              삭제
-            </button>
-          ) : (
-            <>
-              <span className="tdel-q">“{task.title}” 업무를 삭제할까요?</span>
-              <button className="gbtn" autoFocus onClick={() => setConfirmingDelete(false)}>
-                취소
-              </button>
-              <button className="gbtn danger" onClick={softDelete} disabled={busy}>
-                삭제
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
 
 /** 새 업무 폼 — 영역(필수, 최상단) → 업무유형 → 프로젝트(선택 영역 하위만) */
 function NewTaskForm({
@@ -468,7 +225,6 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [today, setToday] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -538,6 +294,13 @@ export default function TasksView({ user }: { user: SessionUser }) {
     loadSelectors();
   }, [loadSelectors]);
 
+  // 상세 패널에서 업무가 바뀌면 목록 재동기화
+  useEffect(() => {
+    const onUpd = () => load();
+    window.addEventListener(TASK_UPDATED_EVENT, onUpd);
+    return () => window.removeEventListener(TASK_UPDATED_EVENT, onUpd);
+  }, [load]);
+
   async function judgeInbox(item: InboxItem, approve: boolean) {
     const res = await fetch(`/api/tasks/${item.id}`, {
       method: "PUT",
@@ -597,8 +360,6 @@ export default function TasksView({ user }: { user: SessionUser }) {
         };
       });
   }, [tasks, today, search, goalTitleOf]);
-
-  const selected = tasks.find((t) => t.id === selectedId) ?? null;
 
   return (
     <div className="hv">
@@ -724,20 +485,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
             emptyText="조건에 맞는 업무가 없습니다."
             variant="full"
             onStatusChange={changeStatus}
-            onRowClick={(id) => setSelectedId((prev) => (prev === id ? null : id))}
-            selectedId={selectedId}
-          />
-        )}
-
-        {selected && (
-          <TaskDetail
-            task={selected}
-            actors={actors}
-            projects={projects}
-            areas={areas}
-            monthGoals={monthGoals}
-            onChanged={load}
-            onClose={() => setSelectedId(null)}
+            onRowClick={(id) => openTaskPanel(id)}
           />
         )}
       </div>

@@ -6,6 +6,7 @@ import type { SessionUser } from "@/lib/types";
 import Sidebar from "./Sidebar";
 import CommandPalette from "./CommandPalette";
 import PasswordGate from "./PasswordGate";
+import TaskDetailPanel from "./TaskDetailPanel";
 
 export default async function AppShell({
   user,
@@ -47,6 +48,7 @@ export default async function AppShell({
         <Sidebar user={current} areas={areas} inboxCount={inboxCount} />
         <main className="main">{children}</main>
       </div>
+      <TaskDetailPanel />
       <CommandPalette role={current.role} />
     </>
   );

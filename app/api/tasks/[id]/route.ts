@@ -34,6 +34,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         userId: session.id,
         message: `${session.name}이(가) 업무 삭제 — "${task.title}"`,
         level: "warn",
+        taskId,
       });
       return NextResponse.json({ ok: true });
     }
@@ -131,11 +132,71 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       }
     }
 
-    await logActivity({
-      userId: session.id,
-      message: statusLog || `${session.name}이(가) 업무 수정 — "${task.title}"`,
-    });
+    // 활동 타임라인은 "상태 변경"만 기록한다 (인라인 자동저장이 매 필드마다 로그를
+    // 남기면 타임라인이 잡음으로 가득 참 — 코멘트는 task_comment가 담당).
+    if (statusLog) {
+      await logActivity({ userId: session.id, message: statusLog, taskId });
+    }
     return NextResponse.json({ ok: true });
+  } catch (error) {
+    return jsonError(error);
+  }
+}
+
+// PATCH — PUT과 동일(부분 수정). 상세 패널 인라인 자동저장이 사용.
+export async function PATCH(request: Request, ctx: { params: { id: string } }) {
+  return PUT(request, ctx);
+}
+
+// GET — 상세 패널용 단일 업무 전체 정보 (+ 영역·프로젝트·담당 이름, 연결 목표, 활동 로그)
+export async function GET(_request: Request, { params }: { params: { id: string } }) {
+  try {
+    requireSession();
+    const id = Number(params.id);
+    const t = await queryOne<{
+      id: number; title: string; description: string; status: string; priority: string;
+      origin: string; work_type: string; area_id: number; area_name: string; area_color: string | null;
+      project_id: number | null; project_name: string | null; color_key: string | null;
+      assignee_id: number | null; assignee_name: string | null; created_by_name: string | null;
+      start_date: string | null; due_date: string | null; drop_reason: string | null;
+      goal_ids: number[] | null;
+    }>(
+      `SELECT t.id, t.title, t.description, t.status, t.priority, t.origin, t.work_type,
+              t.area_id, ar.name AS area_name, ar.color_key AS area_color,
+              t.project_id, p.name AS project_name, p.color_key,
+              t.assignee_id, a.display_name AS assignee_name, c.display_name AS created_by_name,
+              t.start_date::text, t.due_date::text, t.drop_reason,
+              array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids
+       FROM task t
+       JOIN area ar ON ar.id = t.area_id
+       LEFT JOIN project p ON p.id = t.project_id
+       LEFT JOIN actor a ON a.id = t.assignee_id
+       LEFT JOIN actor c ON c.id = t.created_by
+       LEFT JOIN goal_task gt ON gt.task_id = t.id
+       WHERE t.id = $1 AND t.is_active = true
+       GROUP BY t.id, ar.name, ar.color_key, p.name, p.color_key, a.display_name, c.display_name`,
+      [id]
+    );
+    if (!t) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
+
+    const activity = await query<{ id: number; message: string; level: string; created_at: string; user_name: string | null }>(
+      `SELECT al.id, al.message, al.level, al.created_at::text, u.display_name AS user_name
+       FROM activity_log al LEFT JOIN actor u ON u.id = al.user_id
+       WHERE al.task_id = $1 ORDER BY al.created_at DESC LIMIT 30`,
+      [id]
+    );
+
+    return NextResponse.json({
+      task: {
+        id: t.id, title: t.title, description: t.description, status: t.status, priority: t.priority,
+        origin: t.origin, workType: t.work_type, areaId: t.area_id, areaName: t.area_name, areaColor: t.area_color,
+        projectId: t.project_id, projectName: t.project_name, colorKey: t.color_key,
+        assigneeId: t.assignee_id, assigneeName: t.assignee_name, createdByName: t.created_by_name,
+        startDate: t.start_date, dueDate: t.due_date, dropReason: t.drop_reason,
+        goalIds: t.goal_ids ?? [],
+      },
+      activity,
+    });
   } catch (error) {
     return jsonError(error);
   }

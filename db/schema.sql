@@ -332,3 +332,17 @@ CREATE TRIGGER trg_task_area_match BEFORE INSERT OR UPDATE ON task
 
 CREATE INDEX IF NOT EXISTS idx_task_area ON task(area_id);
 CREATE INDEX IF NOT EXISTS idx_project_area ON project(area_id);
+
+-- ─── 업무 상세 패널 (파트 1) — 업무 코멘트 + 활동 로그 업무 귀속 ───
+-- signal comment(signal_id 전용)와 분리한 별도 테이블 (도메인 쿼리 단순 유지).
+CREATE TABLE IF NOT EXISTS task_comment (
+  id         SERIAL PRIMARY KEY,
+  task_id    INTEGER NOT NULL REFERENCES task(id),
+  author_id  INTEGER NOT NULL REFERENCES actor(id),
+  body       TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_task_comment_task ON task_comment(task_id, created_at);
+-- 활동 로그를 업무에 연결 (상세 패널 활동 타임라인). 기존 로그는 NULL 유지.
+ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS task_id INTEGER REFERENCES task(id);
+CREATE INDEX IF NOT EXISTS idx_activity_task ON activity_log(task_id, created_at DESC);

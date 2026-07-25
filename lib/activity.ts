@@ -6,10 +6,11 @@ export async function logActivity(params: {
   assistantId?: number | null;
   message: string;
   level?: "info" | "success" | "warn" | "error";
+  taskId?: number | null; // 상세 패널 활동 타임라인용 (해당 업무에 귀속)
 }): Promise<void> {
   await query(
-    `INSERT INTO activity_log (user_id, assistant_id, message, level) VALUES ($1, $2, $3, $4)`,
-    [params.userId ?? null, params.assistantId ?? null, params.message, params.level ?? "info"]
+    `INSERT INTO activity_log (user_id, assistant_id, message, level, task_id) VALUES ($1, $2, $3, $4, $5)`,
+    [params.userId ?? null, params.assistantId ?? null, params.message, params.level ?? "info", params.taskId ?? null]
   );
 }
 

@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Lane, LaneEvent } from "@/lib/home";
+import { openTaskPanel } from "@/lib/task-panel";
 
 export type TimelineView = "day" | "week" | "month";
 
@@ -213,8 +214,10 @@ function TaskTrack({
               left: `${p.left}%`,
               top: p.row * (H + G) + H / 2 - 4,
               background: barColor(p.task.colorKey, p.task.late),
+              cursor: "pointer",
             }}
             title={`${p.task.title}${p.task.dday ? ` · ${p.task.dday}` : ""}`}
+            onClick={() => openTaskPanel(p.task.id)}
           />
         ) : (
           <div
@@ -226,8 +229,10 @@ function TaskTrack({
               top: p.row * (H + G),
               height: H,
               background: `linear-gradient(100deg, ${barColor(p.task.colorKey, p.task.late)}, ${barColor(p.task.colorKey, p.task.late)}88)`,
+              cursor: "pointer",
             }}
             title={`${p.task.title}${p.task.dday ? ` · ${p.task.dday}` : ""}`}
+            onClick={() => openTaskPanel(p.task.id)}
           >
             {p.task.origin === "agent" && <span className="mo" />}
             {p.task.title}
@@ -383,6 +388,8 @@ export default function TeamTimeline({
                           key={task.id}
                           className={`chip ${task.late ? "late" : (task.colorKey ?? "")} ${task.origin === "agent" ? "ag" : ""}`}
                           title={task.dday ? `${task.title} · ${task.dday}` : task.title}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => openTaskPanel(task.id)}
                         >
                           {task.origin === "agent" && <span className="mo" />}
                           {task.title}

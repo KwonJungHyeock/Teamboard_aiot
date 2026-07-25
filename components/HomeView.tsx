@@ -9,6 +9,7 @@ import MetricCards from "./MetricCards";
 import SignalPanel from "./SignalPanel";
 import TaskTable from "./TaskTable";
 import TeamTimeline, { type TimelineView } from "./TeamTimeline";
+import { openTaskPanel } from "@/lib/task-panel";
 
 function greeting(): string {
   const hour = Number(
@@ -102,6 +103,7 @@ export default function HomeView({
               title="지연 · 마감 임박"
               sub={`지연 ${summary.dueSoon.filter((t) => t.overdue).length} · 7일 이내 ${summary.dueSoon.filter((t) => !t.overdue).length}`}
               emptyText="지연·마감 임박 업무가 없습니다."
+              onRowClick={(id) => openTaskPanel(id)}
             />
 
             {/* 프로젝트 진행 — 구 관제뷰 "프로젝트별 진행률" 흡수 */}

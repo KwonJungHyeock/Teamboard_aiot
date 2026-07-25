@@ -10,23 +10,27 @@
   --r:8px; --r-s:5px;
   --f-ui:'Pretendard','Pretendard Variable',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
   --f-d:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-  --side-w:248px;
+  --side-w:260px;
 
-  /* 타입 스케일 (UI 개편 2차 — 110%를 기본으로). 10px 이하 금지, line-height 1.45 통일.
+  /* 타입 스케일 (연구소 내부용 3차 — 100%가 적정이 되게 확대). 10px 이하 전면 금지.
      home.css / globals.css 는 이 변수로 폰트 크기를 참조한다. */
-  --fs-page-title:24px;
-  --fs-metric:29px;
-  --fs-panel-title:16px;
+  --fs-page-title:26px;
+  --fs-metric:32px;
+  --fs-panel-title:17px;
   --fs-body:15px;
   --fs-row:15px;
-  --fs-meta:13px;
-  --fs-badge:12.5px;
+  --fs-meta:13.5px;
+  --fs-badge:13px;
   --lh:1.45;
-  /* 컨트롤 높이 — 행 40 / 패널 헤더 42 / 버튼 표준 36 · 컴팩트 30 */
-  --row-h:40px;
-  --panel-h:42px;
-  --btn-h:36px;
-  --btn-h-sm:30px;
+  /* 컨트롤 높이 — 행 44 / 패널 헤더 46 / 버튼 표준 40 · 컴팩트 34 */
+  --row-h:44px;
+  --panel-h:46px;
+  --btn-h:40px;
+  --btn-h-sm:34px;
+  /* 카드 내부 padding · 카드 간 gap */
+  --card-pad-y:16px;
+  --card-pad-x:18px;
+  --card-gap:14px;
   /* text 별칭 — 개편 지시가 --text-mid/--text-lo 로 참조 (기존 --mid/--lo 매핑) */
   --text-mid:var(--mid);
   --text-lo:var(--lo);
