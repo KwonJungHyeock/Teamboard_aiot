@@ -804,17 +804,18 @@ body.meeting-on .side { display: none !important; }
 .meeting-st { font-family: var(--f-d); font-size: var(--fs-badge); color: var(--mid); border: 1px solid var(--line); border-radius: 5px; padding: 1px 8px; }
 .meeting-hint { font-size: var(--fs-meta); color: var(--lo); }
 .meeting-body { flex: 1; display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); min-height: 0; }
-.meeting-left { display: flex; flex-direction: column; min-height: 0; padding: 22px 26px; border-right: 1px solid var(--line); }
+.meeting-left { display: flex; flex-direction: column; min-height: 0; padding: 22px 26px; border-right: 1px solid var(--line-hi); }
 .meeting-lead { font-size: var(--fs-body); color: var(--mid); line-height: 1.6; margin: 0 0 16px; }
 .meeting-comments { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 6px; }
-.meeting-c { padding: 12px 14px; border-radius: 10px; background: var(--bg-surface); border: 1px solid var(--line); }
+.meeting-c { padding: 12px 14px; border-radius: 10px; background: var(--bg-surface); border: 1px solid var(--line); box-shadow: var(--card-shadow); }
 .meeting-c.is-decision { border-color: rgba(245,165,36,.4); background: rgba(245,165,36,.06); }
 .meeting-c-h { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
 .meeting-c-h b { font-size: var(--fs-meta); color: var(--hi); }
 .meeting-c-b { font-size: var(--fs-row); color: var(--mid); line-height: 1.6; }
 .meeting-input { display: flex; gap: 10px; margin-top: 16px; }
 .meeting-input input { flex: 1; height: 44px; background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 8px; color: var(--hi); padding: 0 14px; font-size: var(--fs-row); }
-.meeting-right { display: flex; flex-direction: column; min-height: 0; padding: 22px 24px; background: var(--bg-rail); overflow-y: auto; }
+.meeting-right { display: flex; flex-direction: column; min-height: 0; padding: 22px 24px; background: var(--bg-surface); overflow-y: auto; }
+.meeting-decision { box-shadow: var(--card-shadow); }
 .meeting-r-h { font-size: var(--fs-panel-title); color: var(--hi); font-weight: 600; margin-bottom: 14px; }
 .meeting-decision { font-size: var(--fs-row); color: var(--hi); background: rgba(245,165,36,.1); border: 1px solid rgba(245,165,36,.3); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; line-height: 1.5; }
 .meeting-r-input { margin-top: auto; padding-top: 16px; display: flex; flex-direction: column; gap: 8px; }

@@ -15,7 +15,7 @@ interface GoalDetail {
   goal: {
     id: number; title: string; description: string; periodType: string; periodStart: string; periodEnd: string;
     progressMode: "auto" | "manual"; progress: number | null; scope: "team" | "personal";
-    ownerName: string | null; areaName: string | null; projectName: string | null;
+    ownerName: string | null; areaId: number | null; areaName: string | null; projectName: string | null;
   };
   tasks: { id: number; title: string; status: string; assigneeName: string | null; dueDate: string | null }[];
   contribution: Contribution[];
@@ -31,6 +31,11 @@ export default function GoalDetailPanel() {
   const [err, setErr] = useState("");
   const [save, setSave] = useState<"idle" | "saving" | "saved">("idle");
   const [manualVal, setManualVal] = useState("");
+  const [areas, setAreas] = useState<{ id: number; name: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/meta/selectors").then((r) => r.json()).then((s) => setAreas(s.areas ?? [])).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const sync = () => setOpenId(currentGoalParam());
@@ -128,7 +133,14 @@ export default function GoalDetailPanel() {
                 ) : <div className="gdp-ro">{d.goal.progressMode === "manual" ? "수동" : "자동"}</div>}
               </label>
               <label>{d.goal.scope === "personal" ? "소유" : "영역"}
-                <div className="gdp-ro">{d.goal.scope === "personal" ? (d.goal.ownerName ?? "본인") : (d.goal.areaName ?? "—")}</div>
+                {d.goal.scope === "team" && d.canEdit ? (
+                  <select value={d.goal.areaId ?? 0} onChange={(e) => patch({ areaId: Number(e.target.value) || null })}>
+                    <option value={0}>영역 없음</option>
+                    {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                ) : (
+                  <div className="gdp-ro">{d.goal.scope === "personal" ? (d.goal.ownerName ?? "본인") : (d.goal.areaName ?? "—")}</div>
+                )}
               </label>
               <label>연결 프로젝트
                 <div className="gdp-ro">{d.goal.projectName ?? "—"}</div>
@@ -162,18 +174,21 @@ export default function GoalDetailPanel() {
               </div>
             )}
 
-            {/* 기여 현황 (팀 목표) */}
+            {/* 기여도 (팀 목표) — 전체 연결 업무 중 담당 비중. 개별 완료율과 구분. */}
             {d.goal.scope === "team" && d.contribution.length > 0 && (
               <div className="tdp-sec">
-                <div className="tdp-sec-h">기여 현황 <em>(담당자별)</em></div>
+                <div className="tdp-sec-h">기여도 <em>(전체 연결 업무 중 담당 비중)</em></div>
                 {d.contribution.map((c) => (
                   <div className="gdp-contrib" key={c.actorId ?? "none"}>
                     <span className="gdp-contrib-n">{c.name}</span>
-                    <span className="gdp-contrib-m">완료 {c.done}/{c.total}</span>
+                    <span className="gdp-contrib-m">담당 {c.total} · 완료 {c.done}</span>
                     <div className="bar" style={{ flex: 1 }}><i className="play" style={{ width: `${c.sharePct}%` }} /></div>
                     <b>{c.sharePct}%</b>
                   </div>
                 ))}
+                <p className="tdp-muted" style={{ marginTop: 6 }}>
+                  기여도 = 담당(연결) 업무 수 ÷ 전체 연결 업무 수. 합계 100%. 개별 완료율(완료÷담당)과는 다릅니다.
+                </p>
               </div>
             )}
 

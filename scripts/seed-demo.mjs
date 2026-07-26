@@ -158,11 +158,11 @@ const monthStart = today.slice(0, 8) + "01";
 const [yy, mm] = today.split("-").map(Number);
 const monthEnd = new Date(Date.UTC(yy, mm, 0)).toISOString().slice(0, 10);
 
-async function goal({ periodType, start, end, title, parentId = null, projectId = null, mode = "auto", progress = 0, links = [] }) {
+async function goal({ periodType, start, end, title, parentId = null, projectId = null, mode = "auto", progress = 0, links = [], areaName = "플랫폼" }) {
   const r = await q(
-    `INSERT INTO goal (parent_id, period_type, period_start, period_end, title, progress_mode, progress, owner_actor_id, project_id, is_demo)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, true) RETURNING id`,
-    [parentId, periodType, start, end, title, mode, progress, kwon, projectId]
+    `INSERT INTO goal (parent_id, period_type, period_start, period_end, title, progress_mode, progress, owner_actor_id, project_id, area_id, is_demo)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,(SELECT id FROM area WHERE name=$10), true) RETURNING id`,
+    [parentId, periodType, start, end, title, mode, progress, kwon, projectId, areaName]
   );
   for (const t of links) await q("INSERT INTO goal_task (goal_id, task_id) VALUES ($1,$2)", [r.rows[0].id, t]);
   return r.rows[0].id;
