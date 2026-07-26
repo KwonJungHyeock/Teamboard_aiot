@@ -804,10 +804,10 @@ body.meeting-on .side { display: none !important; }
 .meeting-st { font-family: var(--f-d); font-size: var(--fs-badge); color: var(--mid); border: 1px solid var(--line); border-radius: 5px; padding: 1px 8px; }
 .meeting-hint { font-size: var(--fs-meta); color: var(--lo); }
 .meeting-body { flex: 1; display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); min-height: 0; }
-.meeting-left { display: flex; flex-direction: column; min-height: 0; padding: 22px 26px; border-right: 1px solid var(--line-hi); }
+.meeting-left { display: flex; flex-direction: column; min-height: 0; padding: 22px 26px; background: var(--bg-surface); border-right: 1px solid var(--line-hi); }
 .meeting-lead { font-size: var(--fs-body); color: var(--mid); line-height: 1.6; margin: 0 0 16px; }
 .meeting-comments { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 6px; }
-.meeting-c { padding: 12px 14px; border-radius: 10px; background: var(--bg-surface); border: 1px solid var(--line); box-shadow: var(--card-shadow); }
+.meeting-c { padding: 12px 14px; border-radius: 10px; background: var(--bg-elevated); border: 1px solid var(--line); box-shadow: var(--card-shadow); }
 .meeting-c.is-decision { border-color: rgba(245,165,36,.4); background: rgba(245,165,36,.06); }
 .meeting-c-h { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
 .meeting-c-h b { font-size: var(--fs-meta); color: var(--hi); }
