@@ -121,22 +121,18 @@ export default function HomeView({
           />
         </div>
 
-        {/* 지연·마감 임박 + 논의·결정 — 2열 (홈에서 가장 자주 보는 두 축) */}
-        <div className="cols">
-          <TaskTable
-            rows={summary.dueSoon}
-            title="지연 · 마감 임박"
-            sub={`지연 ${summary.dueSoon.filter((t) => t.overdue).length} · 7일 이내 ${summary.dueSoon.filter((t) => !t.overdue).length}`}
-            emptyText="지연·마감 임박 업무가 없어요"
-            emptyHint="마감이 임박하거나 지난 업무가 없습니다. 좋은 상태예요."
-            onRowClick={(id) => openTaskPanel(id)}
-          />
-          <SignalPanel items={summary.signals} stalledCount={summary.stalledCount} />
-        </div>
-
-        {/* ── 2순위(요약+링, 클릭 시 확대) 좌 · 3순위(허들룸 접힘) 우 ── */}
+        {/* 좌: 업무 축(지연·마감→프로젝트→목표) · 우: 협업 축(논의·결정→허들룸).
+            두 컬럼을 독립 스택으로 — 한쪽이 짧아도 아래 빈 여백 없이 다음 카드가 바로 이어짐. */}
         <div className="cols">
           <div className="stack">
+            <TaskTable
+              rows={summary.dueSoon}
+              title="지연 · 마감 임박"
+              sub={`지연 ${summary.dueSoon.filter((t) => t.overdue).length} · 7일 이내 ${summary.dueSoon.filter((t) => !t.overdue).length}`}
+              emptyText="지연·마감 임박 업무가 없어요"
+              emptyHint="마감이 임박하거나 지난 업무가 없습니다. 좋은 상태예요."
+              onRowClick={(id) => openTaskPanel(id)}
+            />
             <SummaryProgress
               title="프로젝트 진행"
               sub={`W${summary.isoWeek}`}
@@ -170,9 +166,11 @@ export default function HomeView({
               ringColor="green"
             />
           </div>
-
-          {/* 허들룸 — 3순위. 접힌 상태로 최근 1건만, 나머지는 펼치기 */}
-          <HuddleFeed huddles={summary.huddles} />
+          {/* 우측 협업 축 — 논의·결정 위, 허들룸(접힘) 아래 */}
+          <div className="stack">
+            <SignalPanel items={summary.signals} stalledCount={summary.stalledCount} />
+            <HuddleFeed huddles={summary.huddles} />
+          </div>
         </div>
       </div>
     </div>

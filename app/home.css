@@ -725,3 +725,24 @@
 }
 .hv .tfilters select:hover, .hv .tnew select:hover, .hv .tform-r select:hover { border-color: var(--muted); }
 .hv .tfilters .tsearch { border-radius: var(--r-s); border-color: var(--line-hi); background: var(--card); color: var(--ink); }
+
+/* ═══════════════════ 홈 대문 정렬·여백·영역분리 정밀 정리 ═══════════════════ */
+/* 1. 좌우 컬럼 독립 높이 (그리드 행 stretch 방지 — 짧은 카드 아래 빈 여백 제거) */
+.hv .cols { align-items: start; gap: 16px; }
+.hv .stack { gap: 16px; }
+/* 4. gutter 균일 16px — KPI행·타임라인·하단섹션 세로 간격, 카드 가로 간격 동일 */
+.hv .metrics { gap: 16px; margin-bottom: 16px; }
+.hv .fullrow { margin-bottom: 16px; }
+.hv .head { margin-bottom: 16px; }
+/* 2·3. 카드 헤더 — 바 제거, 상하 대칭 여백. 제목 top 여백=카드 padding(20), 제목~본문 14px.
+        제목·우측 메타 baseline 정렬(좌우 카드 제목 같은 Y). */
+.hv .card { padding: 20px; }
+.hv .ch { height: auto; min-height: 0; margin: 0 0 14px; padding: 0; background: transparent; border-bottom: 0; border-radius: 0; align-items: baseline; }
+/* 6. KPI 5칸 — 내부 상하 대칭 + 라벨 top·값 bottom 세로 리듬 통일(높이 동일은 grid stretch) */
+.hv .mc { display: flex; flex-direction: column; justify-content: space-between; gap: 10px; padding: 18px; }
+.hv .mc .r { margin-top: 0; }
+/* 5. 타임라인 — 담당자 아바타·이름 레인 세로 중앙(비대칭 상단 패딩 제거), 칩 세로 정렬 */
+.hv .ln-n { padding-top: 0; }
+.hv .chips { align-items: center; }
+/* 업무 화면 — "+ 새 업무"를 헤더 우측(제목 줄)에 고정, 제목과 세로 중앙 */
+.hv .head .newbtn { align-self: center; flex: 0 0 auto; }

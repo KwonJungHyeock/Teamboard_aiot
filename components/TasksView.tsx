@@ -380,6 +380,10 @@ export default function TasksView({ user }: { user: SessionUser }) {
                 : "에이전트 제안은 인박스에서 승인해야 목록·홈·캘린더에 반영됩니다."}
             </p>
           </div>
+          {/* 홈 "+ 새로 만들기"와 동일 규칙 — 제목 줄 우측 상단 고정 (필터 줄바꿈과 무관) */}
+          <button className="newbtn" onClick={() => setShowNew((s) => !s)}>
+            ＋ 새 업무
+          </button>
         </div>
 
         {/* 인박스 — status='proposed' 전용 노출 위치 (홈·캘린더·타임라인 제외) */}
@@ -458,10 +462,6 @@ export default function TasksView({ user }: { user: SessionUser }) {
               </option>
             ))}
           </select>
-          <span className="gsp" />
-          <button className="btn-brand" onClick={() => setShowNew((s) => !s)}>
-            ＋ 새 업무
-          </button>
         </div>
 
         {showNew && (
