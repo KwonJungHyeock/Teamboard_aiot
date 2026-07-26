@@ -111,7 +111,7 @@ export default function HomeView({
           <SignalPanel items={summary.signals} stalledCount={summary.stalledCount} />
         </div>
 
-        {/* ── 2순위(요약+링, 클릭 시 확대) 좌 · 3순위(허들 접힘) 우 ── */}
+        {/* ── 2순위(요약+링, 클릭 시 확대) 좌 · 3순위(허들룸 접힘) 우 ── */}
         <div className="cols">
           <div className="stack">
             <SummaryProgress
@@ -146,7 +146,7 @@ export default function HomeView({
             />
           </div>
 
-          {/* 허들 — 3순위. 접힌 상태로 최근 1건만, 나머지는 펼치기 */}
+          {/* 허들룸 — 3순위. 접힌 상태로 최근 1건만, 나머지는 펼치기 */}
           <HuddleFeed huddles={summary.huddles} />
         </div>
       </div>
@@ -253,7 +253,7 @@ function SummaryProgress({
   );
 }
 
-// ── 3순위 허들 — 접힌 상태로 최근 1건, 나머지는 "더 보기" ──
+// ── 3순위 허들룸 — 접힌 상태로 최근 1건, 나머지는 "더 보기" ──
 function HuddleFeed({
   huddles,
 }: {
@@ -262,16 +262,16 @@ function HuddleFeed({
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? huddles : huddles.slice(0, 1);
   return (
-    <section className="card huddle-lo" aria-label="허들">
+    <section className="card huddle-lo" aria-label="허들룸">
       <div className="ch">
-        <h2>허들</h2>
+        <h2>허들룸</h2>
         <span className="sub">공유 {huddles.length}</span>
       </div>
       {huddles.length === 0 && (
         <EmptyState
           compact
-          title="공유된 허들이 없어요"
-          hint="시그널에서 메모를 허들로 보내면 팀이 함께 볼 결정·논의로 올라옵니다."
+          title="공유된 허들룸이 없어요"
+          hint="시그널에서 메모를 허들룸으로 보내면 팀이 함께 볼 결정·논의로 올라옵니다."
           action={<Link className="btn small" href="/signals">시그널로 가기</Link>}
         />
       )}

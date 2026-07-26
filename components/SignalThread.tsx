@@ -5,7 +5,9 @@
 // 코멘트는 signal_id에 붙어 전 과정에서 보존된다.
 import { useCallback, useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/types";
+import { renderHighlight, VoteButtons, ImageThumb } from "./huddle-ui";
 
+interface Votes { up: number; down: number; mine: string | null }
 interface ThreadSignal {
   id: number;
   type: string;
@@ -22,14 +24,18 @@ interface ThreadSignal {
   agent: boolean;
   projectName: string | null;
   huddledAt: string | null;
+  imageUrl?: string | null;
+  votes?: Votes;
 }
 
 interface ThreadComment {
   id: number;
   body: string;
+  imageUrl?: string | null;
   authorName: string;
   agent: boolean;
   createdAt: string;
+  votes?: Votes;
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -61,6 +67,7 @@ export default function SignalThread({
   const [signal, setSignal] = useState<ThreadSignal | null>(null);
   const [comments, setComments] = useState<ThreadComment[]>([]);
   const [commentBody, setCommentBody] = useState("");
+  const [commentImage, setCommentImage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [taskForm, setTaskForm] = useState(false);
@@ -104,12 +111,12 @@ export default function SignalThread({
   }
 
   async function addComment() {
-    if (!commentBody.trim()) return;
+    if (!commentBody.trim() && !commentImage.trim()) return;
     setBusy(true);
     const res = await fetch(`/api/signals/${signalId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: commentBody }),
+      body: JSON.stringify({ body: commentBody, imageUrl: commentImage }),
     });
     setBusy(false);
     if (!res.ok) {
@@ -117,6 +124,7 @@ export default function SignalThread({
       return;
     }
     setCommentBody("");
+    setCommentImage("");
     await load();
     onChanged();
   }
@@ -172,7 +180,13 @@ export default function SignalThread({
           {signal.projectName ? ` · ${signal.projectName}` : ""}
         </em>
       </div>
-      {signal.body && <p className="sbody">{signal.body}</p>}
+      {signal.body && <p className="sbody">{renderHighlight(signal.body)}</p>}
+      {signal.imageUrl && <ImageThumb url={signal.imageUrl} />}
+      {signal.scope === "huddle" && signal.votes && (
+        <div style={{ margin: "8px 0" }}>
+          <VoteButtons targetType="huddle" targetId={signal.id} votes={signal.votes} />
+        </div>
+      )}
       {signal.taskId && (
         <p className="slinked">반영됨 → Task #{signal.taskId} {signal.taskTitle ? `“${signal.taskTitle}”` : ""}</p>
       )}
@@ -268,18 +282,28 @@ export default function SignalThread({
               )}
               {comment.authorName}
             </b>
-            <span>{comment.body}</span>
+            <span>{renderHighlight(comment.body)}</span>
+            {comment.imageUrl && <ImageThumb url={comment.imageUrl} />}
+            {comment.votes && (
+              <VoteButtons targetType="comment" targetId={comment.id} votes={comment.votes} compact />
+            )}
           </div>
         ))}
         <div className="tnew">
           <input
-            placeholder="코멘트 입력"
+            placeholder="코멘트 입력 (==강조== 문법 지원)"
             value={commentBody}
             onChange={(e) => setCommentBody(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addComment()}
             style={{ flex: 1 }}
           />
-          <button className="lk" onClick={addComment} disabled={busy || !commentBody.trim()}>
+          <input
+            placeholder="이미지 URL (선택)"
+            value={commentImage}
+            onChange={(e) => setCommentImage(e.target.value)}
+            style={{ width: 160 }}
+          />
+          <button className="lk" onClick={addComment} disabled={busy || (!commentBody.trim() && !commentImage.trim())}>
             등록
           </button>
         </div>

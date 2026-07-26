@@ -72,10 +72,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (guarded.error) return guarded.error;
     const payload = await request.json();
     const body = String(payload.body ?? "").trim().slice(0, 2000);
-    if (!body) return NextResponse.json({ error: "내용을 입력하세요." }, { status: 400 });
+    // 이미지 URL (파트 D) — http(s)만 허용. 본문 없이 이미지만도 가능.
+    const raw = typeof payload.imageUrl === "string" ? payload.imageUrl.trim() : "";
+    const imageUrl = /^https?:\/\//.test(raw) ? raw.slice(0, 1000) : null;
+    if (!body && !imageUrl) return NextResponse.json({ error: "내용 또는 이미지를 입력하세요." }, { status: 400 });
     const comment = await queryOne<{ id: number }>(
-      `INSERT INTO comment (signal_id, author_id, body) VALUES ($1,$2,$3) RETURNING id`,
-      [Number(params.id), session.id, body]
+      `INSERT INTO comment (signal_id, author_id, body, image_url) VALUES ($1,$2,$3,$4) RETURNING id`,
+      [Number(params.id), session.id, body, imageUrl]
     );
     return NextResponse.json({ id: comment!.id });
   } catch (error) {

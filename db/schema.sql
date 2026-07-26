@@ -385,3 +385,16 @@ CREATE TABLE IF NOT EXISTS handover_task (
   task_id     INTEGER NOT NULL REFERENCES task(id),
   PRIMARY KEY (handover_id, task_id)
 );
+
+-- ─── 허들룸 (파트 D) — 이미지 첨부(외부 URL) + 투표. 마이그레이션 0005와 동일. ───
+ALTER TABLE signal  ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE comment ADD COLUMN IF NOT EXISTS image_url TEXT;
+CREATE TABLE IF NOT EXISTS huddle_vote (
+  target_type TEXT NOT NULL CHECK (target_type IN ('huddle', 'comment')),
+  target_id   INTEGER NOT NULL,
+  actor_id    INTEGER NOT NULL REFERENCES actor(id),
+  vote        TEXT NOT NULL CHECK (vote IN ('up', 'down')),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (target_type, target_id, actor_id)
+);
+CREATE INDEX IF NOT EXISTS idx_huddle_vote_target ON huddle_vote(target_type, target_id);

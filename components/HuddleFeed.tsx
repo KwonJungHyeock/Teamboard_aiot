@@ -1,16 +1,18 @@
 "use client";
 
-// 허들 피드 (Phase 6) — 개인 메모를 팀과 공유해 코멘트를 받는 통로 (SPEC 2.4).
-// 메모(private) → [허들로 보내기] → huddle 스레드 → [결정으로 승격] → decision → Task.
+// 허들룸 피드 (Phase 6) — 개인 메모를 팀과 공유해 코멘트를 받는 통로 (SPEC 2.4).
+// 메모(private) → [허들룸으로 보내기] → huddle 스레드 → [결정으로 승격] → decision → Task.
 import { useCallback, useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import type { ApiSignal } from "./SignalsView";
 import SignalThread from "./SignalThread";
 import EmptyState from "./EmptyState";
+import MeetingMode from "./MeetingMode";
 
 function NewMemoForm({ onDone }: { onDone: () => void }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [toHuddle, setToHuddle] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -22,7 +24,7 @@ function NewMemoForm({ onDone }: { onDone: () => void }) {
     const res = await fetch("/api/signals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "memo", scope: toHuddle ? "huddle" : "private", title, body }),
+      body: JSON.stringify({ type: "memo", scope: toHuddle ? "huddle" : "private", title, body, imageUrl }),
     });
     setBusy(false);
     if (!res.ok) {
@@ -43,14 +45,20 @@ function NewMemoForm({ onDone }: { onDone: () => void }) {
         onKeyDown={(e) => e.key === "Enter" && submit()}
       />
       <input
-        placeholder="내용 (선택)"
+        placeholder="내용 (선택, ==강조== 지원)"
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        style={{ minWidth: 240 }}
+        style={{ minWidth: 200 }}
+      />
+      <input
+        placeholder="이미지 URL (선택)"
+        value={imageUrl}
+        onChange={(e) => setImageUrl(e.target.value)}
+        style={{ minWidth: 160 }}
       />
       <label className="glink" style={{ whiteSpace: "nowrap" }}>
         <input type="checkbox" checked={toHuddle} onChange={(e) => setToHuddle(e.target.checked)} />
-        바로 허들로 공유
+        바로 허들룸으로 공유
       </label>
       <button className="lk" onClick={submit} disabled={busy || !title.trim()}>
         추가
@@ -66,11 +74,12 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [meetingId, setMeetingId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      // 허들 피드는 huddle_at 기준 (scope 무관) — 승격돼 scope=team이 돼도 흐름이 남는다 (A-3).
+      // 허들룸 피드는 huddle_at 기준 (scope 무관) — 승격돼 scope=team이 돼도 흐름이 남는다 (A-3).
       // 미종결·종결 모두 조회해 결정·반영까지 흐름을 보여준다.
       const [huddleRes, huddleClosed, privateRes] = await Promise.all([
         fetch("/api/signals?huddle=1").then((r) => r.json()),
@@ -84,7 +93,7 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
       const deduped = merged.filter((s: ApiSignal) => (seen.has(s.id) ? false : seen.add(s.id)));
       deduped.sort((a: ApiSignal, b: ApiSignal) => (b.huddledAt ?? "").localeCompare(a.huddledAt ?? ""));
       setHuddles(deduped);
-      // 내 메모: 아직 허들로 보내지 않은 비공개 메모만
+      // 내 메모: 아직 허들룸으로 보내지 않은 비공개 메모만
       setMyMemos(
         (privateRes.signals ?? []).filter((s: ApiSignal) => s.type === "memo" && !s.huddledAt)
       );
@@ -119,7 +128,7 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
     <div className="hv">
       <div className="top">
         <div className="crumb">
-          워크스페이스 / <b>허들</b>
+          워크스페이스 / <b>허들룸</b>
         </div>
         <span className="sp" />
       </div>
@@ -127,7 +136,7 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
         <div className="head">
           <div>
             <div className="eb">HUDDLE</div>
-            <h1>허들</h1>
+            <h1>허들룸</h1>
             <p>개인 메모를 팀과 공유하고, 코멘트를 결정 근거로 그대로 끌어올립니다.</p>
           </div>
         </div>
@@ -135,7 +144,7 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
         {loading && <p className="gempty">불러오는 중...</p>}
         {error && <p className="gerr">{error}</p>}
 
-        {/* 내 비공개 메모 — 허들로 보내기 */}
+        {/* 내 비공개 메모 — 허들룸으로 보내기 */}
         {!loading && myMemos.length > 0 && (
           <section className="card" aria-label="내 메모">
             <div className="ch">
@@ -151,24 +160,24 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
                 </div>
                 <span className="gsp" />
                 <button className="lk" disabled={busy} onClick={() => sendToHuddle(memo)}>
-                  허들로 보내기
+                  허들룸으로 보내기
                 </button>
               </div>
             ))}
           </section>
         )}
 
-        {/* 허들 피드 */}
+        {/* 허들룸 피드 */}
         {!loading && (
-          <section className="card" aria-label="허들 피드">
+          <section className="card" aria-label="허들룸 피드">
             <div className="ch">
               <h2>피드</h2>
               <span className="sub">공유 {huddles.length}건</span>
             </div>
             {huddles.length === 0 && (
               <EmptyState
-                title="공유된 허들이 없어요"
-                hint="시그널에서 메모를 허들로 보내면, 팀이 함께 볼 결정·논의로 이 피드에 모입니다."
+                title="공유된 허들룸이 없어요"
+                hint="시그널에서 메모를 허들룸으로 보내면, 팀이 함께 볼 결정·논의로 이 피드에 모입니다."
               />
             )}
             {huddles.map((signal) => (
@@ -197,6 +206,9 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
                   {(signal.status === "open" || signal.status === "discussing") && (
                     <span className="gtag">논의중</span>
                   )}
+                  <span className="acts" onClick={(e) => e.stopPropagation()}>
+                    <button className="p" onClick={() => setMeetingId(signal.id)}>회의 모드</button>
+                  </span>
                 </div>
               </div>
             ))}
@@ -214,6 +226,15 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
 
         <NewMemoForm onDone={load} />
       </div>
+
+      {meetingId && (
+        <MeetingMode
+          signalId={meetingId}
+          userId={user.id}
+          isLead={user.role === "lead"}
+          onClose={() => { setMeetingId(null); load(); }}
+        />
+      )}
     </div>
   );
 }

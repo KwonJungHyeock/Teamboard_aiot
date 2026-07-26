@@ -77,15 +77,38 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     const comments = await query<{
       id: number;
       body: string;
+      image_url: string | null;
       author_name: string;
       author_type: string;
       created_at: string;
     }>(
-      `SELECT c.id, c.body, a.display_name AS author_name, a.type AS author_type, c.created_at::text
+      `SELECT c.id, c.body, c.image_url, a.display_name AS author_name, a.type AS author_type, c.created_at::text
        FROM comment c JOIN actor a ON a.id = c.author_id
        WHERE c.signal_id = $1 ORDER BY c.created_at ASC`,
       [signal.id]
     );
+
+    // 투표 집계 (파트 D) — 허들 본문 + 각 코멘트. 내 표(mine) 포함.
+    const commentIds = comments.map((c) => c.id);
+    const voteRows = await query<{ target_type: string; target_id: number; up: number; down: number; mine: string | null }>(
+      `SELECT target_type, target_id,
+              count(*) FILTER (WHERE vote = 'up')::int AS up,
+              count(*) FILTER (WHERE vote = 'down')::int AS down,
+              max(vote) FILTER (WHERE actor_id = $1) AS mine
+       FROM huddle_vote
+       WHERE (target_type = 'huddle' AND target_id = $2)
+          OR (target_type = 'comment' AND target_id = ANY($3::int[]))
+       GROUP BY target_type, target_id`,
+      [session.id, signal.id, commentIds.length ? commentIds : [-1]]
+    );
+    const voteOf = (type: string, id: number) => {
+      const v = voteRows.find((r) => r.target_type === type && r.target_id === id);
+      return { up: v?.up ?? 0, down: v?.down ?? 0, mine: v?.mine ?? null };
+    };
+    const imageUrl = await queryOne<{ image_url: string | null }>(
+      `SELECT image_url FROM signal WHERE id = $1`, [signal.id]
+    );
+
     return NextResponse.json({
       signal: {
         id: signal.id,
@@ -103,13 +126,17 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         agent: meta?.author_type === "agent",
         projectName: meta?.project_name ?? null,
         huddledAt: meta?.huddle_at ?? null,
+        imageUrl: imageUrl?.image_url ?? null,
+        votes: voteOf("huddle", signal.id),
       },
       comments: comments.map((c) => ({
         id: c.id,
         body: c.body,
+        imageUrl: c.image_url,
         authorName: c.author_name,
         agent: c.author_type === "agent",
         createdAt: c.created_at,
+        votes: voteOf("comment", c.id),
       })),
     });
   } catch (error) {

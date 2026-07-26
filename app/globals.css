@@ -781,3 +781,46 @@ body.rail .acct { justify-content: center; padding: 7px; }
 .gdp-contrib .bar { height: 5px; border-radius: 3px; background: var(--track-bg); overflow: hidden; }
 .gdp-contrib .bar i { display: block; height: 100%; background: linear-gradient(90deg, rgba(139,92,246,.4), var(--play)); }
 .gdp-contrib b { font-family: var(--f-d); font-size: var(--fs-meta); color: var(--mid); min-width: 38px; text-align: right; }
+
+/* ═══ 허들룸 (파트 D) — 투표·하이라이트·이미지·회의 모드 ═══ */
+.hl-mark { background: rgba(245, 165, 36, 0.28); color: var(--hi); border-radius: 3px; padding: 0 3px; box-decoration-break: clone; }
+.votes { display: inline-flex; gap: 6px; align-items: center; }
+.votes .vote { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-badge); padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--glass); color: var(--mid); cursor: pointer; }
+.votes .vote:hover { border-color: var(--line-hi); }
+.votes .vote.on { border-color: var(--edu); color: var(--hi); background: rgba(75,141,248,.14); }
+.votes .vote b { font-family: var(--f-d); }
+.votes.votes-sm .vote { padding: 1px 6px; font-size: 11px; }
+.scomment .votes { margin-left: 8px; }
+.hthumb { display: inline-block; margin: 8px 0; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); max-width: 320px; }
+.hthumb img { display: block; max-width: 100%; height: auto; max-height: 220px; object-fit: cover; }
+
+/* 회의 모드 — 몰입형 전체화면 (사이드바 접힘) */
+body.meeting-on .side { display: none !important; }
+.meeting { position: fixed; inset: 0; z-index: 80; background: var(--bg-canvas); display: flex; flex-direction: column; }
+.meeting-top { display: flex; align-items: center; gap: 14px; padding: 14px 22px; border-bottom: 1px solid var(--line); background: var(--bg-surface); }
+.meeting-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.meeting-title b { font-size: var(--fs-panel-title); color: var(--hi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meeting-badge { font-family: var(--f-d); font-size: var(--fs-badge); color: #fff; background: linear-gradient(120deg, var(--edu), var(--play)); padding: 3px 10px; border-radius: 6px; }
+.meeting-st { font-family: var(--f-d); font-size: var(--fs-badge); color: var(--mid); border: 1px solid var(--line); border-radius: 5px; padding: 1px 8px; }
+.meeting-hint { font-size: var(--fs-meta); color: var(--lo); }
+.meeting-body { flex: 1; display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); min-height: 0; }
+.meeting-left { display: flex; flex-direction: column; min-height: 0; padding: 22px 26px; border-right: 1px solid var(--line); }
+.meeting-lead { font-size: var(--fs-body); color: var(--mid); line-height: 1.6; margin: 0 0 16px; }
+.meeting-comments { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 6px; }
+.meeting-c { padding: 12px 14px; border-radius: 10px; background: var(--bg-surface); border: 1px solid var(--line); }
+.meeting-c.is-decision { border-color: rgba(245,165,36,.4); background: rgba(245,165,36,.06); }
+.meeting-c-h { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+.meeting-c-h b { font-size: var(--fs-meta); color: var(--hi); }
+.meeting-c-b { font-size: var(--fs-row); color: var(--mid); line-height: 1.6; }
+.meeting-input { display: flex; gap: 10px; margin-top: 16px; }
+.meeting-input input { flex: 1; height: 44px; background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 8px; color: var(--hi); padding: 0 14px; font-size: var(--fs-row); }
+.meeting-right { display: flex; flex-direction: column; min-height: 0; padding: 22px 24px; background: var(--bg-rail); overflow-y: auto; }
+.meeting-r-h { font-size: var(--fs-panel-title); color: var(--hi); font-weight: 600; margin-bottom: 14px; }
+.meeting-decision { font-size: var(--fs-row); color: var(--hi); background: rgba(245,165,36,.1); border: 1px solid rgba(245,165,36,.3); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; line-height: 1.5; }
+.meeting-r-input { margin-top: auto; padding-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.meeting-r-input textarea { background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 8px; color: var(--hi); padding: 10px 12px; font: inherit; font-size: var(--fs-row); resize: vertical; }
+.meeting-decided { font-size: var(--fs-meta); color: var(--ok); margin-top: 10px; }
+.btn-brand { height: var(--btn-h); padding: 0 18px; border: 0; border-radius: 6px; background: var(--brand); color: #fff; font-weight: 600; font-size: var(--fs-row); white-space: nowrap; cursor: pointer; }
+.btn-brand:hover { filter: brightness(1.08); }
+.btn-brand:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 900px) { .meeting-body { grid-template-columns: 1fr; } }

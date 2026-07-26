@@ -265,7 +265,7 @@ export default function Sidebar({
           <span className="gname">협업</span>
         </summary>
         <NavLink href="/signals" icon={IC.signal} label="시그널" current={cur("/signals")} />
-        <NavLink href="/huddle" icon={IC.huddle} label="허들" current={cur("/huddle")} />
+        <NavLink href="/huddle" icon={IC.huddle} label="허들룸" current={cur("/huddle")} />
       </details>
 
       {isLead && (

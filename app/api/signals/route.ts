@@ -167,9 +167,12 @@ export async function POST(request: Request) {
     if (type !== "memo" && scope === "private") scope = "team"; // 비공개는 메모만
     const huddleAt = scope === "huddle"; // 생성 시점부터 허들이면 huddle_at 기록
 
+    // 이미지 URL (파트 D 허들룸) — http(s)만
+    const rawImg = typeof payload.imageUrl === "string" ? payload.imageUrl.trim() : "";
+    const imageUrl = /^https?:\/\//.test(rawImg) ? rawImg.slice(0, 1000) : null;
     const signal = await queryOne<{ id: number }>(
-      `INSERT INTO signal (type, scope, title, body, author_id, target_actor_id, project_id, task_id, huddle_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,${huddleAt ? "now()" : "NULL"}) RETURNING id`,
+      `INSERT INTO signal (type, scope, title, body, author_id, target_actor_id, project_id, task_id, image_url, huddle_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,${huddleAt ? "now()" : "NULL"}) RETURNING id`,
       [
         type,
         scope,
@@ -179,6 +182,7 @@ export async function POST(request: Request) {
         targetActorId,
         payload.projectId ? Number(payload.projectId) : null,
         payload.taskId ? Number(payload.taskId) : null,
+        imageUrl,
       ]
     );
     await logActivity({

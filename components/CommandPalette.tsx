@@ -24,7 +24,7 @@ const NAV_ITEMS: PaletteItem[] = [
   { label: "목표", href: "/goals", keywords: "goal okr 연간 분기 월" },
   { label: "월간 보고", href: "/reports", keywords: "report 보고서 월말", leadOnly: true },
   { label: "시그널", href: "/signals", keywords: "signal 결정 리뷰 메모 리스크" },
-  { label: "허들", href: "/huddle", keywords: "huddle 공유 코멘트" },
+  { label: "허들룸", href: "/huddle", keywords: "huddle 공유 코멘트" },
   { label: "인수인계", href: "/handover", keywords: "handover 인수 인계 이관 퇴사 휴가" },
 ];
 
