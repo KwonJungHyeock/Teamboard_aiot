@@ -62,15 +62,23 @@ export async function getActiveProjects(): Promise<Project[]> {
   return query<Project>(`SELECT * FROM project WHERE is_active = true ORDER BY id`);
 }
 
-/** 활성 업무 영역 목록 (sort_order) — 사이드바·필터·폼 */
+/** 활성 업무 영역 목록 (sort_order) — 사이드바·필터·폼. workspace + link_only 모두 포함 */
 export async function getActiveAreas(): Promise<Area[]> {
   return query<Area>(
-    `SELECT id, name, color_key, sort_order, is_active FROM area
+    `SELECT id, name, color_key, sort_order, is_active, kind, notion_url FROM area
      WHERE is_active = true ORDER BY sort_order, id`
   );
 }
 
-/** 영역 + 소속 프로젝트 (사이드바 "업무 영역" 트리) */
+/** 업무·목표 선택지용 영역 — workspace 만 (link_only·비활성 제외, 파트 0) */
+export async function getSelectableAreas(): Promise<Area[]> {
+  return query<Area>(
+    `SELECT id, name, color_key, sort_order, is_active, kind, notion_url FROM area
+     WHERE is_active = true AND kind = 'workspace' ORDER BY sort_order, id`
+  );
+}
+
+/** 영역 + 소속 프로젝트 (사이드바 "업무 영역" 트리). link_only 는 프로젝트 없이 링크만 */
 export async function getAreasWithProjects(): Promise<AreaWithProjects[]> {
   const [areas, projects] = await Promise.all([getActiveAreas(), getActiveProjects()]);
   return areas.map((a) => ({ ...a, projects: projects.filter((p) => p.area_id === a.id) }));

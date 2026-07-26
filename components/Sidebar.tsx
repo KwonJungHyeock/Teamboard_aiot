@@ -211,28 +211,49 @@ export default function Sidebar({
           <span className="gname">업무 영역</span>
         </summary>
         {/* 영역 7종 나열, 각 영역 아래 소속 프로젝트를 들여쓰기로 표시 (is_active=false 는 서버에서 제외) */}
-        {areas.map((area) => (
-          <div key={area.id}>
-            <Link
-              href={`/areas/${area.id}`}
-              aria-current={pathname === `/areas/${area.id}` ? "page" : undefined}
+        {areas.map((area) =>
+          area.kind === "link_only" ? (
+            // link_only — 업무 공간 없이 Notion 링크만 (파트 0). 새 탭.
+            <a
+              key={area.id}
+              className="arealink"
+              href={area.notion_url ?? "#"}
+              target="_blank"
+              rel="noreferrer"
+              aria-disabled={area.notion_url ? undefined : true}
+              title={area.notion_url ? "Notion에서 열기" : "링크 미설정"}
             >
               <span className={`pjdot ${area.color_key ?? "team"}`} />
-              <span>{area.name}</span>
-            </Link>
-            {area.projects.map((project) => (
+              <span>{area.name} <em className="ext-tag">(링크)</em></span>
+              <svg className="ext-ic" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14 4h6v6" />
+                <path d="M20 4 12 12" />
+                <path d="M19 13v6a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6" />
+              </svg>
+            </a>
+          ) : (
+            <div key={area.id}>
               <Link
-                key={project.id}
-                className="subproj"
-                href={`/projects/${project.id}`}
-                aria-current={cur(`/projects/${project.id}`) ? "page" : undefined}
+                href={`/areas/${area.id}`}
+                aria-current={pathname === `/areas/${area.id}` ? "page" : undefined}
               >
-                <span className={`pjdot ${project.color_key ?? "team"}`} />
-                <span>{project.name}</span>
+                <span className={`pjdot ${area.color_key ?? "team"}`} />
+                <span>{area.name}</span>
               </Link>
-            ))}
-          </div>
-        ))}
+              {area.projects.map((project) => (
+                <Link
+                  key={project.id}
+                  className="subproj"
+                  href={`/projects/${project.id}`}
+                  aria-current={cur(`/projects/${project.id}`) ? "page" : undefined}
+                >
+                  <span className={`pjdot ${project.color_key ?? "team"}`} />
+                  <span>{project.name}</span>
+                </Link>
+              ))}
+            </div>
+          )
+        )}
         <Link className="moreln" href="/projects">
           전체 프로젝트 →
         </Link>

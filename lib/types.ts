@@ -59,6 +59,8 @@ export interface Area {
   color_key: string | null;
   sort_order: number;
   is_active: boolean;
+  kind: "workspace" | "link_only";
+  notion_url: string | null;
 }
 
 export interface AreaWithProjects extends Area {

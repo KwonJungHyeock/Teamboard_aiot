@@ -24,8 +24,9 @@ export async function GET() {
          WHERE is_active = true AND period_type = 'month'
          ORDER BY period_start DESC, id LIMIT 100`
       ),
+      // 업무·목표 선택지 — workspace 만 (link_only·비활성 제외, 파트 0)
       query<{ id: number; name: string; color_key: string | null }>(
-        `SELECT id, name, color_key FROM area WHERE is_active = true ORDER BY sort_order, id`
+        `SELECT id, name, color_key FROM area WHERE is_active = true AND kind = 'workspace' ORDER BY sort_order, id`
       ),
       // 내 기본 영역 (폼 기본값·"내 업무" 영역 필터) — sort_order 순
       query<{ area_id: number }>(

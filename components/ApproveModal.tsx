@@ -45,7 +45,7 @@ export default function ApproveModal({
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const [options, setOptions] = useState<Options>(FALLBACK);
-  const [workArea, setWorkArea] = useState<string>("기타");
+  const [workArea, setWorkArea] = useState<string>("플랫폼"); // 파트 0 — 기타/교육자료 제외, 기본 플랫폼
   const [workType, setWorkType] = useState<string>("개인업무");
   const [status, setStatus] = useState<string>("진행"); // 승인 = 업무 시작 → 기본 진행
   const [priority, setPriority] = useState<string>("Mid");
@@ -134,7 +134,8 @@ export default function ApproveModal({
           <div className="field">
             <label>업무 구분</label>
             <select value={workArea} onChange={(e) => setWorkArea(e.target.value)}>
-              {options.workArea.map((v) => (
+              {/* 파트 0 — 링크/비활성 영역은 선택지에서 제외 */}
+              {options.workArea.filter((v) => v !== "기타" && v !== "교육자료").map((v) => (
                 <option key={v}>{v}</option>
               ))}
             </select>

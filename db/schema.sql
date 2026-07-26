@@ -275,6 +275,11 @@ CREATE TABLE IF NOT EXISTS area (
   is_active  BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- 영역 종류(파트 0): workspace=업무 공간 / link_only=Notion 링크만(선택지 제외)
+ALTER TABLE area ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'workspace';
+ALTER TABLE area DROP CONSTRAINT IF EXISTS area_kind_check;
+ALTER TABLE area ADD CONSTRAINT area_kind_check CHECK (kind IN ('workspace', 'link_only'));
+ALTER TABLE area ADD COLUMN IF NOT EXISTS notion_url TEXT;
 -- name 은 Notion "업무 구분" 선택지와 문자열 일치 필수 → 유니크로 보장 + ON CONFLICT 시드
 ALTER TABLE area DROP CONSTRAINT IF EXISTS area_name_uniq;
 ALTER TABLE area ADD CONSTRAINT area_name_uniq UNIQUE (name);
@@ -287,6 +292,9 @@ INSERT INTO area (name, color_key, sort_order) VALUES
   ('현장실습교육', 'train', 6),
   ('기타', 'team', 7)
 ON CONFLICT (name) DO NOTHING;
+-- 파트 0 영역 재편 (신규 DB에서도 동일 상태로): 교육자료 link_only, 기타 비활성
+UPDATE area SET kind = 'link_only' WHERE name = '교육자료';
+UPDATE area SET is_active = false WHERE name = '기타';
 
 -- 계층 컬럼 (모두 idempotent). project/task 는 NOT NULL, goal 은 nullable.
 ALTER TABLE project ADD COLUMN IF NOT EXISTS area_id INTEGER REFERENCES area(id);

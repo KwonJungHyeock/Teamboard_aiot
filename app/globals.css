@@ -660,6 +660,12 @@ body {
 .side a.subproj { padding-left: 30px; font-size: 12.5px; color: var(--lo); min-height: 30px; }
 .side a.subproj .pjdot { width: 6px; height: 6px; flex-basis: 6px; }
 .side a.subproj:hover { color: var(--hi); }
+/* link_only 영역 — Notion 링크 표기 (파트 0) */
+.side a.arealink .ext-tag { font-style: normal; font-family: var(--f-d); font-size: 10.5px; color: var(--lo); }
+.side a.arealink .ext-ic { width: 13px; height: 13px; margin-left: auto; fill: none; stroke: var(--lo); stroke-width: 1.8; flex: 0 0 13px; }
+.side a.arealink:hover { color: var(--hi); }
+.side a.arealink:hover .ext-ic { stroke: var(--hi); }
+.side a.arealink[aria-disabled="true"] { opacity: .55; }
 
 .acct { display: flex; align-items: center; gap: 9px; padding: 8px; border-radius: var(--r-s); border: 1px solid var(--line); background: var(--glass); cursor: pointer; width: 100%; font-family: inherit; text-align: left; color: inherit; }
 .acct:hover { border-color: var(--line-hi); }

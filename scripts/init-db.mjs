@@ -35,8 +35,8 @@ const TEAM = [
     role: "member",
     notionUserId: "260d872b-594c-81e4-9f78-000299e7e74b",
     assistantName: "주희의 에이전트",
-    workAreas: ["교육자료"],
-    actorAreas: ["교육자료", "플랫폼"],
+    workAreas: ["연구소"],
+    actorAreas: ["플랫폼", "연구소"],
   },
   {
     email: "sycho09@robodyne.co.kr",
