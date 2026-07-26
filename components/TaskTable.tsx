@@ -145,11 +145,17 @@ export default function TaskTable({
                   )}
                 </td>
                 <td>{t.assigneeName ?? "—"}</td>
-                {full && <td>{PRIORITY_LABEL[t.priority ?? "mid"] ?? "보통"}</td>}
+                {full && (
+                  <td>
+                    <span className={`prio prio-${t.priority ?? "mid"}`}>
+                      {PRIORITY_LABEL[t.priority ?? "mid"] ?? "보통"}
+                    </span>
+                  </td>
+                )}
                 <td>
                   {editable ? (
                     <select
-                      className="stsel"
+                      className={`stsel st-${t.status}`}
                       value={t.status}
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => {

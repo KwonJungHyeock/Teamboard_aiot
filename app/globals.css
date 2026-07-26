@@ -786,7 +786,7 @@ body.rail .acct { justify-content: center; padding: 7px; }
 .gdp-prog .bar i { display: block; height: 100%; background: linear-gradient(90deg, rgba(75,141,248,.4), var(--edu)); box-shadow: 0 0 10px rgba(75,141,248,.45); }
 .gdp-ro { font-size: var(--fs-row); color: var(--hi); padding: 6px 2px; }
 .gdp-num { font-size: var(--fs-row); background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 6px; color: var(--hi); padding: 6px 9px; }
-.gdp-task { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid rgba(255,255,255,.05); }
+.gdp-task { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); }
 .gdp-task:first-of-type { border-top: 0; }
 .gdp-task-t { flex: 1; min-width: 0; font-size: var(--fs-row); color: var(--mid); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gdp-task em { font-style: normal; font-family: var(--f-d); font-size: var(--fs-badge); color: var(--lo); }

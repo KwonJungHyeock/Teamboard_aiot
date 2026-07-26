@@ -16,7 +16,7 @@
 .hv .head .eb{font-family:var(--f-d);font-size:10.5px;letter-spacing:.1em;color:var(--lo)}
 .hv .head h1{font-size:21px;font-weight:600;letter-spacing:-.015em;margin-top:2px}
 .hv .head p{color:var(--mid);font-size:12.5px;margin-top:2px}
-.hv .seg{display:flex;gap:2px;padding:2px;border-radius:8px;background:rgba(255,255,255,.045)}
+.hv .seg{display:flex;gap:2px;padding:2px;border-radius:8px;background:var(--glass)}
 .hv .seg button{border:0;background:transparent;color:var(--mid);cursor:pointer;font-family:var(--f-d);font-size:10.5px;padding:4px 11px;border-radius:6px}
 .hv .seg button[aria-pressed="true"]{background:var(--bg-elevated);color:var(--hi)}
 .hv .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:13px}
@@ -53,13 +53,13 @@
 .hv .ln-n.tm .w{color:var(--hi);font-weight:500}
 .hv .av{width:19px;height:19px;border-radius:50%;flex:0 0 19px;display:grid;place-items:center;font-size:10.5px;font-weight:600;color:#0A0E17}
 .hv .ln-b{padding:7px 0;border-top:1px solid var(--line)}
-.hv .trk{position:relative;height:24px;border-radius:7px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 1px,transparent 1px 10%);background-color:rgba(255,255,255,.016)}
+.hv .trk{position:relative;height:24px;border-radius:7px;background:repeating-linear-gradient(90deg,var(--grid-line) 0 1px,transparent 1px 10%);background-color:var(--glass)}
 .hv .blk{position:absolute;top:3px;bottom:3px;border-radius:6px;display:flex;align-items:center;padding:0 8px;font-size:11px;white-space:nowrap;overflow:hidden;color:#fff}
 .hv .blk.edu{background:linear-gradient(100deg,rgba(75,141,248,.92),rgba(75,141,248,.5));box-shadow:0 0 14px rgba(75,141,248,.3)}
 .hv .blk.play{background:linear-gradient(100deg,rgba(139,92,246,.92),rgba(139,92,246,.5));box-shadow:0 0 14px rgba(139,92,246,.28)}
 .hv .blk.tm{background:linear-gradient(100deg,rgba(124,138,165,.72),rgba(124,138,165,.32));color:#F2F5FA}
 .hv .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
-.hv .chip{font-size:11px;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,.045);border:1px solid var(--line);color:var(--mid);white-space:nowrap}
+.hv .chip{font-size:11px;padding:3px 9px;border-radius:6px;background:var(--glass);border:1px solid var(--line);color:var(--mid);white-space:nowrap}
 .hv .chip.edu{border-color:rgba(75,141,248,.34);color:#A8C8FC;background:rgba(75,141,248,.1)}
 .hv .chip.play{border-color:rgba(139,92,246,.34);color:#C9B6FC;background:rgba(139,92,246,.1)}
 .hv .chip.train{border-color:rgba(45,212,191,.3);color:#93E9DF;background:rgba(45,212,191,.09)}
@@ -73,25 +73,25 @@
 .hv .lk:hover{opacity:.8}
 .hv table{width:100%;border-collapse:collapse;table-layout:fixed}
 .hv th{font-family:var(--f-d);font-size:10.5px;letter-spacing:.06em;color:var(--lo);text-align:left;font-weight:400;padding:0 8px 7px;border-bottom:1px solid var(--line)}
-.hv td{padding:8.5px 8px;border-bottom:1px solid rgba(255,255,255,.045);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hv td{padding:8.5px 8px;border-bottom:1px solid var(--line);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hv tr:last-child td{border-bottom:0}
-.hv tbody tr:hover{background:rgba(255,255,255,.02)}
+.hv tbody tr:hover{background:var(--glass)}
 .hv .pj{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--mid)}
 .hv .pj i{width:6px;height:6px;border-radius:2px;display:block}
 .hv .pj i.edu{background:var(--edu)}
 .hv .pj i.play{background:var(--play)}
 .hv .pj i.train{background:var(--train)}
 .hv .st{font-family:var(--f-d);font-size:10.5px;padding:2px 8px;border-radius:5px;border:1px solid var(--line);color:var(--mid)}
-.hv .st.doing{border-color:rgba(75,141,248,.34);color:#A8C8FC}
-.hv .st.review{border-color:rgba(139,92,246,.34);color:#C9B6FC}
-.hv .st.prop{border-style:dashed;border-color:rgba(139,92,246,.4);color:#B9A6F0}
+.hv .st.doing{border-color:var(--edu);color:var(--edu)}
+.hv .st.review{border-color:var(--line);color:var(--ink-soft)}
+.hv .st.prop{border-style:dashed;border-color:var(--play);color:var(--play)}
 .hv .due{font-family:var(--f-d);font-size:11px;color:var(--lo)}
 .hv .due.bad{color:var(--danger)}
 .hv .due.soon{color:var(--warn)}
 .hv .tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px}
 .hv .tab{border:1px solid var(--line);background:transparent;color:var(--mid);border-radius:18px;padding:3.5px 11px;font-family:inherit;font-size:11px;cursor:pointer}
 .hv .tab:hover{border-color:var(--line-hi)}
-.hv .tab[aria-pressed="true"]{background:rgba(255,255,255,.075);color:var(--hi);border-color:var(--line-hi)}
+.hv .tab[aria-pressed="true"]{background:var(--glass);color:var(--hi);border-color:var(--line-hi)}
 .hv .tab .n{font-family:var(--f-d);font-size:10.5px;color:var(--lo);margin-left:4px}
 .hv .sig{display:flex;gap:10px;align-items:flex-start;padding:10.5px 0;border-top:1px solid var(--line)}
 .hv .sig .bd{flex:1;min-width:0}
@@ -105,7 +105,7 @@
 .hv .bg{font-family:var(--f-d);font-size:10.5px;padding:2px 7px;border-radius:5px;white-space:nowrap}
 .hv .bg.stale{background:rgba(248,113,113,.12);color:#FCA5A5;border:1px solid rgba(248,113,113,.3)}
 .hv .bg.wait{background:rgba(139,92,246,.12);color:#C9B6FC;border:1px solid rgba(139,92,246,.32)}
-.hv .bg.priv{background:rgba(255,255,255,.045);color:var(--lo);border:1px solid var(--line)}
+.hv .bg.priv{background:var(--glass);color:var(--lo);border:1px solid var(--line)}
 .hv .bg.decided{background:rgba(245,165,36,.12);color:#F5A524;border:1px solid rgba(245,165,36,.32)}
 .hv .bg.tome{background:rgba(75,141,248,.14);color:#9CC0FF;border:1px solid rgba(75,141,248,.35)}
 .hv .sig.ag{border-left:2px solid var(--play);padding-left:11px;background:linear-gradient(90deg,rgba(139,92,246,.07),transparent 40%);opacity:.9}
@@ -119,12 +119,12 @@
 .hv .pr:first-of-type{margin-top:0}
 .hv .pr-t{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
 .hv .pr-t span:last-child{font-family:var(--f-d);color:var(--lo);font-size:11px}
-.hv .bar{height:4px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden}
+.hv .bar{height:4px;border-radius:2px;background:var(--glass);overflow:hidden}
 .hv .bar i{display:block;height:100%;border-radius:2px}
 .hv .bar i.edu{background:linear-gradient(90deg,rgba(75,141,248,.4),var(--edu));box-shadow:0 0 10px rgba(75,141,248,.45)}
 .hv .bar i.play{background:linear-gradient(90deg,rgba(139,92,246,.4),var(--play));box-shadow:0 0 10px rgba(139,92,246,.4)}
 .hv .bar i.train{background:linear-gradient(90deg,rgba(45,212,191,.35),var(--train));box-shadow:0 0 10px rgba(45,212,191,.35)}
-.hv .hud{border:1px solid var(--line);border-radius:var(--r-s);padding:10px 12px;margin-top:8px;background:rgba(255,255,255,.018)}
+.hv .hud{border:1px solid var(--line);border-radius:var(--r-s);padding:10px 12px;margin-top:8px;background:var(--glass)}
 .hv .hud:first-of-type{margin-top:0}
 .hv .hud .h{font-size:12.5px;margin-bottom:4px}
 .hv .hud .b{font-size:12px;color:var(--mid);line-height:1.5}
@@ -173,7 +173,7 @@
 .hv .grow{margin:4px 0 4px 30px;padding:7px 9px;border:1px solid var(--line);border-radius:7px}
 .hv .grow-h{display:flex;align-items:center;gap:8px}
 .hv .gtasks{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
-.hv .gchip{font-size:10.5px;padding:2px 8px;border-radius:5px;border:1px solid var(--line);color:var(--mid);background:rgba(255,255,255,.03)}
+.hv .gchip{font-size:10.5px;padding:2px 8px;border-radius:5px;border:1px solid var(--line);color:var(--mid);background:var(--glass)}
 .hv .gchip.done{color:var(--ok);border-color:rgba(52,211,153,.3)}
 .hv .gchip.drop{color:var(--lo);text-decoration:line-through;opacity:.7}
 .hv .gdrop{font-style:normal;font-family:var(--f-d);font-size:10.5px;color:var(--lo);border:1px dashed var(--line);border-radius:5px;padding:1px 6px;white-space:nowrap;margin-right:6px}
@@ -216,7 +216,7 @@
 /* ── 업무 화면 (Phase 5) — 인박스 · 필터 · 공용 테이블 확장 · 상세 ── */
 .hv tr.clickable{cursor:pointer}
 .hv tr.clickable:hover td{background:var(--glass)}
-.hv tr.selected td{background:rgba(255,255,255,.045)}
+.hv tr.selected td{background:var(--glass)}
 .hv .tinbox{border-color:rgba(139,92,246,.35)}
 .hv .tinbox-row{display:flex;align-items:center;gap:10px;padding:7px 4px;border-top:1px solid var(--line)}
 .hv .tinbox-row:first-of-type{border-top:0}
@@ -256,7 +256,7 @@
 /* ── 시그널 스레드 · 허들 (Phase 6) ── */
 .hv .sig.clickable{cursor:pointer}
 .hv .sig.clickable:hover{background:var(--glass)}
-.hv .sig.selected{background:rgba(255,255,255,.045)}
+.hv .sig.selected{background:var(--glass)}
 .hv .sthread{margin-top:12px}
 .hv .sthread.agline{border-left:2px solid var(--play);opacity:.95}
 .hv .sthread .ch h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -276,7 +276,7 @@
 .hv .scomment.ag{opacity:.9}
 .hv .hud.clickable{cursor:pointer}
 .hv .hud.clickable:hover{border-color:var(--line-hi)}
-.hv .hud.selected{border-color:var(--line-hi);background:rgba(255,255,255,.04)}
+.hv .hud.selected{border-color:var(--line-hi);background:var(--glass)}
 .hv .hud.ag{border-left:2px solid var(--play);opacity:.9}
 
 /* ── 월간 보고 (Phase 7) ── */
@@ -287,7 +287,7 @@
 .hv .rp-side{border:1px solid var(--line);border-radius:var(--r-s);padding:10px;background:var(--glass)}
 .hv .rp-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:0;border:0;border-radius:6px;padding:8px;cursor:pointer;color:var(--mid);font-family:inherit}
 .hv .rp-item:hover{background:var(--glass)}
-.hv .rp-item.on{background:rgba(255,255,255,.05)}
+.hv .rp-item.on{background:var(--glass)}
 .hv .rp-item b{font-size:12.5px;color:var(--hi);font-weight:600}
 .hv .rp-item .gsp{flex:1}
 .hv .rp-st{font-family:var(--f-d);font-size:10.5px;letter-spacing:.06em;border:1px solid var(--line);border-radius:5px;padding:1px 6px;white-space:nowrap;margin-left:auto}
@@ -316,12 +316,12 @@
 
 /* 비밀번호 변경 게이트 (최초 로그인) — 전체 화면 */
 .pwgate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;z-index:40}
-.pwgate-card{width:min(420px,92vw);background:var(--bg-elevated,#14151a);border:1px solid var(--line-hi,#2a2c34);border-radius:14px;padding:28px;display:flex;flex-direction:column;gap:8px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.pwgate-card{width:min(420px,92vw);background:var(--bg-elevated);border:1px solid var(--line-hi);border-radius:14px;padding:28px;display:flex;flex-direction:column;gap:8px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
 .pwgate-card .eb{font-family:var(--f-d);font-size:10.5px;letter-spacing:.14em;color:var(--edu)}
 .pwgate-card h1{font-size:19px;color:var(--hi);margin:2px 0 4px}
 .pwgate-card p{font-size:12.5px;color:var(--lo);line-height:1.6;margin:0 0 8px}
 .pwgate-card label{font-family:var(--f-d);font-size:10.5px;color:var(--lo);letter-spacing:.06em;margin-top:6px}
-.pwgate-card input{height:36px;font-size:13px;background:var(--glass,rgba(255,255,255,.04));border:1px solid var(--line,#23252c);border-radius:8px;color:var(--hi);padding:0 12px}
+.pwgate-card input{height:36px;font-size:13px;background:var(--glass);border:1px solid var(--line);border-radius:8px;color:var(--hi);padding:0 12px}
 .pwgate-card input:focus{outline:none;border-color:var(--edu)}
 .pwgate-card .gbtn{margin-top:12px;height:38px;background:var(--edu);border:0;color:#fff;font-weight:600}
 .pwgate-card .gbtn:disabled{opacity:.5}
@@ -384,20 +384,20 @@
 
 /* ── 패널 (구 카드 → 문서 카드 느낌 제거) ── */
 .hv .card{border-radius:var(--r);border:1px solid var(--line);background:var(--bg-surface);padding:var(--card-pad-y) var(--card-pad-x);box-shadow:var(--card-shadow)}
-.hv .ch{height:var(--panel-h);margin:calc(-1 * var(--card-pad-y)) calc(-1 * var(--card-pad-x)) var(--card-pad-y);padding:0 var(--card-pad-x);background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.10);border-radius:var(--r) var(--r) 0 0;box-sizing:border-box}
+.hv .ch{height:var(--panel-h);margin:calc(-1 * var(--card-pad-y)) calc(-1 * var(--card-pad-x)) var(--card-pad-y);padding:0 var(--card-pad-x);background:var(--glass);border-bottom:1px solid var(--line);border-radius:var(--r) var(--r) 0 0;box-sizing:border-box}
 .hv .ch h2{font-size:var(--fs-panel-title)}
 .hv .ch .sub{font-size:var(--fs-meta)}
 .hv .stack{gap:var(--card-gap)}
 
 /* ── 테이블 = 데이터 그리드 (행 36px · 구분선 · 정렬) ── */
 .hv th{font-size:var(--fs-meta);padding:0 8px 8px}
-.hv td{font-size:var(--fs-row);height:var(--row-h);padding:0 8px;border-bottom:1px solid rgba(255,255,255,.05)}
+.hv td{font-size:var(--fs-row);height:var(--row-h);padding:0 8px;border-bottom:1px solid var(--line)}
 .hv .pj{font-size:var(--fs-meta)}
 .hv .st{font-size:var(--fs-badge)}
 .hv .due{font-size:var(--fs-meta)}
 
 /* ── 시그널·활동 = 정렬된 행 (아이콘 20px 고정 → 텍스트 시작 x 통일, 배지 우측) ── */
-.hv .sig{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;column-gap:8px;gap:0;min-height:var(--row-h);padding:8px 0;border-top:1px solid rgba(255,255,255,.05)}
+.hv .sig{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;column-gap:8px;gap:0;min-height:var(--row-h);padding:8px 0;border-top:1px solid var(--line)}
 .hv .sig .dt{justify-self:center;margin:0}
 .hv .sig .bd{min-width:0}
 .hv .sig .tt{font-size:var(--fs-row)}
@@ -464,7 +464,7 @@
 /* ── 영역 작업 공간 헤더 (파트 6) — 영역 색 액센트 ── */
 .hv .area-hd{display:flex;align-items:flex-start;gap:14px;padding:16px 18px;margin-bottom:14px;
   border:1px solid var(--line);border-left-width:4px;border-radius:var(--r);
-  background:linear-gradient(100deg,rgba(255,255,255,.03),transparent),var(--bg-surface);box-shadow:var(--card-shadow)}
+  background:linear-gradient(100deg,var(--glass),transparent),var(--bg-surface);box-shadow:var(--card-shadow)}
 .hv .area-hd .area-dot{width:12px;height:12px;flex:0 0 12px;border-radius:4px;margin-top:6px}
 .hv .area-hd h1{font-size:var(--fs-page-title);line-height:1.2;margin:1px 0 2px}
 .hv .area-hd .eb{font-family:var(--f-d);font-size:var(--fs-meta);letter-spacing:.1em;color:var(--lo)}
@@ -542,7 +542,7 @@
 .hv .ho-body{font-size:var(--fs-row);color:var(--mid);line-height:1.7;margin:0 0 18px;white-space:pre-wrap;font-family:inherit}
 .hv .ho-h2{font-size:15px;color:var(--hi);border-bottom:1px solid var(--line);padding-bottom:6px;margin:18px 0 10px}
 .hv .ho-empty{font-size:var(--fs-meta);color:var(--lo)}
-.hv .ho-task{padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.hv .ho-task{padding:9px 0;border-bottom:1px solid var(--line)}
 .hv .ho-task:last-child{border-bottom:0}
 .hv .ho-task-h{display:flex;flex-direction:column;gap:2px}
 .hv .ho-task-h b{font-size:var(--fs-row);color:var(--hi);font-weight:600}
@@ -672,3 +672,56 @@
 /* 지표 숫자 — sans + bold + tabular (모노 아님) */
 .hv .mc .v { font: var(--num-kpi); font-variant-numeric: tabular-nums; }
 .hv .mc .v em { font: var(--text-caption); color: var(--muted); }
+
+/* ═══════════════════ 내 업무(/tasks) 라이트 통일 — 홈 검증본 재사용 ═══════════════════
+   색 의미: 완료=green · 진행=blue · 대기·리뷰·중단=gray · 리스크·높음=coral · 제안=purple.
+   토큰만 사용(color-mix로 틴트, 캐럿은 CSS 그라디언트 — 신규 hex 없음). */
+
+/* ── 상태 pill 배지 (읽기전용 .st + 인라인 select .stsel 동일 톤) ── */
+.hv .st, .hv .stsel { border-radius: var(--r-pill); font-family: var(--font-sans); white-space: nowrap; }
+.hv .st { padding: 3px 10px; border: 1px solid var(--line-hi); }
+.hv .st.todo, .hv .st.review, .hv .st.drop { color: var(--ink-soft); border-color: var(--line-hi); background: color-mix(in srgb, var(--ink-soft) 6%, transparent); }
+.hv .st.doing { color: var(--edu); border-color: color-mix(in srgb, var(--edu) 35%, transparent); background: color-mix(in srgb, var(--edu) 10%, transparent); }
+.hv .st.done { color: var(--green); border-color: color-mix(in srgb, var(--green) 38%, transparent); background: color-mix(in srgb, var(--green) 12%, transparent); }
+.hv .st.prop { color: var(--play); border-style: dashed; border-color: color-mix(in srgb, var(--play) 45%, transparent); background: color-mix(in srgb, var(--play) 8%, transparent); }
+
+/* 인라인 상태 select — 겉모양만 pill 배지, 기능(클릭 변경) 유지. CSS 캐럿(토큰색). */
+.hv .stsel {
+  appearance: none; -webkit-appearance: none;
+  height: auto; min-width: 0; width: auto;
+  padding: 3px 24px 3px 11px; font-size: var(--fs-badge); cursor: pointer;
+  border: 1px solid var(--line-hi); color: var(--ink-soft);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 13px) center, calc(100% - 9px) center;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+.hv .stsel.st-todo, .hv .stsel.st-review { color: var(--ink-soft); border-color: var(--line-hi); background-color: color-mix(in srgb, var(--ink-soft) 6%, transparent); }
+.hv .stsel.st-doing { color: var(--edu); border-color: color-mix(in srgb, var(--edu) 35%, transparent); background-color: color-mix(in srgb, var(--edu) 10%, transparent); }
+.hv .stsel.st-done { color: var(--green); border-color: color-mix(in srgb, var(--green) 38%, transparent); background-color: color-mix(in srgb, var(--green) 12%, transparent); }
+
+/* ── 우선순위 배지: 낮음=gray · 보통=blue · 높음=coral ── */
+.hv .prio { display: inline-block; padding: 3px 10px; border-radius: var(--r-pill); font-size: var(--fs-badge); border: 1px solid var(--line-hi); white-space: nowrap; }
+.hv .prio-low { color: var(--ink-soft); border-color: var(--line-hi); background: color-mix(in srgb, var(--ink-soft) 6%, transparent); }
+.hv .prio-mid { color: var(--edu); border-color: color-mix(in srgb, var(--edu) 35%, transparent); background: color-mix(in srgb, var(--edu) 10%, transparent); }
+.hv .prio-high { color: var(--coral); border-color: color-mix(in srgb, var(--coral) 42%, transparent); background: var(--coral-bg); }
+
+/* ── 상단 필터·폼 select — 브라우저 기본 티 제거, 라이트 라운드 + CSS 캐럿 ── */
+.hv .tfilters select, .hv .tnew select, .hv .tform-r select, .hv .stsel {
+  appearance: none; -webkit-appearance: none;
+}
+.hv .tfilters select, .hv .tnew select, .hv .tform-r select {
+  background-color: var(--card);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 15px) center, calc(100% - 10px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  border: 1px solid var(--line-hi); border-radius: var(--r-s); color: var(--ink);
+  padding-right: 30px;
+}
+.hv .tfilters select:hover, .hv .tnew select:hover, .hv .tform-r select:hover { border-color: var(--muted); }
+.hv .tfilters .tsearch { border-radius: var(--r-s); border-color: var(--line-hi); background: var(--card); color: var(--ink); }
