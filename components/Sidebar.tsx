@@ -159,9 +159,11 @@ export default function Sidebar({
   return (
     <aside className="side">
       <div className="brand">
-        <div className="mk">EB</div>
+        {/* Eduino AI 로고 심볼 — 자산(public/assets/brand) 도착 전 코랄 심볼 폴백 */}
+        <div className="mk" aria-hidden="true">e</div>
         <div className="nm">
-          팀보드<small>EDUINO PLATFORM</small>
+          Eduino AI Platform Team
+          <small>MISSION DECK</small>
         </div>
         <button className="tg" onClick={toggleRail} aria-label="사이드바 접기">
           <svg viewBox="0 0 24 24">
@@ -183,26 +185,13 @@ export default function Sidebar({
       <details className="grp" open>
         <summary>
           <Chevron />
-          <span className="gname">내 작업</span>
+          <span className="gname">오늘</span>
         </summary>
-        {/* 승인 인박스 — 사람/에이전트 공간의 유일한 통로. 최상단 + 카운트 배지 */}
-        <NavLink href="/inbox" icon={IC.inbox} label="승인 인박스" current={cur("/inbox")} count={inboxCount} />
         <NavLink href="/" icon={IC.home} label="홈" current={cur("/")} />
         <NavLink href="/tasks" icon={IC.tasks} label="내 업무" current={cur("/tasks")} />
         <NavLink href="/calendar" icon={IC.calendar} label="캘린더" current={cur("/calendar")} />
-        <NavLink href="/assistant" icon={IC.bot} label="My Agent" current={cur("/assistant")} />
-        <NavLink href="/handover" icon={IC.handover} label="인수인계" current={cur("/handover")} />
-      </details>
-
-      <details className="grp" open>
-        <summary>
-          <Chevron />
-          <span className="gname">목표·보고</span>
-        </summary>
-        <NavLink href="/goals" icon={IC.goal} label="목표" current={cur("/goals")} />
-        {isLead && (
-          <NavLink href="/reports" icon={IC.report} label="월간 보고" current={cur("/reports")} />
-        )}
+        {/* 승인 대기 — 사람/에이전트 공간의 유일한 통로. 카운트 배지 */}
+        <NavLink href="/inbox" icon={IC.inbox} label="승인 대기" current={cur("/inbox")} count={inboxCount} />
       </details>
 
       <details className="grp" open>
@@ -262,10 +251,23 @@ export default function Sidebar({
       <details className="grp" open>
         <summary>
           <Chevron />
+          <span className="gname">목표 &amp; 성과</span>
+        </summary>
+        <NavLink href="/goals" icon={IC.goal} label="목표" current={cur("/goals")} />
+        {isLead && (
+          <NavLink href="/reports" icon={IC.report} label="월간 보고" current={cur("/reports")} />
+        )}
+      </details>
+
+      <details className="grp" open>
+        <summary>
+          <Chevron />
           <span className="gname">협업</span>
         </summary>
-        <NavLink href="/signals" icon={IC.signal} label="시그널" current={cur("/signals")} />
+        {/* 시그널 → 표기만 "논의·결정" (코드/테이블은 signal 유지) */}
+        <NavLink href="/signals" icon={IC.signal} label="논의·결정" current={cur("/signals")} />
         <NavLink href="/huddle" icon={IC.huddle} label="허들룸" current={cur("/huddle")} />
+        <NavLink href="/handover" icon={IC.handover} label="인수인계" current={cur("/handover")} />
       </details>
 
       {isLead && (
@@ -276,6 +278,7 @@ export default function Sidebar({
           </summary>
           <NavLink href="/members" icon={IC.members} label="구성원" current={cur("/members")} />
           <NavLink href="/settings" icon={IC.settings} label="설정" current={cur("/settings")} />
+          <NavLink href="/assistant" icon={IC.bot} label="My Agent" current={cur("/assistant")} />
           {/* Notion 타임라인 — 미연결이면 숨김 (파트 Z) */}
           {notionConnected && (
             <NavLink

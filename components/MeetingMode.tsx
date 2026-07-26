@@ -141,7 +141,7 @@ export default function MeetingMode({
               결정 확정{signal?.type === "memo" ? " → 결정으로 승격" : ""}
             </button>
           </div>
-          {signal?.status === "decided" && <p className="meeting-decided">결정으로 승격됨 · 시그널에서 추적됩니다.</p>}
+          {signal?.status === "decided" && <p className="meeting-decided">결정으로 승격됨 · 논의·결정에서 추적됩니다.</p>}
         </aside>
       </div>
     </div>

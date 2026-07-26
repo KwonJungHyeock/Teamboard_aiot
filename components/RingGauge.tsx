@@ -16,12 +16,15 @@ export default function RingGauge({
   const c = 2 * Math.PI * r;
   const p = percent === null ? 0 : Math.max(0, Math.min(100, percent));
   const dash = (p / 100) * c;
+  // 달성 다이얼은 코랄이 기본. 영역 색이 명시되면 그 색으로.
   const color =
     colorKey === "play"
-      ? "var(--play-hi)"
+      ? "var(--play)"
       : colorKey === "train"
-      ? "var(--train-hi)"
-      : "var(--edu-hi)";
+      ? "var(--train)"
+      : colorKey === "edu"
+      ? "var(--edu)"
+      : "var(--coral)";
   return (
     <svg
       className="ring"

@@ -1,6 +1,6 @@
 // 홈 대시보드 집계 (Phase 3) — 모든 수치는 서버가 DB에서 산출한다 (금지 3: LLM 수치 생성 금지와 동일 원칙).
 // /api/home/summary 라우트와 홈 서버 페이지가 공유한다.
-import { query, queryOne } from "./db";
+import { query, queryOne, getInboxCount } from "./db";
 import { getCurrentMonthGoals } from "./goals";
 import { getDecidedStaleDays, signalVisibilityClause } from "./signals";
 
@@ -36,6 +36,7 @@ export interface Metric {
   deltaTone: "up" | "dn" | "fl";
   spark: number[]; // 7포인트, 과거→현재
   alert?: boolean;
+  placeholder?: boolean; // 자리만(다음 단계 활성화) — 값·추세 저강조 표기
 }
 
 export interface LaneEvent {
@@ -144,7 +145,7 @@ async function sparkSeries(sqlPerDay: (day: string) => Promise<number>, today: s
   return out;
 }
 
-export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
+export async function buildHomeSummary(viewerId: number, isLead = false): Promise<HomeSummary> {
   const today = kstToday();
   const weekStartOffset = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7; // 월요일 기준
   const weekStart = addDays(today, -weekStartOffset);
@@ -206,29 +207,25 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
     today
   );
 
-  // ── 지표 3: 평균 결정 소요 (최근 90일 해결된 decision) ──
-  const decisionAvg = await queryOne<{ avg_days: string | null; n: string }>(
-    `SELECT round(avg(EXTRACT(EPOCH FROM (s.resolved_at - s.created_at)) / 86400)::numeric, 1) AS avg_days,
-            count(*) AS n
-     FROM signal s
-     WHERE s.is_active = true AND s.type = 'decision' AND s.resolved_at IS NOT NULL
-       AND s.resolved_at > now() - interval '90 days'`
+  // ── 지표 3: 내 차례 (지금 나에게 공이 온 것) ──
+  // = 승인 대기(제안·초안) + 나에게 온 확인요청(review) + 리뷰 단계 내 업무 수
+  const approvals = await getInboxCount(viewerId, isLead);
+  const reviewToMe = Number(
+    (await queryOne<{ n: string }>(
+      `SELECT count(*) AS n FROM signal s
+       WHERE s.is_active = true AND s.type = 'review' AND s.status IN ('open','discussing')
+         AND s.target_actor_id = $1`,
+      [viewerId]
+    ))!.n
   );
-  // 카드 숫자(90일 평균)와 동일 지표의 추세: 각 날짜 시점의 "직전 90일 평균 결정 소요일"
-  const decisionSpark = await sparkSeries(
-    async (day) =>
-      Number(
-        (await queryOne<{ avg_days: string | null }>(
-          `SELECT round(avg(EXTRACT(EPOCH FROM (s.resolved_at - s.created_at)) / 86400)::numeric, 1) AS avg_days
-           FROM signal s
-           WHERE s.is_active = true AND s.type = 'decision' AND s.resolved_at IS NOT NULL
-             AND s.resolved_at >= $1::timestamptz - interval '90 days'
-             AND s.resolved_at < $1::timestamptz`,
-          [kstDayStart(addDays(day, 1))]
-        ))!.avg_days ?? 0
-      ),
-    today
+  const reviewMine = Number(
+    (await queryOne<{ n: string }>(
+      `SELECT count(*) AS n FROM task t
+       WHERE t.is_active = true AND t.status = 'review' AND t.assignee_id = $1`,
+      [viewerId]
+    ))!.n
   );
+  const myTurn = approvals + reviewToMe + reviewMine;
 
   // ── 지표 4: 지연·정체 ──
   const thresholds = ((await queryOne<{ value: any }>(
@@ -287,22 +284,31 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
       spark: doneSpark,
     },
     {
-      key: "decision",
-      label: "평균 결정 소요",
-      value: decisionAvg?.avg_days ?? "—",
-      em: decisionAvg?.avg_days ? "일" : undefined,
-      deltaText: `최근 90일 결정 ${decisionAvg?.n ?? 0}건`,
-      deltaTone: Number(decisionAvg?.avg_days ?? 0) > (thresholds.decision ?? 14) ? "dn" : "up",
-      spark: decisionSpark,
+      key: "myTurn",
+      label: "내 차례",
+      value: String(myTurn),
+      deltaText: `승인 ${approvals} · 확인요청 ${reviewToMe} · 리뷰 ${reviewMine}`,
+      deltaTone: myTurn > 0 ? "up" : "fl",
+      spark: [myTurn, myTurn, myTurn, myTurn, myTurn, myTurn, myTurn],
+      alert: myTurn > 0,
     },
     {
       key: "stalled",
       label: "지연 · 정체",
       value: String(overdueTasks + stalledSignals.length),
-      deltaText: `업무 ${overdueTasks} · 시그널 ${stalledSignals.length}`,
+      deltaText: `업무 ${overdueTasks} · 논의·결정 ${stalledSignals.length}`,
       deltaTone: "fl",
       spark: overdueSpark,
       alert: overdueTasks + stalledSignals.length > 0,
+    },
+    {
+      key: "blocked",
+      label: "막힌 업무",
+      value: "준비 중",
+      deltaText: "blocked 상태 추가 후 활성화",
+      deltaTone: "fl",
+      spark: [0, 0, 0, 0, 0, 0, 0],
+      placeholder: true,
     },
   ];
 
@@ -561,7 +567,7 @@ export async function buildHomeSummary(viewerId: number): Promise<HomeSummary> {
   // 인사말 보조 문구 — 데이터에서 도출
   const oldestStalledDecision = signalItems.find((s) => s.type === "decision" && s.stalled);
   const greetingSub = oldestStalledDecision
-    ? `결정 대기 시그널이 임계값을 넘겼어요. 먼저 처리하는 게 좋겠습니다.`
+    ? `결정 대기 논의가 임계값을 넘겼어요. 먼저 처리하는 게 좋겠습니다.`
     : overdueTasks > 0
       ? `지연된 업무가 ${overdueTasks}건 있어요.`
       : `막힌 곳 없이 순항 중입니다.`;

@@ -217,7 +217,7 @@ export default function SignalsView({ user }: { user: SessionUser }) {
     <div className="hv">
       <div className="top">
         <div className="crumb">
-          워크스페이스 / <b>시그널</b>
+          워크스페이스 / <b>논의·결정</b>
         </div>
         <span className="sp" />
       </div>
@@ -225,7 +225,7 @@ export default function SignalsView({ user }: { user: SessionUser }) {
         <div className="head">
           <div>
             <div className="eb">SIGNALS</div>
-            <h1>시그널</h1>
+            <h1>논의·결정</h1>
             <p>결정 · 확인 요청 · 메모 · 리스크. 리스크는 상단 고정, 정체는 임계값 기준입니다.</p>
           </div>
           <div className="seg" role="group" aria-label="종결 보기">

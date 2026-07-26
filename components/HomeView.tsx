@@ -2,7 +2,7 @@
 
 // 홈 대시보드 (Phase 3) — SPEC 4.1의 6요소를 프로토타입 레이아웃 그대로 조립.
 // ③ "이번 달 목표 진척"은 SPEC 우선 규칙에 따라 프로토타입의 "프로젝트 진행" 자리를 대체.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { HomeSummary } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
@@ -14,6 +14,26 @@ import SignalPanel from "./SignalPanel";
 import TaskTable from "./TaskTable";
 import TeamTimeline, { type TimelineView } from "./TeamTimeline";
 import { openTaskPanel } from "@/lib/task-panel";
+
+// 실시간 시계 (Mission Deck 헤더) — KST, 모노. 매초 갱신.
+function Clock() {
+  const [now, setNow] = useState<string>("");
+  useEffect(() => {
+    const fmt = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+    });
+    const tick = () => setNow(fmt.format(new Date()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <span className="clock" aria-label="현재 시각 (KST)">
+      <span className="clock-t">{now || "--:--:--"}</span>
+      <span className="clock-z">KST</span>
+    </span>
+  );
+}
 
 function greeting(): string {
   const hour = Number(
@@ -70,16 +90,19 @@ export default function HomeView({
             </h1>
             <p>{summary.greetingSub}</p>
           </div>
-          <div className="seg" role="group" aria-label="기간 보기">
-            {(["day", "week", "month"] as TimelineView[]).map((v) => (
-              <button
-                key={v}
-                aria-pressed={view === v}
-                onClick={() => setView(v)}
-              >
-                {v === "day" ? "일" : v === "week" ? "주" : "월"}
-              </button>
-            ))}
+          <div className="head-r">
+            <Clock />
+            <div className="seg" role="group" aria-label="기간 보기">
+              {(["day", "week", "month"] as TimelineView[]).map((v) => (
+                <button
+                  key={v}
+                  aria-pressed={view === v}
+                  onClick={() => setView(v)}
+                >
+                  {v === "day" ? "일" : v === "week" ? "주" : "월"}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -98,7 +121,7 @@ export default function HomeView({
           />
         </div>
 
-        {/* 지연·마감 임박 + 시그널 — 2열 (홈에서 가장 자주 보는 두 축) */}
+        {/* 지연·마감 임박 + 논의·결정 — 2열 (홈에서 가장 자주 보는 두 축) */}
         <div className="cols">
           <TaskTable
             rows={summary.dueSoon}
@@ -143,6 +166,7 @@ export default function HomeView({
               emptyText="이번 달 목표가 없어요"
               emptyHint="연간·분기 목표 아래 이번 달 목표를 세우면 진척이 자동 집계됩니다."
               emptyAction={<Link className="btn small primary" href="/goals">목표 세우기</Link>}
+              ringColor="coral"
             />
           </div>
 
@@ -172,6 +196,7 @@ function SummaryProgress({
   emptyText,
   emptyHint,
   emptyAction,
+  ringColor,
 }: {
   title: string;
   sub: string;
@@ -181,6 +206,7 @@ function SummaryProgress({
   emptyText: string;
   emptyHint?: string;
   emptyAction?: React.ReactNode;
+  ringColor?: string;
 }) {
   const [open, setOpen] = useState(false);
   // 집계 진행률 — done/total(가중) 우선, 없으면 percent 단순 평균.
@@ -208,7 +234,7 @@ function SummaryProgress({
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
           >
-            <RingGauge percent={overall} colorKey={topColor ?? "edu"} />
+            <RingGauge percent={overall} colorKey={ringColor ?? topColor ?? "edu"} />
             <span className="suml">
               <b>
                 {rows.length}개 · 평균 {overall === null ? "–" : `${overall}%`}
@@ -271,8 +297,8 @@ function HuddleFeed({
         <EmptyState
           compact
           title="공유된 허들룸이 없어요"
-          hint="시그널에서 메모를 허들룸으로 보내면 팀이 함께 볼 결정·논의로 올라옵니다."
-          action={<Link className="btn small" href="/signals">시그널로 가기</Link>}
+          hint="논의·결정에서 메모를 허들룸으로 보내면 팀이 함께 볼 결정·논의로 올라옵니다."
+          action={<Link className="btn small" href="/signals">논의·결정으로 가기</Link>}
         />
       )}
       {visible.map((huddle) => (

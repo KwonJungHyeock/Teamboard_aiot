@@ -48,9 +48,14 @@ export default function LoginPage() {
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
-        <h1>
-          팀보드<span style={{ color: "var(--accent)" }}>.</span>
-        </h1>
+        {/* Eduino AI 풀 로고 — 자산 도착 전 코랄 심볼 + 텍스트 폴백 */}
+        <div className="login-logo">
+          <span className="login-mk" aria-hidden="true">e</span>
+          <div className="login-brand">
+            <b>Eduino AI Platform Team</b>
+            <span>MISSION DECK</span>
+          </div>
+        </div>
         <p className="sub">AIoT 교육플랫폼 사업팀 · 회사 업무메일로 로그인</p>
         {notice && (
           <p

@@ -91,7 +91,7 @@ export default function InboxView({ user }: { user: SessionUser }) {
           <div>
             <div className="eb">INBOX</div>
             <h1>승인 인박스</h1>
-            <p>에이전트 산출물은 여기서 승인해야 사람 공간(홈·업무·시그널)에 반영됩니다.</p>
+            <p>에이전트 산출물은 여기서 승인해야 사람 공간(홈·업무·논의·결정)에 반영됩니다.</p>
           </div>
         </div>
 

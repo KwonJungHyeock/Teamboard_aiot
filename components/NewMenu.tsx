@@ -47,7 +47,7 @@ export default function NewMenu() {
           </button>
           <button role="menuitem" onClick={() => pick(() => router.push("/signals"))}>
             <span className="nm-i">📡</span>
-            <span className="nm-b"><b>시그널</b><em>결정·확인 요청·리스크</em></span>
+            <span className="nm-b"><b>논의·결정</b><em>결정·확인 요청·리스크</em></span>
           </button>
           <button role="menuitem" onClick={() => pick(() => router.push("/signals?type=memo"))}>
             <span className="nm-i">📝</span>

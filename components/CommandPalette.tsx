@@ -23,7 +23,7 @@ const NAV_ITEMS: PaletteItem[] = [
   { label: "My Agent", href: "/assistant", keywords: "assistant agent ai 에이전트" },
   { label: "목표", href: "/goals", keywords: "goal okr 연간 분기 월" },
   { label: "월간 보고", href: "/reports", keywords: "report 보고서 월말", leadOnly: true },
-  { label: "시그널", href: "/signals", keywords: "signal 결정 리뷰 메모 리스크" },
+  { label: "논의·결정", href: "/signals", keywords: "signal 시그널 결정 리뷰 메모 리스크" },
   { label: "허들룸", href: "/huddle", keywords: "huddle 공유 코멘트" },
   { label: "인수인계", href: "/handover", keywords: "handover 인수 인계 이관 퇴사 휴가" },
 ];
@@ -32,7 +32,7 @@ const NAV_ITEMS: PaletteItem[] = [
 const CREATE_ITEMS: PaletteItem[] = [
   { label: "에이전트에게 업무 위임", href: "/assistant", keywords: "위임 초안 draft delegate" },
   { label: "업무 만들기", href: "/tasks?new=1", keywords: "task new 새 업무" },
-  { label: "시그널 올리기", href: "/signals?new=1", keywords: "signal new 결정 요청" },
+  { label: "논의·결정 올리기", href: "/signals?new=1", keywords: "signal 시그널 new 결정 요청" },
 ];
 
 // ── 관리 (lead 전용) ──

@@ -1,25 +1,48 @@
-/* 팀보드 디자인 토큰 — docs/prototype/index.html v0.3 :root 블록에서 추출.
-   값 변경 금지 (CHANGE-GUIDE Phase 0). 에셋 두 줄은 프로토타입 주석의 지시대로
-   데이터 URI → 파일 경로로 교체 (Next.js public/ 기준 절대 경로). */
+/* 팀보드 → Mission Deck 디자인 토큰 (전면 리디자인 2026-07).
+   다크 → 라이트 웜페이퍼 전환. Eduino AI 로고 색(코랄+차콜)을 시그니처로.
+   다크 모드는 이번에 만들지 않음 (라이트 단독, 토글은 이후 별도).
+   home.css / globals.css 는 이 변수로 색·그림자·크기를 참조한다. */
 :root{
-  /* 명암·레이어 개편 (파트 2.5) — 배경<카드<입력요소 3단계 명도 위계. 순수 검정 금지(최저 #0A0E17). */
-  --bg-canvas:#0A0E17; --bg-surface:#161C2B; --bg-elevated:#1E2536; --bg-rail:#090D16;
-  --glass:rgba(255,255,255,.032); --line:rgba(255,255,255,.10); --line-hi:rgba(255,255,255,.18);
-  --hi:#EAEEF7; --mid:#98A2B8; --lo:#5C6680;
-  --edu:#4B8DF8; --play:#8B5CF6; --train:#2DD4BF; --team:#7C8AA5;
-  /* 어두운 카드 위에서 탁해지지 않도록 채도 올린 밝은 변형 (칩·기간바용) */
-  --edu-hi:#6BA6FF; --play-hi:#A480FF; --train-hi:#45E3CE;
-  /* 카드 입체감 — top 하이라이트(inset) + 약한 그림자 (다크에서 층 분리) */
-  --card-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 1px 3px rgba(0,0,0,.4);
-  --track-bg:rgba(255,255,255,.09);
-  --warn:#F5A524; --danger:#F87171; --ok:#34D399;
-  --r:8px; --r-s:5px;
+  /* ── 색상 (Mission Deck 팔레트) ── */
+  --paper:#F5F3ED;        /* 페이지 배경 (웜그레이) */
+  --grid-line:#EAE6DA;    /* 미세 격자 */
+  --card:#FFFFFF;         /* 카드 */
+  --ink:#37434F;          /* 주 텍스트·강조 (로고 차콜) */
+  --ink-soft:#4E5964;     /* 보조 텍스트 */
+  --muted:#A39B8C;        /* 메타·힌트 */
+  --coral:#EE4C51;        /* 시그니처 (로고 코랄) — 완료·달성·리스크·주요 CTA */
+  --coral-bg:#FEF0EE;     /* 코랄 연한 배경 */
+  --coral-soft:#FEF6F4;   /* 경고 카드 배경 */
+  --amber:#D8A22E;        /* 경고·논의중 */
+  --green:#4C9A6E;        /* 증가·긍정 */
+
+  /* ── 그림자 (핵심 — "찍어낸 느낌" 제거. 그림자로 층, 테두리는 최소화) ── */
+  --shadow-card:0 1px 2px rgba(55,67,79,.05), 0 4px 16px rgba(55,67,79,.05);
+  --shadow-pop:0 2px 8px rgba(55,67,79,.08), 0 8px 32px rgba(55,67,79,.10);
+
+  /* ── 레거시 토큰 remap → 라이트 (기존 화면이 새 팔레트로 자동 전환) ──
+     화면 확산 전까지 다른 화면은 이 매핑으로 최소 가독성을 유지한다. */
+  --bg-canvas:var(--paper); --bg-surface:var(--card); --bg-elevated:var(--card); --bg-rail:#EFECE2;
+  --glass:rgba(55,67,79,.035); --line:#EEEAE0; --line-hi:#E2DCCE;
+  --hi:var(--ink); --mid:var(--ink-soft); --lo:var(--muted);
+  --text-mid:var(--ink-soft); --text-lo:var(--muted);
+  /* 영역 카테고리 색 — 흰 카드 위에서 읽히도록 (EDUINO 블루 · Playino 퍼플 · 추론 틸) */
+  --edu:#4B8DF8; --play:#8B5CF6; --train:#2DB39B; --team:#8A93A0;
+  --edu-hi:#4B8DF8; --play-hi:#8B5CF6; --train-hi:#2DB39B;
+  --track-bg:#ECE8DE;
+  --warn:var(--amber); --danger:var(--coral); --ok:var(--green);
+  --card-shadow:var(--shadow-card);
+  /* 주요 CTA 솔리드 — 로고 코랄 (구 에듀이노 레드 대체) */
+  --brand:var(--coral);
+
+  /* ── 라운드: 카드 14 / 버튼·입력 10 / 칩 pill 20 / 아바타 원형 ── */
+  --r:14px; --r-s:10px; --r-pill:20px;
+
   --f-ui:'Pretendard','Pretendard Variable',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
   --f-d:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
   --side-w:260px;
 
-  /* 타입 스케일 (연구소 내부용 3차 — 100%가 적정이 되게 확대). 10px 이하 전면 금지.
-     home.css / globals.css 는 이 변수로 폰트 크기를 참조한다. */
+  /* 타입 스케일 (10px 이하 전면 금지 유지) */
   --fs-page-title:26px;
   --fs-metric:32px;
   --fs-panel-title:17px;
@@ -37,16 +60,8 @@
   --card-pad-y:16px;
   --card-pad-x:18px;
   --card-gap:14px;
-  /* text 별칭 — 개편 지시가 --text-mid/--text-lo 로 참조 (기존 --mid/--lo 매핑) */
-  --text-mid:var(--mid);
-  --text-lo:var(--lo);
 
-  --asset-grain:url('/assets/texture/grain.png');
-  /* mesh-brand.webp 전달 전까지 mesh.webp 로 자연 degrade — 위 레이어(brand)가 404면
-     아래 레이어(mesh)가 그대로 비쳐 배경이 깨지지 않는다. 파일 도착 시 자동 적용. */
-  --asset-mesh:url('/assets/texture/mesh-brand.webp'), url('/assets/texture/mesh.webp');
-
-  /* SPEC 8.1 브랜드 토큰 — 프로토타입 :root에는 없어 SPEC 기준으로 추가.
-     용법: 로고·주요 CTA 솔리드에만 (SPEC 8.2 레드 용법 분리 규칙) */
-  --brand:#E31E24;
+  /* 라이트 전환: 다크 텍스처(mesh/grain) 미사용 — 격자는 body에서 별도 처리 */
+  --asset-grain:none;
+  --asset-mesh:none;
 }

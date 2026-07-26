@@ -177,7 +177,7 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
             {huddles.length === 0 && (
               <EmptyState
                 title="공유된 허들룸이 없어요"
-                hint="시그널에서 메모를 허들룸으로 보내면, 팀이 함께 볼 결정·논의로 이 피드에 모입니다."
+                hint="논의·결정에서 메모를 허들룸으로 보내면, 팀이 함께 볼 결정·논의로 이 피드에 모입니다."
               />
             )}
             {huddles.map((signal) => (

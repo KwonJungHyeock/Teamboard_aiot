@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const user = getSession();
   if (!user) redirect("/login");
-  const summary = await buildHomeSummary(user.id);
+  const summary = await buildHomeSummary(user.id, user.role === "lead");
   return (
     <AppShell user={user}>
       <HomeView summary={summary} user={user} />

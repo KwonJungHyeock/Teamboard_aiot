@@ -562,3 +562,82 @@
   .hv .ho-title, .hv .ho-h2, .hv .ho-task-h b { color: #000; }
   .hv .ho-body, .hv .ho-task-m, .hv .ho-arts li, .hv .ho-meta { color: #111; }
 }
+
+/* ═══════════════════ Mission Deck 라이트 리디자인 (2026-07) — 홈 우선 ═══════════════════
+   위 프로토타입 추출 블록의 다크 하드코딩(rgba 흰색 오버레이·검정 배경)을 소스 순서로
+   오버라이드. 흰 카드는 그림자로 층을 만들고 테두리는 최소화. 코랄=완료·달성·리스크. */
+
+/* ── 상단 바 · 실시간 시계 ── */
+.hv .top { background: rgba(245, 243, 237, .82); border-bottom: 1px solid var(--line); backdrop-filter: blur(12px); }
+.hv .iconbtn { background: var(--card); border-color: var(--line); box-shadow: var(--shadow-card); }
+.hv .iconbtn:hover { color: var(--ink); border-color: var(--line-hi); }
+.hv .head-r { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.hv .clock { display: inline-flex; align-items: baseline; gap: 6px; font-family: var(--f-d); }
+.hv .clock-t { font-size: 20px; font-weight: 600; color: var(--ink); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.hv .clock-z { font-size: var(--fs-badge); color: var(--muted); letter-spacing: .1em; }
+.hv .seg { background: #EDE9DF; padding: 3px; border-radius: var(--r-s); }
+.hv .seg button { color: var(--ink-soft); }
+.hv .seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow-card); }
+
+/* ── 지표 카드 5칸 ── */
+.hv .metrics { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1200px) { .hv .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .hv .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.hv .mc { background: var(--card); border: 0; border-radius: var(--r); box-shadow: var(--shadow-card); }
+.hv .mc .l { color: var(--ink-soft); font-weight: 500; }
+.hv .mc .v { color: var(--ink); }
+.hv .mc .v em { color: var(--muted); }
+.hv .mc .d.up { color: var(--green); }
+.hv .mc .d.dn { color: var(--coral); }
+.hv .mc .d.fl { color: var(--muted); }
+/* 완료·달성 = 코랄 값 */
+.hv .mc-done .v { color: var(--coral); }
+/* 주의 카드(내 차례·지연·정체) — 코랄 액센트 배경·값 */
+.hv .mc.alert { background: var(--coral-soft); box-shadow: var(--shadow-card); }
+.hv .mc.alert .v { color: var(--coral); }
+/* 막힌 업무 — 자리만(placeholder). 저강조 + 점선 */
+.hv .mc.ph { background: repeating-linear-gradient(45deg, #FBFAF6 0 8px, #F6F4EE 8px 16px); box-shadow: none; border: 1px dashed var(--line-hi); }
+.hv .mc.ph .v { color: var(--muted); font-size: 20px; }
+.hv .ph-tag { font-family: var(--f-d); font-size: var(--fs-badge); color: var(--muted); border: 1px dashed var(--line-hi); border-radius: var(--r-s); padding: 3px 9px; white-space: nowrap; }
+
+/* ── 패널 카드 — 그림자만, 테두리 최소 ── */
+.hv .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-card); }
+.hv .ch { background: #FBFAF6; border-bottom: 1px solid var(--line); }
+.hv .ch h2 { color: var(--ink); }
+.hv .ch .sub { color: var(--muted); }
+
+/* ── 데이터 그리드 · 행 구분선 (다크 흰선 → 라이트) ── */
+.hv th { color: var(--muted); border-bottom: 1px solid var(--line); }
+.hv td { border-bottom: 1px solid var(--line); }
+.hv tbody tr:hover { background: var(--coral-soft); }
+.hv tr.clickable:hover td { background: var(--coral-soft); }
+.hv tr.selected td { background: var(--coral-bg); }
+.hv .sig { border-top: 1px solid var(--line); }
+.hv .sig.clickable:hover { background: var(--coral-soft); }
+.hv .sig.selected { background: var(--coral-bg); }
+.hv .scomment, .hv .scomments, .hv .sacts, .hv .tinbox-row, .hv .ln-n, .hv .ln-b, .hv .cf, .hv .ho-task { border-color: var(--line); }
+
+/* ── 타임라인 트랙 (다크 흰줄 → 라이트 격자) ── */
+.hv .trk { background: repeating-linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px 10%); background-color: #F1EFE8; }
+
+/* ── 칩 (pill) · 배지 ── */
+.hv .chip { background: rgba(55, 67, 79, .04); border: 1px solid var(--line); color: var(--ink-soft); border-radius: var(--r-pill); }
+.hv .bg.priv { background: rgba(55, 67, 79, .04); color: var(--muted); border: 1px solid var(--line); }
+
+/* ── 진행률 바 · 링 게이지 ── */
+.hv .bar { background: var(--track-bg); }
+.hv .ring-t { fill: var(--ink); }
+
+/* ── 허들 카드 (다크 흰배경 → 페이퍼) ── */
+.hv .hud { background: #FBFAF6; border: 1px solid var(--line); }
+.hv .hud.clickable:hover { border-color: var(--line-hi); }
+.hv .hud.selected { border-color: var(--coral); background: var(--coral-soft); }
+.hv .hud .b { color: var(--ink-soft); }
+
+/* ── 요약 카드 링 헤더 텍스트 ── */
+.hv .suml b { color: var(--ink-soft); }
+.hv .sumhead:hover .suml b { color: var(--ink); }
+
+/* ── 주요 CTA — 코랄 솔리드 (라운드 10) ── */
+.hv .newbtn { background: var(--coral); border-radius: var(--r-s); box-shadow: 0 2px 10px rgba(238, 76, 81, .28); }
+.hv .newbtn:hover { filter: brightness(1.05); }

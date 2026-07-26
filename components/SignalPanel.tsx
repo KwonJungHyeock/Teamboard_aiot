@@ -53,12 +53,12 @@ export default function SignalPanel({
   const visible = tab === "all" ? items : items.filter((s) => s.type === tab);
 
   return (
-    <section className="card" aria-label="시그널">
+    <section className="card" aria-label="논의·결정">
       <div className="ch">
-        <h2>시그널</h2>
+        <h2>논의·결정</h2>
         <span className="sub">정체 {stalledCount}</span>
       </div>
-      <div className="tabs" role="group" aria-label="시그널 필터">
+      <div className="tabs" role="group" aria-label="논의·결정 필터">
         {SIGNAL_TABS.map((t) => (
           <button
             key={t.key}
@@ -75,8 +75,8 @@ export default function SignalPanel({
         {visible.length === 0 && (
           <EmptyState
             compact
-            title={tab === "all" ? "아직 시그널이 없어요" : "이 유형의 시그널이 없어요"}
-            hint="결정이 필요한 논의·확인 요청·리스크·메모를 시그널로 남기면 팀 전체가 흐름을 추적할 수 있어요."
+            title={tab === "all" ? "아직 논의·결정이 없어요" : "이 유형의 논의·결정이 없어요"}
+            hint="결정이 필요한 논의·확인 요청·리스크·메모를 남기면 팀 전체가 흐름을 추적할 수 있어요."
           />
         )}
         {visible.map((signal) => {
