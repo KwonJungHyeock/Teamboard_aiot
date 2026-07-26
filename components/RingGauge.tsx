@@ -16,9 +16,11 @@ export default function RingGauge({
   const c = 2 * Math.PI * r;
   const p = percent === null ? 0 : Math.max(0, Math.min(100, percent));
   const dash = (p / 100) * c;
-  // 달성 다이얼은 코랄이 기본. 영역 색이 명시되면 그 색으로.
+  // 달성 다이얼은 그린(달성 긍정). 진행률=중립은 blue, 영역 색 명시 시 그 색.
   const color =
-    colorKey === "play"
+    colorKey === "green"
+      ? "var(--green)"
+      : colorKey === "play"
       ? "var(--play)"
       : colorKey === "train"
       ? "var(--train)"

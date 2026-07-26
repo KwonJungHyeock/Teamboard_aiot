@@ -269,6 +269,15 @@ export default function TeamTimeline({
   const [fetched, setFetched] = useState<LaneEvent[] | null>(null);
   const [nowFrac, setNowFrac] = useState<number | null>(null);
   const [nowLabel, setNowLabel] = useState("");
+  // 일 뷰 레인별 칩 펼침 — 4개 초과 시 +n 축약, 클릭 시 전체 펼침
+  const [openLanes, setOpenLanes] = useState<Set<number>>(new Set());
+  const toggleLane = (actorId: number) =>
+    setOpenLanes((prev) => {
+      const next = new Set(prev);
+      if (next.has(actorId)) next.delete(actorId);
+      else next.add(actorId);
+      return next;
+    });
 
   // 기간 변경 시 일정 재조회 (오늘 일 뷰는 서버 데이터 재사용)
   useEffect(() => {
@@ -323,8 +332,6 @@ export default function TeamTimeline({
     const n = daysInMonth(range.from);
     return Array.from({ length: n }, (_, i) => (i % 3 === 0 ? String(i + 1) : ""));
   }, [view, range.from]);
-
-  const chipLimit = expanded ? 8 : 5;
 
   return (
     <section className={`card cal`} aria-label="팀 타임라인">
@@ -399,9 +406,14 @@ export default function TeamTimeline({
                       !t.startDate ||
                       (t.startDate <= anchor && (!t.dueDate || anchor <= t.dueDate))
                   );
+                  // 레인 과밀 축약: 업무 칩 4개 초과 시 +n (일정 바는 카운트 제외)
+                  const CHIP_MAX = 4;
+                  const laneOpen = expanded || openLanes.has(lane.actorId);
+                  const shown = laneOpen ? dayTasks : dayTasks.slice(0, CHIP_MAX);
+                  const hidden = dayTasks.length - shown.length;
                   return (
                     <div className="chips">
-                      {dayTasks.slice(0, chipLimit).map((task) => (
+                      {shown.map((task) => (
                         <span
                           key={task.id}
                           className={`chip ${task.late ? "late" : (task.colorKey ?? "")} ${task.origin === "agent" ? "ag" : ""}`}
@@ -414,8 +426,25 @@ export default function TeamTimeline({
                           {task.late && task.dday ? ` · ${task.dday}` : ""}
                         </span>
                       ))}
-                      {dayTasks.length > chipLimit && (
-                        <span className="chip">+{dayTasks.length - chipLimit}</span>
+                      {hidden > 0 && (
+                        <button
+                          className="chip more"
+                          onClick={() => toggleLane(lane.actorId)}
+                          title={`업무 ${hidden}개 더 보기`}
+                          aria-label={`업무 ${hidden}개 더 보기`}
+                        >
+                          +{hidden}
+                        </button>
+                      )}
+                      {laneOpen && !expanded && dayTasks.length > CHIP_MAX && (
+                        <button
+                          className="chip more"
+                          onClick={() => toggleLane(lane.actorId)}
+                          title="접기"
+                          aria-label="접기"
+                        >
+                          접기
+                        </button>
                       )}
                       {onEmptyCreate && (
                         <button

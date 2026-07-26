@@ -4,7 +4,7 @@ import type { Metric } from "@/lib/home";
 
 const SPARK_COLOR: Record<string, string> = {
   doing: "var(--edu)",
-  done: "var(--coral)",
+  done: "var(--green)",
   myTurn: "var(--amber)",
   stalled: "var(--coral)",
   blocked: "var(--muted)",
@@ -39,7 +39,8 @@ export default function MetricCards({ metrics }: { metrics: Metric[] }) {
             </div>
             {m.placeholder ? (
               <span className="ph-tag">다음 단계</span>
-            ) : (
+            ) : m.spark.length > 1 ? (
+              // 데이터 포인트 2개 이상일 때만 스파크라인 (단일값은 직선 방지 → 숫자만)
               <svg viewBox="0 0 62 42" aria-hidden="true">
                 <polyline
                   fill="none"
@@ -50,7 +51,7 @@ export default function MetricCards({ metrics }: { metrics: Metric[] }) {
                   points={sparkPoints(m.spark)}
                 />
               </svg>
-            )}
+            ) : null}
           </div>
         </div>
       ))}

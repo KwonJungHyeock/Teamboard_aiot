@@ -590,8 +590,8 @@
 .hv .mc .d.up { color: var(--green); }
 .hv .mc .d.dn { color: var(--coral); }
 .hv .mc .d.fl { color: var(--muted); }
-/* 완료·달성 = 코랄 값 */
-.hv .mc-done .v { color: var(--coral); }
+/* 완료·달성 = 그린 값 (달성 긍정 신호, 리스크 코랄과 구분) */
+.hv .mc-done .v { color: var(--green); }
 /* 주의 카드(내 차례·지연·정체) — 코랄 액센트 배경·값 */
 .hv .mc.alert { background: var(--coral-soft); box-shadow: var(--shadow-card); }
 .hv .mc.alert .v { color: var(--coral); }
@@ -641,6 +641,10 @@
 /* ── 주요 CTA — 코랄 솔리드 (라운드 10) ── */
 .hv .newbtn { background: var(--coral); border-radius: var(--r-s); box-shadow: 0 2px 10px rgba(238, 76, 81, .28); }
 .hv .newbtn:hover { filter: brightness(1.05); }
+
+/* ── 타임라인 레인 축약 칩 (+n · 접기) — 클릭형, 토큰만 ── */
+.hv .chip.more { cursor: pointer; color: var(--ink-soft); background: rgba(55, 67, 79, .05); border: 1px solid var(--line-hi); }
+.hv .chip.more:hover { color: var(--ink); border-color: var(--muted); background: rgba(55, 67, 79, .08); }
 
 /* ═══════════════════ 타입 시스템 (Pretendard 전역) — 폰트/타입 스케일만 ═══════════════════
    모노 역할 고정: 로고 "MISSION DECK"·시계·코드성 토큰만 모노. 그 외 전부 Pretendard.

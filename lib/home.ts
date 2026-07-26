@@ -289,7 +289,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       value: String(myTurn),
       deltaText: `승인 ${approvals} · 확인요청 ${reviewToMe} · 리뷰 ${reviewMine}`,
       deltaTone: myTurn > 0 ? "up" : "fl",
-      spark: [myTurn, myTurn, myTurn, myTurn, myTurn, myTurn, myTurn],
+      spark: [], // 현재 스냅샷 값 하나 — 추세 없음. 직선 방지 위해 스파크라인 미표시.
       alert: myTurn > 0,
     },
     {

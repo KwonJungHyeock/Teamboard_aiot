@@ -192,6 +192,8 @@ export default function Sidebar({
         <NavLink href="/calendar" icon={IC.calendar} label="캘린더" current={cur("/calendar")} />
         {/* 승인 대기 — 사람/에이전트 공간의 유일한 통로. 카운트 배지 */}
         <NavLink href="/inbox" icon={IC.inbox} label="승인 대기" current={cur("/inbox")} count={inboxCount} />
+        {/* My Agent — 전 구성원 각자의 에이전트. 관리(lead)가 아닌 오늘 하단에 노출 */}
+        <NavLink href="/assistant" icon={IC.bot} label="My Agent" current={cur("/assistant")} />
       </details>
 
       <details className="grp" open>
@@ -278,7 +280,6 @@ export default function Sidebar({
           </summary>
           <NavLink href="/members" icon={IC.members} label="구성원" current={cur("/members")} />
           <NavLink href="/settings" icon={IC.settings} label="설정" current={cur("/settings")} />
-          <NavLink href="/assistant" icon={IC.bot} label="My Agent" current={cur("/assistant")} />
           {/* Notion 타임라인 — 미연결이면 숨김 (파트 Z) */}
           {notionConnected && (
             <NavLink

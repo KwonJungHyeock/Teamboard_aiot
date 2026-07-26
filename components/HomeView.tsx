@@ -152,6 +152,7 @@ export default function HomeView({
               emptyText="아직 진행 중인 프로젝트가 없어요"
               emptyHint="영역 공간에서 업무를 추가하면 소속 프로젝트 진행률이 여기에 모입니다."
               emptyAction={<Link className="btn small primary" href="/projects">프로젝트 보기</Link>}
+              ringColor="edu"
             />
             <SummaryProgress
               title="이번 달 목표"
@@ -166,7 +167,7 @@ export default function HomeView({
               emptyText="이번 달 목표가 없어요"
               emptyHint="연간·분기 목표 아래 이번 달 목표를 세우면 진척이 자동 집계됩니다."
               emptyAction={<Link className="btn small primary" href="/goals">목표 세우기</Link>}
-              ringColor="coral"
+              ringColor="green"
             />
           </div>
 
