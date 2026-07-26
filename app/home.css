@@ -641,3 +641,30 @@
 /* ── 주요 CTA — 코랄 솔리드 (라운드 10) ── */
 .hv .newbtn { background: var(--coral); border-radius: var(--r-s); box-shadow: 0 2px 10px rgba(238, 76, 81, .28); }
 .hv .newbtn:hover { filter: brightness(1.05); }
+
+/* ═══════════════════ 타입 시스템 (Pretendard 전역) — 폰트/타입 스케일만 ═══════════════════
+   모노 역할 고정: 로고 "MISSION DECK"·시계·코드성 토큰만 모노. 그 외 전부 Pretendard.
+   Tabular numerals: 숫자 폭 고정(시계 1초 갱신·값 변동 시 흔들림 0). */
+
+/* 3. 고정폭 숫자 — 화면 전체(KPI·시계·기한·%·코멘트 수 포함) */
+/* 5. 한글 단어 중간 줄바꿈 방지(word-break: keep-all) — 어절 단위 줄바꿈 */
+.hv { font-variant-numeric: tabular-nums; word-break: keep-all; }
+
+/* 2. 모노 오용 제거 — 시계·로고 외 모노로 찍혀 있던 UI 텍스트를 Pretendard 로 되돌림 */
+.hv .crumb, .hv .head .eb, .hv .seg button, .hv .mc .l, .hv .mc .d,
+.hv th, .hv .st, .hv .due, .hv .bg, .hv .atag, .hv .ch .sub, .hv .tab .n,
+.hv .areatag, .hv .wtag, .hv .gtag, .hv .gpv, .hv .gdrop, .hv .hrs, .hv .ovf,
+.hv .akind, .hv .pst, .hv .nowl::before, .hv .suml em, .hv .sig .mt {
+  font-family: var(--font-sans);
+}
+/* 시계는 모노 유지(로고 MISSION DECK 는 globals .brand/.login-brand 에서 모노 유지) */
+.hv .clock, .hv .clock-t, .hv .clock-z { font-family: var(--font-mono); }
+
+/* 4. 타입 스케일 토큰 적용 — 홈 제목 임의 크기 제거, 토큰으로만 표기 */
+.hv .head h1 { font: var(--text-display); letter-spacing: var(--ls-display); }   /* 인사말 28/700 */
+.hv .ch h2 { font: var(--text-h2); letter-spacing: var(--ls-h2); }               /* 카드 제목 16/600 */
+.hv .mc .l { font: var(--text-caption); letter-spacing: var(--ls-caption); color: var(--ink-soft); }
+.hv .head .eb, .hv .crumb, .hv .ch .sub { font: var(--text-caption); letter-spacing: var(--ls-caption); }
+/* 지표 숫자 — sans + bold + tabular (모노 아님) */
+.hv .mc .v { font: var(--num-kpi); font-variant-numeric: tabular-nums; }
+.hv .mc .v em { font: var(--text-caption); color: var(--muted); }

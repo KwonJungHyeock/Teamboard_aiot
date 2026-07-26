@@ -25,9 +25,11 @@ html,
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: "Pretendard Variable", Pretendard, -apple-system, sans-serif;
-  font-size: 15px;
-  line-height: 1.55;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 a {
