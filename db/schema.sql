@@ -67,9 +67,10 @@ CREATE TABLE IF NOT EXISTS goal (
   target_value   NUMERIC,
   current_value  NUMERIC,
   progress_mode  TEXT NOT NULL DEFAULT 'auto' CHECK (progress_mode IN ('auto', 'manual')),
-  progress       NUMERIC NOT NULL DEFAULT 0,
+  progress       NUMERIC,  -- 이벤트 기반 저장 진척(0~100). NULL=산출 불가 → UI "-"
   owner_actor_id INTEGER REFERENCES actor(id),
   project_id     INTEGER REFERENCES project(id),
+  scope          TEXT NOT NULL DEFAULT 'team' CHECK (scope IN ('team', 'personal')),
   is_active      BOOLEAN NOT NULL DEFAULT true,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()

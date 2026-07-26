@@ -757,3 +757,27 @@ body.rail .acct { justify-content: center; padding: 7px; }
 .tdp-drop { display: flex; gap: 6px; align-items: center; }
 .tdp-drop input { height: var(--btn-h-sm); background: var(--bg-surface); border: 1px solid var(--line); border-radius: 6px; color: var(--hi); padding: 0 9px; font-size: var(--fs-badge); }
 @media (max-width: 560px) { .tdp { width: 100vw; } }
+
+/* ── 목표 상세 슬라이드 패널 (파트 C) — .tdp 재사용 + 목표 전용 gdp-* ── */
+.gtitle-btn { background: 0; border: 0; padding: 0; cursor: pointer; font: inherit; color: var(--hi); text-align: left; }
+.gtitle-btn:hover { text-decoration: underline; }
+.gdp-prog { margin: 10px 0 14px; }
+.gdp-prog-t { display: flex; justify-content: space-between; align-items: baseline; font-size: var(--fs-meta); color: var(--mid); margin-bottom: 6px; }
+.gdp-prog-t b { font-family: var(--f-d); font-size: var(--fs-body); color: var(--hi); }
+.gdp-prog .bar { height: 6px; border-radius: 3px; background: var(--track-bg); overflow: hidden; }
+.gdp-prog .bar i { display: block; height: 100%; background: linear-gradient(90deg, rgba(75,141,248,.4), var(--edu)); box-shadow: 0 0 10px rgba(75,141,248,.45); }
+.gdp-ro { font-size: var(--fs-row); color: var(--hi); padding: 6px 2px; }
+.gdp-num { font-size: var(--fs-row); background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 6px; color: var(--hi); padding: 6px 9px; }
+.gdp-task { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid rgba(255,255,255,.05); }
+.gdp-task:first-of-type { border-top: 0; }
+.gdp-task-t { flex: 1; min-width: 0; font-size: var(--fs-row); color: var(--mid); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gdp-task em { font-style: normal; font-family: var(--f-d); font-size: var(--fs-badge); color: var(--lo); }
+.gdp-st { font-family: var(--f-d); font-size: var(--fs-badge); padding: 1px 7px; border-radius: 5px; border: 1px solid var(--line); color: var(--mid); white-space: nowrap; }
+.gdp-st.st-done { color: var(--ok); border-color: rgba(52,211,153,.3); }
+.gdp-st.st-dropped { color: var(--lo); text-decoration: line-through; }
+.gdp-contrib { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+.gdp-contrib-n { font-size: var(--fs-row); color: var(--hi); min-width: 64px; }
+.gdp-contrib-m { font-family: var(--f-d); font-size: var(--fs-meta); color: var(--lo); min-width: 72px; }
+.gdp-contrib .bar { height: 5px; border-radius: 3px; background: var(--track-bg); overflow: hidden; }
+.gdp-contrib .bar i { display: block; height: 100%; background: linear-gradient(90deg, rgba(139,92,246,.4), var(--play)); }
+.gdp-contrib b { font-family: var(--f-d); font-size: var(--fs-meta); color: var(--mid); min-width: 38px; text-align: right; }

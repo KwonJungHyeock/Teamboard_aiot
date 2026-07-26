@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
+import { recomputeGoalChain } from "@/lib/goals";
 import { jsonError } from "@/lib/api";
 
 export const runtime = "nodejs";
@@ -116,8 +117,17 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       await query(`UPDATE task SET ${sets.join(", ")}, updated_at = now() WHERE id = $${values.length}`, values);
     }
 
+    // 진척 재계산 대상 목표 수집 (파트 B) — 변경 전 연결 목표부터.
+    const affectedGoals = new Set<number>();
+    const statusChanged = typeof payload.status === "string" && payload.status !== task.status;
+
     // 목표 연결 교체 — 다중 선택, 선택 사항. 월 목표만 허용 (SPEC 2.2)
     if (Array.isArray(payload.goalIds)) {
+      const priorLinks = await query<{ goal_id: number }>(
+        "SELECT goal_id FROM goal_task WHERE task_id = $1",
+        [taskId]
+      );
+      priorLinks.forEach((l) => affectedGoals.add(l.goal_id));
       const goalIds = payload.goalIds.map(Number).filter((n: number) => Number.isInteger(n));
       await query("DELETE FROM goal_task WHERE task_id = $1", [taskId]);
       for (const goalId of goalIds) {
@@ -131,6 +141,17 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         );
       }
     }
+
+    // 현재(변경 후) 연결 목표 — 상태 변경 시에도 재계산 대상
+    if (statusChanged || Array.isArray(payload.goalIds)) {
+      const nowLinks = await query<{ goal_id: number }>(
+        "SELECT goal_id FROM goal_task WHERE task_id = $1",
+        [taskId]
+      );
+      nowLinks.forEach((l) => affectedGoals.add(l.goal_id));
+    }
+    // 연결 체인(월→분기→연간) 즉시 재계산 — 홈·목표 화면에 바로 반영 (파트 B)
+    for (const gid of Array.from(affectedGoals)) await recomputeGoalChain(gid);
 
     // 활동 타임라인은 "상태 변경"만 기록한다 (인라인 자동저장이 매 필드마다 로그를
     // 남기면 타임라인이 잡음으로 가득 참 — 코멘트는 task_comment가 담당).

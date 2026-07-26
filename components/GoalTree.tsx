@@ -2,11 +2,23 @@
 
 // 목표 트리 (Phase 4) — 연간 > 분기 > 월 3단, <details> 접기.
 // 진척 수치는 서버(lib/goals.ts) 계산 결과만 표시한다.
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
 import GoalProgress from "./GoalProgress";
 import EmptyState from "./EmptyState";
+
+// 목표 제목 클릭 → 상세 패널 (파트 C). 트리 깊이가 깊어 context로 전달.
+const OpenGoalCtx = createContext<((id: number) => void) | null>(null);
+function GoalTitle({ goal }: { goal: GoalNode }) {
+  const open = useContext(OpenGoalCtx);
+  if (!open) return <span className="gtitle">{goal.title}</span>;
+  return (
+    <button className="gtitle gtitle-btn" onClick={() => open(goal.id)} title="목표 상세 열기">
+      {goal.title}
+    </button>
+  );
+}
 
 export interface LinkableTask {
   id: number;
@@ -137,11 +149,13 @@ function AddGoalForm({
   periodType,
   parent,
   year,
+  scope = "team",
   onDone,
 }: {
   periodType: "year" | "quarter" | "month";
   parent: GoalNode | null;
   year: number;
+  scope?: "team" | "personal";
   onDone: () => void;
 }) {
   const [title, setTitle] = useState("");
@@ -187,6 +201,7 @@ function AddGoalForm({
         title,
         periodStart,
         periodEnd,
+        scope,
       }),
     });
     setBusy(false);
@@ -272,7 +287,7 @@ function MonthGoalRow({
     <div className="grow">
       <div className="grow-h">
         <span className="gtag">{goal.periodStart.slice(5, 7)}월</span>
-        <span className="gtitle">{goal.title}</span>
+        <GoalTitle goal={goal} />
         {goal.progressMode === "manual" && <span className="gtag mu">수동</span>}
         <span className="gsp" />
         {droppedCount > 0 && <em className="gdrop">중단 {droppedCount}건</em>}
@@ -404,7 +419,7 @@ function BranchNode({
             Q{Math.floor((Number(goal.periodStart.slice(5, 7)) - 1) / 3) + 1}
           </span>
         )}
-        <span className="gtitle">{goal.title}</span>
+        <GoalTitle goal={goal} />
         <span className="gsp" />
         <GoalProgress progress={goal.progress} colorKey={goal.colorKey} />
         {canEdit && (
@@ -431,18 +446,25 @@ export default function GoalTree({
   user,
   year,
   onChanged,
+  onOpenGoal,
+  scope = "team",
 }: {
   tree: GoalNode[];
   linkableTasks: LinkableTask[];
   user: SessionUser;
   year: number;
   onChanged: () => void;
+  onOpenGoal?: (id: number) => void;
+  scope?: "team" | "personal";
 }) {
   const isLead = user.role === "lead";
+  // 팀 목표는 lead만 추가, 개인 목표는 본인 누구나 추가 (파트 A/C)
+  const canAdd = scope === "personal" || isLead;
   const years = tree.filter((n) => n.periodType === "year");
   const orphans = tree.filter((n) => n.periodType !== "year");
 
   return (
+    <OpenGoalCtx.Provider value={onOpenGoal ?? null}>
     <div className="gtree">
       {years.length === 0 && (
         <EmptyState
@@ -469,13 +491,13 @@ export default function GoalTree({
                   onChanged={onChanged}
                 />
               ))}
-              {isLead && (
-                <AddGoalForm periodType="month" parent={quarter} year={year} onDone={onChanged} />
+              {canAdd && (
+                <AddGoalForm periodType="month" parent={quarter} year={year} scope={scope} onDone={onChanged} />
               )}
             </BranchNode>
           ))}
-          {isLead && (
-            <AddGoalForm periodType="quarter" parent={yearGoal} year={year} onDone={onChanged} />
+          {canAdd && (
+            <AddGoalForm periodType="quarter" parent={yearGoal} year={year} scope={scope} onDone={onChanged} />
           )}
         </BranchNode>
       ))}
@@ -484,7 +506,8 @@ export default function GoalTree({
         <p className="gempty">상위 없는 목표 {orphans.length}건 — 상위 목표를 지정해 정리하세요.</p>
       )}
 
-      {isLead && <AddGoalForm periodType="year" parent={null} year={year} onDone={onChanged} />}
+      {canAdd && <AddGoalForm periodType="year" parent={null} year={year} scope={scope} onDone={onChanged} />}
     </div>
+    </OpenGoalCtx.Provider>
   );
 }

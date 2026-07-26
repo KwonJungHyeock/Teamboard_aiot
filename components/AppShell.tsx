@@ -7,6 +7,7 @@ import Sidebar from "./Sidebar";
 import CommandPalette from "./CommandPalette";
 import PasswordGate from "./PasswordGate";
 import TaskDetailPanel from "./TaskDetailPanel";
+import GoalDetailPanel from "./GoalDetailPanel";
 
 export default async function AppShell({
   user,
@@ -51,6 +52,7 @@ export default async function AppShell({
         <main className="main">{children}</main>
       </div>
       <TaskDetailPanel />
+      <GoalDetailPanel />
       <CommandPalette role={current.role} notionConnected={notionConnected} />
     </>
   );

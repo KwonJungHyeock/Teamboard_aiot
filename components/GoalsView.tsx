@@ -1,10 +1,16 @@
 "use client";
 
-// 목표 화면 (Phase 4) — 연도 선택 + 트리 + 보관함(토글)
+// 목표 화면 (Phase 4 → 파트 C) — 탭(팀 목표/내 목표) + 연도 필터 + 트리 + 보관함.
+// 목표 클릭 시 우측 상세 슬라이드 패널(GoalDetailPanel)이 열린다.
 import { useCallback, useEffect, useState } from "react";
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
 import GoalTree, { type LinkableTask } from "./GoalTree";
+import EmptyState from "./EmptyState";
+import { GOAL_UPDATED_EVENT, openGoalPanel } from "@/lib/goal-panel";
+
+type Tab = "team" | "personal";
+const YEARS = [2025, 2026] as const;
 
 interface ArchivedGoal {
   id: number;
@@ -16,7 +22,8 @@ interface ArchivedGoal {
 const PERIOD_LABEL: Record<string, string> = { year: "연간", quarter: "분기", month: "월" };
 
 export default function GoalsView({ user, initialYear }: { user: SessionUser; initialYear: number }) {
-  const [year, setYear] = useState(initialYear);
+  const [year, setYear] = useState<number | null>(initialYear); // null = 전체
+  const [tab, setTab] = useState<Tab>("team");
   const [tree, setTree] = useState<GoalNode[]>([]);
   const [linkableTasks, setLinkableTasks] = useState<LinkableTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,9 +32,10 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
   const [archived, setArchived] = useState<ArchivedGoal[]>([]);
   const [archiveError, setArchiveError] = useState("");
 
+  const yearQ = year ? `&year=${year}` : "";
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/goals?year=${year}`);
+      const res = await fetch(`/api/goals?scope=${tab}${yearQ}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "목표 조회 실패");
       setTree(data.tree ?? []);
@@ -38,11 +46,11 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
     } finally {
       setLoading(false);
     }
-  }, [year]);
+  }, [tab, yearQ]);
 
   const loadArchive = useCallback(async () => {
     try {
-      const res = await fetch(`/api/goals?archived=1&year=${year}`);
+      const res = await fetch(`/api/goals?archived=1${yearQ}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "보관함 조회 실패");
       setArchived(data.archived ?? []);
@@ -50,11 +58,18 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
     } catch (e) {
       setArchiveError(e instanceof Error ? e.message : "오류");
     }
-  }, [year]);
+  }, [yearQ]);
 
   useEffect(() => {
     setLoading(true);
     load();
+  }, [load]);
+
+  // 목표 변경(패널 저장·진척 재계산) 시 목록 재동기화
+  useEffect(() => {
+    const onUpd = () => load();
+    window.addEventListener(GOAL_UPDATED_EVENT, onUpd);
+    return () => window.removeEventListener(GOAL_UPDATED_EVENT, onUpd);
   }, [load]);
 
   useEffect(() => {
@@ -88,29 +103,45 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
           <div>
             <div className="eb">GOALS</div>
             <h1>목표</h1>
-            <p>연간 → 분기 → 월. 월 목표에만 업무를 연결하고, 상위는 집계만 합니다.</p>
+            <p>
+              {tab === "team"
+                ? "팀 목표 — 연간 → 분기 → 월. 월 목표에 업무를 연결하면 상위 진척이 가중평균으로 자동 갱신됩니다."
+                : "내 목표 — 나만 보는 개인 목표. 같은 3계층으로 관리하고, 내 업무를 연결하세요."}
+            </p>
           </div>
-          <div className="seg" role="group" aria-label="연도 선택">
-            <button aria-pressed={false} onClick={() => setYear((y) => y - 1)} aria-label="이전 연도">
-              ←
-            </button>
-            <button aria-pressed={true}>{year}</button>
-            <button aria-pressed={false} onClick={() => setYear((y) => y + 1)} aria-label="다음 연도">
-              →
-            </button>
+          <div className="seg" role="group" aria-label="연도 필터">
+            {YEARS.map((y) => (
+              <button key={y} aria-pressed={year === y} onClick={() => setYear(y)}>{y}</button>
+            ))}
+            <button aria-pressed={year === null} onClick={() => setYear(null)}>전체</button>
           </div>
+        </div>
+
+        <div className="tabs" role="tablist" style={{ marginBottom: 10 }}>
+          <button className="tab" role="tab" aria-pressed={tab === "team"} onClick={() => setTab("team")}>팀 목표</button>
+          <button className="tab" role="tab" aria-pressed={tab === "personal"} onClick={() => setTab("personal")}>내 목표</button>
         </div>
 
         <section className="card">
           {loading && <p className="gempty">불러오는 중...</p>}
           {error && <p className="gerr">{error}</p>}
-          {!loading && !error && (
+          {!loading && !error && tree.length === 0 && (
+            <EmptyState
+              title={tab === "team" ? "팀 목표가 없어요" : "내 개인 목표가 없어요"}
+              hint={tab === "team"
+                ? "팀장이 연간 목표를 세우고 분기·월로 나누면, 연결된 업무 진척이 여기 모입니다."
+                : "개인 목표를 세우고 내 업무를 연결해 나만의 진척을 관리하세요. (나만 볼 수 있어요)"}
+            />
+          )}
+          {!loading && !error && tree.length > 0 && (
             <GoalTree
               tree={tree}
               linkableTasks={linkableTasks}
               user={user}
-              year={year}
+              year={year ?? new Date().getFullYear()}
               onChanged={load}
+              onOpenGoal={openGoalPanel}
+              scope={tab}
             />
           )}
           <div className="garchive-toggle">
