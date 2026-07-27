@@ -7,6 +7,7 @@ import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
 import GoalTree, { type LinkableTask } from "./GoalTree";
 import EmptyState from "./EmptyState";
+import NewGoalModal from "./NewGoalModal";
 import { GOAL_UPDATED_EVENT, openGoalPanel } from "@/lib/goal-panel";
 
 type Tab = "team" | "personal";
@@ -31,6 +32,7 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
   const [showArchive, setShowArchive] = useState(false);
   const [archived, setArchived] = useState<ArchivedGoal[]>([]);
   const [archiveError, setArchiveError] = useState("");
+  const [showNew, setShowNew] = useState(false);
 
   const yearQ = year ? `&year=${year}` : "";
   const load = useCallback(async () => {
@@ -109,11 +111,14 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
                 : "내 목표 — 나만 보는 개인 목표. 같은 3계층으로 관리하고, 내 업무를 연결하세요."}
             </p>
           </div>
-          <div className="seg" role="group" aria-label="연도 필터">
-            {YEARS.map((y) => (
-              <button key={y} aria-pressed={year === y} onClick={() => setYear(y)}>{y}</button>
-            ))}
-            <button aria-pressed={year === null} onClick={() => setYear(null)}>전체</button>
+          <div className="head-r">
+            <div className="seg" role="group" aria-label="연도 필터">
+              {YEARS.map((y) => (
+                <button key={y} aria-pressed={year === y} onClick={() => setYear(y)}>{y}</button>
+              ))}
+              <button aria-pressed={year === null} onClick={() => setYear(null)}>전체</button>
+            </div>
+            <button className="btn-brand goal-new" onClick={() => setShowNew(true)}>+ 새 목표</button>
           </div>
         </div>
 
@@ -131,6 +136,9 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
               hint={tab === "team"
                 ? "팀장이 연간 목표를 세우고 분기·월로 나누면, 연결된 업무 진척이 여기 모입니다."
                 : "개인 목표를 세우고 내 업무를 연결해 나만의 진척을 관리하세요. (나만 볼 수 있어요)"}
+              action={(tab === "personal" || user.role === "lead") ? (
+                <button className="btn small primary" onClick={() => setShowNew(true)}>목표 만들기</button>
+              ) : undefined}
             />
           )}
           {!loading && !error && tree.length > 0 && (
@@ -174,6 +182,17 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
           </section>
         )}
       </div>
+
+      {showNew && (
+        <NewGoalModal
+          user={user}
+          scope={tab}
+          year={year ?? new Date().getFullYear()}
+          tree={tree}
+          onClose={() => setShowNew(false)}
+          onCreated={load}
+        />
+      )}
     </div>
   );
 }

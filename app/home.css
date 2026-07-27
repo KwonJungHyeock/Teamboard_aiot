@@ -1085,3 +1085,28 @@
 .hv .ma-approve:hover { text-decoration: underline; }
 
 .hv .ma-spin { width: 13px; height: 13px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; display: inline-block; animation: agf-rot .7s linear infinite; }
+
+/* 승인 대기 카드 — 자세히 토글 + 비용 실측 */
+.hv .pcard-body.open { display: block; -webkit-line-clamp: none; overflow: visible; }
+.hv .pcard-more { align-self: flex-start; margin-top: 5px; padding: 0; border: 0; background: transparent; font-family: inherit; font-size: 12px; font-weight: 700; color: var(--edu-text); cursor: pointer; }
+.hv .pcard-more:hover { text-decoration: underline; }
+.hv .pcard-cost { display: inline-block; margin-top: 8px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* ── 새 목표 모달 (홈 톤) ── */
+.hv .goal-new { height: 34px; padding: 0 16px; border-radius: 9px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.hv .ngm-backdrop { position: fixed; inset: 0; background: rgba(31,39,51,.34); z-index: 80; }
+.hv .ngm { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 81; width: min(520px, 94vw); max-height: 90vh; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line-hi); border-radius: 18px; box-shadow: var(--shadow-pop); overflow: hidden; }
+.hv .ngm-head { display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.hv .ngm-head b { font-size: 16px; font-weight: 800; color: var(--ink); }
+.hv .ngm-x { margin-left: auto; width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 15px; cursor: pointer; }
+.hv .ngm-x:hover { background: var(--glass); color: var(--ink); }
+.hv .ngm-body { padding: 18px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.hv .ngm-f { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.hv .ngm-f em { font-style: normal; color: var(--muted); font-weight: 500; }
+.hv .ngm-f select, .hv .ngm-f input { height: 42px; font-size: 14.5px; }
+.hv .ngm-f textarea { font-size: 14.5px; line-height: 1.55; resize: vertical; }
+.hv .ngm-f .ma-seg { margin: 0; }
+.hv .ngm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.hv .ngm-hint { font-size: 12px; color: var(--muted); font-weight: 500; }
+.hv .ngm-foot { display: flex; align-items: center; gap: 9px; padding: 14px 20px; border-top: 1px solid var(--line); }
+.hv .ngm-foot .btn-brand, .hv .ngm-foot .btn-outline { height: 40px; padding: 0 20px; border-radius: 10px; font-weight: 700; }

@@ -29,11 +29,13 @@ export async function GET(request: Request) {
     }
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
-    const drafts = await query<Draft & { user_name: string; assistant_name: string }>(
-      `SELECT d.*, u.display_name AS user_name, a.display_name AS assistant_name
+    const drafts = await query<Draft & { user_name: string; assistant_name: string; cost_tokens: number | null }>(
+      `SELECT d.*, u.display_name AS user_name, a.display_name AS assistant_name,
+              aj.cost_tokens
        FROM drafts d
        JOIN actor u ON u.id = d.user_id
        JOIN actor a ON a.id = d.assistant_id
+       LEFT JOIN agent_job aj ON aj.draft_id = d.id
        ${where}
        ORDER BY d.created_at DESC
        LIMIT 100`,

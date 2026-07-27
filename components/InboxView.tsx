@@ -8,7 +8,13 @@ import type { SessionUser, Draft } from "@/lib/types";
 import ApproveModal, { type DraftSummary } from "./ApproveModal";
 import EmptyState from "./EmptyState";
 
-type DraftRow = Draft & { user_name?: string; assistant_name?: string };
+type DraftRow = Draft & { user_name?: string; assistant_name?: string; cost_tokens?: number | null };
+
+const WON_PER_1K = 6;
+function costLabel(tokens: number): string {
+  const won = Math.max(1, Math.round((tokens / 1000) * WON_PER_1K));
+  return `${tokens.toLocaleString()} 토큰 · ₩${won.toLocaleString()}`;
+}
 
 interface ProposedTask {
   id: number;
@@ -25,6 +31,13 @@ export default function InboxView({ user }: { user: SessionUser }) {
   const [approving, setApproving] = useState<DraftSummary | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (k: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      return next;
+    });
 
   const load = useCallback(async () => {
     try {
@@ -130,7 +143,19 @@ export default function InboxView({ user }: { user: SessionUser }) {
                     <span className="pcard-src">{[d.assistant_name, d.user_name && `${d.user_name} 담당`].filter(Boolean).join(" · ")}</span>
                   </div>
                   <b className="pcard-title">{d.title || "(제목 없음)"}</b>
-                  {excerpt(d.body) && <p className="pcard-body">{excerpt(d.body)}</p>}
+                  {(d.body || "").trim() && (
+                    <>
+                      <p className={`pcard-body${expanded.has(`d${d.id}`) ? " open" : ""}`}>
+                        {expanded.has(`d${d.id}`) ? d.body : excerpt(d.body)}
+                      </p>
+                      <button className="pcard-more" onClick={() => toggle(`d${d.id}`)}>
+                        {expanded.has(`d${d.id}`) ? "접기" : "자세히"}
+                      </button>
+                    </>
+                  )}
+                  {typeof d.cost_tokens === "number" && (
+                    <span className="pcard-cost num">{costLabel(d.cost_tokens)}</span>
+                  )}
                   <div className="pcard-acts">
                     <button className="btn-brand" onClick={() => setApproving({ id: d.id, title: d.title, body: d.body, task_type: d.task_type, user_name: d.user_name })}>승인</button>
                     <button className="btn-outline" onClick={() => rejectDraft(d.id)}>반려</button>
@@ -153,7 +178,16 @@ export default function InboxView({ user }: { user: SessionUser }) {
                     <span className="pcard-src">{[t.createdByName, t.projectName, t.assigneeName && `${t.assigneeName} 담당`].filter(Boolean).join(" · ")}</span>
                   </div>
                   <b className="pcard-title">{t.title}</b>
-                  {excerpt(t.description) && <p className="pcard-body">{excerpt(t.description)}</p>}
+                  {(t.description || "").trim() && (
+                    <>
+                      <p className={`pcard-body${expanded.has(`t${t.id}`) ? " open" : ""}`}>
+                        {expanded.has(`t${t.id}`) ? t.description : excerpt(t.description)}
+                      </p>
+                      <button className="pcard-more" onClick={() => toggle(`t${t.id}`)}>
+                        {expanded.has(`t${t.id}`) ? "접기" : "자세히"}
+                      </button>
+                    </>
+                  )}
                   <div className="pcard-acts">
                     <button className="btn-brand" onClick={() => judgeTask(t.id, true)}>승인</button>
                     <button className="btn-outline" onClick={() => judgeTask(t.id, false)}>기각</button>
