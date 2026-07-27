@@ -96,6 +96,9 @@ export interface HomeSummary {
     done: number;
     percent: number | null; // 업무 0건이면 null → "-"
   }[];
+  // 현황 분석 (파트 2) — 서버 집계만
+  weeklyDone: { weekStart: string; count: number }[]; // 최근 8주 완료 건수 (오래된→최신)
+  assigneeLoad: { name: string; doing: number; waiting: number }[]; // 담당자별 오픈 업무 부하
   isoWeek: number;
   dueSoon: {
     id: number;
@@ -412,6 +415,37 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
      ORDER BY p.id`
   );
 
+  // ── 현황 분석 (파트 2) — 서버 집계만. LLM 수치생성 금지. ──
+  // 주간 완료 추이: 최근 8주 완료 건수 (오래된→최신, 마지막이 이번 주)
+  const weeklyDone: { weekStart: string; count: number }[] = [];
+  for (let i = 7; i >= 0; i--) {
+    const ws = addDays(weekStart, -7 * i);
+    const count = Number(
+      (await queryOne<{ n: string }>(
+        `SELECT count(*) AS n FROM task t
+         WHERE t.is_active = true AND t.status = 'done'
+           AND t.completed_at >= $1::timestamptz AND t.completed_at < $2::timestamptz`,
+        [kstDayStart(ws), kstDayStart(addDays(ws, 7))]
+      ))!.n
+    );
+    weeklyDone.push({ weekStart: ws, count });
+  }
+  // 담당자별 부하: 오픈 업무(todo/doing/review)를 상태별로 (진행 / 대기·리뷰). 부하순 정렬.
+  const assigneeLoadRows = await query<{ name: string; doing: string; waiting: string }>(
+    `SELECT ac.display_name AS name,
+            count(*) FILTER (WHERE t.status = 'doing') AS doing,
+            count(*) FILTER (WHERE t.status IN ('todo', 'review')) AS waiting
+     FROM actor ac
+     JOIN task t ON t.assignee_id = ac.id AND t.is_active = true AND t.status IN ('todo', 'doing', 'review')
+     WHERE ac.type = 'human' AND ac.is_active = true
+       AND ac.id NOT IN (SELECT actor_id FROM account WHERE email = 'robodynesystems')
+     GROUP BY ac.display_name
+     ORDER BY count(*) DESC`
+  );
+  const assigneeLoad = assigneeLoadRows.map((a) => ({
+    name: a.name, doing: Number(a.doing), waiting: Number(a.waiting),
+  }));
+
   // 뷰어 호칭 (short_name 우선)
   const viewer = await queryOne<{ display_name: string; short_name: string | null }>(
     `SELECT display_name, short_name FROM actor WHERE id = $1`,
@@ -608,6 +642,8 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       percent:
         Number(p.total) > 0 ? Math.round((Number(p.done) / Number(p.total)) * 100) : null,
     })),
+    weeklyDone,
+    assigneeLoad,
     isoWeek,
     dueSoon: dueSoonRows.map((t) => ({
       id: t.id,

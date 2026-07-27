@@ -593,8 +593,14 @@
 /* 완료·달성 = 그린 값 (달성 긍정 신호, 리스크 코랄과 구분) */
 .hv .mc-done .v { color: var(--green); }
 /* 주의 카드(내 차례·지연·정체) — 코랄 액센트 배경·값 */
-.hv .mc.alert { background: var(--coral-soft); box-shadow: var(--shadow-card); }
+/* v4 파트4 — 액션 지표는 좌측 얇은 상태색 바로 신호(배경 담백). 값 색만 상태 유지. */
+.hv .mc { border-left: 3px solid transparent; }
+.hv .mc.alert { background: var(--card); box-shadow: var(--shadow-card); border-color: transparent; }
 .hv .mc.alert .v { color: var(--coral); }
+/* .mc.mc-* 로 specificity 확보 → .mc.alert 의 border-color(구 코랄)를 이겨 솔리드 상태색 바 */
+.hv .mc.mc-myTurn { border-left-color: var(--amber); }
+.hv .mc.mc-stalled { border-left-color: var(--coral); }
+.hv .mc.mc-blocked { border-left-color: var(--muted); }
 /* 막힌 업무 — 자리만(placeholder). 저강조 + 점선 */
 .hv .mc.ph { background: repeating-linear-gradient(45deg, #FBFAF6 0 8px, #F6F4EE 8px 16px); box-shadow: none; border: 1px dashed var(--line-hi); }
 .hv .mc.ph .v { color: var(--muted); font-size: 20px; }
@@ -737,8 +743,8 @@
 /* 2·3. 카드 헤더 — 바 제거, 상하 대칭 여백. 제목 top 여백=카드 padding(20), 제목~본문 14px.
         제목·우측 메타 baseline 정렬(좌우 카드 제목 같은 Y). */
 .hv .card { padding: 20px; }
-.hv .ch { height: auto; min-height: 0; margin: 0 0 14px; padding: 0; background: transparent; border-bottom: 0; border-radius: 0; align-items: center; }
-/* .card h2 의 margin-bottom(14px)이 헤더 안에서 제목을 위로 밀던 문제 제거 → 세로 중앙 */
+/* v4 색 절제 — 헤더 무채색 + 얇은 하단 구분선으로 영역분리(색 띠 제거) */
+.hv .ch { height: auto; min-height: 0; margin: 0 0 16px; padding: 0 0 12px; background: transparent; border-bottom: 1px solid var(--line); border-radius: 0; align-items: center; }
 .hv .ch h2 { margin: 0; }
 /* 6. KPI 5칸 — 내부 상하 대칭 + 라벨 top·값 bottom 세로 리듬 통일(높이 동일은 grid stretch) */
 .hv .mc { display: flex; flex-direction: column; justify-content: space-between; gap: 10px; padding: 18px; }
@@ -751,20 +757,14 @@
 
 /* ═══════════════════ 홈 v3 — 영역분리·KPI 링크·타임라인 ═══════════════════ */
 
-/* 2. 카드 헤더 의미색 accent — 좌측 4px 바 + 옅은 헤더 틴트(color-mix). 제목 ink 유지. */
-.hv .card.acc-blue  { --acc: var(--edu); }
-.hv .card.acc-coral { --acc: var(--coral); }
-.hv .card.acc-amber { --acc: var(--amber); }
-.hv .card.acc-green { --acc: var(--green); }
-.hv .card.acc-ink   { --acc: var(--ink-soft); }
-.hv .card.acc-blue, .hv .card.acc-coral, .hv .card.acc-amber, .hv .card.acc-green, .hv .card.acc-ink { overflow: hidden; }
+/* v4 색 절제 — 카드 헤더 5색 띠·틴트 전면 제거(이전 색 띠 결정 철회).
+   영역분리는 여백 + 하단 구분선(--line) + 제목·카운트로. accent 클래스는 무채색(무효). */
 .hv .card.acc-blue > .ch, .hv .card.acc-coral > .ch, .hv .card.acc-amber > .ch,
 .hv .card.acc-green > .ch, .hv .card.acc-ink > .ch {
-  margin: -20px -20px 16px; padding: 13px 20px;
-  background: color-mix(in srgb, var(--acc) 9%, transparent);
-  border-left: 4px solid var(--acc);
-  border-bottom: 1px solid color-mix(in srgb, var(--acc) 22%, transparent);
-  border-radius: 0; height: auto; align-items: center; min-height: 48px;
+  margin: 0 0 16px; padding: 0 0 12px;
+  background: transparent; border-left: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
 }
 
 /* 3. KPI 카드 클릭 링크 — hover 커서·미세 elevation */
@@ -814,3 +814,40 @@
    여유 폭은 업무(제목) 칸이 흡수(제목만 truncate). 배지가 칸 밖으로 넘치지 않음. */
 .hv td.col-st, .hv td.col-due { white-space: nowrap; overflow: hidden; text-overflow: clip; }
 .hv td.col-st .st, .hv td.col-st .stsel { white-space: nowrap; }
+
+/* ═══════════════════ 홈 v4 — 현황 분석 차트 · 프로젝트별 진행 바 ═══════════════════ */
+
+/* 2. 현황 분석 — 주간 완료 추이 | 담당자별 부하 (2열, 반응형 세로) */
+.hv .an-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+@media (max-width: 1100px) { .hv .an-wrap { grid-template-columns: minmax(0, 1fr); } }
+.hv .an-svg { width: 100%; height: auto; display: block; }
+.hv .an-axis { stroke: var(--line); stroke-width: 1; }
+.hv .an-area { fill: color-mix(in srgb, var(--green) 12%, transparent); stroke: none; }
+.hv .an-line { fill: none; stroke: var(--green); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.hv .an-dot { fill: var(--card); stroke: var(--green); stroke-width: 1.6; }
+.hv .an-dot.cur { fill: var(--green); }
+.hv .an-xt { fill: var(--muted); font-family: var(--font-mono); font-size: 10px; font-variant-numeric: tabular-nums; }
+.hv .an-cur-v { fill: var(--green-text); font-family: var(--font-mono); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hv .an-load { display: flex; flex-direction: column; gap: 11px; }
+.hv .an-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) 30px; align-items: center; gap: 10px; }
+.hv .an-name { font-size: var(--fs-meta); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hv .an-track { display: flex; height: 14px; background: var(--track-bg); border-radius: 7px; overflow: hidden; }
+.hv .an-doing { background: var(--edu); height: 100%; }
+.hv .an-wait { background: var(--muted); height: 100%; }
+.hv .an-n { font-family: var(--font-mono); font-size: var(--fs-meta); color: var(--ink-soft); text-align: right; font-variant-numeric: tabular-nums; }
+.hv .an-legend { display: flex; gap: 14px; margin-top: 2px; font-size: var(--fs-badge); color: var(--muted); }
+.hv .an-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.hv .an-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.hv .lg-doing { background: var(--edu); }
+.hv .lg-wait { background: var(--muted); }
+.hv .an-empty { font-size: var(--fs-meta); color: var(--muted); padding: 12px 0; }
+
+/* 3. 프로젝트별 / 목표별 진행 바 (도넛 제거) */
+.hv .prbars { display: flex; flex-direction: column; gap: 13px; }
+.hv .prbars .pr { margin: 0; }
+.hv .pr-l { font-size: var(--fs-meta); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hv .pr-v { font-family: var(--font-mono); font-size: var(--fs-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hv .pr-v .gdrop { margin-right: 6px; }
+.hv .prbars .bar { height: 8px; }
+.hv .prbars .bar i.pf-blue { background: var(--edu); box-shadow: none; }
+.hv .prbars .bar i.pf-green { background: var(--green); box-shadow: none; }

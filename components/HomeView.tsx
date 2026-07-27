@@ -8,8 +8,8 @@ import type { HomeSummary } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
 import EmptyState from "./EmptyState";
 import MetricCards from "./MetricCards";
+import AnalyticsCharts from "./AnalyticsCharts";
 import NewMenu from "./NewMenu";
-import RingGauge from "./RingGauge";
 import SignalPanel from "./SignalPanel";
 import TaskTable from "./TaskTable";
 import TeamTimeline, { type TimelineView } from "./TeamTimeline";
@@ -107,6 +107,9 @@ export default function HomeView({
         </div>
 
         <MetricCards metrics={summary.metrics} />
+
+        {/* ── 현황 분석 (파트 2) — 주간 완료 추이 | 담당자별 부하 ── */}
+        <AnalyticsCharts weeklyDone={summary.weeklyDone} assigneeLoad={summary.assigneeLoad} />
 
         {/* ── 1순위: 항상 크게 ── */}
         {/* 팀 타임라인 — 전폭 */}
@@ -212,8 +215,7 @@ function SummaryProgress({
   ringColor?: string;
   accent?: string;
 }) {
-  const [open, setOpen] = useState(false);
-  // 집계 진행률 — done/total(가중) 우선, 없으면 percent 단순 평균.
+  // 집계 진행률 — done/total(가중) 우선, 없으면 percent 단순 평균 (부제 표기용).
   const withPct = rows.filter((r) => r.percent !== null);
   const overall =
     total && total > 0
@@ -221,63 +223,34 @@ function SummaryProgress({
       : withPct.length > 0
       ? Math.round(withPct.reduce((a, r) => a + (r.percent ?? 0), 0) / withPct.length)
       : null;
-  const topColor = rows[0]?.colorKey ?? "edu";
+  // 막대 색 — 진행=blue(중립) / 목표=green(달성). 도넛 잔재 제거, 개별 진행 바로 표기.
+  const fill = ringColor === "green" ? "pf-green" : "pf-blue";
 
   return (
     <section className={`card sumcard${accent ? ` acc-${accent}` : ""}`} aria-label={title}>
       <div className="ch">
         <h2>{title}</h2>
-        <span className="sub">{sub}</span>
+        <span className="sub">{sub}{overall !== null ? ` · 평균 ${overall}%` : ""}</span>
       </div>
       {rows.length === 0 ? (
         <EmptyState compact title={emptyText} hint={emptyHint} action={emptyAction} />
       ) : (
-        <>
-          <button
-            className="sumhead"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-          >
-            <RingGauge percent={overall} colorKey={ringColor ?? topColor ?? "edu"} />
-            <span className="suml">
-              <b>
-                {rows.length}개 · 평균 {overall === null ? "–" : `${overall}%`}
-              </b>
-              <em>
-                {total && total > 0 ? `완료 ${done}/${total} · ` : ""}
-                {open ? "접기" : "펼쳐 보기"}
-              </em>
-            </span>
-            <svg className={`sumcv ${open ? "on" : ""}`} viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M8 10l4 4 4-4" />
-            </svg>
-          </button>
-          {open && (
-            <div className="sumbody">
-              {rows.map((r) => (
-                <div className="pr" key={r.id}>
-                  <div className="pr-t">
-                    <span>{r.label}</span>
-                    <span>
-                      {r.meta && (
-                        <em className="gdrop" style={{ marginRight: 6 }}>
-                          {r.meta}
-                        </em>
-                      )}
-                      {r.percent === null ? "-" : `${r.percent}%`}
-                    </span>
-                  </div>
-                  <div className="bar">
-                    <i
-                      className={r.colorKey ?? "edu"}
-                      style={{ width: `${Math.min(r.percent ?? 0, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+        <div className="prbars">
+          {rows.map((r) => (
+            <div className="pr" key={r.id}>
+              <div className="pr-t">
+                <span className="pr-l">{r.label}</span>
+                <span className="pr-v">
+                  {r.meta && <em className="gdrop">{r.meta}</em>}
+                  {r.percent === null ? "-" : `${r.percent}%`}
+                </span>
+              </div>
+              <div className="bar">
+                <i className={fill} style={{ width: `${Math.min(r.percent ?? 0, 100)}%` }} />
+              </div>
             </div>
-          )}
-        </>
+          ))}
+        </div>
       )}
     </section>
   );
