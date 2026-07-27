@@ -21,9 +21,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     const task = await queryOne<{
       id: number; title: string; status: string; assignee_id: number | null;
-      start_date: string | null; due_date: string | null;
+      start_date: string | null; due_date: string | null; progress: number;
     }>(
-      "SELECT id, title, status, assignee_id, start_date::text, due_date::text FROM task WHERE id = $1 AND is_active = true",
+      "SELECT id, title, status, assignee_id, start_date::text, due_date::text, progress FROM task WHERE id = $1 AND is_active = true",
       [taskId]
     );
     if (!task) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
@@ -53,7 +53,22 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (typeof payload.description === "string") set("description", payload.description.slice(0, 4000));
     if ((PRIORITIES as readonly string[]).includes(payload.priority)) set("priority", payload.priority);
     if (payload.projectId !== undefined) set("project_id", payload.projectId ? Number(payload.projectId) : null);
-    if (payload.assigneeId !== undefined) set("assignee_id", payload.assigneeId ? Number(payload.assigneeId) : null);
+    // 활동 로그(파트 5) — 의미 있는 변경(담당·진행률·목표·상태)만 기록.
+    const extraLogs: string[] = [];
+    if (payload.assigneeId !== undefined) {
+      const newAssignee = payload.assigneeId ? Number(payload.assigneeId) : null;
+      set("assignee_id", newAssignee);
+      if (newAssignee !== task.assignee_id) {
+        const ids = [task.assignee_id, newAssignee].filter((x): x is number => !!x);
+        const names = ids.length
+          ? await query<{ id: number; display_name: string }>(
+              "SELECT id, display_name FROM actor WHERE id = ANY($1)", [ids]
+            )
+          : [];
+        const nm = (id: number | null) => (id ? names.find((n) => n.id === id)?.display_name ?? `#${id}` : "미지정");
+        extraLogs.push(`${session.name}이(가) 담당 변경 (${nm(task.assignee_id)} → ${nm(newAssignee)}) — "${task.title}"`);
+      }
+    }
     const isDate = (v: unknown): v is string =>
       typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
     // 병합값 기준으로 시작일<=마감일 검증 (한쪽만 수정해도 정합성 유지)
@@ -112,6 +127,18 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       }
     }
 
+    // 진행률(파트 4) — 수동 0~100. 완료 전환 시 100으로 정합. 중복 set 방지 위해 단일 처리.
+    let nextProgress: number | undefined;
+    if (payload.progress !== undefined) {
+      const p = Math.round(Number(payload.progress));
+      if (!Number.isNaN(p)) nextProgress = Math.max(0, Math.min(100, p));
+    }
+    if (payload.status === "done") nextProgress = 100;
+    if (nextProgress !== undefined && nextProgress !== task.progress) {
+      set("progress", nextProgress);
+      extraLogs.push(`${session.name}이(가) 진행률 변경 (${task.progress}% → ${nextProgress}%) — "${task.title}"`);
+    }
+
     if (sets.length > 0) {
       values.push(taskId);
       await query(`UPDATE task SET ${sets.join(", ")}, updated_at = now() WHERE id = $${values.length}`, values);
@@ -128,6 +155,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         [taskId]
       );
       priorLinks.forEach((l) => affectedGoals.add(l.goal_id));
+      const priorSet = new Set(priorLinks.map((l) => l.goal_id));
       const goalIds = payload.goalIds.map(Number).filter((n: number) => Number.isInteger(n));
       await query("DELETE FROM goal_task WHERE task_id = $1", [taskId]);
       for (const goalId of goalIds) {
@@ -140,6 +168,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
           [goalId, taskId]
         );
       }
+      const changed = goalIds.length !== priorSet.size || goalIds.some((g: number) => !priorSet.has(g));
+      if (changed) extraLogs.push(`${session.name}이(가) 연결 목표 변경 — "${task.title}"`);
     }
 
     // 현재(변경 후) 연결 목표 — 상태 변경 시에도 재계산 대상
@@ -153,8 +183,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     // 연결 체인(월→분기→연간) 즉시 재계산 — 홈·목표 화면에 바로 반영 (파트 B)
     for (const gid of Array.from(affectedGoals)) await recomputeGoalChain(gid);
 
-    // 활동 타임라인은 "상태 변경"만 기록한다 (인라인 자동저장이 매 필드마다 로그를
-    // 남기면 타임라인이 잡음으로 가득 참 — 코멘트는 task_comment가 담당).
+    // 활동 타임라인(파트 5) — 의미 있는 변경만 기록: 상태·담당·진행률·목표연결.
+    // (제목·설명 등 잡음성 필드는 제외. 코멘트는 코멘트 라우트가 기록.)
+    for (const msg of extraLogs) {
+      await logActivity({ userId: session.id, message: msg, taskId });
+    }
     if (statusLog) {
       await logActivity({ userId: session.id, message: statusLog, taskId });
     }
@@ -180,13 +213,13 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       project_id: number | null; project_name: string | null; color_key: string | null;
       assignee_id: number | null; assignee_name: string | null; created_by_name: string | null;
       start_date: string | null; due_date: string | null; drop_reason: string | null;
-      goal_ids: number[] | null;
+      progress: number; goal_ids: number[] | null;
     }>(
       `SELECT t.id, t.title, t.description, t.status, t.priority, t.origin, t.work_type,
               t.area_id, ar.name AS area_name, ar.color_key AS area_color,
               t.project_id, p.name AS project_name, p.color_key,
               t.assignee_id, a.display_name AS assignee_name, c.display_name AS created_by_name,
-              t.start_date::text, t.due_date::text, t.drop_reason,
+              t.start_date::text, t.due_date::text, t.drop_reason, t.progress,
               array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids
        FROM task t
        JOIN area ar ON ar.id = t.area_id
@@ -214,6 +247,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         projectId: t.project_id, projectName: t.project_name, colorKey: t.color_key,
         assigneeId: t.assignee_id, assigneeName: t.assignee_name, createdByName: t.created_by_name,
         startDate: t.start_date, dueDate: t.due_date, dropReason: t.drop_reason,
+        progress: t.progress ?? 0,
         goalIds: t.goal_ids ?? [],
       },
       activity,

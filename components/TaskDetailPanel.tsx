@@ -3,7 +3,9 @@
 // 업무 상세 슬라이드 패널 (파트 1) — 우측 480px 슬라이드. AppShell에 1개만 마운트되어
 // 어느 화면에서든 openTaskPanel(id) 로 열린다. 필드 이탈/변경 시 인라인 자동저장(PATCH).
 // URL ?task=id 반영 → 새로고침에도 유지. ESC·바깥 클릭으로 닫힘.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Markdown from "./Markdown";
+import { uploadImage } from "@/lib/upload";
 import {
   TASK_PANEL_EVENT,
   currentTaskRef,
@@ -19,6 +21,7 @@ interface TaskDetail {
   projectId: number | null; projectName: string | null; colorKey: string | null;
   assigneeId: number | null; assigneeName: string | null; createdByName: string | null;
   startDate: string | null; dueDate: string | null; dropReason: string | null; goalIds: number[];
+  progress: number;
 }
 interface Selectors {
   actors: { id: number; name: string }[];
@@ -58,6 +61,10 @@ export default function TaskDetailPanel() {
   const [newComment, setNewComment] = useState("");
   const [dropping, setDropping] = useState(false);
   const [dropReason, setDropReason] = useState("");
+  const [descText, setDescText] = useState("");   // 설명(마크다운) 편집 버퍼 — 미리보기 동기화
+  const [prog, setProg] = useState(0);             // 진행률 슬라이더 로컬 상태
+  const [uploading, setUploading] = useState(false);
+  const descRef = useRef<HTMLTextAreaElement>(null);
 
   // ── 열림 상태 소스: URL ?task + 이벤트 + 뒤로가기 ──
   useEffect(() => {
@@ -85,6 +92,8 @@ export default function TaskDetailPanel() {
     if (!res.ok) { setErr("업무를 불러올 수 없습니다."); return; }
     const data = await res.json();
     setT(data.task);
+    setDescText(data.task.description ?? "");
+    setProg(data.task.progress ?? 0);
     setActivity(data.activity ?? []);
   }, []);
   const loadComments = useCallback(async (id: number) => {
@@ -189,6 +198,37 @@ export default function TaskDetailPanel() {
       await loadComments(openId);
       await loadDetail(openId); // 활동 타임라인 갱신
     } else setErr((await res.json()).error ?? "코멘트 실패");
+  }
+
+  // 이미지 업로드(붙여넣기/드롭/파일) → Blob URL → 마크다운 ![](url) 삽입 (파트 3)
+  async function insertUpload(file: File, into: "desc" | "comment") {
+    setUploading(true); setErr("");
+    try {
+      const url = await uploadImage(file);
+      const md = `![](${url})`;
+      if (into === "desc") {
+        const next = descText ? `${descText}\n${md}` : md;
+        setDescText(next);
+        await patch({ description: next });
+      } else {
+        setNewComment((c) => (c ? `${c} ${md}` : md));
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "이미지 업로드 실패");
+    } finally {
+      setUploading(false);
+    }
+  }
+  function pasteImage(e: React.ClipboardEvent, into: "desc" | "comment") {
+    const img = Array.from(e.clipboardData.items).find((i) => i.type.startsWith("image/"));
+    if (img) {
+      const f = img.getAsFile();
+      if (f) { e.preventDefault(); insertUpload(f, into); }
+    }
+  }
+  function dropImage(e: React.DragEvent, into: "desc" | "comment") {
+    const f = e.dataTransfer.files?.[0];
+    if (f && f.type.startsWith("image/")) { e.preventDefault(); insertUpload(f, into); }
   }
 
   async function softDelete() {
@@ -341,6 +381,30 @@ export default function TaskDetailPanel() {
               </label>
             </div>
 
+            {/* 진행률 (수동, 0~100) — 파트 4 */}
+            <div className="tdp-sec">
+              <div className="tdp-sec-h">진행률 <em>{prog}%</em></div>
+              <div className="tdp-prog">
+                <input
+                  type="range" min={0} max={100} step={5} value={prog}
+                  className="tdp-range"
+                  onChange={(e) => setProg(Number(e.target.value))}
+                  onMouseUp={() => prog !== t.progress && patch({ progress: prog })}
+                  onKeyUp={() => prog !== t.progress && patch({ progress: prog })}
+                  onTouchEnd={() => prog !== t.progress && patch({ progress: prog })}
+                  aria-label="진행률"
+                />
+                <input
+                  type="number" min={0} max={100} value={prog}
+                  className="tdp-prog-n"
+                  onChange={(e) => setProg(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                  onBlur={() => prog !== t.progress && patch({ progress: prog })}
+                  aria-label="진행률 입력"
+                />
+              </div>
+              <div className="tdp-prog-bar"><i style={{ width: `${prog}%` }} className={`pf-${t.status === "done" ? "green" : "blue"}`} /></div>
+            </div>
+
             {/* 연결 목표 (다중) */}
             <div className="tdp-sec">
               <div className="tdp-sec-h">연결 목표</div>
@@ -359,12 +423,26 @@ export default function TaskDetailPanel() {
               </div>
             </div>
 
-            {/* 설명 */}
+            {/* 설명 (마크다운 · 이미지 붙여넣기/드롭) — 파트 3 */}
             <div className="tdp-sec">
-              <div className="tdp-sec-h">설명 <em>(마크다운)</em></div>
-              <textarea className="tdp-desc" rows={4} defaultValue={t.description} key={`desc-${t.id}`}
-                placeholder="업무 설명을 입력하세요…"
-                onBlur={(e) => { if (e.target.value !== t.description) patch({ description: e.target.value }); }} />
+              <div className="tdp-sec-h">설명 <em>(마크다운 · 이미지 붙여넣기/드롭)</em></div>
+              <textarea
+                ref={descRef}
+                className="tdp-desc" rows={4} value={descText}
+                placeholder="업무 설명… 이미지를 붙여넣거나 끌어다 놓으면 인라인 삽입됩니다."
+                onChange={(e) => setDescText(e.target.value)}
+                onBlur={() => { if (descText !== t.description) patch({ description: descText }); }}
+                onPaste={(e) => pasteImage(e, "desc")}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => dropImage(e, "desc")}
+              />
+              {uploading && <p className="tdp-muted">이미지 업로드 중…</p>}
+              {descText.trim() && (
+                <div className="tdp-preview">
+                  <div className="tdp-preview-h">미리보기</div>
+                  <Markdown text={descText} />
+                </div>
+              )}
             </div>
 
             {/* 활동 타임라인 */}
@@ -385,12 +463,13 @@ export default function TaskDetailPanel() {
               {comments.map((c) => (
                 <div className="tdp-cmt" key={c.id}>
                   <b>{c.author_name}</b> <span className="tdp-act-t">{fmt(c.created_at)}</span>
-                  <div>{c.body}</div>
+                  <Markdown className="tdp-cmt-body" text={c.body} />
                 </div>
               ))}
               <div className="tdp-cmt-new">
                 <input value={newComment} onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="코멘트 입력…" onKeyDown={(e) => e.key === "Enter" && addComment()} />
+                  placeholder="코멘트… 이미지 붙여넣기 가능" onKeyDown={(e) => e.key === "Enter" && addComment()}
+                  onPaste={(e) => pasteImage(e, "comment")} />
                 <button className="btn small primary" onClick={addComment} disabled={!newComment.trim()}>등록</button>
               </div>
             </div>

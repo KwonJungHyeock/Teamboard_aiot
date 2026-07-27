@@ -25,6 +25,7 @@ interface TaskItem {
   startDate: string | null;
   dueDate: string | null;
   goalIds: number[];
+  progress: number;
   createdByName: string | null;
 }
 
@@ -368,6 +369,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
           status: t.status,
           priority: t.priority,
           areaName: t.areaName,
+          progress: t.progress,
           goalNames: t.goalIds.map(goalTitleOf).filter((x): x is string => !!x),
           dday: d.text,
           overdue: d.overdue && t.status !== "done" && t.status !== "dropped",

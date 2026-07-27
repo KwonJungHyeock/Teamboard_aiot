@@ -855,3 +855,51 @@
 /* ④ 협업 보조 축 (논의·결정 | 허들룸) — 실행 축 아래로 톤 낮춤: 플랫(그림자 제거)·미세 상단 여백 */
 .hv .cols-sub { margin-top: 6px; }
 .hv .cols-sub > .stack > .card { box-shadow: none; }
+
+/* ── 팀 타임라인 간트 (파트 6) — 시작~마감 가로 바, 상태색·진행률 채움, 오늘선·주말 음영 ── */
+.hv .gt-wrap { overflow-x: auto; }
+.hv .gt-grid { display: grid; grid-template-columns: 116px minmax(560px, 1fr); }
+.hv .gt-corner { border-bottom: 1px solid var(--line); }
+.hv .gt-axis { position: relative; height: 30px; border-bottom: 1px solid var(--line); }
+.hv .gt-acol { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; }
+.hv .gt-acol.wknd { background: color-mix(in srgb, var(--ink-soft) 4%, transparent); }
+.hv .gt-alabel { font-family: var(--font-mono); font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hv .gt-lane-l { display: flex; align-items: center; gap: 7px; padding: 8px 10px 8px 2px; border-bottom: 1px solid var(--line); min-height: 42px; }
+.hv .gt-lane-n { font-size: var(--fs-meta); color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hv .gt-cico { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--ink-soft); background: var(--glass); padding: 2px 6px; border-radius: 6px; flex: 0 0 auto; }
+.hv .gt-track { position: relative; border-bottom: 1px solid var(--line); padding: 5px 0; min-height: 42px; }
+.hv .gt-bg { position: absolute; inset: 0; overflow: hidden; }
+.hv .gt-bgcol { position: absolute; top: 0; bottom: 0; border-left: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
+.hv .gt-bgcol.wknd { background: color-mix(in srgb, var(--ink-soft) 3.5%, transparent); }
+.hv .gt-todayline { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--coral); opacity: .55; z-index: 2; }
+.hv .gt-axis .gt-todayline { z-index: 3; }
+.hv .gt-line { position: relative; height: 22px; margin: 3px 0; }
+.hv .gt-none { color: var(--muted); font-size: var(--fs-badge); padding-left: 4px; height: auto; display: flex; align-items: center; }
+.hv .gt-bar { position: absolute; top: 0; height: 22px; display: flex; align-items: center; border: 0; border-left: 3px solid var(--line-hi); border-radius: 5px; padding: 0 8px; overflow: hidden; cursor: pointer; font-family: inherit; font-size: var(--fs-badge); color: var(--ink); background: color-mix(in srgb, var(--ink-soft) 9%, transparent); min-width: 14px; z-index: 1; }
+.hv .gt-bar:hover:not(:disabled) { filter: brightness(.97); box-shadow: var(--shadow-card); }
+.hv .gt-bar:disabled { cursor: default; }
+.hv .gt-fill { position: absolute; left: 0; top: 0; bottom: 0; z-index: 0; }
+.hv .gt-bar-t { position: relative; z-index: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hv .gt-bar.st-doing { border-left-color: var(--edu); background: color-mix(in srgb, var(--edu) 10%, transparent); }
+.hv .gt-bar.st-doing .gt-fill { background: color-mix(in srgb, var(--edu) 26%, transparent); }
+.hv .gt-bar.st-todo, .hv .gt-bar.st-review { border-left-color: var(--ink-soft); }
+.hv .gt-bar.st-todo .gt-fill, .hv .gt-bar.st-review .gt-fill { background: color-mix(in srgb, var(--ink-soft) 15%, transparent); }
+.hv .gt-bar.st-done { border-left-color: var(--green); background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green-text); }
+.hv .gt-bar.st-event { border-left-color: var(--team); background: color-mix(in srgb, var(--team) 13%, transparent); color: var(--ink-soft); }
+.hv .gt-bar.late { border-left-color: var(--coral); background: color-mix(in srgb, var(--coral) 12%, transparent); }
+.hv .gt-bar.late .gt-fill { background: color-mix(in srgb, var(--coral) 22%, transparent); }
+.hv .gt-legend { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-badge); color: var(--muted); flex-wrap: wrap; }
+.hv .gt-legend .lg { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border-left: 3px solid var(--line-hi); }
+.hv .gt-legend .lg.st-doing { background: color-mix(in srgb, var(--edu) 26%, transparent); border-left-color: var(--edu); }
+.hv .gt-legend .lg.st-todo { background: color-mix(in srgb, var(--ink-soft) 15%, transparent); border-left-color: var(--ink-soft); }
+.hv .gt-legend .lg.st-review { background: color-mix(in srgb, var(--ink-soft) 15%, transparent); border-left-color: var(--ink-soft); }
+.hv .gt-legend .lg.st-done { background: color-mix(in srgb, var(--green) 16%, transparent); border-left-color: var(--green); }
+.hv .gt-legend .lg.late { background: color-mix(in srgb, var(--coral) 16%, transparent); border-left-color: var(--coral); }
+
+/* 업무 시트 진행률 컬럼 (파트 4) */
+.hv .col-prog { white-space: nowrap; }
+.hv .tt-prog { display: inline-block; width: 60px; height: 7px; border-radius: 4px; background: var(--track-bg, var(--line)); overflow: hidden; vertical-align: middle; }
+.hv .tt-prog i { display: block; height: 100%; }
+.hv .tt-prog i.pf-blue { background: var(--edu); }
+.hv .tt-prog i.pf-green { background: var(--green); }
+.hv .tt-prog-n { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); margin-left: 6px; font-variant-numeric: tabular-nums; }

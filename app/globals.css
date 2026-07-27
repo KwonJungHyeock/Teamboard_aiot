@@ -970,3 +970,44 @@ body.meeting-on .side { display: none !important; }
 @keyframes agf-rot { to { transform: rotate(360deg); } }
 
 @media (max-width: 560px) { .agf-fab { right: 16px; bottom: 16px; } .agf-panel, .agf-toast { right: 16px; } }
+
+/* ── 상세 패널 가독성 (파트 1) — 라벨 13 / 값·입력 15 / 제목 크게, 높이·여백 확대 ── */
+.tdp-body { padding: 20px; }
+.tdp-title { font-size: 22px; padding: 9px 11px; margin-bottom: 10px; }
+.tdp-grid { gap: 12px; margin: 12px 0 6px; }
+.tdp-grid label { font-size: 13px; gap: 5px; color: var(--ink-soft); }
+.tdp-grid select, .tdp-grid input { height: 40px; font-size: 15px; padding: 0 11px; }
+.tdp-sec { margin-top: 20px; padding-top: 16px; }
+.tdp-sec-h { font-size: 14px; }
+.tdp-goal { font-size: 14px; }
+.tdp-desc { font-size: 15px; padding: 12px; min-height: 100px; line-height: 1.6; }
+.tdp-cmt-new input { height: 40px; font-size: 15px; }
+
+/* 진행률 슬라이더 (파트 4) */
+.tdp-prog { display: flex; align-items: center; gap: 12px; }
+.tdp-range { flex: 1; accent-color: var(--edu); height: 24px; }
+.tdp-prog-n { width: 66px; height: 40px; font-size: 15px; text-align: center; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 6px; color: var(--text); }
+.tdp-prog-bar { height: 8px; border-radius: 5px; background: var(--track-bg, var(--line)); overflow: hidden; margin-top: 10px; }
+.tdp-prog-bar i { display: block; height: 100%; }
+.tdp-prog-bar i.pf-blue { background: var(--edu); }
+.tdp-prog-bar i.pf-green { background: var(--green); }
+
+/* 설명 미리보기 (파트 3) */
+.tdp-preview { margin-top: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: #FBFAF6; }
+.tdp-preview-h { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+.tdp-cmt-body { margin-top: 4px; }
+
+/* ── 마크다운 렌더 (파트 3) — 이미지·링크 카드 인라인, 안전한 부분집합 ── */
+.md { font-size: 14px; line-height: 1.6; color: var(--text); word-break: break-word; }
+.md-p { margin: 0 0 8px; }
+.md-p:last-child { margin-bottom: 0; }
+.md-h { font-size: 15px; font-weight: 700; margin: 10px 0 6px; color: var(--text); }
+.md-ul { margin: 0 0 8px; padding-left: 18px; }
+.md-ul li { margin: 2px 0; }
+.md-img { max-width: 100%; height: auto; border-radius: 8px; margin: 6px 0; display: block; border: 1px solid var(--border); }
+.md-a { color: var(--edu-text); text-decoration: underline; }
+.md-code { font-family: var(--mono); font-size: .9em; background: rgba(55,67,79,.06); padding: 1px 5px; border-radius: 4px; }
+.md-link-card { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-elev); text-decoration: none; margin: 6px 0; max-width: 100%; }
+.md-link-card:hover { border-color: var(--accent); }
+.md-lc-host { font-size: 12px; font-weight: 700; color: var(--text); }
+.md-lc-url { font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

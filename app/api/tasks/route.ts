@@ -33,6 +33,7 @@ export interface TaskListRow {
   startDate: string | null;
   dueDate: string | null;
   goalIds: number[];
+  progress: number;
   createdByName: string | null;
 }
 
@@ -94,6 +95,7 @@ export async function GET(request: Request) {
       start_date: string | null;
       due_date: string | null;
       goal_ids: number[] | null;
+      progress: number;
       created_by_name: string | null;
     }>(
       `SELECT t.id, t.title, t.description, t.status, t.priority, t.origin,
@@ -102,6 +104,7 @@ export async function GET(request: Request) {
               t.area_id, ar.name AS area_name, t.work_type,
               t.start_date::text, t.due_date::text,
               array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
+              t.progress,
               c.display_name AS created_by_name
        FROM task t
        LEFT JOIN project p ON p.id = t.project_id
@@ -158,6 +161,7 @@ export async function GET(request: Request) {
       startDate: r.start_date,
       dueDate: r.due_date,
       goalIds: r.goal_ids ?? [],
+      progress: r.progress ?? 0,
       createdByName: r.created_by_name,
     }));
     return NextResponse.json({

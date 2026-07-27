@@ -49,13 +49,17 @@ export interface GoalTaskRef {
 export function monthProgress(
   progressMode: "auto" | "manual",
   storedProgress: number,
-  linkedTasks: { status: string }[]
+  linkedTasks: { status: string; progress?: number }[]
 ): number | null {
   if (progressMode === "manual") return Math.round(storedProgress);
   const counted = linkedTasks.filter((t) => t.status !== "dropped");
   if (counted.length === 0) return null;
-  const done = counted.filter((t) => t.status === "done").length;
-  return Math.round((done / counted.length) * 100);
+  // 진척률 = 연결 Task 진행률의 평균 (수동 progress 반영). 완료는 100으로 간주.
+  const sum = counted.reduce(
+    (a, t) => a + (typeof t.progress === "number" ? t.progress : t.status === "done" ? 100 : 0),
+    0
+  );
+  return Math.round(sum / counted.length);
 }
 
 /** 하위 진척들의 단순 평균 — null(산출 불가) 하위는 제외, 전부 null이면 null (구 산식·호환용) */
@@ -106,8 +110,8 @@ export async function recomputeGoal(goalId: number): Promise<number | null> {
 
   let value: number | null;
   if (g.period_type === "month") {
-    const tasks = await query<{ status: string }>(
-      `SELECT t.status FROM goal_task gt
+    const tasks = await query<{ status: string; progress: number }>(
+      `SELECT t.status, t.progress FROM goal_task gt
        JOIN task t ON t.id = gt.task_id AND t.is_active = true AND t.status <> 'proposed' AND t.work_type <> 'routine'
        WHERE gt.goal_id = $1`,
       [goalId]

@@ -61,6 +61,7 @@ export interface LaneTask {
   assigneeId: number | null;
   late: boolean;
   dday: string | null; // D-3 / D+2
+  progress: number; // 0~100 (수동 진행률)
 }
 
 export interface Lane {
@@ -337,8 +338,9 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     color_key: string | null;
     origin: "human" | "agent";
     assignee_id: number | null;
+    progress: number;
   }>(
-    `SELECT t.id, t.title, t.start_date::text, t.due_date::text, t.status, p.color_key, t.origin, t.assignee_id
+    `SELECT t.id, t.title, t.start_date::text, t.due_date::text, t.status, p.color_key, t.origin, t.assignee_id, t.progress
      FROM task t LEFT JOIN project p ON p.id = t.project_id
      WHERE ${OPEN_TASK}
      ORDER BY t.due_date ASC NULLS LAST, t.priority = 'high' DESC, t.id`
@@ -370,6 +372,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
         assigneeId: t.assignee_id,
         late: !!t.due_date && t.due_date < today,
         dday: t.due_date ? dday(t.due_date, today) : null,
+        progress: t.progress ?? 0,
       })),
   }));
 
@@ -398,16 +401,19 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   const monthGoals = await getCurrentMonthGoals(today);
 
   // ── 프로젝트 진행 (구 관제뷰 "프로젝트별 진행률" 흡수) — 활성 업무 완료율 ──
+  // 프로젝트 진척도 = 소속(비proposed) task 진행률 평균 (수동 progress 반영). done/total은 라벨용.
   const projectProgress = await query<{
     id: number;
     name: string;
     color_key: string | null;
     total: string;
     done: string;
+    avg_progress: string | null;
   }>(
     `SELECT p.id, p.name, p.color_key,
             count(t.id) FILTER (WHERE t.status <> 'proposed') AS total,
-            count(t.id) FILTER (WHERE t.status = 'done') AS done
+            count(t.id) FILTER (WHERE t.status = 'done') AS done,
+            avg(t.progress) FILTER (WHERE t.status <> 'proposed') AS avg_progress
      FROM project p
      LEFT JOIN task t ON t.project_id = p.id AND t.is_active = true
      WHERE p.is_active = true
@@ -640,7 +646,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       total: Number(p.total),
       done: Number(p.done),
       percent:
-        Number(p.total) > 0 ? Math.round((Number(p.done) / Number(p.total)) * 100) : null,
+        Number(p.total) > 0 && p.avg_progress !== null ? Math.round(Number(p.avg_progress)) : null,
     })),
     weeklyDone,
     assigneeLoad,

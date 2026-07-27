@@ -14,6 +14,7 @@ export interface TaskTableRow {
   priority?: string; // full 전용
   goalNames?: string[]; // full 전용
   areaName?: string; // full 전용
+  progress?: number; // full 전용 — 진행률 0~100
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -58,7 +59,7 @@ export default function TaskTable({
   accent?: string;
 }) {
   const full = variant === "full";
-  const colCount = full ? 8 : 5;
+  const colCount = full ? 9 : 5;
   return (
     <section className={`card${accent ? ` acc-${accent}` : ""}`} aria-label={title}>
       <div className="ch">
@@ -70,13 +71,14 @@ export default function TaskTable({
           {full ? (
             <>
               <col />
-              <col style={{ width: "150px" }} />
-              <col style={{ width: "100px" }} />
-              <col style={{ width: "130px" }} />
-              <col style={{ width: "80px" }} />
-              <col style={{ width: "74px" }} />
-              <col style={{ width: "100px" }} />
-              <col style={{ width: "76px" }} />
+              <col style={{ width: "140px" }} />
+              <col style={{ width: "92px" }} />
+              <col style={{ width: "120px" }} />
+              <col style={{ width: "72px" }} />
+              <col style={{ width: "68px" }} />
+              <col style={{ width: "118px" }} />
+              <col style={{ width: "92px" }} />
+              <col style={{ width: "70px" }} />
             </>
           ) : (
             <>
@@ -97,6 +99,7 @@ export default function TaskTable({
             <th>프로젝트</th>
             <th>담당</th>
             {full && <th>우선순위</th>}
+            {full && <th>진행률</th>}
             <th>상태</th>
             <th>기한</th>
           </tr>
@@ -154,6 +157,14 @@ export default function TaskTable({
                     <span className={`prio prio-${t.priority ?? "mid"}`}>
                       {PRIORITY_LABEL[t.priority ?? "mid"] ?? "보통"}
                     </span>
+                  </td>
+                )}
+                {full && (
+                  <td className="col-prog">
+                    <div className="tt-prog" title={`진행률 ${t.progress ?? 0}%`}>
+                      <i className={t.status === "done" ? "pf-green" : "pf-blue"} style={{ width: `${t.progress ?? 0}%` }} />
+                    </div>
+                    <span className="tt-prog-n">{t.progress ?? 0}%</span>
                   </td>
                 )}
                 <td className="col-st">
