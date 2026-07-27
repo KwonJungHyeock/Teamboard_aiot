@@ -40,6 +40,7 @@ export default function TaskTable({
   selectedId,
   variant = "compact",
   onStatusChange,
+  accent,
 }: {
   rows: TaskTableRow[];
   title?: string;
@@ -53,11 +54,13 @@ export default function TaskTable({
   variant?: "compact" | "full";
   /** full 전용 — 상태 배지를 드롭다운으로 렌더, 변경 시 호출 */
   onStatusChange?: (id: number, status: string) => void;
+  /** 카드 헤더 의미색 accent (홈 영역분리). 예: "coral" */
+  accent?: string;
 }) {
   const full = variant === "full";
   const colCount = full ? 8 : 5;
   return (
-    <section className="card" aria-label={title}>
+    <section className={`card${accent ? ` acc-${accent}` : ""}`} aria-label={title}>
       <div className="ch">
         <h2>{title}</h2>
         {sub && <span className="sub">{sub}</span>}

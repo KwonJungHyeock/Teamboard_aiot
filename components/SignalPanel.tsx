@@ -33,12 +33,15 @@ export default function SignalPanel({
   stalledCount,
   onSelect,
   selectedId,
+  accent,
 }: {
   items: SignalPanelItem[];
   stalledCount: number;
   /** 지정 시 kind='signal' 행이 클릭 가능해진다 (스레드 열기) */
   onSelect?: (id: number) => void;
   selectedId?: number | null;
+  /** 카드 헤더 의미색 accent (홈 영역분리). 예: "amber" */
+  accent?: string;
 }) {
   const [tab, setTab] = useState<"all" | SignalType>("all");
 
@@ -53,7 +56,7 @@ export default function SignalPanel({
   const visible = tab === "all" ? items : items.filter((s) => s.type === tab);
 
   return (
-    <section className="card" aria-label="논의·결정">
+    <section className={`card${accent ? ` acc-${accent}` : ""}`} aria-label="논의·결정">
       <div className="ch">
         <h2>논의·결정</h2>
         <span className="sub">정체 {stalledCount}</span>

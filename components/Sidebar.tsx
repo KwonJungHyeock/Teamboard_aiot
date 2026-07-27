@@ -182,19 +182,16 @@ export default function Sidebar({
         <kbd>⌘K</kbd>
       </button>
 
-      <details className="grp" open>
-        <summary>
-          <Chevron />
-          <span className="gname">오늘</span>
-        </summary>
+      {/* '오늘' 그룹 평탄화 — 헤더·토글 없이 최상단 평탄 나열 (자주 쓰는 진입점) */}
+      <nav className="navtop" aria-label="오늘">
         <NavLink href="/" icon={IC.home} label="홈" current={cur("/")} />
         <NavLink href="/tasks" icon={IC.tasks} label="내 업무" current={cur("/tasks")} />
         <NavLink href="/calendar" icon={IC.calendar} label="캘린더" current={cur("/calendar")} />
         {/* 승인 대기 — 사람/에이전트 공간의 유일한 통로. 카운트 배지 */}
         <NavLink href="/inbox" icon={IC.inbox} label="승인 대기" current={cur("/inbox")} count={inboxCount} />
-        {/* My Agent — 전 구성원 각자의 에이전트. 관리(lead)가 아닌 오늘 하단에 노출 */}
+        {/* My Agent — 전 구성원 각자의 에이전트 */}
         <NavLink href="/assistant" icon={IC.bot} label="My Agent" current={cur("/assistant")} />
-      </details>
+      </nav>
 
       <details className="grp" open>
         <summary>

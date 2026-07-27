@@ -132,6 +132,7 @@ export default function HomeView({
               emptyText="지연·마감 임박 업무가 없어요"
               emptyHint="마감이 임박하거나 지난 업무가 없습니다. 좋은 상태예요."
               onRowClick={(id) => openTaskPanel(id)}
+              accent="coral"
             />
             <SummaryProgress
               title="프로젝트 진행"
@@ -149,6 +150,7 @@ export default function HomeView({
               emptyHint="영역 공간에서 업무를 추가하면 소속 프로젝트 진행률이 여기에 모입니다."
               emptyAction={<Link className="btn small primary" href="/projects">프로젝트 보기</Link>}
               ringColor="edu"
+              accent="green"
             />
             <SummaryProgress
               title="이번 달 목표"
@@ -164,11 +166,12 @@ export default function HomeView({
               emptyHint="연간·분기 목표 아래 이번 달 목표를 세우면 진척이 자동 집계됩니다."
               emptyAction={<Link className="btn small primary" href="/goals">목표 세우기</Link>}
               ringColor="green"
+              accent="green"
             />
           </div>
           {/* 우측 협업 축 — 논의·결정 위, 허들룸(접힘) 아래 */}
           <div className="stack">
-            <SignalPanel items={summary.signals} stalledCount={summary.stalledCount} />
+            <SignalPanel items={summary.signals} stalledCount={summary.stalledCount} accent="amber" />
             <HuddleFeed huddles={summary.huddles} />
           </div>
         </div>
@@ -196,6 +199,7 @@ function SummaryProgress({
   emptyHint,
   emptyAction,
   ringColor,
+  accent,
 }: {
   title: string;
   sub: string;
@@ -206,6 +210,7 @@ function SummaryProgress({
   emptyHint?: string;
   emptyAction?: React.ReactNode;
   ringColor?: string;
+  accent?: string;
 }) {
   const [open, setOpen] = useState(false);
   // 집계 진행률 — done/total(가중) 우선, 없으면 percent 단순 평균.
@@ -219,7 +224,7 @@ function SummaryProgress({
   const topColor = rows[0]?.colorKey ?? "edu";
 
   return (
-    <section className="card sumcard" aria-label={title}>
+    <section className={`card sumcard${accent ? ` acc-${accent}` : ""}`} aria-label={title}>
       <div className="ch">
         <h2>{title}</h2>
         <span className="sub">{sub}</span>
@@ -287,7 +292,7 @@ function HuddleFeed({
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? huddles : huddles.slice(0, 1);
   return (
-    <section className="card huddle-lo" aria-label="허들룸">
+    <section className="card huddle-lo acc-ink" aria-label="허들룸">
       <div className="ch">
         <h2>허들룸</h2>
         <span className="sub">공유 {huddles.length}</span>

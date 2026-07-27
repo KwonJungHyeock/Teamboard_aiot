@@ -37,6 +37,7 @@ export interface Metric {
   spark: number[]; // 7포인트, 과거→현재
   alert?: boolean;
   placeholder?: boolean; // 자리만(다음 단계 활성화) — 값·추세 저강조 표기
+  href?: string; // 클릭 시 이동 (필터된 목록/인박스). placeholder는 없음.
 }
 
 export interface LaneEvent {
@@ -270,6 +271,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       deltaText: `이번 주 신규 ${createdThisWeek}`,
       deltaTone: "up",
       spark: openSpark,
+      href: "/tasks?status=doing",
     },
     {
       key: "done",
@@ -282,6 +284,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
           : "이번 주 대상 없음",
       deltaTone: "up",
       spark: doneSpark,
+      href: "/tasks?status=done",
     },
     {
       key: "myTurn",
@@ -291,6 +294,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       deltaTone: myTurn > 0 ? "up" : "fl",
       spark: [], // 현재 스냅샷 값 하나 — 추세 없음. 직선 방지 위해 스파크라인 미표시.
       alert: myTurn > 0,
+      href: "/inbox",
     },
     {
       key: "stalled",
@@ -300,6 +304,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       deltaTone: "fl",
       spark: overdueSpark,
       alert: overdueTasks + stalledSignals.length > 0,
+      href: "/tasks?due=overdue",
     },
     {
       key: "blocked",
@@ -313,8 +318,12 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   ];
 
   // ── 레인: 활성 human + 각자 열린 업무 (기한 임박 앞쪽 정렬, proposed 제외) ──
+  // 시스템/조직 관리 계정(robodynesystems)은 담당 레인에서 제외 — 실제 팀원만.
   const humans = await query<{ id: number; display_name: string }>(
-    `SELECT id, display_name FROM actor WHERE type = 'human' AND is_active = true ORDER BY id`
+    `SELECT id, display_name FROM actor
+     WHERE type = 'human' AND is_active = true
+       AND id NOT IN (SELECT actor_id FROM account WHERE email = 'robodynesystems')
+     ORDER BY id`
   );
   const laneTasks = await query<{
     id: number;

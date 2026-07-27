@@ -1,5 +1,6 @@
 // 지표 카드 5종 + 스파크라인 (Mission Deck 재편) — 값·시계열 모두 서버 집계 결과만 렌더.
-// 완료·달성·리스크는 코랄 액센트. "막힌 업무"는 placeholder(자리만) — 다음 단계에서 활성화.
+// 완료·달성=green·리스크=coral. "막힌 업무"는 placeholder(자리만). href 있으면 필터 목록으로 링크.
+import Link from "next/link";
 import type { Metric } from "@/lib/home";
 
 const SPARK_COLOR: Record<string, string> = {
@@ -26,10 +27,12 @@ function sparkPoints(series: number[]): string {
 export default function MetricCards({ metrics }: { metrics: Metric[] }) {
   return (
     <div className="metrics">
-      {metrics.map((m) => (
-        <div key={m.key} className={`mc mc-${m.key} ${m.alert ? "alert" : ""} ${m.placeholder ? "ph" : ""}`}>
-          <div className="l">{m.label}</div>
-          <div className="r">
+      {metrics.map((m) => {
+        const cls = `mc mc-${m.key} ${m.alert ? "alert" : ""} ${m.placeholder ? "ph" : ""} ${m.href ? "linked" : ""}`;
+        const inner = (
+          <>
+            <div className="l">{m.label}</div>
+            <div className="r">
             <div>
               <div className="v">
                 {m.value}
@@ -53,8 +56,18 @@ export default function MetricCards({ metrics }: { metrics: Metric[] }) {
               </svg>
             ) : null}
           </div>
-        </div>
-      ))}
+          </>
+        );
+        return m.href ? (
+          <Link key={m.key} href={m.href} className={cls} aria-label={`${m.label} 목록으로 이동`}>
+            {inner}
+          </Link>
+        ) : (
+          <div key={m.key} className={cls}>
+            {inner}
+          </div>
+        );
+      })}
     </div>
   );
 }

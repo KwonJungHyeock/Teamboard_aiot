@@ -272,6 +272,20 @@ export default function TasksView({ user }: { user: SessionUser }) {
     }
   }, []);
 
+  // 홈 KPI 카드 링크 진입 — ?status·?due 반영 + 팀 전체 범위(담당·영역 전체)로.
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const st = sp.get("status");
+    const du = sp.get("due");
+    if (st || du) {
+      if (st) setFStatus(st);
+      if (du) setFDue(du);
+      setFAssignee("");
+      setAreaDefaulted(true);
+    }
+    // 마운트 1회
+  }, []);
+
   // 진입 시 영역 기본값: URL ?area 우선, 없으면 본인 기본 영역(actor_area 첫 항목).
   // "내 업무" 진입 = 담당 본인 + 영역 본인 (한 번만 적용, 이후엔 사용자 선택 존중).
   useEffect(() => {

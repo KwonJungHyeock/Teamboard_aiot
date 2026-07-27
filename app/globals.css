@@ -656,6 +656,8 @@ body {
 .kbar kbd { margin-left: auto; font-family: var(--f-d); font-size: 9.5px; border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; }
 
 /* 그룹 사이 1px 구분선 (여백만으로 구분하지 않음) */
+/* '오늘' 평탄 그룹 — 헤더·토글 없이 최상단 나열 */
+.navtop { display: flex; flex-direction: column; margin-bottom: 2px; }
 .grp { margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--line); }
 .grp:first-of-type { border-top: 0; }
 .grp > summary { list-style: none; display: flex; align-items: center; gap: 6px; cursor: pointer; font-family: var(--f-d); font-size: var(--fs-badge); letter-spacing: .06em; color: var(--mid); padding: 5px 7px; border-radius: 6px; }
@@ -748,7 +750,7 @@ body.rail .acct { justify-content: center; padding: 7px; }
 .tdp-title:hover { border-color: var(--line); }
 .tdp-title:focus { outline: none; border-color: var(--edu); background: var(--bg-surface); }
 .tdp-tag { display: inline-block; font-family: var(--f-d); font-size: var(--fs-badge); padding: 1px 8px; border-radius: 5px; margin-bottom: 8px; }
-.tdp-tag.agent { color: #C9B6FC; background: rgba(139,92,246,.14); border: 1px solid rgba(139,92,246,.3); }
+.tdp-tag.agent { color: var(--play-text); background: rgba(139,92,246,.14); border: 1px solid rgba(139,92,246,.3); }
 .tdp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 8px 0 4px; }
 .tdp-grid label { display: flex; flex-direction: column; gap: 3px; font-family: var(--f-d); font-size: var(--fs-badge); color: var(--lo); }
 .tdp-grid select, .tdp-grid input { height: 34px; font-size: var(--fs-meta); background: var(--bg-surface); border: 1px solid var(--line); border-radius: 6px; color: var(--hi); padding: 0 8px; width: 100%; }
