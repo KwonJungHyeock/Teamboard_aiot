@@ -8,6 +8,9 @@ import type { ApiSignal } from "./SignalsView";
 import SignalThread from "./SignalThread";
 import EmptyState from "./EmptyState";
 import MeetingMode from "./MeetingMode";
+import ReviewSession from "./ReviewSession";
+
+interface ReviewRow { id: number; title: string; status: string; done: number; total: number }
 
 function NewMemoForm({ onDone }: { onDone: () => void }) {
   const [title, setTitle] = useState("");
@@ -76,6 +79,26 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [meetingId, setMeetingId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reviews, setReviews] = useState<ReviewRow[]>([]);
+  const [activeReview, setActiveReview] = useState<number | null>(null);
+
+  const loadReviews = useCallback(async () => {
+    const res = await fetch("/api/review").then((r) => r.json()).catch(() => ({ sessions: [] }));
+    setReviews(res.sessions ?? []);
+  }, []);
+
+  async function startReview() {
+    setBusy(true);
+    const res = await fetch("/api/review", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "플랫폼 리뷰 세션", preset: true }),
+    });
+    setBusy(false);
+    const data = await res.json();
+    if (!res.ok) { setError(data.error ?? "세션 개설 실패"); return; }
+    await loadReviews();
+    setActiveReview(data.id);
+  }
 
   const load = useCallback(async () => {
     try {
@@ -107,7 +130,8 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadReviews();
+  }, [load, loadReviews]);
 
   async function sendToHuddle(signal: ApiSignal) {
     setBusy(true);
@@ -143,6 +167,36 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
 
         {loading && <p className="gempty">불러오는 중...</p>}
         {error && <p className="gerr">{error}</p>}
+
+        {/* 리뷰 세션 — 섹션별 이전/이후 비교 → 확정 → 논의·결정 자동 생성 */}
+        <section className="card acc-amber" aria-label="리뷰 세션">
+          <div className="ch">
+            <h2>리뷰 세션</h2>
+            <span className="sub">플랫폼 섹션별 이전/이후 비교·확정</span>
+          </div>
+          {reviews.length === 0 && (
+            <EmptyState
+              compact
+              title="진행 중인 리뷰 세션이 없어요"
+              hint="플랫폼 화면 프리셋 안건으로 리뷰 세션을 시작해 섹션별로 확정·수정·보류를 정합니다."
+            />
+          )}
+          {reviews.map((r) => (
+            <div key={r.id} className="tinbox-row">
+              <div className="tinbox-b">
+                <b>{r.title}</b>
+                <em>확정 {r.done}/{r.total} · {r.status === "closed" ? "종료" : "진행 중"}</em>
+              </div>
+              <span className="gsp" />
+              <button className="lk" onClick={() => setActiveReview(r.id)}>열기</button>
+            </div>
+          ))}
+          {user.role === "lead" && (
+            <div className="tnew">
+              <button className="lk" disabled={busy} onClick={startReview}>＋ 새 리뷰 세션 시작</button>
+            </div>
+          )}
+        </section>
 
         {/* 내 비공개 메모 — 허들룸으로 보내기 */}
         {!loading && myMemos.length > 0 && (
@@ -233,6 +287,14 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
           userId={user.id}
           isLead={user.role === "lead"}
           onClose={() => { setMeetingId(null); load(); }}
+        />
+      )}
+
+      {activeReview && (
+        <ReviewSession
+          sessionId={activeReview}
+          user={user}
+          onClose={() => { setActiveReview(null); loadReviews(); }}
         />
       )}
     </div>
