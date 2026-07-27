@@ -78,6 +78,7 @@ export default function InboxView({ user }: { user: SessionUser }) {
   }
 
   const total = drafts.length + proposed.length;
+  const excerpt = (s: string) => (s || "").replace(/[#*>`]/g, "").replace(/\s+/g, " ").trim().slice(0, 140);
 
   return (
     <div className="hv">
@@ -92,17 +93,26 @@ export default function InboxView({ user }: { user: SessionUser }) {
           <div>
             <div className="eb">INBOX</div>
             <h1>승인 대기</h1>
-            <p>에이전트 산출물은 여기서 승인해야 사람 공간(홈·업무·논의·결정)에 반영됩니다.</p>
+            <p>에이전트는 제안만 합니다. 사람이 여기서 확정해야 홈·업무·논의·결정에 반영됩니다.</p>
           </div>
         </div>
 
         {error && <p className="gerr">{error}</p>}
         {notice && <p className="rp-notice">{notice}</p>}
 
+        {/* 건수 요약 — "지금 할 일 → 승인 대기" 진입점 */}
+        {total > 0 && (
+          <div className="tile inbox-sum" aria-label="대기 요약">
+            <div className="is"><span className="v num">{total}</span><span className="l">대기 항목</span></div>
+            <div className="is"><span className="v num">{drafts.length}</span><span className="l">초안</span></div>
+            <div className="is"><span className="v num">{proposed.length}</span><span className="l">제안 업무</span></div>
+          </div>
+        )}
+
         {total === 0 && !error && (
-          <section className="card" aria-label="승인 대기 없음">
+          <section className="tile inbox-empty" aria-label="승인 대기 없음">
             <EmptyState
-              title="대기 중인 승인 항목이 없어요"
+              title="대기 중 제안이 없어요"
               hint="에이전트가 만든 초안·제안 업무가 여기로 모입니다. 승인해야 홈·업무·논의·결정에 반영됩니다."
             />
           </section>
@@ -110,60 +120,47 @@ export default function InboxView({ user }: { user: SessionUser }) {
 
         {/* 승인 대기 초안 */}
         {drafts.length > 0 && (
-          <section className="card section-gap" aria-label="승인 대기 초안">
-            <div className="ch">
-              <h2>승인 대기 초안</h2>
-              <span className="sub">{drafts.length}건</span>
+          <section className="inbox-sec" aria-label="승인 대기 초안">
+            <div className="inbox-sh"><h2>승인 대기 초안</h2><span className="sub num">{drafts.length}건</span></div>
+            <div className="pcards">
+              {drafts.map((d) => (
+                <article className="tile pcard" key={d.id}>
+                  <div className="pcard-top">
+                    <span className="st prop">{d.task_type}</span>
+                    <span className="pcard-src">{[d.assistant_name, d.user_name && `${d.user_name} 담당`].filter(Boolean).join(" · ")}</span>
+                  </div>
+                  <b className="pcard-title">{d.title || "(제목 없음)"}</b>
+                  {excerpt(d.body) && <p className="pcard-body">{excerpt(d.body)}</p>}
+                  <div className="pcard-acts">
+                    <button className="btn-brand" onClick={() => setApproving({ id: d.id, title: d.title, body: d.body, task_type: d.task_type, user_name: d.user_name })}>승인</button>
+                    <button className="btn-outline" onClick={() => rejectDraft(d.id)}>반려</button>
+                  </div>
+                </article>
+              ))}
             </div>
-            {drafts.map((d) => (
-              <div className="tinbox-row" key={d.id}>
-                <span className="st prop">{d.task_type}</span>
-                <div className="tinbox-b">
-                  <b>{d.title || "(제목 없음)"}</b>
-                  <em>
-                    {[d.assistant_name, d.user_name && `${d.user_name} 담당`].filter(Boolean).join(" · ")}
-                  </em>
-                </div>
-                <span className="gsp" />
-                <button
-                  className="btn-brand"
-                  onClick={() => setApproving({ id: d.id, title: d.title, body: d.body, task_type: d.task_type, user_name: d.user_name })}
-                >
-                  승인
-                </button>
-                <button className="btn-outline" onClick={() => rejectDraft(d.id)}>
-                  반려
-                </button>
-              </div>
-            ))}
           </section>
         )}
 
         {/* 에이전트 제안 업무 */}
         {proposed.length > 0 && (
-          <section className="card section-gap" aria-label="에이전트 제안 업무">
-            <div className="ch">
-              <h2>에이전트 제안 업무</h2>
-              <span className="sub">{proposed.length}건 — 승인 시 업무로 전환</span>
+          <section className="inbox-sec" aria-label="에이전트 제안 업무">
+            <div className="inbox-sh"><h2>에이전트 제안 업무</h2><span className="sub num">{proposed.length}건 · 승인 시 업무로 전환</span></div>
+            <div className="pcards">
+              {proposed.map((t) => (
+                <article className="tile pcard" key={t.id}>
+                  <div className="pcard-top">
+                    <span className="st prop">제안</span>
+                    <span className="pcard-src">{[t.createdByName, t.projectName, t.assigneeName && `${t.assigneeName} 담당`].filter(Boolean).join(" · ")}</span>
+                  </div>
+                  <b className="pcard-title">{t.title}</b>
+                  {excerpt(t.description) && <p className="pcard-body">{excerpt(t.description)}</p>}
+                  <div className="pcard-acts">
+                    <button className="btn-brand" onClick={() => judgeTask(t.id, true)}>승인</button>
+                    <button className="btn-outline" onClick={() => judgeTask(t.id, false)}>기각</button>
+                  </div>
+                </article>
+              ))}
             </div>
-            {proposed.map((t) => (
-              <div className="tinbox-row" key={t.id}>
-                <span className="st prop">제안</span>
-                <div className="tinbox-b">
-                  <b>{t.title}</b>
-                  <em>
-                    {[t.createdByName, t.projectName, t.assigneeName && `${t.assigneeName} 담당`].filter(Boolean).join(" · ")}
-                  </em>
-                </div>
-                <span className="gsp" />
-                <button className="btn-brand" onClick={() => judgeTask(t.id, true)}>
-                  승인
-                </button>
-                <button className="btn-outline" onClick={() => judgeTask(t.id, false)}>
-                  기각
-                </button>
-              </div>
-            ))}
           </section>
         )}
       </div>
