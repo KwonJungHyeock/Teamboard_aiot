@@ -80,11 +80,12 @@ export default function TaskTable({
             </>
           ) : (
             <>
-              <col style={{ width: "44%" }} />
+              {/* 업무(제목)만 flex+truncate. 상태·기한은 배지가 안 잘리게 고정 폭(내용에 맞춤). */}
+              <col />
               <col style={{ width: "20%" }} />
-              <col style={{ width: "13%" }} />
-              <col style={{ width: "11%" }} />
-              <col style={{ width: "12%" }} />
+              <col style={{ width: "76px" }} />
+              <col style={{ width: "64px" }} />
+              <col style={{ width: "56px" }} />
             </>
           )}
         </colgroup>
@@ -155,7 +156,7 @@ export default function TaskTable({
                     </span>
                   </td>
                 )}
-                <td>
+                <td className="col-st">
                   {editable ? (
                     <select
                       className={`stsel st-${t.status}`}
@@ -180,7 +181,7 @@ export default function TaskTable({
                     <span className={`st ${status.cls}`}>{status.label}</span>
                   )}
                 </td>
-                <td className={`due ${dueCls}`}>{t.dday ?? "—"}</td>
+                <td className={`due col-due ${dueCls}`}>{t.dday ?? "—"}</td>
               </tr>
             );
           })}

@@ -1,40 +1,34 @@
 "use client";
 
-// 팀 타임라인 — 2층 레인 (Phase 3, 시그니처 컴포넌트)
-// 상단 행: event 시간축 블록 (겹침 최대 2줄, 초과 +N)
-// 하단 행: task 종일 칩 (5개까지, 초과 +N, 기한 임박 앞쪽 — 서버 정렬)
-// 레인: actor(type=human, is_active) 동적. 일·주·월: 시간축↔날짜축 교체, 레인 구조 유지.
-import { useEffect, useMemo, useState } from "react";
+// 팀 타임라인 — 주간 날짜 일정표(캘린더 그리드).
+// 좌측 고정 lane 열(팀 공통 + 팀원) + 상단 날짜 축. 업무는 마감일 칸에 얇은 상태색 바로 표시.
+// 일=오늘 1열 / 주=요일 7열(기본) / 월=주별 요약 열. 오늘 열 강조. 팀 공통 등록 lead 전용.
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Lane, LaneEvent } from "@/lib/home";
 import { openTaskPanel } from "@/lib/task-panel";
 
 export type TimelineView = "day" | "week" | "month";
 
-const DAY_START_H = 9; // 프로토타입 시간축 09~19시
-const DAY_HOURS = 10;
-const TZ = "+09:00";
+const DOW = ["월", "화", "수", "목", "금", "토", "일"];
+const MAX_BAR = 3; // 한 칸 최대 표시 바 (초과 시 +n)
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(`${dateStr}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
-
 function weekStartOf(dateStr: string): string {
-  const dow = (new Date(`${dateStr}T00:00:00Z`).getUTCDay() + 6) % 7;
+  const dow = (new Date(`${dateStr}T00:00:00Z`).getUTCDay() + 6) % 7; // 월요일 기준
   return addDays(dateStr, -dow);
 }
-
 function monthStartOf(dateStr: string): string {
   return dateStr.slice(0, 8) + "01";
 }
-
 function daysInMonth(dateStr: string): number {
   const [y, m] = dateStr.split("-").map(Number);
   return new Date(Date.UTC(y, m, 0)).getUTCDate();
 }
-
 export function rangeFor(view: TimelineView, anchor: string): { from: string; to: string } {
   if (view === "day") return { from: anchor, to: addDays(anchor, 1) };
   if (view === "week") {
@@ -45,16 +39,30 @@ export function rangeFor(view: TimelineView, anchor: string): { from: string; to
   return { from: start, to: addDays(start, daysInMonth(anchor)) };
 }
 
-/** 기간 내 위치를 0~1 분율로 (KST 기준) */
-function fracOf(iso: string, view: TimelineView, from: string): number {
-  const t = new Date(iso).getTime();
-  const base = new Date(`${from}T00:00:00${TZ}`).getTime();
+interface Col { key: string; top: string; bot: string; isToday: boolean; from: string; to: string }
+
+function columnsFor(view: TimelineView, anchor: string, today: string): Col[] {
   if (view === "day") {
-    const dayStart = base + DAY_START_H * 3600000;
-    return (t - dayStart) / (DAY_HOURS * 3600000);
+    const dow = DOW[(new Date(`${anchor}T00:00:00Z`).getUTCDay() + 6) % 7];
+    return [{ key: anchor, top: dow, bot: anchor.slice(5).replace("-", "."), isToday: anchor === today, from: anchor, to: anchor }];
   }
-  const days = view === "week" ? 7 : daysInMonth(from);
-  return (t - base) / (days * 86400000);
+  if (view === "month") {
+    const mStart = monthStartOf(anchor);
+    const monthEnd = addDays(mStart, daysInMonth(anchor) - 1);
+    const cols: Col[] = [];
+    let idx = 1;
+    for (let d = weekStartOf(mStart); d <= monthEnd; d = addDays(d, 7)) {
+      const wEnd = addDays(d, 6);
+      cols.push({ key: d, top: `${idx}주`, bot: `${d.slice(8)}–${wEnd.slice(8)}`, isToday: today >= d && today <= wEnd, from: d, to: wEnd });
+      idx++;
+    }
+    return cols;
+  }
+  const from = weekStartOf(anchor);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(from, i);
+    return { key: d, top: DOW[i], bot: d.slice(8), isToday: d === today, from: d, to: d };
+  });
 }
 
 const AVATAR_GRADIENTS = [
@@ -64,186 +72,8 @@ const AVATAR_GRADIENTS = [
   "linear-gradient(140deg,var(--team),var(--edu))",
 ];
 
-interface Placed {
-  event: LaneEvent;
-  left: number;
-  width: number;
-  row: number;
-}
-
-function placeEvents(events: LaneEvent[], view: TimelineView, from: string) {
-  const items = events
-    .map((event) => {
-      const l = Math.max(0, fracOf(event.startAt, view, from));
-      const r = Math.min(1, fracOf(event.endAt, view, from));
-      return { event, l, r };
-    })
-    .filter((x) => x.r > 0 && x.l < 1 && x.r > x.l)
-    .sort((a, b) => a.l - b.l);
-
-  const rowEnds: number[] = [];
-  const placed: Placed[] = [];
-  let overflow = 0;
-  for (const item of items) {
-    let row = rowEnds.findIndex((end) => end <= item.l + 0.001);
-    if (row < 0) {
-      if (rowEnds.length >= 2) {
-        overflow += 1; // 최대 2줄, 초과분은 +N
-        continue;
-      }
-      row = rowEnds.length;
-      rowEnds.push(0);
-    }
-    rowEnds[row] = item.r;
-    placed.push({
-      event: item.event,
-      left: item.l * 100,
-      width: Math.max((item.r - item.l) * 100, 1.5),
-      row,
-    });
-  }
-  return { placed, overflow, twoRows: placed.some((p) => p.row === 1) };
-}
-
-function EventTrack({
-  events,
-  view,
-  from,
-}: {
-  events: LaneEvent[];
-  view: TimelineView;
-  from: string;
-}) {
-  const { placed, overflow, twoRows } = placeEvents(events, view, from);
-  return (
-    <div className={`trk ${twoRows ? "two" : ""}`}>
-      {placed.map((p) => (
-        <div
-          key={p.event.id}
-          className={`blk ${p.event.isTeam ? "tm" : (p.event.colorKey ?? "tm")} ${p.row === 1 ? "r1" : ""}`}
-          style={{ left: `${p.left}%`, width: `${p.width}%` }}
-          title={p.event.title}
-        >
-          {p.event.title}
-        </div>
-      ))}
-      {overflow > 0 && <span className="ovf">+{overflow}</span>}
-    </div>
-  );
-}
-
-// ── 업무 기간 바 (주·월 뷰) — 이벤트 배치 로직을 그대로 재사용, 3줄까지 쌓고 초과 +N ──
-// 밝은 변형(--*-hi) — 어두운 카드 위에서 탁하지 않게 (파트 2.5)
-const BAR_COLOR: Record<string, string> = {
-  edu: "#6BA6FF",
-  play: "#A480FF",
-  train: "#45E3CE",
-  team: "#8C9AB5",
-};
-const barColor = (colorKey: string | null, late: boolean): string =>
-  late ? "#F87171" : BAR_COLOR[colorKey ?? "team"] ?? "#7C8AA5";
-
-interface PlacedTask {
-  task: import("@/lib/home").LaneTask;
-  left: number;
-  width: number;
-  row: number;
-  point: boolean; // start_date 없음 → 마감일 점 하나
-}
-
-function placeTasks(tasks: import("@/lib/home").LaneTask[], view: TimelineView, from: string) {
-  const items = tasks
-    .map((task) => {
-      const hasStart = !!task.startDate;
-      const s = task.startDate ?? task.dueDate;
-      const e = task.dueDate ?? task.startDate;
-      if (!s || !e) return null;
-      const l = Math.max(0, fracOf(`${s}T00:00:00${TZ}`, view, from));
-      const r = Math.min(1, fracOf(`${addDays(e, 1)}T00:00:00${TZ}`, view, from));
-      return { task, l, r, point: !hasStart };
-    })
-    .filter((x): x is { task: import("@/lib/home").LaneTask; l: number; r: number; point: boolean } =>
-      !!x && x.r > 0 && x.l < 1
-    )
-    .sort((a, b) => a.l - b.l);
-
-  const rowEnds: number[] = [];
-  const placed: PlacedTask[] = [];
-  let overflow = 0;
-  for (const it of items) {
-    let row = rowEnds.findIndex((end) => end <= it.l + 0.001);
-    if (row < 0) {
-      if (rowEnds.length >= 3) {
-        overflow += 1;
-        continue;
-      }
-      row = rowEnds.length;
-      rowEnds.push(0);
-    }
-    rowEnds[row] = it.point ? it.l + 0.01 : it.r;
-    placed.push({
-      task: it.task,
-      left: it.l * 100,
-      width: it.point ? 0 : Math.max((it.r - it.l) * 100, 1.5),
-      row,
-      point: it.point,
-    });
-  }
-  return { placed, overflow, rows: Math.max(rowEnds.length, 1) };
-}
-
-function TaskTrack({
-  tasks,
-  view,
-  from,
-}: {
-  tasks: import("@/lib/home").LaneTask[];
-  view: TimelineView;
-  from: string;
-}) {
-  const { placed, overflow, rows } = placeTasks(tasks, view, from);
-  const H = 20;
-  const G = 4;
-  return (
-    <div className="ttrk" style={{ height: rows * (H + G) }}>
-      {placed.map((p) =>
-        p.point ? (
-          <span
-            key={p.task.id}
-            className="tdotm"
-            style={{
-              left: `${p.left}%`,
-              top: p.row * (H + G) + H / 2 - 4,
-              background: barColor(p.task.colorKey, p.task.late),
-              cursor: "pointer",
-            }}
-            title={`${p.task.title}${p.task.dday ? ` · ${p.task.dday}` : ""}`}
-            onClick={() => openTaskPanel(p.task.id)}
-          />
-        ) : (
-          <div
-            key={p.task.id}
-            className="tbar"
-            style={{
-              left: `${p.left}%`,
-              width: `${p.width}%`,
-              top: p.row * (H + G),
-              height: H,
-              background: `linear-gradient(100deg, ${barColor(p.task.colorKey, p.task.late)}, ${barColor(p.task.colorKey, p.task.late)}88)`,
-              cursor: "pointer",
-            }}
-            title={`${p.task.title}${p.task.dday ? ` · ${p.task.dday}` : ""}`}
-            onClick={() => openTaskPanel(p.task.id)}
-          >
-            {p.task.origin === "agent" && <span className="mo" />}
-            {p.task.title}
-          </div>
-        )
-      )}
-      {overflow > 0 && <span className="ovf">+{overflow}</span>}
-    </div>
-  );
-}
+interface GridItem { id: string; taskId: number | null; title: string; status: string; late: boolean; day: string }
+interface GridLane { key: string; name: string; isCommon: boolean; actorId: number; grad?: string; assistantStatus: Lane["assistantStatus"]; items: GridItem[] }
 
 export default function TeamTimeline({
   lanes,
@@ -252,7 +82,6 @@ export default function TeamTimeline({
   view,
   anchor,
   isLead,
-  expanded = false,
   onEmptyCreate,
 }: {
   lanes: Lane[];
@@ -267,240 +96,125 @@ export default function TeamTimeline({
   const range = useMemo(() => rangeFor(view, anchor), [view, anchor]);
   const isInitialRange = view === "day" && anchor === today;
   const [fetched, setFetched] = useState<LaneEvent[] | null>(null);
-  const [nowFrac, setNowFrac] = useState<number | null>(null);
-  const [nowLabel, setNowLabel] = useState("");
-  // 일 뷰 레인별 칩 펼침 — 4개 초과 시 +n 축약, 클릭 시 전체 펼침
-  const [openLanes, setOpenLanes] = useState<Set<number>>(new Set());
-  const toggleLane = (actorId: number) =>
-    setOpenLanes((prev) => {
+  const [openCells, setOpenCells] = useState<Set<string>>(new Set());
+  const toggleCell = (k: string) =>
+    setOpenCells((prev) => {
       const next = new Set(prev);
-      if (next.has(actorId)) next.delete(actorId);
-      else next.add(actorId);
+      if (next.has(k)) next.delete(k); else next.add(k);
       return next;
     });
 
-  // 기간 변경 시 일정 재조회 (오늘 일 뷰는 서버 데이터 재사용)
+  // 팀 공통 일정 — 표시 범위(주/월)로 조회 (오늘 일 뷰는 서버 데이터 재사용)
   useEffect(() => {
-    if (isInitialRange) {
-      setFetched(null);
-      return;
-    }
+    if (isInitialRange) { setFetched(null); return; }
     let alive = true;
     fetch(`/api/events?from=${range.from}&to=${range.to}`)
       .then((r) => r.json())
       .then((data) => alive && setFetched(data.events ?? []))
       .catch(() => alive && setFetched([]));
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [range.from, range.to, isInitialRange]);
-
-  // 현재 시각 인디케이터 — 실시각 기준, 1분마다 갱신
-  useEffect(() => {
-    function update() {
-      const now = new Date();
-      const frac = fracOf(now.toISOString(), view, range.from);
-      setNowFrac(frac >= 0 && frac <= 1 ? frac : null);
-      setNowLabel(
-        new Intl.DateTimeFormat("ko-KR", {
-          timeZone: "Asia/Seoul",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        }).format(now)
-      );
-    }
-    update();
-    const timer = setInterval(update, 60_000);
-    return () => clearInterval(timer);
-  }, [view, range.from]);
 
   const events = fetched ?? initialEvents;
   const teamEvents = events.filter((e) => e.isTeam);
-  const personal = (actorId: number) =>
-    events.filter((e) => !e.isTeam && e.participantIds.includes(actorId));
+  const cols = useMemo(() => columnsFor(view, anchor, today), [view, anchor, today]);
 
-  // 축 라벨: 일=시각 / 주=요일 / 월=일자
-  const axis = useMemo(() => {
-    if (view === "day") {
-      return Array.from({ length: DAY_HOURS }, (_, i) => String(DAY_START_H + i).padStart(2, "0"));
-    }
-    if (view === "week") {
-      const names = ["월", "화", "수", "목", "금", "토", "일"];
-      return names.map((n, i) => `${n} ${addDays(range.from, i).slice(8)}`);
-    }
-    const n = daysInMonth(range.from);
-    return Array.from({ length: n }, (_, i) => (i % 3 === 0 ? String(i + 1) : ""));
-  }, [view, range.from]);
+  const gridLanes: GridLane[] = [
+    {
+      key: "common", name: "팀 공통", isCommon: true, actorId: 0, assistantStatus: "idle",
+      items: teamEvents.map((e) => ({ id: `e${e.id}`, taskId: null, title: e.title, status: "event", late: false, day: e.startAt.slice(0, 10) })),
+    },
+    ...lanes.map((l, i) => ({
+      key: `m${l.actorId}`, name: l.name, isCommon: false, actorId: l.actorId, grad: AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length], assistantStatus: l.assistantStatus,
+      items: l.tasks.filter((t) => t.dueDate).map((t) => ({ id: `t${t.id}`, taskId: t.id, title: t.title, status: t.status, late: t.late, day: t.dueDate as string })),
+    })),
+  ];
+
+  const taskCount = lanes.reduce((s, l) => s + l.tasks.length, 0);
 
   return (
     <section className="card cal acc-blue" aria-label="팀 타임라인">
       <div className="ch">
         <h2>팀 타임라인</h2>
-        <span className="sub">
-          {view === "day"
-            ? `공통 ${teamEvents.length} · 업무 ${lanes.reduce((s, l) => s + l.tasks.length, 0)}`
-            : `일정 ${events.length} · 업무 ${lanes.reduce((s, l) => s + l.tasks.length, 0)}`}
-        </span>
+        <span className="sub">공통 {teamEvents.length} · 업무 {taskCount}</span>
       </div>
 
-      {view === "day" ? (
-        // ── 일 뷰: 마감 임박 순 트랙 (업무에 시각 데이터 없음 → 시간축 대신 D-day 정렬) ──
-        <div className="tl">
-          {/* 팀 공통 일정 밴드 — 전체 폭, 최상단 */}
-          <div className="tl-common">
-            <span className="tl-common-l">팀 공통 일정</span>
-            <div className="tl-common-b">
-              {teamEvents.length === 0 ? (
-                <span className="tl-none">등록된 공통 일정이 없습니다</span>
-              ) : (
-                teamEvents.map((e) => (
-                  <span key={e.id} className="tl-ev" title={e.title}>
-                    {e.title}
-                  </span>
-                ))
-              )}
-              {/* 공통 일정 등록·수정은 lead 전용 (member 읽기전용 — 버튼 숨김) */}
-              {isLead && onEmptyCreate && (
-                <button
-                  className="tl-add"
-                  onClick={() => onEmptyCreate({ actorId: 0, date: anchor })}
-                  title="공통 일정 추가"
-                  aria-label="공통 일정 추가"
-                >
-                  ＋
-                </button>
-              )}
+      <div className="tlg-wrap">
+        <div className="tlg" style={{ gridTemplateColumns: `104px repeat(${cols.length}, minmax(0, 1fr))` }}>
+          {/* 헤더 행 — 좌상단 빈칸 + 날짜 축 */}
+          <div className="tlg-corner" />
+          {cols.map((c) => (
+            <div className={`tlg-dh${c.isToday ? " today" : ""}`} key={c.key}>
+              <span className="tlg-dow">{c.top}</span>
+              <span className="tlg-date">{c.bot}</span>
             </div>
-          </div>
+          ))}
 
-          {/* 담당자 레인 — 마감 임박 순(왼→오), 칩마다 D-day 배지 + 상태색 테두리 */}
-          {lanes.map((lane, index) => {
-            if (lane.tasks.length === 0) return null;
-            const laneOpen = expanded || openLanes.has(lane.actorId);
-            const CHIP_MAX = 6;
-            const shown = laneOpen ? lane.tasks : lane.tasks.slice(0, CHIP_MAX);
-            const hidden = lane.tasks.length - shown.length;
-            return (
-              <div className="tl-lane" key={lane.actorId}>
-                <div className="tl-who">
-                  <span
-                    className="av"
-                    style={{ background: AVATAR_GRADIENTS[index % AVATAR_GRADIENTS.length] }}
-                  >
-                    {lane.name.slice(0, 1)}
-                  </span>
-                  <span className="tl-name">{lane.name}</span>
-                  {lane.assistantStatus !== "idle" && (
-                    <Link
-                      href="/assistant"
-                      className={`agdot ${lane.assistantStatus}`}
-                      aria-label={lane.assistantStatus === "working" ? "에이전트 작동중" : "에이전트 보고 대기"}
-                      title={lane.assistantStatus === "working" ? "에이전트 작동중" : "에이전트 보고 대기"}
-                    />
-                  )}
-                </div>
-                <div className="tl-track">
-                  {shown.map((t) => (
-                    <button
-                      key={t.id}
-                      className={`tl-chip st-${t.status}${t.late ? " late" : ""}${t.origin === "agent" ? " ag" : ""}`}
-                      onClick={() => openTaskPanel(t.id)}
-                      title={t.dday ? `${t.title} · ${t.dday}` : t.title}
-                    >
-                      {t.origin === "agent" && <span className="mo" />}
-                      <span className="tl-chip-t">{t.title}</span>
-                      {t.dday && <span className="tl-dday">{t.dday}</span>}
-                    </button>
-                  ))}
-                  {hidden > 0 && (
-                    <button className="tl-chip more" onClick={() => toggleLane(lane.actorId)} title={`업무 ${hidden}개 더 보기`}>
-                      +{hidden}
-                    </button>
-                  )}
-                  {laneOpen && !expanded && lane.tasks.length > CHIP_MAX && (
-                    <button className="tl-chip more" onClick={() => toggleLane(lane.actorId)} title="접기">
-                      접기
-                    </button>
-                  )}
-                </div>
+          {/* lane 행 — 항상 4행(팀 공통 + 팀원) 노출 */}
+          {gridLanes.map((lane) => (
+            <Fragment key={lane.key}>
+              <div className="tlg-lane-l">
+                {lane.isCommon ? (
+                  <span className="tlg-cico">공통</span>
+                ) : (
+                  <span className="av" style={{ background: lane.grad }}>{lane.name.slice(0, 1)}</span>
+                )}
+                <span className="tlg-lane-n">{lane.name}</span>
+                {!lane.isCommon && lane.assistantStatus !== "idle" && (
+                  <Link href="/assistant" className={`agdot ${lane.assistantStatus}`} title={lane.assistantStatus === "working" ? "에이전트 작동중" : "에이전트 보고 대기"} aria-label={lane.assistantStatus === "working" ? "에이전트 작동중" : "에이전트 보고 대기"} />
+                )}
               </div>
-            );
-          })}
-          <div className="tl-legend">마감 임박 순 · 왼쪽일수록 급함 (오늘 기준 D-day)</div>
+              {cols.map((c) => {
+                const items = lane.items.filter((it) => it.day >= c.from && it.day <= c.to);
+                const ck = `${lane.key}|${c.key}`;
+                const open = openCells.has(ck);
+                const shown = open ? items : items.slice(0, MAX_BAR);
+                const hidden = items.length - shown.length;
+                return (
+                  <div className={`tlg-cell${c.isToday ? " today" : ""}`} key={c.key}>
+                    {shown.map((it) => (
+                      <button
+                        key={it.id}
+                        className={`tlg-bar st-${it.status}${it.late ? " late" : ""}`}
+                        onClick={it.taskId ? () => openTaskPanel(it.taskId as number) : undefined}
+                        disabled={!it.taskId}
+                        title={it.title}
+                      >
+                        {it.title}
+                      </button>
+                    ))}
+                    {hidden > 0 && (
+                      <button className="tlg-more" onClick={() => toggleCell(ck)}>+{hidden}</button>
+                    )}
+                    {open && items.length > MAX_BAR && (
+                      <button className="tlg-more" onClick={() => toggleCell(ck)}>접기</button>
+                    )}
+                    {/* 빈칸 추가 — 팀 공통은 lead 전용, 팀원 칸은 담당 지정 추가(캘린더). 홈은 onEmptyCreate 없음(읽기전용) */}
+                    {onEmptyCreate && (lane.isCommon ? isLead : true) && (
+                      <button
+                        className="tlg-add"
+                        onClick={() => onEmptyCreate({ actorId: lane.actorId, date: c.from })}
+                        title={lane.isCommon ? "공통 일정 추가" : `${lane.name} 업무 추가`}
+                        aria-label={lane.isCommon ? "공통 일정 추가" : `${lane.name} 업무 추가`}
+                      >
+                        ＋
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </Fragment>
+          ))}
         </div>
-      ) : (
-        // ── 주·월 뷰: 날짜축 + 기간 바 (시작일~마감일). 실제 날짜 기반이라 유지. ──
-        <div className="lg">
-          <div></div>
-          <div className="hrs" style={{ gridTemplateColumns: `repeat(${axis.length},1fr)` }}>
-            {axis.map((label, i) => (
-              <span key={i}>{label}</span>
-            ))}
-          </div>
-
-          {teamEvents.length > 0 && (
-            <div className="ln">
-              <div className="ln-n tm">
-                <span className="w">팀 공통</span>
-              </div>
-              <div className="ln-b">
-                <EventTrack events={teamEvents} view={view} from={range.from} />
-              </div>
-            </div>
-          )}
-
-          {lanes.map((lane, index) => {
-            const laneEvents = personal(lane.actorId);
-            if (lane.tasks.length === 0 && laneEvents.length === 0) return null;
-            return (
-              <div className="ln" key={lane.actorId}>
-                <div className="ln-n">
-                  <span
-                    className="av"
-                    style={{ background: AVATAR_GRADIENTS[index % AVATAR_GRADIENTS.length] }}
-                  >
-                    {lane.name.slice(0, 1)}
-                  </span>
-                  <span className="w">{lane.name}</span>
-                  {lane.assistantStatus !== "idle" && (
-                    <Link
-                      href="/assistant"
-                      className={`agdot ${lane.assistantStatus}`}
-                      aria-label={lane.assistantStatus === "working" ? "에이전트 작동중" : "에이전트 보고 대기"}
-                      title={lane.assistantStatus === "working" ? "에이전트 작동중" : "에이전트 보고 대기"}
-                    />
-                  )}
-                </div>
-                <div className="ln-b">
-                  <EventTrack events={laneEvents} view={view} from={range.from} />
-                  <TaskTrack tasks={lane.tasks} view={view} from={range.from} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {view !== "day" && nowFrac !== null && (
-        <div
-          className="nowl"
-          data-time={nowLabel}
-          style={{ left: `calc(80px + 11px + (100% - 91px) * ${nowFrac.toFixed(4)})` }}
-        />
-      )}
+      </div>
 
       <div className="cf">
         {isLead ? (
-          <Link className="lk" href="/members">
-            ＋ 팀원 추가
-          </Link>
+          <Link className="lk" href="/members">＋ 팀원 추가</Link>
         ) : (
           <span />
         )}
-        <button className="lk mu" disabled title="추후 제공">
-          레인 설정
-        </button>
+        <span className="tl-legend">마감일 기준 · 오늘 열 강조</span>
       </div>
     </section>
   );

@@ -771,34 +771,35 @@
 .hv a.mc.linked:hover { box-shadow: var(--shadow-pop); transform: translateY(-1px); }
 .hv a.mc.linked:focus-visible { outline: 2px solid var(--edu); outline-offset: 2px; }
 
-/* 5. 타임라인 — 마감 임박 순 트랙 (시간축 대체) */
-.hv .tl { display: flex; flex-direction: column; }
-.hv .tl-common { display: flex; align-items: center; gap: 12px; padding: 6px 0 12px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
-.hv .tl-common-l { flex: 0 0 100px; width: 100px; font-family: var(--font-mono); font-size: var(--fs-badge); color: var(--ink-soft); letter-spacing: .03em; }
-.hv .tl-common-b { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1; min-width: 0; }
-.hv .tl-ev { font-size: var(--fs-badge); padding: 4px 11px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--team) 14%, transparent); border: 1px solid color-mix(in srgb, var(--team) 34%, transparent); color: var(--ink-soft); white-space: nowrap; }
-.hv .tl-none { font-size: var(--fs-badge); color: var(--muted); }
-.hv .tl-add { width: 24px; height: 24px; border-radius: var(--r-s); border: 1px dashed var(--line-hi); background: transparent; color: var(--ink-soft); cursor: pointer; line-height: 1; }
-.hv .tl-add:hover { border-color: var(--muted); color: var(--ink); }
-
-.hv .tl-lane { display: grid; grid-template-columns: 100px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 50px; padding: 7px 0; border-top: 1px solid var(--line); }
-.hv .tl-lane:first-of-type { border-top: 0; }
-.hv .tl-who { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.hv .tl-who .av { width: 26px; height: 26px; border-radius: 50%; flex: 0 0 26px; display: grid; place-items: center; font-size: var(--fs-badge); font-weight: 600; color: #fff; }
-.hv .tl-name { font-size: var(--fs-row); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hv .tl-track { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
-.hv .tl-chip { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; max-width: 190px; padding: 6px 8px 6px 10px; border: 1px solid var(--line-hi); border-left: 3px solid var(--line-hi); border-radius: 10px; background: var(--card); color: var(--ink); font-family: inherit; font-size: var(--fs-badge); cursor: pointer; white-space: nowrap; box-shadow: var(--shadow-card); }
-.hv .tl-chip:hover { border-color: var(--muted); }
-.hv .tl-chip-t { overflow: hidden; text-overflow: ellipsis; }
-.hv .tl-chip.st-doing { border-left-color: var(--edu); }
-.hv .tl-chip.st-todo, .hv .tl-chip.st-review { border-left-color: var(--line-hi); }
-.hv .tl-chip.st-done { border-left-color: var(--green); }
-.hv .tl-chip.late { border-left-color: var(--coral); }
-.hv .tl-chip.ag { border-style: dashed; }
-.hv .tl-dday { font-family: var(--font-mono); font-size: var(--fs-badge); color: var(--ink-soft); background: color-mix(in srgb, var(--ink-soft) 9%, transparent); border-radius: 6px; padding: 1px 6px; }
-.hv .tl-chip.late .tl-dday { color: var(--coral); background: var(--coral-bg); }
-.hv .tl-chip.more { border-left-width: 1px; color: var(--ink-soft); box-shadow: none; }
-.hv .tl-legend { font-size: var(--fs-badge); color: var(--muted); padding-top: 8px; }
+/* 5. 타임라인 — 주간 날짜 일정표 (캘린더 그리드). 얇은 상태색 바, 카드 테두리 금지. */
+.hv .tlg-wrap { overflow-x: hidden; }
+.hv .tlg { display: grid; }
+.hv .tlg-corner { border-bottom: 1px solid var(--line); }
+.hv .tlg-dh { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 4px 8px; border-bottom: 1px solid var(--line); border-left: 1px solid var(--line); }
+.hv .tlg-dh .tlg-dow { font-size: var(--fs-badge); color: var(--ink-soft); }
+.hv .tlg-dh .tlg-date { font-family: var(--font-mono); font-size: var(--fs-badge); color: var(--muted); }
+.hv .tlg-dh.today { background: color-mix(in srgb, var(--edu) 8%, transparent); }
+.hv .tlg-dh.today .tlg-dow { color: var(--edu-text); font-weight: 700; }
+.hv .tlg-dh.today .tlg-date { color: var(--edu-text); }
+.hv .tlg-lane-l { display: flex; align-items: center; gap: 8px; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.hv .tlg-lane-l .av { width: 24px; height: 24px; border-radius: 50%; flex: 0 0 24px; display: grid; place-items: center; font-size: var(--fs-badge); font-weight: 600; color: #fff; }
+.hv .tlg-cico { width: 24px; height: 24px; border-radius: 7px; flex: 0 0 24px; display: grid; place-items: center; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-soft); background: color-mix(in srgb, var(--team) 16%, transparent); }
+.hv .tlg-lane-n { font-size: var(--fs-row); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hv .tlg-cell { position: relative; display: flex; flex-direction: column; gap: 3px; min-height: 46px; padding: 5px 4px; border-bottom: 1px solid var(--line); border-left: 1px solid var(--line); min-width: 0; }
+.hv .tlg-cell.today { background: color-mix(in srgb, var(--edu) 5%, transparent); }
+.hv .tlg-bar { display: block; width: 100%; text-align: left; height: 20px; line-height: 18px; padding: 0 7px; border: 0; border-left: 3px solid var(--line-hi); border-radius: 4px; background: color-mix(in srgb, var(--ink-soft) 7%, transparent); color: var(--ink); font-family: inherit; font-size: var(--fs-badge); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.hv .tlg-bar:hover:not(:disabled) { filter: brightness(0.97); }
+.hv .tlg-bar:disabled { cursor: default; }
+.hv .tlg-bar.st-doing { border-left-color: var(--edu); background: color-mix(in srgb, var(--edu) 11%, transparent); }
+.hv .tlg-bar.st-todo, .hv .tlg-bar.st-review { border-left-color: var(--line-hi); background: color-mix(in srgb, var(--ink-soft) 7%, transparent); }
+.hv .tlg-bar.st-done { border-left-color: var(--green); background: color-mix(in srgb, var(--green) 11%, transparent); }
+.hv .tlg-bar.late { border-left-color: var(--coral); background: color-mix(in srgb, var(--coral) 11%, transparent); }
+.hv .tlg-bar.st-event { border-left-color: var(--team); background: color-mix(in srgb, var(--team) 13%, transparent); color: var(--ink-soft); }
+.hv .tlg-more { align-self: flex-start; background: 0; border: 0; color: var(--ink-soft); font-family: var(--font-mono); font-size: var(--fs-badge); cursor: pointer; padding: 0 4px; }
+.hv .tlg-add { position: absolute; top: 5px; right: 5px; width: 18px; height: 18px; border: 1px dashed var(--line-hi); background: var(--card); color: var(--muted); border-radius: 5px; cursor: pointer; line-height: 1; opacity: 0; transition: opacity .12s; }
+.hv .tlg-cell:hover .tlg-add { opacity: 1; }
+.hv .tlg-add:hover { border-color: var(--muted); color: var(--ink); }
+.hv .tl-legend { font-size: var(--fs-badge); color: var(--muted); }
 
 /* ═══ 6. 접근성 대비 — 의미색 '텍스트' ≥4.5:1 (밝은 원색은 바·테두리·틴트, 글자는 -text 변형) ═══ */
 .hv .due.bad, .hv .mc .d.dn, .hv .bg.stale, .hv .prio-high, .hv .tl-chip.late .tl-dday { color: var(--coral-text); }
@@ -806,3 +807,8 @@
 .hv .mc .d.up, .hv .st.done, .hv .stsel.st-done, .hv .hud .f .gtag.resolved, .hv .gchip.done, .hv .slinked { color: var(--green-text); }
 .hv .st.doing, .hv .stsel.st-doing, .hv .prio-mid, .hv .bg.tome { color: var(--edu-text); }
 .hv .st.prop, .hv .bg.wait { color: var(--play-text); }
+
+/* 상태 배지 잘림 근본 수정 — 상태·기한 칸은 배지에 맞춘 고정 폭 + 말줄임 금지(clip).
+   여유 폭은 업무(제목) 칸이 흡수(제목만 truncate). 배지가 칸 밖으로 넘치지 않음. */
+.hv td.col-st, .hv td.col-due { white-space: nowrap; overflow: hidden; text-overflow: clip; }
+.hv td.col-st .st, .hv td.col-st .stsel { white-space: nowrap; }

@@ -53,7 +53,7 @@ export default function HomeView({
   summary: HomeSummary;
   user: SessionUser;
 }) {
-  const [view, setView] = useState<TimelineView>("day");
+  const [view, setView] = useState<TimelineView>("week");
 
   const dateLabel = useMemo(() => {
     const d = new Date(`${summary.today}T00:00:00+09:00`);
