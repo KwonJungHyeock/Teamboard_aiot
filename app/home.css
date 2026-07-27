@@ -737,7 +737,9 @@
 /* 2·3. 카드 헤더 — 바 제거, 상하 대칭 여백. 제목 top 여백=카드 padding(20), 제목~본문 14px.
         제목·우측 메타 baseline 정렬(좌우 카드 제목 같은 Y). */
 .hv .card { padding: 20px; }
-.hv .ch { height: auto; min-height: 0; margin: 0 0 14px; padding: 0; background: transparent; border-bottom: 0; border-radius: 0; align-items: baseline; }
+.hv .ch { height: auto; min-height: 0; margin: 0 0 14px; padding: 0; background: transparent; border-bottom: 0; border-radius: 0; align-items: center; }
+/* .card h2 의 margin-bottom(14px)이 헤더 안에서 제목을 위로 밀던 문제 제거 → 세로 중앙 */
+.hv .ch h2 { margin: 0; }
 /* 6. KPI 5칸 — 내부 상하 대칭 + 라벨 top·값 bottom 세로 리듬 통일(높이 동일은 grid stretch) */
 .hv .mc { display: flex; flex-direction: column; justify-content: space-between; gap: 10px; padding: 18px; }
 .hv .mc .r { margin-top: 0; }
@@ -762,7 +764,7 @@
   background: color-mix(in srgb, var(--acc) 9%, transparent);
   border-left: 4px solid var(--acc);
   border-bottom: 1px solid color-mix(in srgb, var(--acc) 22%, transparent);
-  border-radius: 0; height: auto; align-items: baseline;
+  border-radius: 0; height: auto; align-items: center; min-height: 48px;
 }
 
 /* 3. KPI 카드 클릭 링크 — hover 커서·미세 elevation */
