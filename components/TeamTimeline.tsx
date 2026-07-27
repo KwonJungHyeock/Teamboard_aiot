@@ -33,6 +33,21 @@ function diffDays(a: string, b: string): number {
     (Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86400000
   );
 }
+function addMonths(dateStr: string, n: number): string {
+  const [y, m] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 10);
+}
+function periodLabelOf(view: TimelineView, anchor: string): string {
+  const [y, m, d] = anchor.split("-").map(Number);
+  if (view === "month") return `${y}년 ${m}월`;
+  if (view === "week") {
+    const ws = weekStartOf(anchor);
+    const [, wm, wd] = ws.split("-").map(Number);
+    return `${wm}월 ${wd}일 주`;
+  }
+  const dow = DOW[(new Date(`${anchor}T00:00:00Z`).getUTCDay() + 6) % 7];
+  return `${m}월 ${d}일 (${dow})`;
+}
 export function rangeFor(view: TimelineView, anchor: string): { from: string; to: string } {
   if (view === "day") return { from: anchor, to: addDays(anchor, 1) };
   if (view === "week") {
@@ -70,7 +85,7 @@ interface Bar {
 interface GLane { key: string; name: string; isCommon: boolean; grad?: string; assistantStatus: Lane["assistantStatus"]; bars: Bar[] }
 
 export default function TeamTimeline({
-  lanes, initialEvents, today, view, anchor,
+  lanes, initialEvents, today, view, anchor, onViewChange, onAnchorChange,
 }: {
   lanes: Lane[];
   initialEvents: LaneEvent[];
@@ -80,7 +95,16 @@ export default function TeamTimeline({
   isLead: boolean;
   expanded?: boolean;
   onEmptyCreate?: (opts: { actorId: number; date: string }) => void;
+  onViewChange?: (v: TimelineView) => void;
+  onAnchorChange?: (a: string) => void;
 }) {
+  // 기간 이동 — 뷰 단위(월/주/일)만큼 앞뒤로. '오늘'은 오늘 기준으로 리셋.
+  const step = (dir: number) => {
+    if (!onAnchorChange) return;
+    if (view === "month") onAnchorChange(addMonths(anchor, dir));
+    else if (view === "week") onAnchorChange(addDays(anchor, dir * 7));
+    else onAnchorChange(addDays(anchor, dir));
+  };
   const range = useMemo(() => rangeFor(view, anchor), [view, anchor]);
   const n = Math.max(1, diffDays(range.to, range.from));
   const isInitialRange = view === "day" && anchor === today;
@@ -136,10 +160,30 @@ export default function TeamTimeline({
   const pct = (i: number) => (i / n) * 100;
 
   return (
-    <section className="card gt acc-blue" aria-label="팀 타임라인">
-      <div className="ch">
-        <h2>팀 타임라인</h2>
-        <span className="sub">공통 {teamEvents.length} · 업무 {taskCount} · {view === "day" ? "일" : view === "week" ? "주" : "월"}</span>
+    <section className="card gt" aria-label="팀 타임라인">
+      <div className="gt-head">
+        <div className="gt-head-l">
+          <span className="gt-period">{periodLabelOf(view, anchor)}</span>
+          {onAnchorChange && (
+            <span className="gt-nav" role="group" aria-label="기간 이동">
+              <button onClick={() => step(-1)} aria-label="이전">◀</button>
+              <button className="gt-today" onClick={() => onAnchorChange(today)}>오늘</button>
+              <button onClick={() => step(1)} aria-label="다음">▶</button>
+            </span>
+          )}
+        </div>
+        <div className="gt-head-r">
+          <span className="sub">공통 {teamEvents.length} · 업무 {taskCount}</span>
+          {onViewChange && (
+            <div className="seg" role="group" aria-label="기간 보기">
+              {(["day", "week", "month"] as TimelineView[]).map((v) => (
+                <button key={v} aria-pressed={view === v} onClick={() => onViewChange(v)}>
+                  {v === "day" ? "일" : v === "week" ? "주" : "월"}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="gt-wrap">

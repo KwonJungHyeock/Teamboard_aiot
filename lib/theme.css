@@ -48,7 +48,7 @@
   /* 레거시 별칭 — 기존 코드가 참조하는 --f-ui/--f-d 를 새 토큰으로 매핑 */
   --f-ui: var(--font-sans);
   --f-d: var(--font-mono);
-  --side-w:260px;
+  --side-w:280px;
 
   /* ── 타입 스케일 토큰 (font 단축 + 자간 분리). 10px 이하 금지.
      적용: font: var(--text-h1); letter-spacing: var(--ls-h1); ── */

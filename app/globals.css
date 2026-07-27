@@ -631,12 +631,12 @@ body {
 /* 본문과 분리 — 경계선 강화(--line-hi) + 미세 그림자로 "메뉴바가 보이게" */
 .side { background: var(--bg-rail); border-right: 1px solid var(--line-hi); box-shadow: 1px 0 0 rgba(55,67,79,.03); display: flex; flex-direction: column; padding: 12px 12px; overflow: hidden; }
 /* 항목 — label 14px/600·색 --ink, 아이콘도 currentColor로 진하게 (가독성 강화) */
-.side a { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 8px 9px; border-left: 3px solid transparent; border-radius: var(--r-s); color: var(--ink); font-weight: 600; text-decoration: none; font-size: var(--fs-row); white-space: nowrap; transition: .15s; }
+.side a { display: flex; align-items: center; gap: 11px; min-height: 44px; padding: 9px 10px; border-left: 3px solid transparent; border-radius: var(--r-s); color: var(--ink); font-weight: 600; text-decoration: none; font-size: 14.5px; white-space: nowrap; transition: .15s; }
 .side a:hover { background: var(--glass); color: var(--ink); }
 /* 활성: 좌측 3px 코랄 바 + 옅은 코랄 틴트 + 제목 굵게(700) */
 .side a[aria-current="page"] { background: var(--coral-bg); border-left-color: var(--coral); color: var(--ink); font-weight: 700; }
 .side a:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
-.side a svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 17px; }
+.side a svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 18px; }
 .side .cnt { margin-left: auto; font-family: var(--f-d); font-size: var(--fs-badge); font-weight: 600; color: var(--ink-soft); }
 .side .cnt.alert { color: var(--danger); }
 .side .sp { flex: 1; min-height: 10px; }

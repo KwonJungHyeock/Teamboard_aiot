@@ -11,7 +11,7 @@
 .hv .iconbtn .pip{position:absolute;top:6px;right:7px;width:5px;height:5px;border-radius:50%;background:var(--danger);box-shadow:0 0 6px var(--danger)}
 .hv .newbtn{height:31px;padding:0 13px;border-radius:var(--r-s);border:0;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:500;color:#fff;background:linear-gradient(120deg,var(--edu),var(--play));box-shadow:0 0 18px rgba(103,116,248,.3)}
 .hv .newbtn:hover{filter:brightness(1.08)}
-.hv .wrap{padding:17px 20px 0;max-width:1560px}
+.hv .wrap{padding:17px 24px 0;max-width:1760px}
 .hv .head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:13px;flex-wrap:wrap}
 .hv .head .eb{font-family:var(--f-d);font-size:10.5px;letter-spacing:.1em;color:var(--lo)}
 .hv .head h1{font-size:21px;font-weight:600;letter-spacing:-.015em;margin-top:2px}
@@ -903,3 +903,31 @@
 .hv .tt-prog i.pf-blue { background: var(--edu); }
 .hv .tt-prog i.pf-green { background: var(--green); }
 .hv .tt-prog-n { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); margin-left: 6px; font-variant-numeric: tabular-nums; }
+
+/* ── 홈 시각 위계 v5 — 존 그룹핑·표면 층위·타임라인 히어로·월 뷰 ── */
+/* 존: 여백↑ + 작은 소제목(섹션 아이콘·사이드바 통일). 색은 wayfinding(절제 예외) */
+.hv .zone { margin-top: 28px; }
+.hv .zone:first-of-type { margin-top: 2px; }
+.hv .zone-h { display: flex; align-items: center; gap: 8px; margin: 0 0 13px 2px; font-family: var(--f-d); font-size: var(--fs-badge); font-weight: 700; letter-spacing: .07em; color: var(--ink-soft); text-transform: uppercase; }
+.hv .zico { display: grid; place-items: center; width: 18px; height: 18px; flex: 0 0 18px; }
+.hv .zico svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.hv .zico.z-status { color: var(--edu); }
+.hv .zico.z-schedule { color: var(--coral); }
+.hv .zico.z-progress { color: var(--green); }
+.hv .zico.z-collab { color: var(--play); }
+
+/* 표면 3층: paper < 기본 카드(흰색·약 그림자, 기존 --shadow-card) < 히어로(강 그림자) */
+/* 타임라인 = 히어로 — 미세 그라데이션 틴트 + 강한 그림자 + 패딩↑ + 상단 코랄 액센트 1줄(시그니처) */
+.hv .gt.card { position: relative; overflow: hidden; padding: 20px 24px 18px; box-shadow: var(--shadow-pop); background: linear-gradient(180deg, #FBFAF6 0%, var(--card) 46%); }
+.hv .gt.card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--coral); }
+
+/* 타임라인 헤더 — 큰 월 라벨 + 월 이동 + 오늘 + 일/주/월 토글 */
+.hv .gt-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin: 4px 0 16px; flex-wrap: wrap; }
+.hv .gt-head-l { display: flex; align-items: center; gap: 12px; }
+.hv .gt-period { font: var(--text-display); font-size: 24px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.hv .gt-nav { display: inline-flex; align-items: center; gap: 4px; }
+.hv .gt-nav button { height: 30px; min-width: 30px; padding: 0 8px; border: 1px solid var(--line-hi); background: var(--card); border-radius: 8px; color: var(--ink-soft); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.hv .gt-nav button:hover { border-color: var(--muted); color: var(--ink); }
+.hv .gt-nav .gt-today { font-size: 12.5px; }
+.hv .gt-head-r { display: flex; align-items: center; gap: 12px; }
+.hv .gt-head-r .sub { font-size: var(--fs-badge); color: var(--muted); font-family: var(--f-d); }

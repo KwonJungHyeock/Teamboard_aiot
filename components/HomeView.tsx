@@ -34,6 +34,22 @@ function Clock() {
   );
 }
 
+// 존 소제목 아이콘 (사이드바 섹션 아이콘과 통일) — wayfinding 색(절제 예외)
+const ZONE_IC: Record<string, React.ReactNode> = {
+  status: (<><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>),
+  schedule: (<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>),
+  progress: <path d="M4 20V11M10 20V4M16 20v-6M3 20h18" />,
+  collab: (<><circle cx="8" cy="9" r="2.6" /><circle cx="16" cy="9" r="2.6" /><path d="M2.5 19c0-2.6 2.4-4.5 5.5-4.5M21.5 19c0-2.6-2.4-4.5-5.5-4.5" /></>),
+};
+function ZoneHead({ tone, children }: { tone: keyof typeof ZONE_IC; children: React.ReactNode }) {
+  return (
+    <div className="zone-h">
+      <span className={`zico z-${tone}`} aria-hidden="true"><svg viewBox="0 0 24 24">{ZONE_IC[tone]}</svg></span>
+      {children}
+    </div>
+  );
+}
+
 function greeting(): string {
   const hour = Number(
     new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Seoul", hour: "2-digit", hour12: false })
@@ -52,7 +68,8 @@ export default function HomeView({
   summary: HomeSummary;
   user: SessionUser;
 }) {
-  const [view, setView] = useState<TimelineView>("week");
+  const [view, setView] = useState<TimelineView>("month"); // v5 — 기본 월 뷰
+  const [anchor, setAnchor] = useState<string>(summary.today);
 
   const dateLabel = useMemo(() => {
     const d = new Date(`${summary.today}T00:00:00+09:00`);
@@ -91,37 +108,36 @@ export default function HomeView({
           </div>
           <div className="head-r">
             <Clock />
-            <div className="seg" role="group" aria-label="기간 보기">
-              {(["day", "week", "month"] as TimelineView[]).map((v) => (
-                <button
-                  key={v}
-                  aria-pressed={view === v}
-                  onClick={() => setView(v)}
-                >
-                  {v === "day" ? "일" : v === "week" ? "주" : "월"}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 
-        {/* ① KPI 5칸 — 진행 업무 요약 + 액션 */}
-        <MetricCards metrics={summary.metrics} />
-
-        {/* ② 팀 타임라인 — 다가오는 일정, 전폭·중심 */}
-        <div className="fullrow">
-          <TeamTimeline
-            lanes={summary.lanes}
-            initialEvents={summary.events}
-            today={summary.today}
-            view={view}
-            anchor={summary.today}
-            isLead={user.role === "lead"}
-          />
+        {/* 존① 현황 — KPI 5칸 */}
+        <div className="zone">
+          <ZoneHead tone="status">현황</ZoneHead>
+          <MetricCards metrics={summary.metrics} />
         </div>
 
-        {/* ③ 실행 축 2단 — 지연·마감 임박(급한 진행 업무) | 프로젝트 진척도(프로젝트 바 + 이번 달 목표 바) */}
-        <div className="cols">
+        {/* 존② 일정 — 팀 타임라인(히어로, 월 뷰 기본) */}
+        <div className="zone">
+          <ZoneHead tone="schedule">일정</ZoneHead>
+          <div className="fullrow">
+            <TeamTimeline
+              lanes={summary.lanes}
+              initialEvents={summary.events}
+              today={summary.today}
+              view={view}
+              anchor={anchor}
+              isLead={user.role === "lead"}
+              onViewChange={setView}
+              onAnchorChange={setAnchor}
+            />
+          </div>
+        </div>
+
+        {/* 존③ 진척 — 지연·마감 임박 | 프로젝트 진척도(프로젝트 바 + 이번 달 목표 바) */}
+        <div className="zone">
+          <ZoneHead tone="progress">진척</ZoneHead>
+          <div className="cols">
           <div className="stack">
             <TaskTable
               rows={summary.dueSoon}
@@ -169,15 +185,19 @@ export default function HomeView({
               accent="green"
             />
           </div>
+          </div>
         </div>
 
-        {/* ④ 협업 축 2단 (보조) — 논의·결정 | 허들룸. 실행 축 아래로 톤 낮춰 배치 */}
-        <div className="cols cols-sub">
-          <div className="stack">
-            <SignalPanel items={summary.signals} stalledCount={summary.stalledCount} accent="amber" />
-          </div>
-          <div className="stack">
-            <HuddleFeed huddles={summary.huddles} />
+        {/* 존④ 협업 (보조) — 논의·결정 | 허들룸. 톤 낮춰 아래로 */}
+        <div className="zone">
+          <ZoneHead tone="collab">협업</ZoneHead>
+          <div className="cols cols-sub">
+            <div className="stack">
+              <SignalPanel items={summary.signals} stalledCount={summary.stalledCount} accent="amber" />
+            </div>
+            <div className="stack">
+              <HuddleFeed huddles={summary.huddles} />
+            </div>
           </div>
         </div>
       </div>
