@@ -8,6 +8,7 @@ import CommandPalette from "./CommandPalette";
 import PasswordGate from "./PasswordGate";
 import TaskDetailPanel from "./TaskDetailPanel";
 import GoalDetailPanel from "./GoalDetailPanel";
+import AgentFab from "./AgentFab";
 
 export default async function AppShell({
   user,
@@ -54,6 +55,7 @@ export default async function AppShell({
       <TaskDetailPanel />
       <GoalDetailPanel />
       <CommandPalette role={current.role} notionConnected={notionConnected} />
+      <AgentFab user={current} />
     </>
   );
 }
