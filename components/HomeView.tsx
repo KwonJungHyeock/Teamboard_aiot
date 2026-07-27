@@ -61,6 +61,15 @@ function greeting(): string {
   return "좋은 저녁이에요";
 }
 
+// 진척 바 색 — 프로젝트/영역 색키를 의미색 토큰으로 (wayfinding)
+function barColor(ck: string | null): string {
+  switch (ck) {
+    case "play": case "purple": return "var(--play)";
+    case "green": case "train": return "var(--green)";
+    case "edu": case "blue": case "team": default: return "var(--edu)";
+  }
+}
+
 export default function HomeView({
   summary,
   user,
@@ -108,98 +117,111 @@ export default function HomeView({
           </div>
           <div className="head-r">
             <Clock />
-          </div>
-        </div>
-
-        {/* 존① 현황 — KPI 5칸 */}
-        <div className="zone">
-          <ZoneHead tone="status">현황</ZoneHead>
-          <MetricCards metrics={summary.metrics} />
-        </div>
-
-        {/* 존② 일정 — 팀 타임라인(히어로, 월 뷰 기본) */}
-        <div className="zone">
-          <ZoneHead tone="schedule">일정</ZoneHead>
-          <div className="fullrow">
-            <TeamTimeline
-              lanes={summary.lanes}
-              initialEvents={summary.events}
-              today={summary.today}
-              view={view}
-              anchor={anchor}
-              isLead={user.role === "lead"}
-              onViewChange={setView}
-              onAnchorChange={setAnchor}
-            />
-          </div>
-        </div>
-
-        {/* 존③ 진척 — 지연·마감 임박 | 프로젝트 진척도(프로젝트 바 + 이번 달 목표 바) */}
-        <div className="zone">
-          <ZoneHead tone="progress">진척</ZoneHead>
-          <div className="cols">
-          <div className="stack">
-            <TaskTable
-              rows={summary.dueSoon}
-              title="지연 · 마감 임박"
-              sub={`지연 ${summary.dueSoon.filter((t) => t.overdue).length} · 7일 이내 ${summary.dueSoon.filter((t) => !t.overdue).length}`}
-              emptyText="지연·마감 임박 업무가 없어요"
-              emptyHint="마감이 임박하거나 지난 업무가 없습니다. 좋은 상태예요."
-              onRowClick={(id) => openTaskPanel(id)}
-              accent="coral"
-            />
-          </div>
-          <div className="stack">
-            <SummaryProgress
-              title="프로젝트 진행"
-              sub={`W${summary.isoWeek}`}
-              rows={summary.projectProgress.map((p) => ({
-                id: `p${p.id}`,
-                label: p.name,
-                percent: p.percent,
-                colorKey: p.colorKey,
-                meta: p.total > 0 ? `${p.done}/${p.total}` : undefined,
-              }))}
-              done={summary.projectProgress.reduce((a, p) => a + p.done, 0)}
-              total={summary.projectProgress.reduce((a, p) => a + p.total, 0)}
-              emptyText="아직 진행 중인 프로젝트가 없어요"
-              emptyHint="영역 공간에서 업무를 추가하면 소속 프로젝트 진행률이 여기에 모입니다."
-              emptyAction={<Link className="btn small primary" href="/projects">프로젝트 보기</Link>}
-              ringColor="edu"
-              accent="green"
-            />
-            <SummaryProgress
-              title="이번 달 목표"
-              sub={`${summary.monthGoals.length}개`}
-              rows={summary.monthGoals.map((g) => ({
-                id: `g${g.id}`,
-                label: g.title,
-                percent: g.progress,
-                colorKey: g.colorKey,
-                meta: g.droppedCount > 0 ? `중단 ${g.droppedCount}` : undefined,
-              }))}
-              emptyText="이번 달 목표가 없어요"
-              emptyHint="연간·분기 목표 아래 이번 달 목표를 세우면 진척이 자동 집계됩니다."
-              emptyAction={<Link className="btn small primary" href="/goals">목표 세우기</Link>}
-              ringColor="green"
-              accent="green"
-            />
-          </div>
-          </div>
-        </div>
-
-        {/* 존④ 협업 (보조) — 논의·결정 | 허들룸. 톤 낮춰 아래로 */}
-        <div className="zone">
-          <ZoneHead tone="collab">협업</ZoneHead>
-          <div className="cols cols-sub">
-            <div className="stack">
-              <SignalPanel items={summary.signals} stalledCount={summary.stalledCount} accent="amber" />
-            </div>
-            <div className="stack">
-              <HuddleFeed huddles={summary.huddles} />
+            <div className="seg" role="group" aria-label="기간 보기">
+              {(["day", "week", "month"] as TimelineView[]).map((v) => (
+                <button key={v} aria-pressed={view === v} onClick={() => setView(v)}>
+                  {v === "day" ? "일" : v === "week" ? "주" : "월"}
+                </button>
+              ))}
             </div>
           </div>
         </div>
+
+        {(() => {
+          const metric = (k: string) => summary.metrics.find((m) => m.key === k);
+          const overdueCount = summary.dueSoon.filter((t) => t.overdue).length;
+          const overdueTop = summary.dueSoon.filter((t) => t.overdue).slice(0, 2).map((t) => t.title).join(" · ");
+          const stalledTop = summary.signals.find((s) => s.stalled);
+          const projPcts = summary.projectProgress.map((p) => p.percent).filter((x): x is number => x !== null);
+          const avgProgress = projPcts.length ? Math.round(projPcts.reduce((a, b) => a + b, 0) / projPcts.length) : null;
+          const goalPcts = summary.monthGoals.map((g) => g.progress).filter((x): x is number => x !== null);
+          const goalAvg = goalPcts.length ? Math.round(goalPcts.reduce((a, b) => a + b, 0) / goalPcts.length) : null;
+          const doneM = metric("done"), doingM = metric("doing"), turnM = metric("myTurn"), stalledM = metric("stalled");
+
+          const focus = [
+            { key: "inbox", n: Number(turnM?.value ?? 0), tone: "amber", label: "승인 대기", sub: "에이전트 제안·확인 요청 확정", href: "/inbox" },
+            { key: "over", n: overdueCount, tone: "coral", label: "지연 업무", sub: overdueTop || "지연된 업무를 확인하세요", href: "/tasks?due=overdue" },
+            { key: "stall", n: summary.stalledCount, tone: "play", label: "정체된 논의", sub: stalledTop ? `${stalledTop.title} · ${stalledTop.meta}` : "정체된 논의·결정 확인", href: "/signals" },
+          ];
+
+          return (
+            <div className="bento">
+              {/* 히어로 타임라인 — 좌·2행 span */}
+              <TeamTimeline
+                lanes={summary.lanes}
+                initialEvents={summary.events}
+                today={summary.today}
+                view={view}
+                anchor={anchor}
+                isLead={user.role === "lead"}
+                onAnchorChange={setAnchor}
+              />
+
+              {/* 🔥 지금 할 일 — 실행 포커스 */}
+              <section className="tile focus-tile" aria-label="지금 할 일">
+                <div className="ft">🔥 지금 할 일</div>
+                <div className="fs">내 차례 · 급한 것부터</div>
+                {focus.map((f) => (
+                  <Link className="fi" key={f.key} href={f.href}>
+                    <span className="n" style={{ background: `var(--${f.tone})` }}>{f.n}</span>
+                    <span className="x">{f.label}<small>{f.sub}</small></span>
+                    <span className="go" aria-hidden="true">›</span>
+                  </Link>
+                ))}
+              </section>
+
+              {/* 미니 KPI 스트립 — 4구획 */}
+              <section className="tile" aria-label="핵심 지표">
+                <div className="mstrip">
+                  <Link className="ms" href={doingM?.href ?? "/tasks?status=doing"}><div className="v num">{doingM?.value ?? "0"}</div><div className="l">진행 중</div></Link>
+                  <Link className="ms" href={doneM?.href ?? "/tasks?status=done"}><div className="v num">{doneM?.value ?? "0"}{doneM?.em && <span className="ms-em">{doneM.em}</span>}</div><div className="l">이번 주 완료</div></Link>
+                  <Link className="ms" href={stalledM?.href ?? "/tasks?due=overdue"}><div className="v num v-coral">{stalledM?.value ?? "0"}</div><div className="l">지연 · 정체</div></Link>
+                  <Link className="ms" href="/status"><div className="v num v-green">{avgProgress ?? "—"}{avgProgress !== null && <span className="ms-em">%</span>}</div><div className="l">평균 진척</div></Link>
+                </div>
+              </section>
+
+              {/* 프로젝트 진척도 */}
+              <section className="tile" aria-label="프로젝트 진척도">
+                <div className="th"><span className="i" aria-hidden="true">📈</span><h3>프로젝트 진척도</h3><span className="m">W{summary.isoWeek} · 평균 {avgProgress ?? 0}%</span></div>
+                {summary.projectProgress.length === 0 ? (
+                  <EmptyState compact title="진행 중 프로젝트가 없어요" hint="업무를 추가하면 소속 프로젝트 진척이 모입니다." action={<Link className="btn small primary" href="/projects">프로젝트 보기</Link>} />
+                ) : (
+                  <div className="pb2">
+                    {summary.projectProgress.map((p) => (
+                      <div className="pi-row" key={p.id}>
+                        <div className="pi"><span className="pi-l">{p.name}</span><span className="p num">{p.percent === null ? "-" : `${p.percent}%`}</span></div>
+                        <div className="t2"><i style={{ width: `${Math.max(p.percent ?? 0, 2)}%`, background: barColor(p.colorKey) }} /></div>
+                      </div>
+                    ))}
+                    <div className="pi-row">
+                      <div className="pi"><span className="pi-l">이번 달 목표 평균</span><span className="p num">{goalAvg === null ? "-" : `${goalAvg}%`}</span></div>
+                      <div className="t2"><i style={{ width: `${Math.max(goalAvg ?? 0, 2)}%`, background: "var(--amber)" }} /></div>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* 논의 · 결정 (협업) */}
+              <section className="tile" aria-label="논의·결정">
+                <div className="th"><span className="i" aria-hidden="true">💬</span><h3>논의 · 결정</h3><span className="m">정체 {summary.stalledCount}</span></div>
+                {summary.signals.length === 0 ? (
+                  <EmptyState compact title="논의·결정이 없어요" hint="결정·리스크·확인 요청이 여기에 모입니다." action={<Link className="btn small" href="/signals">논의·결정으로 가기</Link>} />
+                ) : (
+                  <div className="clist">
+                    {summary.signals.slice(0, 5).map((s) => (
+                      <Link className="cli" key={s.id} href="/signals">
+                        <span className="dotc" style={{ background: s.stalled ? "var(--coral)" : s.badge === "wait" ? "var(--amber)" : "var(--muted)" }} />
+                        <span className="cli-t">{s.title}</span>
+                        {s.badgeLabel && <span className="cli-d" style={{ color: s.stalled ? "var(--coral-text)" : "var(--muted)" }}>{s.badgeLabel}</span>}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                <Link className="collab-more" href="/huddle">허들룸 공유 {summary.huddles.length} →</Link>
+              </section>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

@@ -665,13 +665,10 @@ body {
 .grp > summary .gname { color: var(--ink-soft); }
 .grp > summary::-webkit-details-marker { display: none; }
 .grp > summary:hover { color: var(--ink); background: var(--glass); }
-/* 섹션 아이콘 — wayfinding용 색(절제 예외). 라인 아이콘, 라이트 톤 */
-.grp > summary .gico { display: grid; place-items: center; width: 18px; height: 18px; flex: 0 0 18px; }
+/* 섹션 아이콘 — 중립(ink) 통일. 장식색 금지(색은 상태·데이터·영역 dot에만). */
+.grp > summary .gico { display: grid; place-items: center; width: 18px; height: 18px; flex: 0 0 18px; color: var(--ink-soft); }
 .grp > summary .gico svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-.grp > summary .gico.g-work { color: var(--edu); }
-.grp > summary .gico.g-goal { color: var(--green); }
-.grp > summary .gico.g-collab { color: var(--play); }
-.grp > summary .gico.g-admin { color: var(--muted); }
+.grp > summary .gico.g-work, .grp > summary .gico.g-goal, .grp > summary .gico.g-collab, .grp > summary .gico.g-admin { color: var(--ink-soft); }
 /* 셰브론 — 헤더 오른쪽 끝(펼침/접힘) */
 .grp > summary .cv { margin-left: auto; width: 11px; height: 11px; fill: none; stroke: var(--muted); stroke-width: 2; transition: transform .18s; }
 .grp[open] > summary .cv { transform: rotate(90deg); }

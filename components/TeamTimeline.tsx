@@ -160,29 +160,20 @@ export default function TeamTimeline({
   const pct = (i: number) => (i / n) * 100;
 
   return (
-    <section className="card gt" aria-label="팀 타임라인">
-      <div className="gt-head">
-        <div className="gt-head-l">
-          <span className="gt-period">{periodLabelOf(view, anchor)}</span>
+    <section className="tile hero gt" aria-label="팀 타임라인">
+      {/* 히어로 헤더 — 다크 차콜 + 좌측 코랄 4px 액센트 + 흰 텍스트 */}
+      <div className="hh">
+        <h2>팀 타임라인</h2>
+        <span className="hh-mo num">{periodLabelOf(view, anchor)}</span>
+        <div className="hh-rt">
           {onAnchorChange && (
-            <span className="gt-nav" role="group" aria-label="기간 이동">
-              <button onClick={() => step(-1)} aria-label="이전">◀</button>
-              <button className="gt-today" onClick={() => onAnchorChange(today)}>오늘</button>
-              <button onClick={() => step(1)} aria-label="다음">▶</button>
+            <span className="hh-nav" role="group" aria-label="기간 이동">
+              <button className="nb" onClick={() => step(-1)} aria-label="이전">‹</button>
+              <button className="tbtn" onClick={() => onAnchorChange(today)}>오늘</button>
+              <button className="nb" onClick={() => step(1)} aria-label="다음">›</button>
             </span>
           )}
-        </div>
-        <div className="gt-head-r">
-          <span className="sub">공통 {teamEvents.length} · 업무 {taskCount}</span>
-          {onViewChange && (
-            <div className="seg" role="group" aria-label="기간 보기">
-              {(["day", "week", "month"] as TimelineView[]).map((v) => (
-                <button key={v} aria-pressed={view === v} onClick={() => onViewChange(v)}>
-                  {v === "day" ? "일" : v === "week" ? "주" : "월"}
-                </button>
-              ))}
-            </div>
-          )}
+          <span className="hh-c">공통 {teamEvents.length} · 업무 {taskCount}</span>
         </div>
       </div>
 
@@ -255,11 +246,12 @@ export default function TeamTimeline({
         </div>
       </div>
 
-      <div className="cf">
-        <span className="gt-legend">
-          <i className="lg st-doing" />진행 <i className="lg st-todo" />대기 <i className="lg st-review" />리뷰 <i className="lg st-done" />완료 <i className="lg late" />지난 마감
-        </span>
-        <span className="tl-legend">시작~마감 기간 · 채움=진행률 · 세로선=오늘</span>
+      <div className="gt-legend2">
+        <span><i className="lg st-doing" />진행</span>
+        <span><i className="lg st-todo" />대기</span>
+        <span><i className="lg st-done" />완료</span>
+        <span><i className="lg late" />지난 마감</span>
+        <span className="gt-legend2-r">채움 = 진행률 · 세로선 = 오늘</span>
       </div>
     </section>
   );
