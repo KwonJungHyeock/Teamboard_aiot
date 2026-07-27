@@ -37,6 +37,7 @@ const CREATE_ITEMS: PaletteItem[] = [
 
 // ── 관리 (lead 전용) ──
 const ADMIN_ITEMS: PaletteItem[] = [
+  { label: "업무 현황", href: "/status", keywords: "status 현황 분석 완료 추이 부하 차트", leadOnly: true },
   { label: "구성원 관리", href: "/members", keywords: "member 계정 발급", leadOnly: true },
   { label: "설정", href: "/settings", keywords: "settings notion 연동", leadOnly: true },
   { label: "Notion 타임라인 (보조)", href: "/timeline", keywords: "notion timeline 미러", leadOnly: true, notionOnly: true },

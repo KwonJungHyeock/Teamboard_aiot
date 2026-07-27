@@ -851,3 +851,7 @@
 .hv .prbars .bar { height: 8px; }
 .hv .prbars .bar i.pf-blue { background: var(--edu); box-shadow: none; }
 .hv .prbars .bar i.pf-green { background: var(--green); box-shadow: none; }
+
+/* ④ 협업 보조 축 (논의·결정 | 허들룸) — 실행 축 아래로 톤 낮춤: 플랫(그림자 제거)·미세 상단 여백 */
+.hv .cols-sub { margin-top: 6px; }
+.hv .cols-sub > .stack > .card { box-shadow: none; }

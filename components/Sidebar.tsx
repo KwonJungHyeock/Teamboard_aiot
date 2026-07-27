@@ -63,6 +63,12 @@ const IC = {
       <path d="M4.5 20c0-3.6 3.4-6 7.5-6s7.5 2.4 7.5 6" />
     </>
   ),
+  status: (
+    <>
+      <path d="M4 20V10M10 20V4M16 20v-7M20 20V8" />
+      <path d="M3 20h18" />
+    </>
+  ),
   settings: (
     <>
       <circle cx="12" cy="12" r="3" />
@@ -308,6 +314,7 @@ export default function Sidebar({
             <span className="gname">관리</span>
             <Chevron />
           </summary>
+          <NavLink href="/status" icon={IC.status} label="업무 현황" current={cur("/status")} />
           <NavLink href="/members" icon={IC.members} label="구성원" current={cur("/members")} />
           <NavLink href="/settings" icon={IC.settings} label="설정" current={cur("/settings")} />
           {/* Notion 타임라인 — 미연결이면 숨김 (파트 Z) */}

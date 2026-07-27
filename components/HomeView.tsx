@@ -8,7 +8,6 @@ import type { HomeSummary } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
 import EmptyState from "./EmptyState";
 import MetricCards from "./MetricCards";
-import AnalyticsCharts from "./AnalyticsCharts";
 import NewMenu from "./NewMenu";
 import SignalPanel from "./SignalPanel";
 import TaskTable from "./TaskTable";
@@ -106,13 +105,10 @@ export default function HomeView({
           </div>
         </div>
 
+        {/* ① KPI 5칸 — 진행 업무 요약 + 액션 */}
         <MetricCards metrics={summary.metrics} />
 
-        {/* ── 현황 분석 (파트 2) — 주간 완료 추이 | 담당자별 부하 ── */}
-        <AnalyticsCharts weeklyDone={summary.weeklyDone} assigneeLoad={summary.assigneeLoad} />
-
-        {/* ── 1순위: 항상 크게 ── */}
-        {/* 팀 타임라인 — 전폭 */}
+        {/* ② 팀 타임라인 — 다가오는 일정, 전폭·중심 */}
         <div className="fullrow">
           <TeamTimeline
             lanes={summary.lanes}
@@ -124,8 +120,7 @@ export default function HomeView({
           />
         </div>
 
-        {/* 좌: 업무 축(지연·마감→프로젝트→목표) · 우: 협업 축(논의·결정→허들룸).
-            두 컬럼을 독립 스택으로 — 한쪽이 짧아도 아래 빈 여백 없이 다음 카드가 바로 이어짐. */}
+        {/* ③ 실행 축 2단 — 지연·마감 임박(급한 진행 업무) | 프로젝트 진척도(프로젝트 바 + 이번 달 목표 바) */}
         <div className="cols">
           <div className="stack">
             <TaskTable
@@ -137,6 +132,8 @@ export default function HomeView({
               onRowClick={(id) => openTaskPanel(id)}
               accent="coral"
             />
+          </div>
+          <div className="stack">
             <SummaryProgress
               title="프로젝트 진행"
               sub={`W${summary.isoWeek}`}
@@ -172,9 +169,14 @@ export default function HomeView({
               accent="green"
             />
           </div>
-          {/* 우측 협업 축 — 논의·결정 위, 허들룸(접힘) 아래 */}
+        </div>
+
+        {/* ④ 협업 축 2단 (보조) — 논의·결정 | 허들룸. 실행 축 아래로 톤 낮춰 배치 */}
+        <div className="cols cols-sub">
           <div className="stack">
             <SignalPanel items={summary.signals} stalledCount={summary.stalledCount} accent="amber" />
+          </div>
+          <div className="stack">
             <HuddleFeed huddles={summary.huddles} />
           </div>
         </div>
