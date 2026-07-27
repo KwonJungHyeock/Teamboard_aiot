@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SessionUser, Draft } from "@/lib/types";
 import ApproveModal, { type DraftSummary } from "./ApproveModal";
+import EmptyState from "./EmptyState";
 
 type DraftRow = Draft & { user_name?: string; assistant_name?: string };
 
@@ -82,7 +83,7 @@ export default function InboxView({ user }: { user: SessionUser }) {
     <div className="hv">
       <div className="top">
         <div className="crumb">
-          워크스페이스 / <b>승인 인박스</b>
+          워크스페이스 / <b>승인 대기</b>
         </div>
         <span className="sp" />
       </div>
@@ -90,7 +91,7 @@ export default function InboxView({ user }: { user: SessionUser }) {
         <div className="head">
           <div>
             <div className="eb">INBOX</div>
-            <h1>승인 인박스</h1>
+            <h1>승인 대기</h1>
             <p>에이전트 산출물은 여기서 승인해야 사람 공간(홈·업무·논의·결정)에 반영됩니다.</p>
           </div>
         </div>
@@ -98,10 +99,13 @@ export default function InboxView({ user }: { user: SessionUser }) {
         {error && <p className="gerr">{error}</p>}
         {notice && <p className="rp-notice">{notice}</p>}
 
-        {total === 0 && (
-          <div className="rp-empty-center">
-            <p className="gempty">대기 중인 에이전트 산출물이 없습니다.</p>
-          </div>
+        {total === 0 && !error && (
+          <section className="card" aria-label="승인 대기 없음">
+            <EmptyState
+              title="대기 중인 승인 항목이 없어요"
+              hint="에이전트가 만든 초안·제안 업무가 여기로 모입니다. 승인해야 홈·업무·논의·결정에 반영됩니다."
+            />
+          </section>
         )}
 
         {/* 승인 대기 초안 */}
