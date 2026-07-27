@@ -93,6 +93,35 @@ function Icon({ d }: { d: React.ReactNode }) {
   );
 }
 
+// 그룹 섹션 아이콘 — wayfinding용(색 절제 예외). 라인 아이콘, 라이트 톤.
+const SEC = {
+  work: (
+    <>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </>
+  ),
+  goal: <path d="M4 20V11M10 20V4M16 20v-6M3 20h18" />,
+  collab: (
+    <>
+      <circle cx="8" cy="9" r="2.6" />
+      <circle cx="16" cy="9" r="2.6" />
+      <path d="M2.5 19c0-2.6 2.4-4.5 5.5-4.5M21.5 19c0-2.6-2.4-4.5-5.5-4.5" />
+    </>
+  ),
+  admin: <path d="M12 3l7 2.6v5.6c0 4-3 6.9-7 8-4-1.1-7-4-7-8V5.6z" />,
+};
+
+function SecIcon({ d, tone }: { d: React.ReactNode; tone: string }) {
+  return (
+    <span className={`gico g-${tone}`} aria-hidden="true">
+      <svg viewBox="0 0 24 24">{d}</svg>
+    </span>
+  );
+}
+
 function NavLink({
   href,
   icon,
@@ -195,8 +224,9 @@ export default function Sidebar({
 
       <details className="grp" open>
         <summary>
-          <Chevron />
+          <SecIcon d={SEC.work} tone="work" />
           <span className="gname">업무 영역</span>
+          <Chevron />
         </summary>
         {/* 영역 7종 나열, 각 영역 아래 소속 프로젝트를 들여쓰기로 표시 (is_active=false 는 서버에서 제외) */}
         {areas.map((area) =>
@@ -249,8 +279,9 @@ export default function Sidebar({
 
       <details className="grp" open>
         <summary>
-          <Chevron />
+          <SecIcon d={SEC.goal} tone="goal" />
           <span className="gname">목표 &amp; 성과</span>
+          <Chevron />
         </summary>
         <NavLink href="/goals" icon={IC.goal} label="목표" current={cur("/goals")} />
         {isLead && (
@@ -260,8 +291,9 @@ export default function Sidebar({
 
       <details className="grp" open>
         <summary>
-          <Chevron />
+          <SecIcon d={SEC.collab} tone="collab" />
           <span className="gname">협업</span>
+          <Chevron />
         </summary>
         {/* 시그널 → 표기만 "논의·결정" (코드/테이블은 signal 유지) */}
         <NavLink href="/signals" icon={IC.signal} label="논의·결정" current={cur("/signals")} />
@@ -272,8 +304,9 @@ export default function Sidebar({
       {isLead && (
         <details className="grp">
           <summary>
-            <Chevron />
+            <SecIcon d={SEC.admin} tone="admin" />
             <span className="gname">관리</span>
+            <Chevron />
           </summary>
           <NavLink href="/members" icon={IC.members} label="구성원" current={cur("/members")} />
           <NavLink href="/settings" icon={IC.settings} label="설정" current={cur("/settings")} />

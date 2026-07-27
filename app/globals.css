@@ -664,8 +664,16 @@ body {
 /* 그룹 라벨 — 무채색 강조(--ink-soft·700)로 또렷하게 */
 .grp > summary .gname { color: var(--ink-soft); }
 .grp > summary::-webkit-details-marker { display: none; }
-.grp > summary:hover { color: var(--mid); background: var(--glass); }
-.grp > summary .cv { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2; transition: transform .18s; }
+.grp > summary:hover { color: var(--ink); background: var(--glass); }
+/* 섹션 아이콘 — wayfinding용 색(절제 예외). 라인 아이콘, 라이트 톤 */
+.grp > summary .gico { display: grid; place-items: center; width: 18px; height: 18px; flex: 0 0 18px; }
+.grp > summary .gico svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.grp > summary .gico.g-work { color: var(--edu); }
+.grp > summary .gico.g-goal { color: var(--green); }
+.grp > summary .gico.g-collab { color: var(--play); }
+.grp > summary .gico.g-admin { color: var(--muted); }
+/* 셰브론 — 헤더 오른쪽 끝(펼침/접힘) */
+.grp > summary .cv { margin-left: auto; width: 11px; height: 11px; fill: none; stroke: var(--muted); stroke-width: 2; transition: transform .18s; }
 .grp[open] > summary .cv { transform: rotate(90deg); }
 .grp > summary .add { margin-left: auto; font-size: 13px; line-height: 1; opacity: .7; }
 
@@ -703,7 +711,8 @@ body.rail .kbar span, body.rail .kbar kbd { display: none; }
 body.rail .brand { justify-content: center; padding: 3px 0 6px; }
 body.rail .brand .nm { display: none; }
 body.rail .grp > summary { justify-content: center; }
-body.rail .grp > summary .gname, body.rail .grp > summary .add { display: none; }
+/* 레일 모드 — 섹션 아이콘만 남겨 wayfinding 유지, 라벨·셰브론 숨김 */
+body.rail .grp > summary .gname, body.rail .grp > summary .add, body.rail .grp > summary .cv { display: none; }
 body.rail .acct { justify-content: center; padding: 7px; }
 
 /* 본문 */
