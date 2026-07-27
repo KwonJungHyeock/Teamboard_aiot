@@ -146,17 +146,42 @@ export default function HomeView({
 
           return (
             <div className="bento">
-              {/* 히어로 타임라인 — 좌·2행 span */}
-              <TeamTimeline
-                lanes={summary.lanes}
-                initialEvents={summary.events}
-                today={summary.today}
-                view={view}
-                anchor={anchor}
-                isLead={user.role === "lead"}
-                onAnchorChange={setAnchor}
-              />
+              {/* 좌: 히어로 타임라인 + 프로젝트 진척도 (내용 높이에 맞춤) */}
+              <div className="bento-l">
+                <TeamTimeline
+                  lanes={summary.lanes}
+                  initialEvents={summary.events}
+                  today={summary.today}
+                  view={view}
+                  anchor={anchor}
+                  isLead={user.role === "lead"}
+                  onAnchorChange={setAnchor}
+                />
 
+                {/* 프로젝트 진척도 */}
+                <section className="tile" aria-label="프로젝트 진척도">
+                  <div className="th"><span className="i" aria-hidden="true">📈</span><h3>프로젝트 진척도</h3><span className="m">W{summary.isoWeek} · 평균 {avgProgress ?? 0}%</span></div>
+                  {summary.projectProgress.length === 0 ? (
+                    <EmptyState compact title="진행 중 프로젝트가 없어요" hint="업무를 추가하면 소속 프로젝트 진척이 모입니다." action={<Link className="btn small primary" href="/projects">프로젝트 보기</Link>} />
+                  ) : (
+                    <div className="pb2">
+                      {summary.projectProgress.map((p) => (
+                        <div className="pi-row" key={p.id}>
+                          <div className="pi"><span className="pi-l">{p.name}</span><span className="p num">{p.percent === null ? "-" : `${p.percent}%`}</span></div>
+                          <div className="t2"><i style={{ width: `${Math.max(p.percent ?? 0, 2)}%`, background: barColor(p.colorKey) }} /></div>
+                        </div>
+                      ))}
+                      <div className="pi-row">
+                        <div className="pi"><span className="pi-l">이번 달 목표 평균</span><span className="p num">{goalAvg === null ? "-" : `${goalAvg}%`}</span></div>
+                        <div className="t2"><i style={{ width: `${Math.max(goalAvg ?? 0, 2)}%`, background: "var(--amber)" }} /></div>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              </div>
+
+              {/* 우: 지금 할 일 + KPI 스트립 + 논의·결정 */}
+              <div className="bento-r">
               {/* 🔥 지금 할 일 — 실행 포커스 */}
               <section className="tile focus-tile" aria-label="지금 할 일">
                 <div className="ft">🔥 지금 할 일</div>
@@ -180,27 +205,6 @@ export default function HomeView({
                 </div>
               </section>
 
-              {/* 프로젝트 진척도 */}
-              <section className="tile" aria-label="프로젝트 진척도">
-                <div className="th"><span className="i" aria-hidden="true">📈</span><h3>프로젝트 진척도</h3><span className="m">W{summary.isoWeek} · 평균 {avgProgress ?? 0}%</span></div>
-                {summary.projectProgress.length === 0 ? (
-                  <EmptyState compact title="진행 중 프로젝트가 없어요" hint="업무를 추가하면 소속 프로젝트 진척이 모입니다." action={<Link className="btn small primary" href="/projects">프로젝트 보기</Link>} />
-                ) : (
-                  <div className="pb2">
-                    {summary.projectProgress.map((p) => (
-                      <div className="pi-row" key={p.id}>
-                        <div className="pi"><span className="pi-l">{p.name}</span><span className="p num">{p.percent === null ? "-" : `${p.percent}%`}</span></div>
-                        <div className="t2"><i style={{ width: `${Math.max(p.percent ?? 0, 2)}%`, background: barColor(p.colorKey) }} /></div>
-                      </div>
-                    ))}
-                    <div className="pi-row">
-                      <div className="pi"><span className="pi-l">이번 달 목표 평균</span><span className="p num">{goalAvg === null ? "-" : `${goalAvg}%`}</span></div>
-                      <div className="t2"><i style={{ width: `${Math.max(goalAvg ?? 0, 2)}%`, background: "var(--amber)" }} /></div>
-                    </div>
-                  </div>
-                )}
-              </section>
-
               {/* 논의 · 결정 (협업) */}
               <section className="tile" aria-label="논의·결정">
                 <div className="th"><span className="i" aria-hidden="true">💬</span><h3>논의 · 결정</h3><span className="m">정체 {summary.stalledCount}</span></div>
@@ -219,6 +223,7 @@ export default function HomeView({
                 )}
                 <Link className="collab-more" href="/huddle">허들룸 공유 {summary.huddles.length} →</Link>
               </section>
+              </div>
             </div>
           );
         })()}
