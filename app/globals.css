@@ -791,7 +791,7 @@ body.rail .acct { justify-content: center; padding: 7px; }
 .gdp-prog-t { display: flex; justify-content: space-between; align-items: baseline; font-size: var(--fs-meta); color: var(--mid); margin-bottom: 6px; }
 .gdp-prog-t b { font-family: var(--f-d); font-size: var(--fs-body); color: var(--hi); }
 .gdp-prog .bar { height: 6px; border-radius: 3px; background: var(--track-bg); overflow: hidden; }
-.gdp-prog .bar i { display: block; height: 100%; background: linear-gradient(90deg, rgba(75,141,248,.4), var(--edu)); box-shadow: 0 0 10px rgba(75,141,248,.45); }
+.gdp-prog .bar i { display: block; height: 100%; background: var(--edu); }
 .gdp-ro { font-size: var(--fs-row); color: var(--hi); padding: 6px 2px; }
 .gdp-num { font-size: var(--fs-row); background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 6px; color: var(--hi); padding: 6px 9px; }
 .gdp-task { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); }
