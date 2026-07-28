@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { SessionUser } from "@/lib/types";
+import { computeLiveStatus, STATUS_CHIP } from "@/lib/agent-live";
 
 type JobType = "research" | "organize";
 type JobStatus = "queued" | "running" | "done" | "failed";
@@ -148,6 +149,9 @@ export default function AgentFab({ user }: { user: SessionUser }) {
 
   const est = estimateTokens(prompt);
   const insufficient = credit ? est > credit.remaining : false;
+  // Liveness — 실측 job 상태에서 파생 (idle/working/done/failed)
+  const status = computeLiveStatus(jobs, { submitting, unseen });
+  const chip = STATUS_CHIP[status];
 
   return (
     <>
@@ -159,13 +163,14 @@ export default function AgentFab({ user }: { user: SessionUser }) {
         </div>
       )}
 
-      {/* FAB */}
+      {/* FAB — 3상태(대기·작업중·완료). 색+상태로 살아있음. */}
       <button
-        className={`agf-fab${open ? " on" : ""}`}
-        aria-label="에이전트 열기"
+        className={`agf-fab s-${status}${open ? " on" : ""}`}
+        aria-label={`에이전트 (${chip.label})`}
         aria-expanded={open}
         onClick={() => (open ? setOpen(false) : openNotify())}
       >
+        {status === "working" && <span className="agf-ring" aria-hidden="true" />}
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <rect x="4" y="8" width="16" height="12" rx="3" />
           <path d="M12 4v4M9 14h.01M15 14h.01M2 13h2M20 13h2" />
@@ -179,7 +184,7 @@ export default function AgentFab({ user }: { user: SessionUser }) {
           <div className="agf-head">
             <div className="agf-title">
               <b>에이전트</b>
-              <span>{user.name}님의 에이전트</span>
+              <span className={`agf-chip-live s-${status}`}><i className="agf-live-dot">{chip.dot}</i>{chip.label}</span>
             </div>
             <button className="agf-x" aria-label="닫기" onClick={() => setOpen(false)}>
               <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>

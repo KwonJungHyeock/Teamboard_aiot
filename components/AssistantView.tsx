@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { NOTION_WORK_AREAS } from "@/lib/types";
 import type { AssistantSettings, SessionUser } from "@/lib/types";
+import { computeLiveStatus, STATUS_CHIP } from "@/lib/agent-live";
 
 type JobType = "research" | "organize";
 type JobStatus = "queued" | "running" | "done" | "failed";
@@ -47,6 +48,7 @@ const STATUS: Record<JobStatus, { label: string; cls: string }> = {
 export default function AssistantView({ user }: { user: SessionUser; notionConnected?: boolean }) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [credit, setCredit] = useState<Credit | null>(null);
+  const [unseen, setUnseen] = useState(0);
   const [assistant, setAssistant] = useState<AssistantSettings | null>(null);
   const [type, setType] = useState<JobType>("research");
   const [prompt, setPrompt] = useState("");
@@ -64,6 +66,7 @@ export default function AssistantView({ user }: { user: SessionUser; notionConne
       const next: Job[] = data.jobs ?? [];
       setJobs(next);
       setCredit(data.credit ?? null);
+      setUnseen(data.unseen ?? 0);
       const doneIds = new Set(next.filter((j) => j.status === "done").map((j) => j.id));
       if (knownDone.current === null) knownDone.current = doneIds;
     } catch {
@@ -116,7 +119,12 @@ export default function AssistantView({ user }: { user: SessionUser; notionConne
         <div className="head">
           <div>
             <div className="eb">MY AGENT</div>
-            <h1>{assistant?.name ? `${assistant.name}` : "내 에이전트"}</h1>
+            <h1>
+              {assistant?.name ? `${assistant.name}` : "내 에이전트"}
+              {(() => { const s = computeLiveStatus(jobs, { submitting, unseen }); const c = STATUS_CHIP[s]; return (
+                <span className={`agf-chip-live ma-chip-live s-${s}`}><i className="agf-live-dot">{c.dot}</i>{c.label}</span>
+              ); })()}
+            </h1>
             <p>{user.name}님의 AI 에이전트 — 제안만 합니다. 완료 결과는 승인 대기에서 사람이 확정합니다.</p>
           </div>
           <div className="head-r">
