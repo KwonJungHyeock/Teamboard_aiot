@@ -506,6 +506,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
               </button>
             }
             variant="full"
+            quickComplete
             onStatusChange={changeStatus}
             onRowClick={(id) => openTaskPanel(id)}
           />

@@ -1,7 +1,12 @@
+"use client";
+
 // 업무 테이블 (Phase 3 마감 임박 → Phase 5 공용화) — 홈 "마감 임박"과 /tasks 목록이
 // 같은 컴포넌트를 재사용한다 (Phase 5 검수 포인트 6). 컬럼 폭 고정 (프로토타입 colgroup).
 // variant="full"(/tasks): 목표·우선순위 컬럼 추가 + 상태 인라인 드롭다운. compact(홈)은 5열 유지.
+import { useState } from "react";
 import EmptyState from "./EmptyState";
+import { toast } from "@/lib/quick";
+import { notifyTaskUpdated } from "@/lib/task-panel";
 export interface TaskTableRow {
   id: number;
   title: string;
@@ -42,6 +47,7 @@ export default function TaskTable({
   variant = "compact",
   onStatusChange,
   accent,
+  quickComplete,
 }: {
   rows: TaskTableRow[];
   title?: string;
@@ -57,9 +63,27 @@ export default function TaskTable({
   onStatusChange?: (id: number, status: string) => void;
   /** 카드 헤더 의미색 accent (홈 영역분리). 예: "coral" */
   accent?: string;
+  /** hover 인라인 액션(완료·열기) 활성화 — 낙관적 업데이트 + 토스트 */
+  quickComplete?: boolean;
 }) {
   const full = variant === "full";
   const colCount = full ? 9 : 5;
+  // 낙관적 완료 — 즉시 반영(페이드) 후 PATCH, 실패 시 롤백
+  const [doneLocal, setDoneLocal] = useState<Set<number>>(new Set());
+  async function completeNow(id: number, e: React.MouseEvent) {
+    e.stopPropagation();
+    setDoneLocal((s) => new Set(s).add(id));
+    toast("완료 처리했어요");
+    const res = await fetch(`/api/tasks/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "done" }),
+    });
+    if (!res.ok) {
+      setDoneLocal((s) => { const n = new Set(s); n.delete(id); return n; });
+      toast("완료 처리에 실패했어요", "err");
+    } else {
+      notifyTaskUpdated();
+    }
+  }
   return (
     <section className={`card${accent ? ` acc-${accent}` : ""}`} aria-label={title}>
       <div className="ch">
@@ -125,7 +149,7 @@ export default function TaskTable({
                 key={t.id}
                 onClick={onRowClick ? () => onRowClick(t.id) : undefined}
                 className={
-                  [onRowClick ? "clickable" : "", selectedId === t.id ? "selected" : ""]
+                  [onRowClick ? "clickable" : "", selectedId === t.id ? "selected" : "", doneLocal.has(t.id) ? "done-opt" : ""]
                     .filter(Boolean)
                     .join(" ") || undefined
                 }
@@ -192,7 +216,15 @@ export default function TaskTable({
                     <span className={`st ${status.cls}`}>{status.label}</span>
                   )}
                 </td>
-                <td className={`due col-due ${dueCls}`}>{t.dday ?? "—"}</td>
+                <td className={`due col-due ${dueCls}`}>
+                  <span className="tt-dday">{t.dday ?? "—"}</span>
+                  {quickComplete && t.status !== "done" && t.status !== "dropped" && (
+                    <span className="tt-row-act">
+                      <button className="tt-act c" onClick={(e) => completeNow(t.id, e)} title="완료 처리" aria-label="완료 처리">✓</button>
+                      {onRowClick && <button className="tt-act o" onClick={(e) => { e.stopPropagation(); onRowClick(t.id); }} title="열기" aria-label="열기">↗</button>}
+                    </span>
+                  )}
+                </td>
               </tr>
             );
           })}

@@ -1008,3 +1008,29 @@ body.meeting-on .side { display: none !important; }
 .md-link-card:hover { border-color: var(--accent); }
 .md-lc-host { font-size: 12px; font-weight: 700; color: var(--text); }
 .md-lc-url { font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── 빠른 생성 팝오버 (공유) ── */
+.qc { position: fixed; z-index: 82; width: 320px; background: var(--bg-elev); border: 1px solid var(--line-hi); border-radius: 14px; box-shadow: var(--shadow-pop); padding: 14px; }
+.qc-h { display: flex; align-items: center; margin-bottom: 10px; }
+.qc-h b { font-size: 14px; font-weight: 800; color: var(--text); }
+.qc-x { margin-left: auto; width: 26px; height: 26px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; }
+.qc-x:hover { background: var(--glass); color: var(--text); }
+.qc-err { margin: 0 0 8px; font-size: 12px; color: var(--coral-text); }
+.qc-title { width: 100%; height: 42px; font-size: 15px; font-weight: 600; padding: 0 11px; border: 1px solid var(--line-hi); border-radius: 9px; margin-bottom: 10px; }
+.qc-title:focus { outline: 2px solid var(--coral); outline-offset: -1px; border-color: transparent; }
+.qc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.qc-row label, .qc-f { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.qc-f { margin-bottom: 8px; }
+.qc-row input, .qc-row select, .qc-f select { height: 36px; font-size: 13px; padding: 0 9px; }
+.qc-foot { display: flex; align-items: center; margin-top: 4px; }
+.qc-more { border: 0; background: transparent; font-size: 12.5px; font-weight: 700; color: var(--edu-text); cursor: pointer; padding: 4px 0; }
+.qc-more:hover { text-decoration: underline; }
+.qc-save { height: 36px; padding: 0 18px; border-radius: 9px; font-size: 13px; font-weight: 700; }
+
+/* ── 토스트 스택 ── */
+.toaster { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 90; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+.toast { display: flex; align-items: center; gap: 9px; padding: 11px 16px; border-radius: 11px; background: var(--charcoal); color: #fff; font-size: 13px; font-weight: 600; box-shadow: var(--shadow-pop); animation: toast-in .22s cubic-bezier(.4,0,.2,1); }
+.toast-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.toast.t-ok .toast-dot { background: #57C98A; }
+.toast.t-err .toast-dot { background: #FF8A8E; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Role } from "@/lib/types";
 import { openTaskPanel, notifyTaskUpdated } from "@/lib/task-panel";
+import { openQuickCreate } from "@/lib/quick";
 
 interface PaletteItem {
   label: string;
@@ -13,6 +14,7 @@ interface PaletteItem {
   keywords: string; // 검색 보조어 (영문·초성 등)
   leadOnly?: boolean;
   notionOnly?: boolean; // Notion 연결 시에만 노출 (파트 Z)
+  quick?: boolean;    // 빠른 생성 팝오버로 처리(내비게이션 대신)
 }
 
 // ── 이동 ──
@@ -31,7 +33,7 @@ const NAV_ITEMS: PaletteItem[] = [
 // ── 만들기 ──
 const CREATE_ITEMS: PaletteItem[] = [
   { label: "에이전트에게 업무 위임", href: "/assistant", keywords: "위임 초안 draft delegate" },
-  { label: "업무 만들기", href: "/tasks?new=1", keywords: "task new 새 업무" },
+  { label: "새 업무", href: "/tasks?new=1", keywords: "task new 새 업무 만들기 빠른", quick: true },
   { label: "논의·결정 올리기", href: "/signals?new=1", keywords: "signal 시그널 new 결정 요청" },
 ];
 
@@ -110,6 +112,11 @@ export default function CommandPalette({ role, notionConnected = true }: { role:
   }, [q]);
 
   function go(item: PaletteItem) {
+    if (item.quick) {
+      setOpen(false);
+      openQuickCreate({ x: window.innerWidth / 2 - 160, y: 150 });
+      return;
+    }
     close();
     router.push(item.href);
   }

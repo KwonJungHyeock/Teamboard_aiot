@@ -4,7 +4,7 @@
 // 업무는 상세 패널을 빈 상태로 연다. 나머지는 각 화면의 작성 폼으로 이동.
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { openNewTaskPanel } from "@/lib/task-panel";
+import { openQuickCreate } from "@/lib/quick";
 
 export default function NewMenu() {
   const [open, setOpen] = useState(false);
@@ -37,9 +37,12 @@ export default function NewMenu() {
       </button>
       {open && (
         <div className="newmenu-pop" role="menu">
-          <button role="menuitem" onClick={() => pick(() => openNewTaskPanel())}>
+          <button role="menuitem" onClick={(e) => {
+            const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            pick(() => openQuickCreate({ x: r.left, y: r.bottom + 6 }));
+          }}>
             <span className="nm-i">📋</span>
-            <span className="nm-b"><b>업무</b><em>상세 패널에서 바로 작성</em></span>
+            <span className="nm-b"><b>업무</b><em>빠른 생성 팝오버</em></span>
           </button>
           <button role="menuitem" onClick={() => pick(() => router.push("/calendar"))}>
             <span className="nm-i">🗓️</span>

@@ -9,6 +9,8 @@ import PasswordGate from "./PasswordGate";
 import TaskDetailPanel from "./TaskDetailPanel";
 import GoalDetailPanel from "./GoalDetailPanel";
 import AgentFab from "./AgentFab";
+import QuickCreate from "./QuickCreate";
+import Toaster from "./Toaster";
 
 export default async function AppShell({
   user,
@@ -56,6 +58,8 @@ export default async function AppShell({
       <GoalDetailPanel />
       <CommandPalette role={current.role} notionConnected={notionConnected} />
       <AgentFab user={current} />
+      <QuickCreate />
+      <Toaster />
     </>
   );
 }
