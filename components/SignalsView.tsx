@@ -3,6 +3,7 @@
 // 시그널 화면 (Phase 6) — SignalPanel(홈과 공유) + SignalThread + 새 시그널.
 import { useCallback, useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/types";
+import { toast } from "@/lib/quick";
 import SignalPanel, { type SignalPanelItem } from "./SignalPanel";
 import SignalThread from "./SignalThread";
 
@@ -36,8 +37,9 @@ const TYPE_LABEL: Record<string, string> = {
   risk: "리스크",
 };
 
-/** /api/signals 응답을 패널 아이템으로 — 홈(lib/home.ts)과 같은 표기 규칙 */
-export function toPanelItem(s: ApiSignal): SignalPanelItem {
+/** /api/signals 응답을 패널 아이템으로 — 홈(lib/home.ts)과 같은 표기 규칙.
+ *  user 지정 시 권한에 맞는 우측 인라인 빠른 액션(확정·확인·처리)을 파생한다. */
+export function toPanelItem(s: ApiSignal, user?: SessionUser): SignalPanelItem {
   const active = s.status === "open" || s.status === "discussing";
   const badge = s.toMe
     ? "tome"
@@ -61,11 +63,25 @@ export function toPanelItem(s: ApiSignal): SignalPanelItem {
           : s.scope === "private"
             ? "비공개"
             : null;
+  // 정체·리스크 → 코랄 강조
+  const emphasis = s.stalled || (s.type === "risk" && active);
+  // 권한별 한 건짜리 빠른 액션 (스레드 생명주기와 동일한 규칙)
+  let quick: SignalPanelItem["quick"] = null;
+  if (user && active) {
+    const isAuthor = s.authorId === user.id;
+    const isLead = user.role === "lead";
+    const isTarget = s.targetActorId === user.id;
+    if (s.type === "decision" && (isAuthor || isLead)) quick = { label: "확정", kind: "decide" };
+    else if (s.type === "review" && (isTarget || isLead)) quick = { label: "확인", kind: "confirm" };
+    else if (s.type === "memo" || s.type === "risk") quick = { label: "처리", kind: "resolve" };
+  }
   return {
     id: s.id,
     kind: "signal",
     type: s.type,
     title: s.title,
+    emphasis,
+    quick,
     meta: [
       TYPE_LABEL[s.type] ?? s.type,
       s.scope === "private" ? "비공개" : s.authorName,
@@ -175,6 +191,7 @@ export default function SignalsView({ user }: { user: SessionUser }) {
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showClosed, setShowClosed] = useState(false);
+  const [busyId, setBusyId] = useState<number | null>(null);
   // "+ 새로 만들기 > 시그널/메모" 진입 시 작성 폼 유형 프리셋 (파트 4)
   const [composerType, setComposerType] = useState("memo");
   useEffect(() => {
@@ -213,6 +230,40 @@ export default function SignalsView({ user }: { user: SessionUser }) {
 
   const stalledCount = signals.filter((s) => s.stalled).length;
 
+  // 우측 인라인 빠른 액션 — 스레드 생명주기와 동일한 API (PUT /api/signals/:id)
+  const QUICK_BODY: Record<string, Record<string, unknown>> = {
+    decide: { status: "decided" },
+    confirm: { action: "confirmReview" },
+    resolve: { status: "resolved" },
+  };
+  const QUICK_DONE: Record<string, string> = {
+    decide: "결정으로 확정했어요",
+    confirm: "확인 완료 처리했어요",
+    resolve: "처리 완료했어요",
+  };
+  async function quickAct(id: number, kind: string) {
+    const body = QUICK_BODY[kind];
+    if (!body || busyId) return;
+    setBusyId(id);
+    try {
+      const res = await fetch(`/api/signals/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        toast((await res.json()).error ?? "처리에 실패했어요", "err");
+        return;
+      }
+      toast(QUICK_DONE[kind] ?? "처리했어요");
+      await load();
+    } catch {
+      toast("네트워크 오류로 처리하지 못했어요", "err");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div className="hv">
       <div className="top">
@@ -242,10 +293,12 @@ export default function SignalsView({ user }: { user: SessionUser }) {
         {error && <p className="gerr">{error}</p>}
         {!loading && (
           <SignalPanel
-            items={signals.map(toPanelItem)}
+            items={signals.map((s) => toPanelItem(s, user))}
             stalledCount={stalledCount}
             onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
             selectedId={selectedId}
+            onQuickAct={quickAct}
+            busyId={busyId}
           />
         )}
 

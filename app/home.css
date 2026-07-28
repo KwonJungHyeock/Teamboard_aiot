@@ -1092,6 +1092,67 @@
 .hv .pcard-more:hover { text-decoration: underline; }
 .hv .pcard-cost { display: inline-block; margin-top: 8px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
+/* ── 논의·결정 (홈 Bento 톤) — ①요약=필터 카드 ②통일 항목 카드 ── */
+/* .tile 표면은 .bento 스코프 전용이라 여기선 카드 표면을 직접 준다(흰 배경·보더·라운드·그림자) */
+.hv .sig-wrap { margin-top: 18px; display: flex; flex-direction: column; gap: 14px; }
+.hv .sig-sum, .hv .sig-card, .hv .sig-empty { background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-card); }
+
+/* ① 상단 요약 카드 = 필터 (전체/결정/확인/메모/리스크 칩 + 정체 표시) */
+.hv .sig-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 14px; }
+.hv .sig-chip { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border: 1px solid var(--line-hi); background: var(--card); border-radius: 11px; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--ink-soft); cursor: pointer; transition: .14s; }
+.hv .sig-chip:hover { border-color: var(--muted); color: var(--ink); }
+.hv .sig-chip .sig-chip-n { font-family: var(--f-d); font-size: 12.5px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hv .sig-chip[aria-pressed="true"] { background: var(--charcoal); border-color: var(--charcoal); color: #fff; }
+.hv .sig-chip[aria-pressed="true"] .sig-chip-n { color: #C7CDD4; }
+.hv .sig-stall { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-family: var(--f-d); font-size: 12px; font-weight: 700; color: var(--coral-text); }
+.hv .sig-stall i { width: 7px; height: 7px; border-radius: 2px; background: var(--coral); }
+
+/* ② 통일 항목 카드 — 타입 배지 + 제목·메타 + 상태 태그 + 우측 인라인 액션 */
+.hv .sig-cards { display: flex; flex-direction: column; gap: 10px; }
+.hv .sig-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; }
+.hv .sig-card.clickable { cursor: pointer; transition: .14s; }
+.hv .sig-card.clickable:hover { border-color: var(--line-hi); box-shadow: var(--shadow-pop); }
+.hv .sig-card.selected { border-color: var(--charcoal); }
+.hv .sig-card.em { border-left: 3px solid var(--coral); }        /* 정체·리스크 코랄 강조 */
+.hv .sig-card.ag { border-left: 3px solid var(--play); }         /* 에이전트 작성물 */
+.hv .sig-card.em.ag { border-left-color: var(--coral); }         /* 강조가 우선 */
+
+/* 타입 배지 — 결정=blue / 확인=teal / 메모=slate / 리스크=coral */
+.hv .sig-ty { flex: 0 0 auto; align-self: flex-start; margin-top: 1px; display: inline-flex; align-items: center; justify-content: center; min-width: 46px; height: 24px; padding: 0 10px; border-radius: 8px; font-family: var(--f-d); font-size: 12px; font-weight: 700; border: 1px solid transparent; }
+.hv .sig-ty.decision { color: var(--edu-text); background: color-mix(in srgb, var(--edu) 13%, var(--card)); border-color: color-mix(in srgb, var(--edu) 26%, transparent); }
+.hv .sig-ty.review { color: var(--train-text); background: color-mix(in srgb, var(--train) 15%, var(--card)); border-color: color-mix(in srgb, var(--train) 30%, transparent); }
+.hv .sig-ty.memo { color: var(--ink-soft); background: var(--glass); border-color: var(--line-hi); }
+.hv .sig-ty.risk { color: var(--coral-text); background: var(--coral-bg); border-color: color-mix(in srgb, var(--coral) 28%, transparent); }
+
+.hv .sig-card-main { flex: 1; min-width: 0; }
+.hv .sig-card-h { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.hv .sig-card-title { font-size: 14.5px; font-weight: 700; color: var(--ink); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hv .sig-card-meta { margin-top: 3px; font-family: var(--f-d); font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.hv .sig-card-right { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; }
+
+/* 상태 태그 — 고정·정체=coral / 미실행=amber / 비공개=slate / 확인 요청=blue */
+.hv .sig-tag { font-family: var(--f-d); font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 7px; white-space: nowrap; border: 1px solid transparent; }
+.hv .sig-tag.stale { color: var(--coral-text); background: var(--coral-bg); border-color: color-mix(in srgb, var(--coral) 26%, transparent); }
+.hv .sig-tag.decided { color: var(--amber-text); background: color-mix(in srgb, var(--amber) 15%, var(--card)); border-color: color-mix(in srgb, var(--amber) 30%, transparent); }
+.hv .sig-tag.priv { color: var(--muted); background: var(--glass); border-color: var(--line-hi); }
+.hv .sig-tag.tome { color: var(--edu-text); background: color-mix(in srgb, var(--edu) 14%, var(--card)); border-color: color-mix(in srgb, var(--edu) 30%, transparent); }
+.hv .sig-tag.wait { color: var(--play-text); background: color-mix(in srgb, var(--play) 13%, var(--card)); border-color: color-mix(in srgb, var(--play) 30%, transparent); }
+
+/* 우측 인라인 빠른 액션 — 빠른 액션 시스템과 통일(작은 아웃라인 버튼) */
+.hv .sig-card-acts { display: flex; align-items: center; gap: 6px; }
+.hv .sig-act { height: 30px; padding: 0 12px; border: 1px solid var(--line-hi); background: var(--card); border-radius: 8px; font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; cursor: pointer; transition: .14s; }
+.hv .sig-act:hover { border-color: var(--muted); color: var(--ink); }
+.hv .sig-act.primary { color: #fff; background: var(--coral); border-color: var(--coral); }
+.hv .sig-act.primary:hover { filter: brightness(1.06); }
+.hv .sig-act:disabled { opacity: .5; cursor: not-allowed; }
+.hv .sig-empty { padding: 20px; }
+
+@media (max-width: 720px) {
+  .hv .sig-card { flex-wrap: wrap; }
+  .hv .sig-card-right { width: 100%; justify-content: space-between; padding-left: 60px; }
+}
+
 /* ── 새 목표 모달 (홈 톤) ── */
 .hv .goal-new { height: 34px; padding: 0 16px; border-radius: 9px; font-size: 13px; font-weight: 700; white-space: nowrap; }
 .hv .ngm-backdrop { position: fixed; inset: 0; background: rgba(31,39,51,.34); z-index: 80; }

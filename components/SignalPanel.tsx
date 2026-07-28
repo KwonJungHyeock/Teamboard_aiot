@@ -1,9 +1,9 @@
 "use client";
 
-// 시그널 패널 (Phase 6) — 홈과 /signals가 공유하는 목록 컴포넌트.
+// 시그널 패널 (Phase 6 → 홈 Bento 톤 확산) — /signals가 쓰는 목록 컴포넌트.
+// 구성: ①상단 요약 카드(=필터, 전체/결정/확인/메모/리스크 칩) ②항목 = 통일 카드.
 // 정렬(리스크 고정 → 정체 → 최신)은 서버가 결정하고 여기서는 타입 필터만 건다.
-// 에이전트 작성물 4중 구분: 좌측 바이올렛 보더(.sig.ag) / 봇 태그(.atag) /
-// 투명도 90%(CSS) / 승인 대기 배지(.bg.wait)
+// 에이전트 작성물은 좌측 바이올렛 보더(.sig-card.ag) + 봇 태그(.atag)로 구분.
 import { useMemo, useState } from "react";
 import type { SignalType } from "@/lib/types";
 import EmptyState from "./EmptyState";
@@ -18,6 +18,10 @@ export interface SignalPanelItem {
   badgeLabel: string | null;
   agent: boolean;
   stalled: boolean;
+  /** 정체·리스크 → 코랄 강조 (좌측 액센트) */
+  emphasis?: boolean;
+  /** 우측 인라인 빠른 액션 (한 건). 없으면 열기만. */
+  quick?: { label: string; kind: "decide" | "confirm" | "resolve" } | null;
 }
 
 const SIGNAL_TABS: { key: "all" | SignalType; label: string }[] = [
@@ -28,20 +32,30 @@ const SIGNAL_TABS: { key: "all" | SignalType; label: string }[] = [
   { key: "risk", label: "리스크" },
 ];
 
+const TYPE_LABEL: Record<string, string> = {
+  decision: "결정",
+  review: "확인",
+  memo: "메모",
+  risk: "리스크",
+};
+
 export default function SignalPanel({
   items,
   stalledCount,
   onSelect,
   selectedId,
-  accent,
+  onQuickAct,
+  busyId,
 }: {
   items: SignalPanelItem[];
   stalledCount: number;
   /** 지정 시 kind='signal' 행이 클릭 가능해진다 (스레드 열기) */
   onSelect?: (id: number) => void;
   selectedId?: number | null;
-  /** 카드 헤더 의미색 accent (홈 영역분리). 예: "amber" */
-  accent?: string;
+  /** 우측 인라인 빠른 액션 실행 (확정·확인·처리) */
+  onQuickAct?: (id: number, kind: string) => void;
+  /** 처리 중인 항목 id (버튼 비활성) */
+  busyId?: number | null;
 }) {
   const [tab, setTab] = useState<"all" | SignalType>("all");
 
@@ -56,66 +70,103 @@ export default function SignalPanel({
   const visible = tab === "all" ? items : items.filter((s) => s.type === tab);
 
   return (
-    <section className={`card${accent ? ` acc-${accent}` : ""}`} aria-label="논의·결정">
-      <div className="ch">
-        <h2>논의·결정</h2>
-        <span className="sub">정체 {stalledCount}</span>
-      </div>
-      <div className="tabs" role="group" aria-label="논의·결정 필터">
+    <div className="sig-wrap">
+      {/* ① 상단 요약 카드 (= 필터). 칩 클릭 시 해당 유형만. */}
+      <div className="tile sig-sum" role="group" aria-label="논의·결정 요약·필터">
         {SIGNAL_TABS.map((t) => (
           <button
             key={t.key}
-            className="tab"
+            className={`sig-chip c-${t.key}`}
             aria-pressed={tab === t.key}
             onClick={() => setTab(t.key)}
           >
-            {t.label}
-            <span className="n">{tabCounts[t.key] ?? 0}</span>
+            <span className="sig-chip-l">{t.label}</span>
+            <span className="sig-chip-n num">{tabCounts[t.key] ?? 0}</span>
           </button>
         ))}
+        {stalledCount > 0 && (
+          <span className="sig-stall" aria-label={`정체 ${stalledCount}`}>
+            <i />정체 {stalledCount}
+          </span>
+        )}
       </div>
-      <div>
-        {visible.length === 0 && (
+
+      {/* ② 항목 = 통일 카드 */}
+      {visible.length === 0 ? (
+        <section className="tile sig-empty" aria-label="논의·결정 없음">
           <EmptyState
             compact
             title={tab === "all" ? "아직 논의·결정이 없어요" : "이 유형의 논의·결정이 없어요"}
             hint="결정이 필요한 논의·확인 요청·리스크·메모를 남기면 팀 전체가 흐름을 추적할 수 있어요."
           />
-        )}
-        {visible.map((signal) => {
-          const clickable = onSelect && signal.kind === "signal";
-          return (
-            <div
-              className={[
-                "sig",
-                signal.agent ? "ag" : "",
-                clickable ? "clickable" : "",
-                selectedId === signal.id && signal.kind === "signal" ? "selected" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              key={`${signal.kind}-${signal.id}`}
-              onClick={clickable ? () => onSelect!(signal.id) : undefined}
-              role={clickable ? "button" : undefined}
-            >
-              <span className={`dt ${signal.type}`} />
-              <div className="bd">
-                <div className="tt">
-                  {signal.agent && (
-                    <span className="atag">
-                      <span className="mo" />
-                      {signal.kind === "draft" ? "에이전트" : "에이전트"}
-                    </span>
-                  )}
-                  {signal.title}
+        </section>
+      ) : (
+        <div className="sig-cards">
+          {visible.map((s) => {
+            const clickable = onSelect && s.kind === "signal";
+            const open = clickable ? () => onSelect!(s.id) : undefined;
+            const busy = busyId === s.id;
+            return (
+              <article
+                className={[
+                  "tile sig-card",
+                  s.emphasis ? "em" : "",
+                  s.agent ? "ag" : "",
+                  clickable ? "clickable" : "",
+                  selectedId === s.id && s.kind === "signal" ? "selected" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                key={`${s.kind}-${s.id}`}
+                onClick={open}
+                role={clickable ? "button" : undefined}
+              >
+                <span className={`sig-ty ${s.type}`}>{TYPE_LABEL[s.type] ?? s.type}</span>
+                <div className="sig-card-main">
+                  <div className="sig-card-h">
+                    {s.agent && (
+                      <span className="atag">
+                        <span className="mo" />
+                        에이전트
+                      </span>
+                    )}
+                    <span className="sig-card-title">{s.title}</span>
+                  </div>
+                  <div className="sig-card-meta">{s.meta}</div>
                 </div>
-                <div className="mt">{signal.meta}</div>
-              </div>
-              {signal.badge && <span className={`bg ${signal.badge}`}>{signal.badgeLabel}</span>}
-            </div>
-          );
-        })}
-      </div>
-    </section>
+                <div className="sig-card-right">
+                  {s.badge && <span className={`sig-tag ${s.badge}`}>{s.badgeLabel}</span>}
+                  <div className="sig-card-acts">
+                    {s.quick && onQuickAct && (
+                      <button
+                        className="sig-act primary"
+                        disabled={busy}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onQuickAct(s.id, s.quick!.kind);
+                        }}
+                      >
+                        {s.quick.label}
+                      </button>
+                    )}
+                    {clickable && (
+                      <button
+                        className="sig-act"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelect!(s.id);
+                        }}
+                      >
+                        열기 <span aria-hidden="true">↗</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
