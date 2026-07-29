@@ -54,9 +54,9 @@ export function monthProgress(
   if (progressMode === "manual") return Math.round(storedProgress);
   const counted = linkedTasks.filter((t) => t.status !== "dropped");
   if (counted.length === 0) return null;
-  // 진척률 = 연결 Task 진행률의 평균 (수동 progress 반영). 완료는 100으로 간주.
+  // 진척률 = 연결 Task 진행률의 평균 (수동 progress 반영). 완료는 저장값과 무관하게 100으로 간주.
   const sum = counted.reduce(
-    (a, t) => a + (typeof t.progress === "number" ? t.progress : t.status === "done" ? 100 : 0),
+    (a, t) => a + (t.status === "done" ? 100 : typeof t.progress === "number" ? t.progress : 0),
     0
   );
   return Math.round(sum / counted.length);

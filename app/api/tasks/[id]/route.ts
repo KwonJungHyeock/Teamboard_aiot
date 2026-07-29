@@ -139,6 +139,21 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       extraLogs.push(`${session.name}이(가) 진행률 변경 (${task.progress}% → ${nextProgress}%) — "${task.title}"`);
     }
 
+    // 100% ⇒ 완료 자동 (모순 "100%인데 대기" 방지). 명시적 상태 변경/이미 완료·중단·제안은 제외.
+    let autoCompleted = false;
+    if (
+      payload.status === undefined &&
+      nextProgress === 100 &&
+      task.status !== "done" && task.status !== "dropped" && task.status !== "proposed"
+    ) {
+      set("status", "done");
+      set("completed_at", new Date().toISOString());
+      set("drop_reason", null);
+      set("dropped_at", null);
+      autoCompleted = true;
+      statusLog = `${session.name}이(가) 진행률 100% 도달로 업무 완료 — "${task.title}"`;
+    }
+
     if (sets.length > 0) {
       values.push(taskId);
       await query(`UPDATE task SET ${sets.join(", ")}, updated_at = now() WHERE id = $${values.length}`, values);
@@ -146,7 +161,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     // 진척 재계산 대상 목표 수집 (파트 B) — 변경 전 연결 목표부터.
     const affectedGoals = new Set<number>();
-    const statusChanged = typeof payload.status === "string" && payload.status !== task.status;
+    const statusChanged = (typeof payload.status === "string" && payload.status !== task.status) || autoCompleted;
 
     // 목표 연결 교체 — 다중 선택, 선택 사항. 월 목표만 허용 (SPEC 2.2)
     if (Array.isArray(payload.goalIds)) {
