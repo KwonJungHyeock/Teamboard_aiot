@@ -25,10 +25,11 @@ export async function GET() {
       must_change_pw: boolean;
       is_active: boolean;
       last_login_at: string | null;
+      created_at: string | null;
       assistant_name: string | null;
     }>(
       `SELECT a.id, a.display_name, a.short_name, ac.email, ac.role, ac.must_change_pw,
-              a.is_active, ac.last_login_at::text,
+              a.is_active, ac.last_login_at::text, a.created_at::text,
               ag.display_name AS assistant_name
        FROM actor a
        JOIN account ac ON ac.actor_id = a.id
@@ -46,6 +47,7 @@ export async function GET() {
         mustChangePw: r.must_change_pw,
         isActive: r.is_active,
         lastLoginAt: r.last_login_at,
+        createdAt: r.created_at,
         assistantName: r.assistant_name,
       })),
     });

@@ -13,7 +13,16 @@ interface Member {
   mustChangePw: boolean;
   isActive: boolean;
   lastLoginAt: string | null;
+  createdAt: string | null;
   assistantName: string | null;
+}
+
+const ROLE_LABEL: Record<string, string> = { lead: "팀장", member: "팀원", viewer: "뷰어" };
+function shortDate(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return `${d.getFullYear().toString().slice(2)}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function NewMemberForm({ onCreated }: { onCreated: (tempPw: string, email: string) => void }) {
@@ -161,18 +170,20 @@ export default function MemberManager({ user }: { user: SessionUser }) {
           {loading && <p className="gempty">불러오는 중...</p>}
           <table>
             <colgroup>
-              <col style={{ width: "22%" }} />
-              <col style={{ width: "26%" }} />
-              <col style={{ width: "14%" }} />
-              <col style={{ width: "20%" }} />
-              <col style={{ width: "18%" }} />
+              <col style={{ width: "24%" }} />
+              <col style={{ width: "23%" }} />
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "11%" }} />
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "16%" }} />
             </colgroup>
             <thead>
               <tr>
-                <th>이름</th>
+                <th>이름 · 상태</th>
                 <th>이메일</th>
                 <th>역할</th>
-                <th>에이전트 · 상태</th>
+                <th>가입</th>
+                <th>최근 접속</th>
                 <th>관리</th>
               </tr>
             </thead>
@@ -180,26 +191,35 @@ export default function MemberManager({ user }: { user: SessionUser }) {
               {members.map((m) => (
                 <tr key={m.id} style={{ opacity: m.isActive ? 1 : 0.5 }}>
                   <td>
-                    {m.displayName}
-                    {m.shortName && <span className="rp-by"> · {m.shortName}</span>}
+                    <span className="mbr-name">
+                      <span className={`led ${m.isActive ? "s-done" : "s-drop"}`} title={m.isActive ? "활성" : "비활성"} aria-hidden="true" />
+                      <span className="mbr-nm">
+                        {m.displayName}{m.shortName && <span className="rp-by"> · {m.shortName}</span>}
+                        {(m.assistantName || m.mustChangePw) && (
+                          <small className="mbr-sub">
+                            {m.assistantName ? `에이전트 ${m.assistantName}` : ""}
+                            {m.mustChangePw ? `${m.assistantName ? " · " : ""}비번변경 대기` : ""}
+                          </small>
+                        )}
+                      </span>
+                    </span>
                   </td>
                   <td>{m.email}</td>
                   <td>
                     <select
+                      className={`role-sel role-${m.role}`}
                       value={m.role}
                       disabled={!m.isActive}
                       onChange={(e) => patch(m.id, { role: e.target.value })}
+                      aria-label={`역할 (${ROLE_LABEL[m.role] ?? m.role})`}
                     >
                       <option value="member">팀원</option>
                       <option value="lead">팀장</option>
                       <option value="viewer">뷰어</option>
                     </select>
                   </td>
-                  <td>
-                    {m.assistantName ?? "—"}
-                    {m.mustChangePw && <span className="mbr-badge">비번변경 대기</span>}
-                    {!m.isActive && <span className="mbr-badge off">비활성</span>}
-                  </td>
+                  <td className="num mbr-date">{shortDate(m.createdAt)}</td>
+                  <td className="num mbr-date">{shortDate(m.lastLoginAt)}</td>
                   <td>
                     {m.isActive ? (
                       <button

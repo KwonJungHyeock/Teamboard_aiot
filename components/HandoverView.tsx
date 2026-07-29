@@ -27,6 +27,17 @@ const STATUS_LABEL: Record<string, string> = {
   proposed: "제안", todo: "대기", doing: "진행", review: "리뷰", done: "완료", dropped: "중단",
 };
 
+function relTime(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const m = Math.floor((Date.now() - t) / 60000);
+  if (m < 1) return "방금";
+  if (m < 60) return `${m}분 전`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}시간 전`;
+  return `${Math.floor(h / 24)}일 전`;
+}
+
 export default function HandoverView({ user }: { user: SessionUser }) {
   const [mine, setMine] = useState<ListItem[]>([]);
   const [shared, setShared] = useState<ListItem[]>([]);
@@ -143,21 +154,30 @@ export default function HandoverView({ user }: { user: SessionUser }) {
           <aside className="rp-side no-print">
             <div className="ho-sec-h">내 인수인계 <span>{mine.length}</span></div>
             {mine.length === 0 && <p className="gempty">아직 문서가 없어요. "＋ 새 인수인계"로 시작하세요.</p>}
-            {mine.map((h) => (
-              <button key={h.id} className={`rp-item ${selectedId === h.id ? "on" : ""}`} onClick={() => setSelectedId(h.id)}>
-                <b>{h.title || "제목 없음"}</b>
-                <span className="gsp" />
-                <span className={`rp-st ${h.status === "shared" ? "approved" : ""}`}>{h.status === "shared" ? "공유" : "초안"}</span>
-              </button>
-            ))}
+            {mine.map((h) => {
+              const shared_ = h.status === "shared";
+              return (
+                <button key={h.id} className={`ho-item${selectedId === h.id ? " on" : ""}`} onClick={() => setSelectedId(h.id)}>
+                  <span className={`led ${shared_ ? "s-done" : "s-todo"}`} aria-hidden="true" />
+                  <span className="ho-item-main">
+                    <b className="ho-item-t">{h.title || "제목 없음"}</b>
+                    <span className="ho-item-m num">#{h.id} · {relTime(h.updated_at)}</span>
+                  </span>
+                  <span className={`ho-item-st ${shared_ ? "shared" : "draft"}`}>{shared_ ? "공유" : "초안"}</span>
+                </button>
+              );
+            })}
 
-            <div className="ho-sec-h" style={{ marginTop: 14 }}>공유받은 문서 <span>{shared.length}</span></div>
+            <div className="ho-sec-h" style={{ marginTop: 16 }}>공유받은 문서 <span>{shared.length}</span></div>
             {shared.length === 0 && <p className="gempty">공유받은 문서가 없습니다.</p>}
             {shared.map((h) => (
-              <button key={h.id} className={`rp-item ${selectedId === h.id ? "on" : ""}`} onClick={() => setSelectedId(h.id)}>
-                <b>{h.title || "제목 없음"}</b>
-                <span className="gsp" />
-                <span className="rp-by">{h.author_name}</span>
+              <button key={h.id} className={`ho-item${selectedId === h.id ? " on" : ""}`} onClick={() => setSelectedId(h.id)}>
+                <span className="led s-done" aria-hidden="true" />
+                <span className="ho-item-main">
+                  <b className="ho-item-t">{h.title || "제목 없음"}</b>
+                  <span className="ho-item-m num">#{h.id} · {relTime(h.updated_at)} · {h.author_name}</span>
+                </span>
+                <span className="ho-item-st shared">공유</span>
               </button>
             ))}
           </aside>
