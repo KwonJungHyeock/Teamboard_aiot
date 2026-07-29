@@ -413,7 +413,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     `SELECT p.id, p.name, p.color_key,
             count(t.id) FILTER (WHERE t.status <> 'proposed') AS total,
             count(t.id) FILTER (WHERE t.status = 'done') AS done,
-            avg(t.progress) FILTER (WHERE t.status <> 'proposed') AS avg_progress
+            avg(CASE WHEN t.status = 'done' THEN 100 ELSE t.progress END) FILTER (WHERE t.status <> 'proposed') AS avg_progress
      FROM project p
      LEFT JOIN task t ON t.project_id = p.id AND t.is_active = true
      WHERE p.is_active = true

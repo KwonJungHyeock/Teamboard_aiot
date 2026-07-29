@@ -104,11 +104,12 @@ export default function TaskDetailPanel() {
   useEffect(() => {
     if (openId == null) { setT(null); setErr(""); return; }
     setErr(""); setDropping(false); setDropReason("");
-    if (!sel) fetch("/api/meta/selectors").then((r) => r.json()).then(setSel).catch(() => {});
+    // 열 때마다 셀렉트 재조회 — 세션 중 새로 만든 월 목표·프로젝트가 즉시 연결 후보로 뜨도록.
+    fetch("/api/meta/selectors").then((r) => r.json()).then(setSel).catch(() => {});
     if (openId === "new") { setT(null); return; }
     loadDetail(openId);
     loadComments(openId);
-  }, [openId, loadDetail, loadComments, sel]);
+  }, [openId, loadDetail, loadComments]);
 
   // 새 업무 초안 초기화 (진입 시 1회) + 영역 기본값은 selectors 도착 후 채움
   useEffect(() => {

@@ -8,11 +8,11 @@ import TaskTable, { type TaskTableRow } from "./TaskTable";
 import TaskBoard from "./TaskBoard";
 import TaskCalendar from "./TaskCalendar";
 import TaskGantt from "./TaskGantt";
-import { toast } from "@/lib/quick";
+import { toast, openQuickCreate } from "@/lib/quick";
 import {
   type TaskItem, type TaskLens, type BoardGroup, LENS_LABEL, GROUP_LABEL, dday,
 } from "@/lib/task-view";
-import { openNewTaskPanel, openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
+import { openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
 
 interface AreaOption {
   id: number;
@@ -67,127 +67,6 @@ const DUE_OPTIONS = [
   ["none", "기한 없음"],
 ] as const;
 
-/** 새 업무 폼 — 영역(필수, 최상단) → 업무유형 → 프로젝트(선택 영역 하위만) */
-function NewTaskForm({
-  actors,
-  projects,
-  areas,
-  myAreaIds,
-  user,
-  onDone,
-}: {
-  actors: Option[];
-  projects: ProjectOption[];
-  areas: AreaOption[];
-  myAreaIds: number[];
-  user: SessionUser;
-  onDone: () => void;
-}) {
-  const [title, setTitle] = useState("");
-  // 담당자의 기본 영역 첫 항목을 기본값으로
-  const [areaId, setAreaId] = useState<number>(myAreaIds[0] ?? areas[0]?.id ?? 0);
-  const [workType, setWorkType] = useState("team");
-  const [projectId, setProjectId] = useState(0);
-  const [assigneeId, setAssigneeId] = useState(user.id);
-  const [startDate, setStartDate] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [priority, setPriority] = useState("mid");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  // 선택 영역의 하위 프로젝트만 노출. 영역이 바뀌면 소속 아닌 프로젝트는 해제.
-  const areaProjects = projects.filter((p) => p.areaId === areaId);
-  useEffect(() => {
-    if (projectId && !areaProjects.some((p) => p.id === projectId)) setProjectId(0);
-  }, [areaId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function submit() {
-    if (!title.trim()) return;
-    if (!areaId) {
-      setError("업무 영역을 선택하세요.");
-      return;
-    }
-    if (startDate && dueDate && startDate > dueDate) {
-      setError("시작일이 마감일보다 늦을 수 없습니다.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    const res = await fetch("/api/tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title,
-        areaId,
-        workType,
-        projectId: projectId || null,
-        assigneeId: assigneeId || null,
-        startDate: startDate || null,
-        dueDate: dueDate || null,
-        priority,
-      }),
-    });
-    setBusy(false);
-    if (!res.ok) {
-      setError((await res.json()).error ?? "생성 실패");
-      return;
-    }
-    setTitle("");
-    setStartDate("");
-    setDueDate("");
-    onDone();
-  }
-
-  return (
-    <div className="tnew">
-      <input
-        placeholder="새 업무 제목"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-      />
-      <select aria-label="영역" value={areaId} onChange={(e) => setAreaId(Number(e.target.value))}>
-        {areas.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.name}
-          </option>
-        ))}
-      </select>
-      <select aria-label="업무유형" value={workType} onChange={(e) => setWorkType(e.target.value)}>
-        <option value="team">팀업무</option>
-        <option value="personal">개인업무</option>
-        <option value="routine">상시업무</option>
-      </select>
-      <select value={projectId} onChange={(e) => setProjectId(Number(e.target.value))}>
-        <option value={0}>프로젝트 없음</option>
-        {areaProjects.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
-      <select value={assigneeId} onChange={(e) => setAssigneeId(Number(e.target.value))}>
-        {actors.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.name}
-          </option>
-        ))}
-      </select>
-      <input type="date" aria-label="시작일" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-      <input type="date" aria-label="마감일" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-      <select value={priority} onChange={(e) => setPriority(e.target.value)}>
-        <option value="high">높음</option>
-        <option value="mid">보통</option>
-        <option value="low">낮음</option>
-      </select>
-      <button className="lk" onClick={submit} disabled={busy || !title.trim()}>
-        추가
-      </button>
-      {error && <span className="gerr">{error}</span>}
-    </div>
-  );
-}
-
 export default function TasksView({ user }: { user: SessionUser }) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [inbox, setInbox] = useState<InboxItem[]>([]);
@@ -199,7 +78,6 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [today, setToday] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState("");
 
   // 필터 (영역 · 프로젝트 · 담당 · 상태 · 기한). 담당 기본값=본인 → "내 업무" 진입.
@@ -210,6 +88,15 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [fDue, setFDue] = useState("");
   const [areaDefaulted, setAreaDefaulted] = useState(false);
   const isMine = fAssignee === String(user.id);
+
+  // 새 업무 — 단일 흐름: 빠른 생성 팝오버(현재 영역·담당 프리셋). 별도 생성 시트 없음.
+  const quickNew = useCallback((e: React.MouseEvent) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    openQuickCreate(
+      { x: r.left, y: r.bottom + 6 },
+      { areaId: fArea ? Number(fArea) : undefined, assigneeId: isMine ? user.id : undefined }
+    );
+  }, [fArea, isMine, user.id]);
 
   // 뷰(렌즈) 전환 — 마지막 뷰·그룹 기준 기억(localStorage)
   const [lens, setLens] = useState<TaskLens>("sheet");
@@ -409,7 +296,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
             </p>
           </div>
           {/* 홈 "+ 새로 만들기"와 동일 규칙 — 제목 줄 우측 상단 고정 (필터 줄바꿈과 무관) */}
-          <button className="newbtn" onClick={() => setShowNew((s) => !s)}>
+          <button className="newbtn" onClick={quickNew}>
             ＋ 새 업무
           </button>
         </div>
@@ -492,17 +379,6 @@ export default function TasksView({ user }: { user: SessionUser }) {
           </select>
         </div>
 
-        {showNew && (
-          <NewTaskForm
-            actors={actors}
-            projects={projects}
-            areas={areas}
-            myAreaIds={myAreaIds}
-            user={user}
-            onDone={() => { setShowNew(false); load(); }}
-          />
-        )}
-
         {/* 뷰 전환 — 같은 데이터, 다른 렌즈. 보드는 그룹 기준(상태/영역/담당) 선택. */}
         <div className="lens-bar">
           <div className="lens-tabs" role="tablist" aria-label="업무 뷰">
@@ -534,7 +410,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
             emptyText="아직 업무가 없어요"
             emptyHint="상단 필터를 조정하거나, 새 업무를 만들어 시작하세요."
             emptyAction={
-              <button className="btn small primary" onClick={() => openNewTaskPanel()}>
+              <button className="btn small primary" onClick={quickNew}>
                 ＋ 새 업무
               </button>
             }

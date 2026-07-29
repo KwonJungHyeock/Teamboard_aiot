@@ -29,13 +29,26 @@ function monthMatrix(anchor: string): string[] {
 export default function TaskCalendar({ tasks, today }: { tasks: TaskItem[]; today: string }) {
   const [anchor, setAnchor] = useState(today || "2026-01-01");
 
+  // 다일 업무는 시작일→마감일 전 구간에 연속 표시(구간 세그먼트로 모서리 연결).
+  // 시작일 없는 업무는 마감일 단일 처리(P1 fallback).
   const byDate = useMemo(() => {
-    const map = new Map<string, TaskItem[]>();
+    const map = new Map<string, { t: TaskItem; seg: "single" | "start" | "mid" | "end" }[]>();
     for (const t of tasks) {
-      if (!t.dueDate) continue;
-      const arr = map.get(t.dueDate) ?? [];
-      arr.push(t);
-      map.set(t.dueDate, arr);
+      const rawS = t.startDate ? t.startDate.slice(0, 10) : t.dueDate ? t.dueDate.slice(0, 10) : null;
+      const rawE = t.dueDate ? t.dueDate.slice(0, 10) : t.startDate ? t.startDate.slice(0, 10) : null;
+      if (!rawS || !rawE) continue;
+      const s = rawS <= rawE ? rawS : rawE;
+      const e = rawS <= rawE ? rawE : rawS;
+      let d = s;
+      let guard = 0;
+      while (d <= e && guard < 400) {
+        const seg = s === e ? "single" : d === s ? "start" : d === e ? "end" : "mid";
+        const arr = map.get(d) ?? [];
+        arr.push({ t, seg });
+        map.set(d, arr);
+        d = addDays(d, 1);
+        guard++;
+      }
     }
     return map;
   }, [tasks]);
@@ -78,16 +91,18 @@ export default function TaskCalendar({ tasks, today }: { tasks: TaskItem[]; toda
                 <button className="cal-add" aria-label="이 날짜에 업무 추가" onClick={(e) => { e.stopPropagation(); openQuickCreate({ x: e.clientX, y: e.clientY }, { dueDate: date }); }}>＋</button>
               </div>
               <div className="cal-pills">
-                {shown.map((p) => {
-                  const late = !!p.dueDate && today && p.dueDate < today && p.status !== "done" && p.status !== "dropped";
+                {shown.map(({ t: p, seg }) => {
+                  const late = !!p.dueDate && !!today && p.dueDate.slice(0, 10) < today && p.status !== "done" && p.status !== "dropped";
+                  // 제목은 시작/단일/주 시작(일요일)에만 — 그 외 구간은 연속 바
+                  const showTitle = seg === "single" || seg === "start" || dow === 0;
                   return (
                     <button
                       key={p.id}
-                      className={`cal-pill st-${p.status}${late ? " late" : ""}`}
+                      className={`cal-pill st-${p.status}${late ? " late" : ""} seg-${seg}${showTitle ? "" : " cont"}`}
                       onClick={(e) => { e.stopPropagation(); openTaskPanel(p.id); }}
-                      title={p.title}
+                      title={`${p.title}${p.startDate && p.dueDate ? ` · ${p.startDate.slice(5, 10)}~${p.dueDate.slice(5, 10)}` : ""}`}
                     >
-                      <i className={`cal-pdot ${p.colorKey ?? "team"}`} />{p.title}
+                      {showTitle ? <><i className={`cal-pdot ${p.colorKey ?? "team"}`} />{p.title}</> : <span className="cal-cont-t" aria-hidden="true">·</span>}
                     </button>
                   );
                 })}

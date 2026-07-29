@@ -1200,11 +1200,20 @@
 .hv .cal-cell:hover .cal-add { opacity: 1; }
 .hv .cal-add:hover { background: var(--coral); color: #fff; }
 .hv .cal-pills { display: flex; flex-direction: column; gap: 3px; }
-.hv .cal-pill { display: flex; align-items: center; gap: 5px; width: 100%; text-align: left; border: 0; border-radius: 5px; padding: 3px 6px; font-size: 11px; font-weight: 600; color: var(--ink); background: color-mix(in srgb, var(--ink-soft) 8%, transparent); cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.hv .cal-pill:hover { filter: brightness(.97); }
-.hv .cal-pill.st-doing { background: color-mix(in srgb, var(--edu) 13%, transparent); color: var(--edu-text); }
-.hv .cal-pill.st-done { background: color-mix(in srgb, var(--green) 14%, transparent); color: var(--green-text); }
-.hv .cal-pill.late { background: color-mix(in srgb, var(--coral) 13%, transparent); color: var(--coral-text); }
+/* 캘린더 pill — 배경 있는 칩(틴트텍스트 아님), 텍스트 대비 4.5:1. 상태 의미색. */
+.hv .cal-pill { display: flex; align-items: center; gap: 5px; width: 100%; text-align: left; border: 0; border-radius: 5px; padding: 3px 7px; font-size: 11px; font-weight: 600; color: var(--ink); background: color-mix(in srgb, var(--ink-soft) 18%, var(--card)); cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-height: 19px; }
+.hv .cal-pill:hover { filter: brightness(.96); }
+.hv .cal-pill.st-todo { background: color-mix(in srgb, var(--muted) 18%, var(--card)); color: var(--ink); }
+.hv .cal-pill.st-doing { background: color-mix(in srgb, var(--edu) 20%, var(--card)); color: var(--edu-text); }
+.hv .cal-pill.st-review { background: color-mix(in srgb, var(--amber) 24%, var(--card)); color: var(--amber-text); }
+.hv .cal-pill.st-done { background: color-mix(in srgb, var(--green) 20%, var(--card)); color: var(--green-text); }
+.hv .cal-pill.late { background: color-mix(in srgb, var(--coral) 20%, var(--card)); color: var(--coral-text); }
+/* 다일 구간 세그먼트 — 인접 셀과 모서리로 연결(연속 표시) */
+.hv .cal-pill.seg-start { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.hv .cal-pill.seg-mid { border-radius: 0; }
+.hv .cal-pill.seg-end { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.hv .cal-pill.cont { justify-content: flex-start; color: transparent; }
+.hv .cal-pill.cont .cal-cont-t { color: transparent; }
 .hv .cal-pdot { width: 6px; height: 6px; border-radius: 2px; flex: none; }
 .hv .cal-pdot.edu { background: var(--edu); } .hv .cal-pdot.play { background: var(--play); } .hv .cal-pdot.train { background: var(--train); } .hv .cal-pdot.team { background: var(--team); }
 .hv .cal-more { font-size: 10.5px; font-weight: 700; color: var(--muted); padding-left: 6px; }

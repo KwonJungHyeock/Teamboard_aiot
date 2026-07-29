@@ -4,7 +4,7 @@
 // 필드: 제목·날짜·담당·영역 (+접이식: 프로젝트·우선순위). 저장 즉시 task 생성 → 전역 반영 + 토스트.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QUICK_CREATE_EVENT, toast, type QuickAnchor, type QuickPrefill } from "@/lib/quick";
-import { notifyTaskUpdated, openTaskPanel } from "@/lib/task-panel";
+import { notifyTaskUpdated } from "@/lib/task-panel";
 
 interface Sel {
   actors: { id: number; name: string }[];
@@ -71,6 +71,7 @@ export default function QuickCreate() {
   }, [open, sel, areaId]);
 
   async function save() {
+    if (busy) return; // 중복 제출 방지(Enter 연타·더블클릭)
     if (!title.trim()) { setErr("제목을 입력하세요."); return; }
     setBusy(true); setErr("");
     try {
@@ -88,9 +89,9 @@ export default function QuickCreate() {
       const data = await res.json();
       if (!res.ok) { setErr(data.error ?? "생성 실패"); setBusy(false); return; }
       setOpen(false);
+      // 단일 흐름 — 화면 이동 없이 즉시 전역 연동 + 토스트만. 상세로 튀지 않는다.
       notifyTaskUpdated();
       toast("업무가 생성됐어요");
-      if (data.id) setTimeout(() => openTaskPanel(data.id), 60);
     } catch {
       setErr("네트워크 오류로 생성하지 못했어요."); setBusy(false);
     }

@@ -11,6 +11,7 @@ import GoalDetailPanel from "./GoalDetailPanel";
 import AgentFab from "./AgentFab";
 import QuickCreate from "./QuickCreate";
 import Toaster from "./Toaster";
+import TaskSync from "./TaskSync";
 
 export default async function AppShell({
   user,
@@ -60,6 +61,7 @@ export default async function AppShell({
       <AgentFab user={current} />
       <QuickCreate />
       <Toaster />
+      <TaskSync />
     </>
   );
 }
