@@ -100,7 +100,7 @@ export default function TaskBoard({
                 return (
                   <article
                     key={t.id}
-                    className={`tb-card${dragId === t.id ? " dragging" : ""}`}
+                    className={`tb-card${dragId === t.id ? " dragging" : ""}${t.blocked ? " bkd" : ""}`}
                     draggable={t.status !== "proposed"}
                     onDragStart={(e) => { setDragId(t.id); e.dataTransfer.effectAllowed = "move"; }}
                     onDragEnd={() => { setDragId(null); setOverKey(null); }}
@@ -113,7 +113,15 @@ export default function TaskBoard({
                       </span>
                       <span className="tb-id num">#{t.id}</span>
                     </div>
-                    <div className="tb-card-title">{t.title}</div>
+                    <div className="tb-card-title">
+                      {t.blocked && (
+                        <span className="blk-mark" title={t.blockedReason ? `막힘: ${t.blockedReason}` : "막힘"} aria-label="막힘">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                        </span>
+                      )}
+                      {t.title}
+                    </div>
+                    {t.blocked && t.blockedReason && <div className="tb-blk-reason num">막힘 · {t.blockedReason}</div>}
                     <div className="tb-card-meta">
                       <span className="tb-st">
                         <span className={`led s-${t.status}`} style={{ background: statusColor(t.status) }} />

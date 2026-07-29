@@ -136,7 +136,7 @@ export default function HomeView({
           const avgProgress = projPcts.length ? Math.round(projPcts.reduce((a, b) => a + b, 0) / projPcts.length) : null;
           const goalPcts = summary.monthGoals.map((g) => g.progress).filter((x): x is number => x !== null);
           const goalAvg = goalPcts.length ? Math.round(goalPcts.reduce((a, b) => a + b, 0) / goalPcts.length) : null;
-          const doneM = metric("done"), doingM = metric("doing"), turnM = metric("myTurn"), stalledM = metric("stalled");
+          const doneM = metric("done"), doingM = metric("doing"), turnM = metric("myTurn"), stalledM = metric("stalled"), blockedM = metric("blocked");
 
           const focus = [
             { key: "inbox", n: Number(turnM?.value ?? 0), tone: "amber", label: "승인 대기", sub: "에이전트 제안·확인 요청 확정", href: "/inbox" },
@@ -202,6 +202,19 @@ export default function HomeView({
                   <Link className="ms" href={doneM?.href ?? "/tasks?status=done"}><div className="v num">{doneM?.value ?? "0"}{doneM?.em && <span className="ms-em">{doneM.em}</span>}</div><div className="l">이번 주 완료</div></Link>
                   <Link className="ms" href={stalledM?.href ?? "/tasks?due=overdue"}><div className="v num v-coral">{stalledM?.value ?? "0"}</div><div className="l">지연 · 정체</div></Link>
                   <Link className="ms" href="/status"><div className="v num v-green">{avgProgress ?? "—"}{avgProgress !== null && <span className="ms-em">%</span>}</div><div className="l">평균 진척</div></Link>
+                  {(() => {
+                    const n = Number(blockedM?.value ?? "0");
+                    return (
+                      <Link className="ms ms-blocked" href={blockedM?.href ?? "/tasks?blocked=1"} title={blockedM?.deltaText}>
+                        <div className={`v num ${n > 0 ? "v-block" : "v-mut"}`}>{blockedM?.value ?? "0"}</div>
+                        <div className="l">
+                          <svg className="ms-lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                          막힌 업무
+                        </div>
+                        <div className={`ms-reason num${n > 0 ? "" : " ok"}`}>{blockedM?.deltaText}</div>
+                      </Link>
+                    );
+                  })()}
                 </div>
               </section>
 

@@ -86,6 +86,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [fAssignee, setFAssignee] = useState(String(user.id));
   const [fStatus, setFStatus] = useState("");
   const [fDue, setFDue] = useState("");
+  const [fBlocked, setFBlocked] = useState(false); // 홈 5칸 진입(?blocked=1)
   const [areaDefaulted, setAreaDefaulted] = useState(false);
   const isMine = fAssignee === String(user.id);
 
@@ -118,6 +119,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
       if (fAssignee) qs.set("assignee", fAssignee);
       if (fStatus) qs.set("status", fStatus);
       if (fDue) qs.set("due", fDue);
+      if (fBlocked) qs.set("blocked", "1");
       const res = await fetch(`/api/tasks?${qs.toString()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "업무 조회 실패");
@@ -130,7 +132,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
     } finally {
       setLoading(false);
     }
-  }, [fArea, fProject, fAssignee, fStatus, fDue]);
+  }, [fArea, fProject, fAssignee, fStatus, fDue, fBlocked]);
 
   // 셀렉트 룩업은 목록과 분리된 /api/meta/selectors에서 (Phase 8 D-3)
   const loadSelectors = useCallback(async () => {
@@ -150,9 +152,11 @@ export default function TasksView({ user }: { user: SessionUser }) {
     const sp = new URLSearchParams(window.location.search);
     const st = sp.get("status");
     const du = sp.get("due");
-    if (st || du) {
+    const bl = sp.get("blocked");
+    if (st || du || bl === "1") {
       if (st) setFStatus(st);
       if (du) setFDue(du);
+      if (bl === "1") setFBlocked(true);
       setFAssignee("");
       setAreaDefaulted(true);
     }
@@ -272,6 +276,8 @@ export default function TasksView({ user }: { user: SessionUser }) {
           goalNames: t.goalIds.map(goalTitleOf).filter((x): x is string => !!x),
           dday: d.text,
           overdue: d.overdue && t.status !== "done" && t.status !== "dropped",
+          blocked: t.blocked,
+          blockedReason: t.blockedReason,
         };
       });
   }, [filteredTasks, today, goalTitleOf]);

@@ -267,6 +267,17 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     today
   );
 
+  // 막힌 업무(blocked 플래그) — 진행 불가 신호. 대표 사유 1줄(가장 오래 막힌 것).
+  const blockedRow = await queryOne<{ n: string; reason: string | null }>(
+    `SELECT count(*) AS n,
+            (SELECT blocked_reason FROM task
+             WHERE is_active = true AND blocked = true AND status <> 'proposed'
+             ORDER BY blocked_since ASC NULLS LAST LIMIT 1) AS reason
+     FROM task WHERE is_active = true AND blocked = true AND status <> 'proposed'`
+  );
+  const blockedCount = Number(blockedRow?.n ?? 0);
+  const blockedTopReason = blockedRow?.reason ?? null;
+
   const metrics: Metric[] = [
     {
       key: "doing",
@@ -313,11 +324,12 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     {
       key: "blocked",
       label: "막힌 업무",
-      value: "준비 중",
-      deltaText: "blocked 상태 추가 후 활성화",
-      deltaTone: "fl",
-      spark: [0, 0, 0, 0, 0, 0, 0],
-      placeholder: true,
+      value: String(blockedCount),
+      deltaText: blockedCount > 0 ? (blockedTopReason ?? "사유 미입력") : "막힌 업무 없음",
+      deltaTone: blockedCount > 0 ? "dn" : "fl",
+      spark: [],
+      alert: blockedCount > 0,
+      href: "/tasks?blocked=1",
     },
   ];
 

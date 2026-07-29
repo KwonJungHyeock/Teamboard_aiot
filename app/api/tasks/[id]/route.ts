@@ -21,9 +21,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     const task = await queryOne<{
       id: number; title: string; status: string; assignee_id: number | null;
-      start_date: string | null; due_date: string | null; progress: number;
+      start_date: string | null; due_date: string | null; progress: number; blocked: boolean;
     }>(
-      "SELECT id, title, status, assignee_id, start_date::text, due_date::text, progress FROM task WHERE id = $1 AND is_active = true",
+      "SELECT id, title, status, assignee_id, start_date::text, due_date::text, progress, blocked FROM task WHERE id = $1 AND is_active = true",
       [taskId]
     );
     if (!task) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
@@ -139,6 +139,33 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       extraLogs.push(`${session.name}이(가) 진행률 변경 (${task.progress}% → ${nextProgress}%) — "${task.title}"`);
     }
 
+    // 막힘(blocked) 플래그 — 상태와 별개. 표시 시 사유 필수, 해제 시 상태 유지.
+    if (payload.blocked !== undefined) {
+      const wantBlocked = payload.blocked === true;
+      if (wantBlocked) {
+        const reason = String(payload.blockedReason ?? "").trim().slice(0, 500);
+        if (!reason) {
+          return NextResponse.json({ error: "막힘 사유를 입력하세요." }, { status: 400 });
+        }
+        set("blocked", true);
+        set("blocked_reason", reason);
+        // 새로 막힘 표시할 때만 시각 갱신(이미 막힌 상태의 사유 수정은 시각 유지)
+        if (!task.blocked) set("blocked_since", new Date().toISOString());
+        set("blocked_by", payload.blockedBy ? Number(payload.blockedBy) : null);
+        extraLogs.push(
+          task.blocked
+            ? `${session.name}이(가) 막힘 사유 수정 — "${task.title}" (${reason})`
+            : `${session.name}이(가) 막힘 표시 — "${task.title}" (사유: ${reason})`
+        );
+      } else if (task.blocked) {
+        set("blocked", false);
+        set("blocked_reason", null);
+        set("blocked_since", null);
+        set("blocked_by", null);
+        extraLogs.push(`${session.name}이(가) 막힘 해제 — "${task.title}"`);
+      }
+    }
+
     // 100% ⇒ 완료 자동 (모순 "100%인데 대기" 방지). 명시적 상태 변경/이미 완료·중단·제안은 제외.
     let autoCompleted = false;
     if (
@@ -229,13 +256,15 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       assignee_id: number | null; assignee_name: string | null; created_by_name: string | null;
       start_date: string | null; due_date: string | null; drop_reason: string | null;
       progress: number; goal_ids: number[] | null;
+      blocked: boolean; blocked_reason: string | null; blocked_since: string | null; blocked_by: number | null;
     }>(
       `SELECT t.id, t.title, t.description, t.status, t.priority, t.origin, t.work_type,
               t.area_id, ar.name AS area_name, ar.color_key AS area_color,
               t.project_id, p.name AS project_name, p.color_key,
               t.assignee_id, a.display_name AS assignee_name, c.display_name AS created_by_name,
               t.start_date::text, t.due_date::text, t.drop_reason, t.progress,
-              array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids
+              array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
+              t.blocked, t.blocked_reason, t.blocked_since::text, t.blocked_by
        FROM task t
        JOIN area ar ON ar.id = t.area_id
        LEFT JOIN project p ON p.id = t.project_id
@@ -264,6 +293,10 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         startDate: t.start_date, dueDate: t.due_date, dropReason: t.drop_reason,
         progress: t.progress ?? 0,
         goalIds: t.goal_ids ?? [],
+        blocked: t.blocked ?? false,
+        blockedReason: t.blocked_reason,
+        blockedSince: t.blocked_since,
+        blockedBy: t.blocked_by,
       },
       activity,
     });

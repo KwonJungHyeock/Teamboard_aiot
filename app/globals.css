@@ -1062,3 +1062,20 @@ body.meeting-on .side { display: none !important; }
   .agf-fab.s-idle, .agf-fab.s-working, .agf-fab.s-done, .agf-fab .agf-ring, .agf-chip-live .agf-live-dot { animation: none !important; }
   .agf-fab.s-working { box-shadow: 0 0 0 3px color-mix(in srgb, var(--coral) 45%, transparent), 0 8px 22px rgba(238,76,81,.34); }
 }
+
+/* ── 업무 상세 · 막힘 표시 (blocked) ── */
+.tdp-block-h { display: flex; align-items: center; justify-content: space-between; }
+.tdp-block-h > span { display: inline-flex; align-items: center; gap: 6px; }
+.tdp-lock { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tdp-block.on .tdp-block-h { color: var(--amber-text); }
+.tdp-toggle { position: relative; display: inline-block; width: 38px; height: 22px; cursor: pointer; }
+.tdp-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.tdp-toggle-tr { position: absolute; inset: 0; background: var(--line-hi); border-radius: 999px; transition: background .16s; }
+.tdp-toggle-tr::before { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--card); box-shadow: 0 1px 3px rgba(31,39,51,.28); transition: transform .16s; }
+.tdp-toggle input:checked + .tdp-toggle-tr { background: var(--amber); }
+.tdp-toggle input:checked + .tdp-toggle-tr::before { transform: translateX(16px); }
+.tdp-block-body { margin-top: 10px; }
+.tdp-block-reason { width: 100%; height: 38px; border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--line-hi)); border-radius: 8px; padding: 0 12px; font-family: var(--f-ui); font-size: var(--fs-row); background: color-mix(in srgb, var(--amber) 7%, var(--card)); color: var(--hi); }
+.tdp-block-reason:focus { outline: none; border-color: var(--amber); }
+.tdp-block-err { margin: 6px 0 0; font-size: var(--fs-meta); color: var(--coral-text); }
+.tdp-block-note { margin: 7px 0 0; font-size: var(--fs-meta); color: var(--muted); line-height: 1.5; }

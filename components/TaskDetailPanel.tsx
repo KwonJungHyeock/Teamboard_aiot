@@ -22,6 +22,7 @@ interface TaskDetail {
   assigneeId: number | null; assigneeName: string | null; createdByName: string | null;
   startDate: string | null; dueDate: string | null; dropReason: string | null; goalIds: number[];
   progress: number;
+  blocked: boolean; blockedReason: string | null; blockedSince: string | null; blockedBy: number | null;
 }
 interface Selectors {
   actors: { id: number; name: string }[];
@@ -63,6 +64,8 @@ export default function TaskDetailPanel() {
   const [dropReason, setDropReason] = useState("");
   const [descText, setDescText] = useState("");   // 설명(마크다운) 편집 버퍼 — 미리보기 동기화
   const [prog, setProg] = useState(0);             // 진행률 슬라이더 로컬 상태
+  const [blockReason, setBlockReason] = useState(""); // 막힘 사유 편집 버퍼
+  const [blockErr, setBlockErr] = useState("");
   const [uploading, setUploading] = useState(false);
   const descRef = useRef<HTMLTextAreaElement>(null);
 
@@ -94,6 +97,8 @@ export default function TaskDetailPanel() {
     setT(data.task);
     setDescText(data.task.description ?? "");
     setProg(data.task.progress ?? 0);
+    setBlockReason(data.task.blockedReason ?? "");
+    setBlockErr("");
     setActivity(data.activity ?? []);
   }, []);
   const loadComments = useCallback(async (id: number) => {
@@ -404,6 +409,49 @@ export default function TaskDetailPanel() {
                 />
               </div>
               <div className="tdp-prog-bar"><i style={{ width: `${prog}%` }} className={`pf-${t.status === "done" ? "green" : "blue"}`} /></div>
+            </div>
+
+            {/* 막힘 표시 — 상태와 별개인 진행 불가 신호. 표시 시 사유 필수. */}
+            <div className={`tdp-sec tdp-block${t.blocked ? " on" : ""}`}>
+              <div className="tdp-sec-h tdp-block-h">
+                <span><svg className="tdp-lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>막힘 표시</span>
+                <label className="tdp-toggle">
+                  <input
+                    type="checkbox"
+                    checked={t.blocked}
+                    onChange={async (e) => {
+                      if (e.target.checked) {
+                        // 켜기 — 사유 입력란만 열고, 저장은 사유 입력 후
+                        setBlockErr("");
+                        setT({ ...t, blocked: true, blockedReason: t.blockedReason ?? "" });
+                      } else {
+                        setBlockReason("");
+                        setBlockErr("");
+                        await patch({ blocked: false });
+                      }
+                    }}
+                  />
+                  <span className="tdp-toggle-tr" aria-hidden="true" />
+                </label>
+              </div>
+              {t.blocked && (
+                <div className="tdp-block-body">
+                  <input
+                    className="tdp-block-reason"
+                    placeholder="막힌 사유 (필수) — 예: 부품 입고 지연, 승인 대기"
+                    value={blockReason}
+                    onChange={(e) => setBlockReason(e.target.value)}
+                    onBlur={() => {
+                      const r = blockReason.trim();
+                      if (!r) { setBlockErr("사유를 입력해야 막힘으로 저장됩니다."); return; }
+                      if (r !== (t.blockedReason ?? "")) patch({ blocked: true, blockedReason: r });
+                    }}
+                    onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                  />
+                  {blockErr && <p className="tdp-block-err">{blockErr}</p>}
+                  <p className="tdp-block-note">진행 불가 신호입니다. 상태(진행·대기)는 그대로 두고, 해제하면 원래 상태로 돌아갑니다.</p>
+                </div>
+              )}
             </div>
 
             {/* 연결 목표 (다중) */}

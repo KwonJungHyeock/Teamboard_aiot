@@ -20,6 +20,8 @@ export interface TaskItem {
   goalIds: number[];
   progress: number;
   createdByName: string | null;
+  blocked: boolean;
+  blockedReason: string | null;
 }
 
 export type TaskLens = "sheet" | "board" | "calendar" | "timeline";

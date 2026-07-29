@@ -104,12 +104,13 @@ export default function TaskGantt({
                 {lane.bars.map((b) => (
                   <button
                     key={b.t.id}
-                    className={`tg-bar${b.late ? " late" : ""}`}
+                    className={`tg-bar${b.late ? " late" : ""}${b.t.blocked ? " bkd" : ""}`}
                     style={{ left: `${pct(b.left)}%`, width: `${pct(b.span)}%`, top: b.row * 28 + 4, background: b.late ? "var(--coral-text)" : statusColor(b.t.status) }}
                     onClick={() => openTaskPanel(b.t.id)}
-                    title={`${b.t.title} · ${STATUS_META[b.t.status]?.label ?? b.t.status} · ${b.t.progress}%`}
+                    title={`${b.t.title} · ${STATUS_META[b.t.status]?.label ?? b.t.status} · ${b.t.progress}%${b.t.blocked && b.t.blockedReason ? ` · 막힘: ${b.t.blockedReason}` : ""}`}
                   >
                     <span className="tg-fill" style={{ width: `${b.t.progress}%` }} />
+                    {b.t.blocked && <svg className="tg-lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>}
                     <span className="tg-bar-t">{b.t.title}</span>
                   </button>
                 ))}

@@ -20,6 +20,8 @@ export interface TaskTableRow {
   goalNames?: string[]; // full 전용
   areaName?: string; // full 전용
   progress?: number; // full 전용 — 진행률 0~100
+  blocked?: boolean;
+  blockedReason?: string | null;
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -154,7 +156,14 @@ export default function TaskTable({
                     .join(" ") || undefined
                 }
               >
-                <td>{t.title}</td>
+                <td>
+                  {t.blocked && (
+                    <span className="blk-mark" title={t.blockedReason ? `막힘: ${t.blockedReason}` : "막힘"} aria-label="막힘">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                    </span>
+                  )}
+                  {t.title}
+                </td>
                 {full && (
                   <td>
                     {t.goalNames && t.goalNames.length > 0 ? t.goalNames.join(", ") : "—"}

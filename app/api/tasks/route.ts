@@ -35,6 +35,8 @@ export interface TaskListRow {
   goalIds: number[];
   progress: number;
   createdByName: string | null;
+  blocked: boolean;
+  blockedReason: string | null;
 }
 
 export async function GET(request: Request) {
@@ -46,6 +48,7 @@ export async function GET(request: Request) {
     const assignee = url.searchParams.get("assignee");
     const status = url.searchParams.get("status");
     const due = url.searchParams.get("due"); // overdue | 7d | 30d | none
+    const blocked = url.searchParams.get("blocked"); // "1" → 막힌 업무만
 
     const where: string[] = ["t.is_active = true"];
     const params: unknown[] = [];
@@ -76,6 +79,7 @@ export async function GET(request: Request) {
     } else if (due === "none") {
       where.push("t.due_date IS NULL");
     }
+    if (blocked === "1") where.push("t.blocked = true");
 
     const rows = await query<{
       id: number;
@@ -97,6 +101,8 @@ export async function GET(request: Request) {
       goal_ids: number[] | null;
       progress: number;
       created_by_name: string | null;
+      blocked: boolean;
+      blocked_reason: string | null;
     }>(
       `SELECT t.id, t.title, t.description, t.status, t.priority, t.origin,
               t.project_id, p.name AS project_name, p.color_key,
@@ -105,7 +111,8 @@ export async function GET(request: Request) {
               t.start_date::text, t.due_date::text,
               array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
               t.progress,
-              c.display_name AS created_by_name
+              c.display_name AS created_by_name,
+              t.blocked, t.blocked_reason
        FROM task t
        LEFT JOIN project p ON p.id = t.project_id
        JOIN area ar ON ar.id = t.area_id
@@ -163,6 +170,8 @@ export async function GET(request: Request) {
       dueDate: r.due_date,
       goalIds: r.goal_ids ?? [],
       progress: r.progress ?? 0,
+      blocked: r.blocked ?? false,
+      blockedReason: r.blocked_reason,
       createdByName: r.created_by_name,
     }));
     return NextResponse.json({

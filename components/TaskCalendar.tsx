@@ -98,11 +98,11 @@ export default function TaskCalendar({ tasks, today }: { tasks: TaskItem[]; toda
                   return (
                     <button
                       key={p.id}
-                      className={`cal-pill st-${p.status}${late ? " late" : ""} seg-${seg}${showTitle ? "" : " cont"}`}
+                      className={`cal-pill st-${p.status}${late ? " late" : ""}${p.blocked ? " bkd" : ""} seg-${seg}${showTitle ? "" : " cont"}`}
                       onClick={(e) => { e.stopPropagation(); openTaskPanel(p.id); }}
-                      title={`${p.title}${p.startDate && p.dueDate ? ` · ${p.startDate.slice(5, 10)}~${p.dueDate.slice(5, 10)}` : ""}`}
+                      title={`${p.title}${p.blocked && p.blockedReason ? ` · 막힘: ${p.blockedReason}` : ""}${p.startDate && p.dueDate ? ` · ${p.startDate.slice(5, 10)}~${p.dueDate.slice(5, 10)}` : ""}`}
                     >
-                      {showTitle ? <><i className={`cal-pdot ${p.colorKey ?? "team"}`} />{p.title}</> : <span className="cal-cont-t" aria-hidden="true">·</span>}
+                      {showTitle ? <>{p.blocked ? <svg className="cal-lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg> : <i className={`cal-pdot ${p.colorKey ?? "team"}`} />}{p.title}</> : <span className="cal-cont-t" aria-hidden="true">·</span>}
                     </button>
                   );
                 })}
