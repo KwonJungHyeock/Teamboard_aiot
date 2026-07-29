@@ -1211,13 +1211,14 @@
 .hv .cal-add:hover { background: var(--coral); color: #fff; }
 .hv .cal-pills { display: flex; flex-direction: column; gap: 3px; }
 /* 캘린더 pill — 배경 있는 칩(틴트텍스트 아님), 텍스트 대비 4.5:1. 상태 의미색. */
-.hv .cal-pill { display: flex; align-items: center; gap: 5px; width: 100%; text-align: left; border: 0; border-radius: 5px; padding: 3px 7px; font-size: 11px; font-weight: 600; color: var(--ink); background: color-mix(in srgb, var(--ink-soft) 18%, var(--card)); cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-height: 19px; }
+/* pill = 배경 있는 칩(상태 의미색 솔리드 틴트 + 하드라인 보더). 클린 셀 위에서 또렷, 대비 4.5:1. */
+.hv .cal-pill { display: flex; align-items: center; gap: 5px; width: 100%; text-align: left; border: 1px solid transparent; border-radius: 5px; padding: 3px 7px; font-size: 11px; font-weight: 600; color: var(--ink); background: color-mix(in srgb, var(--muted) 26%, var(--card)); border-color: color-mix(in srgb, var(--muted) 34%, transparent); cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-height: 20px; }
 .hv .cal-pill:hover { filter: brightness(.96); }
-.hv .cal-pill.st-todo { background: color-mix(in srgb, var(--muted) 18%, var(--card)); color: var(--ink); }
-.hv .cal-pill.st-doing { background: color-mix(in srgb, var(--edu) 20%, var(--card)); color: var(--edu-text); }
-.hv .cal-pill.st-review { background: color-mix(in srgb, var(--amber) 24%, var(--card)); color: var(--amber-text); }
-.hv .cal-pill.st-done { background: color-mix(in srgb, var(--green) 20%, var(--card)); color: var(--green-text); }
-.hv .cal-pill.late { background: color-mix(in srgb, var(--coral) 20%, var(--card)); color: var(--coral-text); }
+.hv .cal-pill.st-todo { background: color-mix(in srgb, var(--muted) 26%, var(--card)); border-color: color-mix(in srgb, var(--muted) 34%, transparent); color: var(--ink); }
+.hv .cal-pill.st-doing { background: color-mix(in srgb, var(--edu) 26%, var(--card)); border-color: color-mix(in srgb, var(--edu) 40%, transparent); color: var(--edu-text); }
+.hv .cal-pill.st-review { background: color-mix(in srgb, var(--amber) 30%, var(--card)); border-color: color-mix(in srgb, var(--amber) 42%, transparent); color: var(--amber-text); }
+.hv .cal-pill.st-done { background: color-mix(in srgb, var(--green) 26%, var(--card)); border-color: color-mix(in srgb, var(--green) 40%, transparent); color: var(--green-text); }
+.hv .cal-pill.late { background: color-mix(in srgb, var(--coral) 26%, var(--card)); border-color: color-mix(in srgb, var(--coral) 40%, transparent); color: var(--coral-text); }
 /* 다일 구간 세그먼트 — 인접 셀과 모서리로 연결(연속 표시) */
 .hv .cal-pill.seg-start { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .hv .cal-pill.seg-mid { border-radius: 0; }

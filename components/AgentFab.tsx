@@ -8,6 +8,7 @@ import Link from "next/link";
 import type { SessionUser } from "@/lib/types";
 import { computeLiveStatus, STATUS_CHIP } from "@/lib/agent-live";
 import { TASK_PANEL_EVENT, currentTaskRef } from "@/lib/task-panel";
+import { GOAL_PANEL_EVENT, currentGoalParam } from "@/lib/goal-panel";
 
 type JobType = "research" | "organize";
 type JobStatus = "queued" | "running" | "done" | "failed";
@@ -52,14 +53,22 @@ const HINTS: Record<JobType, string> = {
 
 export default function AgentFab({ user }: { user: SessionUser }) {
   const [open, setOpen] = useState(false);
-  // 업무 상세 패널이 열리면 FAB 숨김 — 하단 액션(완료 처리·중단)과 겹침 방지
-  const [panelOpen, setPanelOpen] = useState(false);
+  // 상세 패널(업무·목표) 등 오버레이가 열리면 FAB 숨김 — 하단 액션(삭제·저장·완료)과 겹침 방지
+  const [taskPanel, setTaskPanel] = useState(false);
+  const [goalPanel, setGoalPanel] = useState(false);
   useEffect(() => {
-    setPanelOpen(currentTaskRef() !== null);
-    const onPanel = (e: Event) => setPanelOpen((e as CustomEvent).detail != null);
-    window.addEventListener(TASK_PANEL_EVENT, onPanel);
-    return () => window.removeEventListener(TASK_PANEL_EVENT, onPanel);
+    setTaskPanel(currentTaskRef() !== null);
+    setGoalPanel(currentGoalParam() !== null);
+    const onTask = (e: Event) => setTaskPanel((e as CustomEvent).detail != null);
+    const onGoal = (e: Event) => setGoalPanel((e as CustomEvent).detail != null);
+    window.addEventListener(TASK_PANEL_EVENT, onTask);
+    window.addEventListener(GOAL_PANEL_EVENT, onGoal);
+    return () => {
+      window.removeEventListener(TASK_PANEL_EVENT, onTask);
+      window.removeEventListener(GOAL_PANEL_EVENT, onGoal);
+    };
   }, []);
+  const panelOpen = taskPanel || goalPanel;
   const [tab, setTab] = useState<"notify" | "dispatch">("notify");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [unseen, setUnseen] = useState(0);

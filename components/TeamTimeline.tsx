@@ -7,6 +7,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Lane, LaneEvent } from "@/lib/home";
 import { openTaskPanel } from "@/lib/task-panel";
+import { taskDays, dateDiffDays } from "@/lib/task-view";
 
 export type TimelineView = "day" | "week" | "month";
 
@@ -28,11 +29,8 @@ function daysInMonth(dateStr: string): number {
   const [y, m] = dateStr.split("-").map(Number);
   return new Date(Date.UTC(y, m, 0)).getUTCDate();
 }
-function diffDays(a: string, b: string): number {
-  return Math.round(
-    (Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86400000
-  );
-}
+// 캘린더·타임라인·홈 날짜 완전 일치 — 공유 함수 위임(중복 계산 금지).
+const diffDays = dateDiffDays;
 function addMonths(dateStr: string, n: number): string {
   const [y, m] = dateStr.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 10);
@@ -128,9 +126,9 @@ export default function TeamTimeline({
 
   // 업무 → 바 (시작~마감을 범위로 클램프). 시작·마감 한쪽만 있으면 점(1일)으로.
   function toBar(id: string, taskId: number | null, title: string, status: string, late: boolean, progress: number, start: string | null, due: string | null, assignee: string): Bar | null {
-    const s = start ?? due;
-    const e = due ?? start;
-    if (!s || !e) return null;
+    const days = taskDays({ startDate: start, dueDate: due }); // 공유 함수 — inclusive·정규화
+    if (!days) return null;
+    const { start: s, end: e } = days;
     const si = diffDays(s, range.from);
     const ei = diffDays(e, range.from);
     if (ei < 0 || si > lastIdx) return null; // 범위 밖

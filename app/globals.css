@@ -1079,3 +1079,10 @@ body.meeting-on .side { display: none !important; }
 .tdp-block-reason:focus { outline: none; border-color: var(--amber); }
 .tdp-block-err { margin: 6px 0 0; font-size: var(--fs-meta); color: var(--coral-text); }
 .tdp-block-note { margin: 7px 0 0; font-size: var(--fs-meta); color: var(--muted); line-height: 1.5; }
+
+/* ── 업무 상세 · 새 업무 저장 CTA (명확한 primary, 하단 항상 표시) ── */
+.tdp-foot-new { justify-content: space-between; gap: 12px; padding: 14px 16px; background: var(--bg-elevated); }
+.tdp-foot-new .btn.ghost { height: 44px; padding: 0 20px; font-size: 14px; }
+.tdp-create { flex: 1; height: 44px; border: 0; border-radius: 11px; background: var(--brand); color: #fff; font-family: inherit; font-size: 15px; font-weight: 800; cursor: pointer; }
+.tdp-create:hover { filter: brightness(1.06); }
+.tdp-create:disabled { opacity: .5; cursor: not-allowed; }

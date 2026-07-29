@@ -526,12 +526,11 @@ export default function TaskDetailPanel() {
         )}
 
         {openId === "new" && (
-          <div className="tdp-foot">
-            <button className="btn small primary" disabled={creating || !draft?.title.trim()} onClick={createTask}>
-              {creating ? "만드는 중…" : "만들기"}
+          <div className="tdp-foot tdp-foot-new">
+            <button className="btn ghost" onClick={() => closeTaskPanel()}>취소</button>
+            <button className="tdp-create btn-brand" disabled={creating || !draft?.title.trim()} onClick={createTask}>
+              {creating ? "만드는 중…" : "＋ 만들기"}
             </button>
-            <span style={{ flex: 1 }} />
-            <button className="btn small ghost" onClick={() => closeTaskPanel()}>취소</button>
           </div>
         )}
 

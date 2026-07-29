@@ -74,6 +74,33 @@ export function areaColor(colorKey: string | null): string {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// 날짜 유틸 (date-only, KST 안전) — 캘린더·타임라인·홈이 공유하는 단일 소스.
+// 규칙: 날짜는 항상 YYYY-MM-DD 문자열. new Date(str)(UTC 파싱) 금지 — 아래 함수만 사용.
+// Date.UTC(y,m,d)는 tz 영향이 없어 결정적이고, "today"도 서버 KST date-only 문자열이라 문자열 비교로 안전.
+// ─────────────────────────────────────────────────────────────────────────
+export function ymd(d: string | null | undefined): string | null {
+  return d ? d.slice(0, 10) : null;
+}
+export function dateAddDays(d: string, n: number): string {
+  const [y, m, day] = d.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, day) + n * 86400000).toISOString().slice(0, 10);
+}
+/** b에서 a까지의 일수(a-b). 둘 다 date-only. UTC 자정 기준 결정적 계산. */
+export function dateDiffDays(a: string, b: string): number {
+  const [ay, am, ad] = a.split("-").map(Number);
+  const [by, bm, bd] = b.split("-").map(Number);
+  return Math.round((Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd)) / 86400000);
+}
+/** 업무의 표시 기간(inclusive). 시작·마감 중 하나만 있으면 단일(그날 1칸).
+ *  순서가 뒤집혀 있으면 정규화한다. 둘 다 없으면 null. — 캘린더 span·타임라인 바·홈 공통. */
+export function taskDays(task: { startDate: string | null; dueDate: string | null }): { start: string; end: string } | null {
+  const s0 = ymd(task.startDate) ?? ymd(task.dueDate);
+  const e0 = ymd(task.dueDate) ?? ymd(task.startDate);
+  if (!s0 || !e0) return null;
+  return s0 <= e0 ? { start: s0, end: e0 } : { start: e0, end: s0 };
+}
+
 export function dday(due: string | null, today: string): { text: string | null; overdue: boolean } {
   if (!due || !today) return { text: null, overdue: false };
   const diff = Math.round(

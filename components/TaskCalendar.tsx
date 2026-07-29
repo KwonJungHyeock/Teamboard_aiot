@@ -5,16 +5,11 @@
 import { useMemo, useState } from "react";
 import { openTaskPanel } from "@/lib/task-panel";
 import { openQuickCreate } from "@/lib/quick";
-import type { TaskItem } from "@/lib/task-view";
+import { type TaskItem, taskDays, dateAddDays } from "@/lib/task-view";
 
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 const MAX_PILL = 3;
 
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(`${dateStr}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 function addMonths(dateStr: string, months: number): string {
   const [y, m] = dateStr.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1 + months, 1)).toISOString().slice(0, 10);
@@ -22,8 +17,8 @@ function addMonths(dateStr: string, months: number): string {
 function monthMatrix(anchor: string): string[] {
   const first = anchor.slice(0, 8) + "01";
   const dow = new Date(`${first}T00:00:00Z`).getUTCDay();
-  const start = addDays(first, -dow);
-  return Array.from({ length: 42 }, (_, i) => addDays(start, i));
+  const start = dateAddDays(first, -dow);
+  return Array.from({ length: 42 }, (_, i) => dateAddDays(start, i));
 }
 
 export default function TaskCalendar({ tasks, today }: { tasks: TaskItem[]; today: string }) {
@@ -34,11 +29,9 @@ export default function TaskCalendar({ tasks, today }: { tasks: TaskItem[]; toda
   const byDate = useMemo(() => {
     const map = new Map<string, { t: TaskItem; seg: "single" | "start" | "mid" | "end" }[]>();
     for (const t of tasks) {
-      const rawS = t.startDate ? t.startDate.slice(0, 10) : t.dueDate ? t.dueDate.slice(0, 10) : null;
-      const rawE = t.dueDate ? t.dueDate.slice(0, 10) : t.startDate ? t.startDate.slice(0, 10) : null;
-      if (!rawS || !rawE) continue;
-      const s = rawS <= rawE ? rawS : rawE;
-      const e = rawS <= rawE ? rawE : rawS;
+      const range = taskDays(t); // 공유 함수 — inclusive, 정규화, 시작없으면 마감 단일
+      if (!range) continue;
+      const { start: s, end: e } = range;
       let d = s;
       let guard = 0;
       while (d <= e && guard < 400) {
@@ -46,7 +39,7 @@ export default function TaskCalendar({ tasks, today }: { tasks: TaskItem[]; toda
         const arr = map.get(d) ?? [];
         arr.push({ t, seg });
         map.set(d, arr);
-        d = addDays(d, 1);
+        d = dateAddDays(d, 1);
         guard++;
       }
     }

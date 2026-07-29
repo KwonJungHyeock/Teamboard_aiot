@@ -5,14 +5,12 @@
 import { useMemo, useState } from "react";
 import { openTaskPanel } from "@/lib/task-panel";
 import { openQuickCreate } from "@/lib/quick";
-import { type TaskItem, statusColor, STATUS_META } from "@/lib/task-view";
+import { type TaskItem, statusColor, STATUS_META, taskDays, dateAddDays as addDays, dateDiffDays as diffDays } from "@/lib/task-view";
 
 function ymd(d: string) { return d.slice(0, 10); }
 function monthStart(a: string) { return a.slice(0, 8) + "01"; }
 function daysInMonth(a: string) { const [y, m] = a.split("-").map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
 function addMonths(a: string, n: number) { const [y, m] = a.split("-").map(Number); return new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 10); }
-function addDays(a: string, n: number) { const d = new Date(`${a}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
-function diffDays(a: string, b: string) { return Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86400000); }
 
 export default function TaskGantt({
   tasks, today, actors,
@@ -35,9 +33,9 @@ export default function TaskGantt({
         const bars = tasks
           .filter((t) => t.assigneeId === a.id)
           .map((t) => {
-            const s = t.startDate ? ymd(t.startDate) : t.dueDate ? ymd(t.dueDate) : null;
-            const e = t.dueDate ? ymd(t.dueDate) : t.startDate ? ymd(t.startDate) : null;
-            if (!s || !e) return null;
+            const range = taskDays(t); // 공유 함수 — inclusive·정규화
+            if (!range) return null;
+            const { start: s, end: e } = range;
             if (e < from || s >= to) return null; // 범위 밖
             const cs = s < from ? from : s;
             const ce = e >= to ? addDays(to, -1) : e;
