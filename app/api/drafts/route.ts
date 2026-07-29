@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { jsonError } from "@/lib/api";
+import { isDemoMode } from "@/lib/llm";
 import type { Draft } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
        LIMIT 100`,
       params
     );
-    return NextResponse.json({ drafts });
+    return NextResponse.json({ drafts, demo: isDemoMode() });
   } catch (error) {
     return jsonError(error);
   }

@@ -19,6 +19,11 @@ function resolveProvider(): Provider {
   return "mock";
 }
 
+/** LLM 키 미연결(데모 모드) 여부 — 승인 대기 등에서 "데모 초안" 표기용. */
+export function isDemoMode(): boolean {
+  return resolveProvider() === "mock";
+}
+
 // ---------- 프롬프트 (공급자 무관) ----------
 
 // task_type별 출력 포맷 고정 (PRD 12장)

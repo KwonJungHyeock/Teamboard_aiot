@@ -130,10 +130,11 @@ export async function GET(request: Request) {
       assignee_name: string | null;
       due_date: string | null;
       created_by_name: string | null;
+      created_at: string;
     }>(
       `SELECT t.id, t.title, t.description, p.name AS project_name, p.color_key,
               t.assignee_id, a.display_name AS assignee_name, t.due_date::text,
-              c.display_name AS created_by_name
+              c.display_name AS created_by_name, t.created_at::text
        FROM task t
        LEFT JOIN project p ON p.id = t.project_id
        LEFT JOIN actor a ON a.id = t.assignee_id
@@ -176,6 +177,7 @@ export async function GET(request: Request) {
         assigneeName: r.assignee_name,
         dueDate: r.due_date,
         createdByName: r.created_by_name,
+        createdAt: r.created_at,
       })),
       today,
     });
