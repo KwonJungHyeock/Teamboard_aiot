@@ -44,7 +44,7 @@ export default function TaskBoard({
     }
     const cols: Col[] = BOARD_STATUSES.map((s) => ({
       key: s, label: STATUS_META[s].label, count: 0, dot: statusColor(s),
-      prefill: {}, move: { status: s },
+      prefill: { status: s }, move: { status: s },
     }));
     return { cols, keyOf: (t: TaskItem) => t.status, field: "status" as const };
   }, [group, areas, actors]);

@@ -8,6 +8,7 @@ export interface QuickPrefill {
   dueDate?: string;
   assigneeId?: number;
   areaId?: number;
+  status?: string; // 보드 상태 컬럼 "+추가" — 그 컬럼 상태로 프리셋
 }
 export interface QuickAnchor { x: number; y: number }
 

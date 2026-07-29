@@ -34,6 +34,7 @@ export default function QuickCreate() {
   const [areaId, setAreaId] = useState<number | 0>(0);
   const [projectId, setProjectId] = useState<number | 0>(0);
   const [priority, setPriority] = useState("mid");
+  const [status, setStatus] = useState("todo"); // 보드 상태 컬럼 프리셋(비노출 캐리)
   const ref = useRef<HTMLDivElement>(null);
 
   const reset = useCallback((p: QuickPrefill) => {
@@ -42,6 +43,7 @@ export default function QuickCreate() {
     setAssigneeId(p.assigneeId ?? 0);
     setAreaId(p.areaId ?? 0);
     setProjectId(0); setPriority("mid");
+    setStatus(p.status ?? "todo");
   }, []);
 
   useEffect(() => {
@@ -84,6 +86,7 @@ export default function QuickCreate() {
           assigneeId: assigneeId || undefined,
           dueDate: dueDate || undefined,
           priority,
+          status,
         }),
       });
       const data = await res.json();

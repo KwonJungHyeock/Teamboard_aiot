@@ -97,7 +97,19 @@ export default function TaskGantt({
           {lanes.map((lane) => (
             <div className="tg-lane" key={lane.id}>
               <div className="tg-lane-l">{lane.name}</div>
-              <div className="tg-lane-r" style={{ height: lane.rows * 28 + 8 }}>
+              <div
+                className="tg-lane-r"
+                style={{ height: lane.rows * 28 + 8 }}
+                title={`${lane.name} 레인 빈 곳 클릭 → 그 날짜·담당으로 빠른 생성`}
+                onClick={(e) => {
+                  // 바 클릭은 상세 열기 — 빈 셀만 빠른 생성(그 날·담당 프리필)
+                  if ((e.target as HTMLElement).closest(".tg-bar")) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const rel = rect.width > 0 ? (e.clientX - rect.left) / rect.width : 0;
+                  const di = Math.max(0, Math.min(n - 1, Math.floor(rel * n)));
+                  openQuickCreate({ x: e.clientX, y: e.clientY }, { dueDate: addDays(from, di), assigneeId: lane.id });
+                }}
+              >
                 {showToday && <div className="tg-today soft" style={{ left: `${pct(diffDays(today, from) + 0.5)}%` }} aria-hidden="true" />}
                 {lane.bars.map((b) => (
                   <button

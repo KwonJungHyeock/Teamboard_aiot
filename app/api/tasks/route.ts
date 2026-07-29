@@ -205,6 +205,11 @@ export async function POST(request: Request) {
     const priority = (PRIORITIES as readonly string[]).includes(payload.priority)
       ? payload.priority
       : "mid";
+    // 생성 가능한 상태만 허용(제안·중단 제외). 보드 상태 컬럼 "+추가" 프리셋 반영.
+    const CREATABLE = ["todo", "doing", "review", "done"] as const;
+    const status = (CREATABLE as readonly string[]).includes(payload.status)
+      ? payload.status
+      : "todo";
     const isDate = (v: unknown): v is string =>
       typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
     const dueDate = isDate(payload.dueDate) ? payload.dueDate : null;
@@ -230,13 +235,14 @@ export async function POST(request: Request) {
 
     const task = await queryOne<{ id: number }>(
       `INSERT INTO task (project_id, area_id, work_type, title, description, status, assignee_id, start_date, due_date, priority, origin, created_by)
-       VALUES ($1,$2,$3,$4,$5,'todo',$6,$7,$8,$9,'human',$10) RETURNING id`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'human',$11) RETURNING id`,
       [
         payload.projectId ? Number(payload.projectId) : null,
         areaId,
         workType,
         title,
         String(payload.description ?? "").slice(0, 4000),
+        status,
         payload.assigneeId ? Number(payload.assigneeId) : session.id,
         startDate,
         dueDate,
