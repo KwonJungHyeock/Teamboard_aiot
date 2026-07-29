@@ -102,13 +102,19 @@ export function toPanelItem(s: ApiSignal, user?: SessionUser): SignalPanelItem {
   };
 }
 
+const SIG_TYPES = [
+  ["memo", "메모 (비공개)"], ["decision", "결정 필요"], ["review", "확인 요청"], ["risk", "리스크"],
+] as const;
+
 function NewSignalForm({
   actors,
   onDone,
+  onCancel,
   initialType = "memo",
 }: {
   actors: { id: number; name: string }[];
   onDone: () => void;
+  onCancel?: () => void;
   initialType?: string;
 }) {
   const [type, setType] = useState(initialType);
@@ -119,7 +125,8 @@ function NewSignalForm({
   const [error, setError] = useState("");
 
   async function submit() {
-    if (!title.trim()) return;
+    if (busy) return;
+    if (!title.trim()) { setError("제목을 입력하세요."); return; }
     if (type === "review" && !targetActorId) {
       setError("확인 요청은 대상을 지정해야 합니다.");
       return;
@@ -147,40 +154,45 @@ function NewSignalForm({
   }
 
   return (
-    <div className="tnew">
-      <select value={type} onChange={(e) => setType(e.target.value)}>
-        <option value="memo">메모 (비공개)</option>
-        <option value="decision">결정 필요</option>
-        <option value="review">확인 요청</option>
-        <option value="risk">리스크</option>
-      </select>
+    <section className="sig-compose" aria-label="새 논의·결정">
+      <div className="sig-compose-h">
+        <b>새 논의·결정</b>
+        {onCancel && <button className="sig-compose-x" onClick={onCancel} aria-label="닫기">✕</button>}
+      </div>
+      <div className="sig-compose-seg" role="group" aria-label="유형">
+        {SIG_TYPES.map(([v, l]) => (
+          <button key={v} aria-pressed={type === v} onClick={() => setType(v)}>{l}</button>
+        ))}
+      </div>
+      <input
+        className="sig-compose-title"
+        placeholder="제목 — 무엇을 논의·결정할까요?"
+        value={title}
+        autoFocus
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+      />
       {type === "review" && (
-        <select value={targetActorId} onChange={(e) => setTargetActorId(Number(e.target.value))}>
+        <select className="sig-compose-target" value={targetActorId} onChange={(e) => setTargetActorId(Number(e.target.value))}>
           <option value={0}>확인 대상 선택</option>
-          {actors.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
+          {actors.map((a) => (<option key={a.id} value={a.id}>{a.name}</option>))}
         </select>
       )}
-      <input
-        placeholder="제목"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-      />
-      <input
-        placeholder="내용 (선택)"
+      <textarea
+        className="sig-compose-body"
+        rows={3}
+        placeholder="내용 (선택, ==강조== 지원)"
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        style={{ minWidth: 240 }}
       />
-      <button className="lk" onClick={submit} disabled={busy || !title.trim()}>
-        추가
-      </button>
-      {error && <span className="gerr">{error}</span>}
-    </div>
+      {error && <p className="sig-compose-err">{error}</p>}
+      <div className="sig-compose-foot">
+        <span className="sig-compose-note">{type === "memo" ? "비공개 메모로 저장됩니다." : "팀 전체에 공유됩니다."}</span>
+        <span style={{ flex: 1 }} />
+        {onCancel && <button className="btn-outline" onClick={onCancel}>취소</button>}
+        <button className="btn-brand" onClick={submit} disabled={busy || !title.trim()}>{busy ? "추가 중…" : "추가"}</button>
+      </div>
+    </section>
   );
 }
 
@@ -194,9 +206,10 @@ export default function SignalsView({ user }: { user: SessionUser }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   // "+ 새로 만들기 > 시그널/메모" 진입 시 작성 폼 유형 프리셋 (파트 4)
   const [composerType, setComposerType] = useState("memo");
+  const [composing, setComposing] = useState(false);
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("type");
-    if (q && ["memo", "decision", "review", "risk"].includes(q)) setComposerType(q);
+    if (q && ["memo", "decision", "review", "risk"].includes(q)) { setComposerType(q); setComposing(true); }
   }, []);
 
   const load = useCallback(async () => {
@@ -279,15 +292,30 @@ export default function SignalsView({ user }: { user: SessionUser }) {
             <h1>논의·결정</h1>
             <p>결정 · 확인 요청 · 메모 · 리스크. 리스크는 상단 고정, 정체는 임계값 기준입니다.</p>
           </div>
-          <div className="seg" role="group" aria-label="종결 보기">
-            <button aria-pressed={!showClosed} onClick={() => setShowClosed(false)}>
-              열림
-            </button>
-            <button aria-pressed={showClosed} onClick={() => setShowClosed(true)}>
-              종결
+          <div className="head-r">
+            <div className="seg" role="group" aria-label="종결 보기">
+              <button aria-pressed={!showClosed} onClick={() => setShowClosed(false)}>
+                열림
+              </button>
+              <button aria-pressed={showClosed} onClick={() => setShowClosed(true)}>
+                종결
+              </button>
+            </div>
+            <button className="newbtn sig-newbtn" onClick={() => setComposing((v) => !v)} aria-expanded={composing}>
+              ＋ 새 논의·결정
             </button>
           </div>
         </div>
+
+        {/* 새 논의·결정 — 상단 확대 폼(빠른 생성 톤). 버튼으로 열고 닫는다. */}
+        {composing && (
+          <NewSignalForm
+            actors={actors}
+            initialType={composerType}
+            onDone={() => { setComposing(false); load(); }}
+            onCancel={() => setComposing(false)}
+          />
+        )}
 
         {loading && <p className="gempty">불러오는 중...</p>}
         {error && <p className="gerr">{error}</p>}
@@ -310,8 +338,6 @@ export default function SignalsView({ user }: { user: SessionUser }) {
             onClose={() => setSelectedId(null)}
           />
         )}
-
-        <NewSignalForm actors={actors} onDone={load} initialType={composerType} />
       </div>
     </div>
   );

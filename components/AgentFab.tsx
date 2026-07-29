@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { SessionUser } from "@/lib/types";
 import { computeLiveStatus, STATUS_CHIP } from "@/lib/agent-live";
+import { TASK_PANEL_EVENT, currentTaskRef } from "@/lib/task-panel";
 
 type JobType = "research" | "organize";
 type JobStatus = "queued" | "running" | "done" | "failed";
@@ -51,6 +52,14 @@ const HINTS: Record<JobType, string> = {
 
 export default function AgentFab({ user }: { user: SessionUser }) {
   const [open, setOpen] = useState(false);
+  // 업무 상세 패널이 열리면 FAB 숨김 — 하단 액션(완료 처리·중단)과 겹침 방지
+  const [panelOpen, setPanelOpen] = useState(false);
+  useEffect(() => {
+    setPanelOpen(currentTaskRef() !== null);
+    const onPanel = (e: Event) => setPanelOpen((e as CustomEvent).detail != null);
+    window.addEventListener(TASK_PANEL_EVENT, onPanel);
+    return () => window.removeEventListener(TASK_PANEL_EVENT, onPanel);
+  }, []);
   const [tab, setTab] = useState<"notify" | "dispatch">("notify");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [unseen, setUnseen] = useState(0);
@@ -163,23 +172,25 @@ export default function AgentFab({ user }: { user: SessionUser }) {
         </div>
       )}
 
-      {/* FAB — 3상태(대기·작업중·완료). 색+상태로 살아있음. */}
-      <button
-        className={`agf-fab s-${status}${open ? " on" : ""}`}
-        aria-label={`에이전트 (${chip.label})`}
-        aria-expanded={open}
-        onClick={() => (open ? setOpen(false) : openNotify())}
-      >
-        {status === "working" && <span className="agf-ring" aria-hidden="true" />}
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="4" y="8" width="16" height="12" rx="3" />
-          <path d="M12 4v4M9 14h.01M15 14h.01M2 13h2M20 13h2" />
-        </svg>
-        {unseen > 0 && <span className="agf-badge">{unseen > 9 ? "9+" : unseen}</span>}
-      </button>
+      {/* FAB — 3상태(대기·작업중·완료). 색+상태로 살아있음. 업무 상세 열리면 숨김(겹침 방지). */}
+      {!panelOpen && (
+        <button
+          className={`agf-fab s-${status}${open ? " on" : ""}`}
+          aria-label={`에이전트 (${chip.label})`}
+          aria-expanded={open}
+          onClick={() => (open ? setOpen(false) : openNotify())}
+        >
+          {status === "working" && <span className="agf-ring" aria-hidden="true" />}
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="4" y="8" width="16" height="12" rx="3" />
+            <path d="M12 4v4M9 14h.01M15 14h.01M2 13h2M20 13h2" />
+          </svg>
+          {unseen > 0 && <span className="agf-badge">{unseen > 9 ? "9+" : unseen}</span>}
+        </button>
+      )}
 
       {/* 패널 */}
-      {open && (
+      {open && !panelOpen && (
         <div className="agf-panel" role="dialog" aria-label="에이전트">
           <div className="agf-head">
             <div className="agf-title">

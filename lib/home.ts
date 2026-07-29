@@ -106,6 +106,7 @@ export interface HomeSummary {
     title: string;
     projectName: string | null;
     colorKey: string | null;
+    assigneeId: number | null;
     assigneeName: string | null;
     status: string;
     dueDate: string;
@@ -487,12 +488,13 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     title: string;
     project_name: string | null;
     color_key: string | null;
+    assignee_id: number | null;
     assignee_name: string | null;
     status: string;
     due_date: string;
   }>(
     `SELECT t.id, t.title, p.name AS project_name, p.color_key,
-            a.display_name AS assignee_name, t.status, t.due_date::text
+            t.assignee_id, a.display_name AS assignee_name, t.status, t.due_date::text
      FROM task t
      LEFT JOIN project p ON p.id = t.project_id
      LEFT JOIN actor a ON a.id = t.assignee_id
@@ -668,6 +670,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       title: t.title,
       projectName: t.project_name,
       colorKey: t.color_key,
+      assigneeId: t.assignee_id,
       assigneeName: t.assignee_name,
       status: t.status,
       dueDate: t.due_date,

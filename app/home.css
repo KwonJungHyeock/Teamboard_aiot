@@ -1188,7 +1188,9 @@
 
 /* ── 캘린더 월 달력형 ── */
 .hv .cal-mo { font-size: 18px; font-weight: 800; color: var(--ink); letter-spacing: -.01em; font-variant-numeric: tabular-nums; margin-right: 4px; }
-.hv .cal-tile { padding: 0; margin-top: 16px; }
+/* 클린 흰 서피스(.tile은 bento 전용 → 표면 직접) + 페이퍼 격자 차단, 좁은 폭/확대 시 가로 스크롤 */
+.hv .cal-tile { padding: 0; margin-top: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-card); overflow-x: auto; overflow-y: hidden; }
+.hv .cal-dow, .hv .cal-grid { min-width: 680px; }
 .hv .cal-dow { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--line); }
 .hv .cal-dowc { padding: 10px 0; text-align: center; font-size: 11.5px; font-weight: 700; color: var(--ink-soft); font-family: var(--f-d); }
 .hv .cal-dowc.sun { color: var(--coral-text); }
@@ -1450,3 +1452,30 @@
 /* 타임라인 바 — 대시 아웃라인 + 흰 자물쇠(상태색 바 위) */
 .hv .tg-bar.bkd { outline: 1.5px dashed #FFFFFF; outline-offset: -2px; }
 .hv .tg-lock { position: relative; z-index: 1; width: 11px; height: 11px; flex: none; margin: 0 2px 0 6px; fill: none; stroke: #FFFFFF; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ═══ 팀 QA — 지금 할 일 토글 + 논의·결정 상단 확대 폼 ═══ */
+/* #1 지금 할 일 — 내 것/전체 토글 */
+.hv .focus-tile .ft-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.hv .focus-tile .ft-seg { display: inline-flex; gap: 2px; background: var(--track-bg); border-radius: 9px; padding: 2px; }
+.hv .focus-tile .ft-seg button { border: 0; background: transparent; border-radius: 7px; padding: 4px 11px; font-family: inherit; font-size: 12px; font-weight: 700; color: var(--ink-soft); cursor: pointer; }
+.hv .focus-tile .ft-seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow-card); }
+
+/* #5 논의·결정 — 상단 새 항목 버튼 + 확대 폼 */
+.hv .head-r .sig-newbtn { height: 36px; padding: 0 16px; border-radius: 10px; font-size: 13px; font-weight: 700; background: var(--brand); color: #fff; border: 0; cursor: pointer; white-space: nowrap; }
+.hv .head-r .sig-newbtn:hover { filter: brightness(1.06); }
+.hv .sig-compose { margin: 4px 0 16px; background: var(--card); border: 1px solid var(--line-hi); border-radius: 16px; box-shadow: var(--shadow-pop); padding: 16px 18px; }
+.hv .sig-compose-h { display: flex; align-items: center; margin-bottom: 12px; }
+.hv .sig-compose-h b { font-size: 15px; font-weight: 800; color: var(--ink); }
+.hv .sig-compose-x { margin-left: auto; width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 15px; cursor: pointer; }
+.hv .sig-compose-x:hover { background: var(--glass); color: var(--ink); }
+.hv .sig-compose-seg { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.hv .sig-compose-seg button { height: 34px; padding: 0 14px; border: 1px solid var(--line-hi); background: var(--card); border-radius: 9px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink-soft); cursor: pointer; }
+.hv .sig-compose-seg button[aria-pressed="true"] { background: var(--charcoal); border-color: var(--charcoal); color: #fff; }
+.hv .sig-compose-title { width: 100%; height: 46px; border: 1px solid var(--line-hi); border-radius: 10px; padding: 0 14px; font-family: inherit; font-size: 16px; font-weight: 600; color: var(--ink); background: var(--card); }
+.hv .sig-compose-title:focus { outline: none; border-color: var(--muted); }
+.hv .sig-compose-target { width: 220px; height: 42px; margin-top: 10px; font-size: 14px; }
+.hv .sig-compose-body { width: 100%; margin-top: 10px; border: 1px solid var(--line-hi); border-radius: 10px; padding: 11px 14px; font-family: inherit; font-size: 14.5px; line-height: 1.55; color: var(--ink); background: var(--card); resize: vertical; }
+.hv .sig-compose-body:focus { outline: none; border-color: var(--muted); }
+.hv .sig-compose-err { margin: 8px 0 0; font-size: 12.5px; color: var(--coral-text); }
+.hv .sig-compose-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.hv .sig-compose-note { font-size: 12.5px; color: var(--muted); }

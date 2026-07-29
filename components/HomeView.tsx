@@ -79,6 +79,7 @@ export default function HomeView({
 }) {
   const [view, setView] = useState<TimelineView>("month"); // v5 — 기본 월 뷰
   const [anchor, setAnchor] = useState<string>(summary.today);
+  const [focusMine, setFocusMine] = useState(true); // 지금 할 일 — 기본 "내 것"
 
   const dateLabel = useMemo(() => {
     const d = new Date(`${summary.today}T00:00:00+09:00`);
@@ -129,8 +130,10 @@ export default function HomeView({
 
         {(() => {
           const metric = (k: string) => summary.metrics.find((m) => m.key === k);
-          const overdueCount = summary.dueSoon.filter((t) => t.overdue).length;
-          const overdueTop = summary.dueSoon.filter((t) => t.overdue).slice(0, 2).map((t) => t.title).join(" · ");
+          // 지금 할 일 — 기본 "내 것"(로그인 사용자 담당)만. 토글로 전체.
+          const myOverdue = summary.dueSoon.filter((t) => t.overdue && (!focusMine || t.assigneeId === user.id));
+          const overdueCount = myOverdue.length;
+          const overdueTop = myOverdue.slice(0, 2).map((t) => t.title).join(" · ");
           const stalledTop = summary.signals.find((s) => s.stalled);
           const projPcts = summary.projectProgress.map((p) => p.percent).filter((x): x is number => x !== null);
           const avgProgress = projPcts.length ? Math.round(projPcts.reduce((a, b) => a + b, 0) / projPcts.length) : null;
@@ -184,8 +187,14 @@ export default function HomeView({
               <div className="bento-r">
               {/* 🔥 지금 할 일 — 실행 포커스 */}
               <section className="tile focus-tile" aria-label="지금 할 일">
-                <div className="ft">🔥 지금 할 일</div>
-                <div className="fs">내 차례 · 급한 것부터</div>
+                <div className="ft-row">
+                  <div className="ft">🔥 지금 할 일</div>
+                  <div className="ft-seg" role="group" aria-label="범위">
+                    <button aria-pressed={focusMine} onClick={() => setFocusMine(true)}>내 것</button>
+                    <button aria-pressed={!focusMine} onClick={() => setFocusMine(false)}>전체</button>
+                  </div>
+                </div>
+                <div className="fs">{focusMine ? "내 담당 · 급한 것부터" : "팀 전체 · 급한 것부터"}</div>
                 {focus.map((f) => (
                   <Link className="fi" key={f.key} href={f.href}>
                     <span className="n" style={{ background: `var(--${f.tone})` }}>{f.n}</span>
