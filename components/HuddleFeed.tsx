@@ -12,6 +12,24 @@ import ReviewSession from "./ReviewSession";
 
 interface ReviewRow { id: number; title: string; status: string; done: number; total: number }
 
+function relTime(iso: string | null): string {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const m = Math.floor((Date.now() - t) / 60000);
+  if (m < 1) return "방금";
+  if (m < 60) return `${m}분 전`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}시간 전`;
+  return `${Math.floor(h / 24)}일 전`;
+}
+// 흐름 상태 → LED 톤 + 라벨 (논의중 slate / 결정됨 amber / 반영됨 green)
+function flowState(status: string): { led: string; cls: string; label: string } {
+  if (status === "decided") return { led: "s-review", cls: "decided", label: "결정됨" };
+  if (status === "resolved") return { led: "s-done", cls: "resolved", label: "반영됨" };
+  return { led: "s-todo", cls: "open", label: "논의중" };
+}
+
 function NewMemoForm({ onDone }: { onDone: () => void }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -169,103 +187,103 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
         {error && <p className="gerr">{error}</p>}
 
         {/* 리뷰 세션 — 섹션별 이전/이후 비교 → 확정 → 논의·결정 자동 생성 */}
-        <section className="card acc-amber" aria-label="리뷰 세션">
-          <div className="ch">
-            <h2>리뷰 세션</h2>
-            <span className="sub">플랫폼 섹션별 이전/이후 비교·확정</span>
-          </div>
-          {reviews.length === 0 && (
-            <EmptyState
-              compact
-              title="진행 중인 리뷰 세션이 없어요"
-              hint="플랫폼 화면 프리셋 안건으로 리뷰 세션을 시작해 섹션별로 확정·수정·보류를 정합니다."
-            />
-          )}
-          {reviews.map((r) => (
-            <div key={r.id} className="tinbox-row">
-              <div className="tinbox-b">
-                <b>{r.title}</b>
-                <em>확정 {r.done}/{r.total} · {r.status === "closed" ? "종료" : "진행 중"}</em>
+        <section aria-label="리뷰 세션">
+          <div className="hud-sh"><h2>리뷰 세션</h2><span className="sub">플랫폼 섹션별 이전/이후 비교·확정</span></div>
+          <div className="hud-cards">
+            {reviews.length === 0 && (
+              <div className="hud-empty">
+                <EmptyState compact title="진행 중인 리뷰 세션이 없어요"
+                  hint="플랫폼 화면 프리셋 안건으로 리뷰 세션을 시작해 섹션별로 확정·수정·보류를 정합니다." />
               </div>
-              <span className="gsp" />
-              <button className="lk" onClick={() => setActiveReview(r.id)}>열기</button>
-            </div>
-          ))}
-          {user.role === "lead" && (
-            <div className="tnew">
-              <button className="lk" disabled={busy} onClick={startReview}>＋ 새 리뷰 세션 시작</button>
-            </div>
-          )}
+            )}
+            {reviews.map((r) => {
+              const closed = r.status === "closed";
+              return (
+                <article key={r.id} className="hud-card">
+                  <div className="hud-card-top">
+                    <span className={`led ${closed ? "s-done" : "s-doing"}`} aria-hidden="true" />
+                    <span className={`hud-st ${closed ? "resolved" : "open"}`}>{closed ? "종료" : "진행 중"}</span>
+                    <span className="hud-src">확정 <span className="num">{r.done}/{r.total}</span></span>
+                    <span className="hud-id num">#{r.id}</span>
+                  </div>
+                  <b className="hud-card-title">{r.title}</b>
+                  <div className="hud-card-acts">
+                    <button className="hud-act" onClick={() => setActiveReview(r.id)}>열기</button>
+                  </div>
+                </article>
+              );
+            })}
+            {user.role === "lead" && (
+              <button className="hud-add" disabled={busy} onClick={startReview}>＋ 새 리뷰 세션 시작</button>
+            )}
+          </div>
         </section>
 
         {/* 내 비공개 메모 — 허들룸으로 보내기 */}
         {!loading && myMemos.length > 0 && (
-          <section className="card" aria-label="내 메모">
-            <div className="ch">
-              <h2>내 메모</h2>
-              <span className="sub">비공개 {myMemos.length}건 — 나에게만 보입니다</span>
+          <section aria-label="내 메모" style={{ marginTop: 22 }}>
+            <div className="hud-sh"><h2>내 메모</h2><span className="sub">비공개 {myMemos.length}건 — 나에게만 보입니다</span></div>
+            <div className="hud-cards">
+              {myMemos.map((memo) => (
+                <article key={memo.id} className="hud-card">
+                  <div className="hud-card-top">
+                    <span className="led s-todo" aria-hidden="true" />
+                    <span className="hud-st priv">비공개</span>
+                    <span className="hud-src">{relTime(memo.huddledAt) || `${memo.days}일 경과`}</span>
+                    <span className="hud-id num">#{memo.id}</span>
+                  </div>
+                  <b className="hud-card-title">{memo.title}</b>
+                  {memo.body && <p className="hud-card-body">{memo.body}</p>}
+                  <div className="hud-card-acts">
+                    <button className="hud-act primary" disabled={busy} onClick={() => sendToHuddle(memo)}>허들룸으로 보내기</button>
+                  </div>
+                </article>
+              ))}
             </div>
-            {myMemos.map((memo) => (
-              <div key={memo.id} className="tinbox-row">
-                <span className="dt memo" />
-                <div className="tinbox-b">
-                  <b>{memo.title}</b>
-                  {memo.body && <em>{memo.body}</em>}
-                </div>
-                <span className="gsp" />
-                <button className="lk" disabled={busy} onClick={() => sendToHuddle(memo)}>
-                  허들룸으로 보내기
-                </button>
-              </div>
-            ))}
           </section>
         )}
 
         {/* 허들룸 피드 */}
         {!loading && (
-          <section className="card" aria-label="허들룸 피드">
-            <div className="ch">
-              <h2>피드</h2>
-              <span className="sub">공유 {huddles.length}건</span>
-            </div>
-            {huddles.length === 0 && (
-              <EmptyState
-                title="공유된 허들룸이 없어요"
-                hint="논의·결정에서 메모를 허들룸으로 보내면, 팀이 함께 볼 결정·논의로 이 피드에 모입니다."
-              />
-            )}
-            {huddles.map((signal) => (
-              <div
-                key={signal.id}
-                className={`hud clickable ${signal.agent ? "ag" : ""} ${selectedId === signal.id ? "selected" : ""}`}
-                onClick={() => setSelectedId((prev) => (prev === signal.id ? null : signal.id))}
-                role="button"
-              >
-                <div className="h">
-                  {signal.agent && (
-                    <span className="atag">
-                      <span className="mo" />
-                      에이전트
-                    </span>
-                  )}
-                  {signal.title}
-                </div>
-                {signal.body && <div className="b">{signal.body}</div>}
-                <div className="f">
-                  <span>{signal.authorName}</span>
-                  <span>코멘트 {signal.commentCount}</span>
-                  {/* 흐름 상태 배지 — 논의중 / 결정됨 / 반영됨 (A-3) */}
-                  {signal.status === "decided" && <span className="gtag decided">결정됨</span>}
-                  {signal.status === "resolved" && <span className="gtag resolved">반영됨</span>}
-                  {(signal.status === "open" || signal.status === "discussing") && (
-                    <span className="gtag">논의중</span>
-                  )}
-                  <span className="acts" onClick={(e) => e.stopPropagation()}>
-                    <button className="p" onClick={() => setMeetingId(signal.id)}>회의 모드</button>
-                  </span>
-                </div>
+          <section aria-label="허들룸 피드" style={{ marginTop: 22 }}>
+            <div className="hud-sh"><h2>피드</h2><span className="sub">공유 {huddles.length}건</span></div>
+            {huddles.length === 0 ? (
+              <div className="hud-empty">
+                <EmptyState title="공유된 허들룸이 없어요"
+                  hint="논의·결정에서 메모를 허들룸으로 보내면, 팀이 함께 볼 결정·논의로 이 피드에 모입니다." />
               </div>
-            ))}
+            ) : (
+              <div className="hud-cards">
+                {huddles.map((signal) => {
+                  const fs = flowState(signal.status);
+                  return (
+                    <article
+                      key={signal.id}
+                      className={`hud-card clickable${selectedId === signal.id ? " selected" : ""}${signal.agent ? " ag" : ""}`}
+                      onClick={() => setSelectedId((prev) => (prev === signal.id ? null : signal.id))}
+                      role="button"
+                    >
+                      <div className="hud-card-top">
+                        <span className={`led ${fs.led}`} aria-hidden="true" />
+                        <span className={`hud-st ${fs.cls}`}>{fs.label}</span>
+                        {signal.agent && <span className="atag"><span className="mo" />에이전트</span>}
+                        <span className="hud-src">{signal.authorName}</span>
+                        <span className="hud-id num">#{signal.id}</span>
+                      </div>
+                      <b className="hud-card-title">{signal.title}</b>
+                      {signal.body && <p className="hud-card-body">{signal.body}</p>}
+                      <div className="hud-card-foot">
+                        <span className="hud-time num">{relTime(signal.huddledAt)}</span>
+                        <span className="hud-cmt num">코멘트 {signal.commentCount}</span>
+                        <span className="hud-card-acts" onClick={(e) => e.stopPropagation()}>
+                          <button className="hud-act" onClick={() => setMeetingId(signal.id)}>회의 모드</button>
+                        </span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </section>
         )}
 

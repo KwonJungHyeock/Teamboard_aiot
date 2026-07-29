@@ -1369,3 +1369,38 @@
 .hv .pcard-id { margin-left: auto; font-size: 11px; color: var(--muted); flex: none; }
 .hv .pcard-foot { display: flex; align-items: center; gap: 12px; margin-top: 10px; font-size: 12px; color: var(--muted); }
 .hv .pcard-foot .pcard-cost { margin: 0; }
+
+/* ═══ 허들룸 (롤아웃 #3 — Mission Deck OS 정렬) ═══ */
+.hv .hud-sh { display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px 2px; }
+.hv .hud-sh h2 { font-size: 15px; font-weight: 700; color: var(--ink); margin: 0; }
+.hv .hud-sh .sub { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.hv .hud-cards { display: flex; flex-direction: column; gap: 10px; }
+/* 통일 조용 카드 — 흰 표면·단일 그림자·왼쪽 띠 없음·무발광·무광택 */
+.hv .hud-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-card); padding: 14px 16px; }
+.hv .hud-card.clickable { cursor: pointer; transition: border-color .14s, box-shadow .14s; }
+.hv .hud-card.clickable:hover { border-color: var(--line-hi); box-shadow: var(--shadow-pop); }
+.hv .hud-card.selected { border-color: var(--charcoal); }
+.hv .hud-card-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.hv .hud-card-top .led { width: 8px; height: 8px; flex: none; }
+.hv .hud-st { font-family: var(--f-d); font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 7px; white-space: nowrap; flex: none; border: 1px solid transparent; }
+.hv .hud-st.open { color: var(--ink-soft); background: var(--glass); border-color: var(--line-hi); }
+.hv .hud-st.decided { color: var(--amber-text); background: color-mix(in srgb, var(--amber) 15%, var(--card)); border-color: color-mix(in srgb, var(--amber) 30%, transparent); }
+.hv .hud-st.resolved { color: var(--green-text); background: color-mix(in srgb, var(--green) 15%, var(--card)); border-color: color-mix(in srgb, var(--green) 30%, transparent); }
+.hv .hud-st.priv { color: var(--muted); background: var(--glass); border-color: var(--line-hi); }
+.hv .hud-src { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hv .hud-id { margin-left: auto; font-size: 11px; color: var(--muted); flex: none; }
+.hv .hud-card-title { display: block; margin-top: 9px; font-size: 14.5px; font-weight: 700; color: var(--ink); line-height: 1.4; }
+.hv .hud-card-body { margin: 6px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hv .hud-card-foot { display: flex; align-items: center; gap: 12px; margin-top: 11px; font-size: 12px; color: var(--muted); }
+.hv .hud-time, .hv .hud-cmt { color: var(--muted); }
+.hv .hud-card-acts { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.hv .hud-card > .hud-card-acts { margin-top: 12px; }
+.hv .hud-act { height: 30px; padding: 0 14px; border: 1px solid var(--line-hi); background: var(--card); border-radius: 8px; font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; cursor: pointer; transition: .14s; }
+.hv .hud-act:hover { border-color: var(--muted); color: var(--ink); }
+.hv .hud-act.primary { color: #fff; background: var(--coral); border-color: var(--coral); }
+.hv .hud-act.primary:hover { filter: brightness(1.06); }
+.hv .hud-act:disabled { opacity: .5; cursor: not-allowed; }
+.hv .hud-add { align-self: flex-start; height: 34px; padding: 0 16px; border: 1px dashed var(--line-hi); background: transparent; border-radius: 10px; font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.hv .hud-add:hover { border-color: var(--muted); color: var(--ink); background: var(--glass); }
+.hv .hud-add:disabled { opacity: .5; cursor: not-allowed; }
+.hv .hud-empty { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-card); padding: 10px; }
