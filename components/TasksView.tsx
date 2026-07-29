@@ -5,29 +5,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
+import TaskBoard from "./TaskBoard";
+import TaskCalendar from "./TaskCalendar";
+import TaskGantt from "./TaskGantt";
+import { toast } from "@/lib/quick";
+import {
+  type TaskItem, type TaskLens, type BoardGroup, LENS_LABEL, GROUP_LABEL, dday,
+} from "@/lib/task-view";
 import { openNewTaskPanel, openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
-
-interface TaskItem {
-  id: number;
-  title: string;
-  description: string;
-  status: string;
-  priority: string;
-  origin: string;
-  projectId: number | null;
-  projectName: string | null;
-  colorKey: string | null;
-  assigneeId: number | null;
-  assigneeName: string | null;
-  areaId: number;
-  areaName: string;
-  workType: string;
-  startDate: string | null;
-  dueDate: string | null;
-  goalIds: number[];
-  progress: number;
-  createdByName: string | null;
-}
 
 interface AreaOption {
   id: number;
@@ -81,18 +66,6 @@ const DUE_OPTIONS = [
   ["30d", "30일 이내"],
   ["none", "기한 없음"],
 ] as const;
-
-function dday(due: string | null, today: string): { text: string | null; overdue: boolean } {
-  if (!due) return { text: null, overdue: false };
-  const diff = Math.round(
-    (new Date(`${due}T00:00:00Z`).getTime() - new Date(`${today}T00:00:00Z`).getTime()) / 86400000
-  );
-  return {
-    text: diff < 0 ? `D+${-diff}` : diff === 0 ? "D-DAY" : `D-${diff}`,
-    overdue: diff < 0,
-  };
-}
-
 
 /** 새 업무 폼 — 영역(필수, 최상단) → 업무유형 → 프로젝트(선택 영역 하위만) */
 function NewTaskForm({
@@ -238,6 +211,18 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [areaDefaulted, setAreaDefaulted] = useState(false);
   const isMine = fAssignee === String(user.id);
 
+  // 뷰(렌즈) 전환 — 마지막 뷰·그룹 기준 기억(localStorage)
+  const [lens, setLens] = useState<TaskLens>("sheet");
+  const [boardGroup, setBoardGroup] = useState<BoardGroup>("status");
+  useEffect(() => {
+    const v = localStorage.getItem("tb:tasks-lens") as TaskLens | null;
+    if (v && ["sheet", "board", "calendar", "timeline"].includes(v)) setLens(v);
+    const g = localStorage.getItem("tb:tasks-group") as BoardGroup | null;
+    if (g && ["status", "area", "assignee"].includes(g)) setBoardGroup(g);
+  }, []);
+  function pickLens(v: TaskLens) { setLens(v); localStorage.setItem("tb:tasks-lens", v); }
+  function pickGroup(g: BoardGroup) { setBoardGroup(g); localStorage.setItem("tb:tasks-group", g); }
+
   const load = useCallback(async () => {
     try {
       const qs = new URLSearchParams();
@@ -348,16 +333,43 @@ export default function TasksView({ user }: { user: SessionUser }) {
     [monthGoals]
   );
 
-  const rows: TaskTableRow[] = useMemo(() => {
+  // 보드 드래그 → 기준값 변경 (낙관적 반영 + 실패 시 롤백, 토스트)
+  async function moveTask(id: number, patch: Record<string, unknown>) {
+    const prev = tasks;
+    setTasks((cur) => cur.map((t) => {
+      if (t.id !== id) return t;
+      const next = { ...t };
+      if ("status" in patch) next.status = patch.status as string;
+      if ("areaId" in patch) { next.areaId = patch.areaId as number; next.areaName = areas.find((a) => a.id === patch.areaId)?.name ?? t.areaName; }
+      if ("assigneeId" in patch) { next.assigneeId = (patch.assigneeId as number | null) ?? null; next.assigneeName = actors.find((a) => a.id === patch.assigneeId)?.name ?? null; }
+      return next;
+    }));
+    toast("옮겼어요");
+    const res = await fetch(`/api/tasks/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      setTasks(prev);
+      toast((await res.json().catch(() => ({}))).error ?? "이동에 실패했어요", "err");
+    } else {
+      load();
+    }
+  }
+
+  // 검색 적용된 업무 목록 — 모든 렌즈가 공유
+  const filteredTasks = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return tasks
-      .filter(
-        (t) =>
-          !q ||
-          t.title.toLowerCase().includes(q) ||
-          (t.projectName ?? "").toLowerCase().includes(q) ||
-          (t.assigneeName ?? "").toLowerCase().includes(q)
-      )
+    return tasks.filter(
+      (t) =>
+        !q ||
+        t.title.toLowerCase().includes(q) ||
+        (t.projectName ?? "").toLowerCase().includes(q) ||
+        (t.assigneeName ?? "").toLowerCase().includes(q)
+    );
+  }, [tasks, search]);
+
+  const rows: TaskTableRow[] = useMemo(() => {
+    return filteredTasks
       .map((t) => {
         const d = dday(t.dueDate, today);
         return {
@@ -375,7 +387,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
           overdue: d.overdue && t.status !== "done" && t.status !== "dropped",
         };
       });
-  }, [tasks, today, search, goalTitleOf]);
+  }, [filteredTasks, today, goalTitleOf]);
 
   return (
     <div className="hv">
@@ -491,9 +503,30 @@ export default function TasksView({ user }: { user: SessionUser }) {
           />
         )}
 
+        {/* 뷰 전환 — 같은 데이터, 다른 렌즈. 보드는 그룹 기준(상태/영역/담당) 선택. */}
+        <div className="lens-bar">
+          <div className="lens-tabs" role="tablist" aria-label="업무 뷰">
+            {(["sheet", "board", "calendar", "timeline"] as TaskLens[]).map((v) => (
+              <button key={v} role="tab" aria-selected={lens === v} className="lens-tab" onClick={() => pickLens(v)}>
+                {LENS_LABEL[v]}
+              </button>
+            ))}
+          </div>
+          {lens === "board" && (
+            <div className="lens-group" role="group" aria-label="그룹 기준">
+              <span className="lens-group-l">그룹</span>
+              {(["status", "area", "assignee"] as BoardGroup[]).map((g) => (
+                <button key={g} className="lens-gbtn" aria-pressed={boardGroup === g} onClick={() => pickGroup(g)}>
+                  {GROUP_LABEL[g]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {loading && <p className="gempty">불러오는 중...</p>}
         {error && <p className="gerr">{error}</p>}
-        {!loading && (
+        {!loading && lens === "sheet" && (
           <TaskTable
             rows={rows}
             title={isMine ? "내 업무" : "업무 목록"}
@@ -511,6 +544,18 @@ export default function TasksView({ user }: { user: SessionUser }) {
             onRowClick={(id) => openTaskPanel(id)}
           />
         )}
+        {!loading && lens === "board" && (
+          <TaskBoard
+            tasks={filteredTasks}
+            today={today}
+            group={boardGroup}
+            areas={areas}
+            actors={actors}
+            onMove={moveTask}
+          />
+        )}
+        {!loading && lens === "calendar" && <TaskCalendar tasks={filteredTasks} today={today} />}
+        {!loading && lens === "timeline" && <TaskGantt tasks={filteredTasks} today={today} actors={actors} />}
       </div>
     </div>
   );
