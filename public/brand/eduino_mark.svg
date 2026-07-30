@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 96" role="img" aria-label="Eduino AI">
+  <!-- 코랄 리본 (ea/ca) — 좌: 오른쪽 열린 c, 우: 왼쪽 열린 a 보울 + 수직 스템(플랫 우측) -->
+  <g fill="none" stroke="#EA4A4F" stroke-width="18" stroke-linecap="round">
+  <path d="M58 30.6 A28 28 0 1 0 58 73.4" />
+  <path d="M67 32.8 A25 25 0 1 1 67 71.2" />
+</g>
+<rect x="104" y="18" width="19" height="66" rx="9" fill="#EA4A4F" />
+  <!-- 점(dot) — 밝은 배경=차콜, 다크 배경=라이트. class="dot"로 교체 -->
+  <circle class="dot" cx="126" cy="15" r="12" fill="#232B36" />
+</svg>

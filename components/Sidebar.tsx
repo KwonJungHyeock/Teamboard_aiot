@@ -224,10 +224,11 @@ export default function Sidebar({
   return (
     <aside className="side">
       <div className="brand">
-        {/* Eduino AI 로고 심볼 — 자산(public/assets/brand) 도착 전 코랄 심볼 폴백 */}
-        <div className="mk" aria-hidden="true">e</div>
+        {/* Eduino AI 로고 — 다크 표면이므로 ondark 마크(점=라이트). 레일 접힘 시 마크만. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="mk-logo" src="/brand/eduino_mark_ondark.png" alt="Eduino AI" width={30} height={21} />
         <div className="nm">
-          Eduino AI Platform Team
+          Eduino AI
           <small>MISSION DECK</small>
         </div>
         <button className="tg" onClick={toggleRail} aria-label="사이드바 접기">

@@ -445,9 +445,24 @@ table.tl tr:hover td {
 .login-wrap {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 26px;
+  /* 다크 앵커 — 사이드바와 동일 그라데이션 */
+  background: linear-gradient(168deg, var(--sb1), var(--sb2));
+  position: relative;
 }
+.login-wrap::before {
+  content: ""; position: absolute; top: 8%; left: 50%; transform: translateX(-50%);
+  width: 340px; height: 240px; background: radial-gradient(circle, rgba(234,74,79,.22), transparent 68%);
+  pointer-events: none;
+}
+.login-hero { display: flex; flex-direction: column; align-items: center; gap: 15px; position: relative; z-index: 1; }
+.login-hero .login-mk-img { width: 72px; height: auto; }
+.login-hero-t { text-align: center; }
+.login-hero-t b { display: block; font-size: 24px; font-weight: 800; color: var(--sb-ink); letter-spacing: -.01em; }
+.login-hero-t span { display: block; font-family: var(--f-d); font-size: 11px; letter-spacing: .16em; color: var(--sb-muted); margin-top: 6px; }
 
 .login-card {
   width: 380px;
@@ -1270,3 +1285,18 @@ body {
 .side .area-cv svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; transition: transform .15s; }
 .side .area-cv.open svg { transform: rotate(90deg); }
 @media (prefers-reduced-motion: reduce) { .side .area-cv svg { transition: none; } }
+
+/* Eduino AI 로고 — 사이드바 브랜드(다크). 레일 접힘 시 마크만 노출. */
+.side .brand { align-items: center; gap: 10px; }
+.side .mk-logo { width: 30px; height: auto; flex: 0 0 30px; object-fit: contain; margin-top: 0; }
+.side .brand .nm { font-size: 15px; font-weight: 800; color: var(--sb-ink); line-height: 1.15; letter-spacing: -.01em; }
+.side .brand .nm small { display: block; font-family: var(--f-d); font-size: 10px; font-weight: 500; letter-spacing: .08em; color: var(--sb-muted); margin-top: 3px; }
+body.rail .side .mk-logo { margin: 0 auto; }
+
+/* 빈 상태 워터마크(선택) — 밝은 카드의 큰 빈 상태에만 마크 흐리게(opacity .08) */
+.empty-state:not(.es-compact) { position: relative; }
+.empty-state:not(.es-compact)::after {
+  content: ""; position: absolute; inset: 0; margin: auto; width: 116px; height: 80px;
+  background: url(/brand/eduino_mark.png) center / contain no-repeat; opacity: .08; z-index: 0; pointer-events: none;
+}
+.empty-state > * { position: relative; z-index: 1; }

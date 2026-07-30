@@ -47,15 +47,16 @@ export default function LoginPage() {
 
   return (
     <div className="login-wrap">
-      <form className="login-card" onSubmit={submit}>
-        {/* Eduino AI 풀 로고 — 자산 도착 전 코랄 심볼 + 텍스트 폴백 */}
-        <div className="login-logo">
-          <span className="login-mk" aria-hidden="true">e</span>
-          <div className="login-brand">
-            <b>Eduino AI Platform Team</b>
-            <span>MISSION DECK</span>
-          </div>
+      {/* Eduino AI 로고 — 다크 앵커 배경(사이드바 그라데이션)에 ondark 마크 + 라이트 텍스트 */}
+      <div className="login-hero">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="login-mk-img" src="/brand/eduino_mark_ondark.png" alt="Eduino AI" width={72} height={49} />
+        <div className="login-hero-t">
+          <b>Eduino AI</b>
+          <span>MISSION DECK</span>
         </div>
+      </div>
+      <form className="login-card" onSubmit={submit}>
         <p className="sub">AIoT 교육플랫폼 사업팀 · 회사 업무메일로 로그인</p>
         {notice && (
           <p

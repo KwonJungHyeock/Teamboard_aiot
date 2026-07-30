@@ -28,8 +28,12 @@ const jetbrainsMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "팀보드 — TeamBoard",
+  title: "Eduino AI · Mission Deck",
   description: "AI 에이전트와 함께하는 팀 업무 관리 (AIoT 교육플랫폼 사업팀)",
+  icons: {
+    icon: [{ url: "/brand/favicon-48.png", type: "image/png", sizes: "48x48" }],
+    apple: [{ url: "/brand/apple-icon.png", sizes: "180x180" }],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
