@@ -67,6 +67,10 @@ export default function TaskDetailPanel() {
   const [blockReason, setBlockReason] = useState(""); // 막힘 사유 편집 버퍼
   const [blockErr, setBlockErr] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);   // 팀 타임라인 공유(협업 A)
+  const [shareNote, setShareNote] = useState("");
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareDone, setShareDone] = useState(false);
   const descRef = useRef<HTMLTextAreaElement>(null);
 
   // ── 열림 상태 소스: URL ?task + 이벤트 + 뒤로가기 ──
@@ -204,6 +208,19 @@ export default function TaskDetailPanel() {
       await loadComments(openId);
       await loadDetail(openId); // 활동 타임라인 갱신
     } else setErr((await res.json()).error ?? "코멘트 실패");
+  }
+
+  // 팀 타임라인 공유(협업 A) — activity 포스트 + 노트 @멘션 알림
+  async function shareToTimeline() {
+    if (typeof openId !== "number" || shareBusy) return;
+    setShareBusy(true); setErr("");
+    const res = await fetch("/api/feed", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskId: openId, note: shareNote.trim() }),
+    });
+    setShareBusy(false);
+    if (res.ok) { setShareDone(true); setShareOpen(false); setShareNote(""); }
+    else setErr((await res.json()).error ?? "공유 실패");
   }
 
   // 이미지 업로드(붙여넣기/드롭/파일) → Blob URL → 마크다운 ![](url) 삽입 (파트 3)
@@ -470,6 +487,31 @@ export default function TaskDetailPanel() {
                   </label>
                 ))}
               </div>
+            </div>
+
+            {/* 팀 타임라인 공유 (협업 A) */}
+            <div className="tdp-sec">
+              <div className="tdp-sec-h">팀 타임라인 공유</div>
+              {shareDone ? (
+                <p className="tdp-muted">✓ 팀 타임라인에 공유됨 — 홈 팀 타임라인·알림에 반영됩니다.
+                  <button className="lk" style={{ marginLeft: 8 }} onClick={() => setShareDone(false)}>다시 공유</button>
+                </p>
+              ) : !shareOpen ? (
+                <button className="btn small" onClick={() => setShareOpen(true)}>📣 팀 타임라인에 공유</button>
+              ) : (
+                <div className="sharebox">
+                  <textarea
+                    className="sharebox-note" style={{ marginTop: 0 }}
+                    placeholder="공유 노트 (선택) — @이름으로 멘션하면 알림이 갑니다"
+                    value={shareNote}
+                    onChange={(e) => setShareNote(e.target.value)}
+                  />
+                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                    <button className="btn small" onClick={() => { setShareOpen(false); setShareNote(""); }}>취소</button>
+                    <button className="btn small primary" onClick={shareToTimeline} disabled={shareBusy}>{shareBusy ? "공유 중…" : "공유"}</button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 설명 (마크다운 · 이미지 붙여넣기/드롭) — 파트 3 */}

@@ -12,6 +12,7 @@ import NewMenu from "./NewMenu";
 import SignalPanel from "./SignalPanel";
 import TaskTable from "./TaskTable";
 import TeamTimeline, { type TimelineView } from "./TeamTimeline";
+import ActivityFeed from "./ActivityFeed";
 import { openTaskPanel } from "@/lib/task-panel";
 
 // 실시간 시계 (Mission Deck 헤더) — KST, 모노. 매초 갱신.
@@ -244,6 +245,12 @@ export default function HomeView({
                   </div>
                 )}
                 <Link className="collab-more" href="/huddle">허들룸 공유 {summary.huddles.length} →</Link>
+              </section>
+
+              {/* 팀 타임라인 — 업무 공유 활동 (협업 A) */}
+              <section className="tile" aria-label="팀 타임라인">
+                <div className="th"><span className="i" aria-hidden="true">📣</span><h3>팀 타임라인</h3></div>
+                <ActivityFeed compact />
               </section>
               </div>
             </div>

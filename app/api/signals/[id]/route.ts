@@ -8,6 +8,7 @@ import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
+import { reactionsFor } from "@/lib/reactions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,15 +79,21 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       id: number;
       body: string;
       image_url: string | null;
+      author_id: number;
       author_name: string;
       author_type: string;
+      avatar_url: string | null;
       created_at: string;
     }>(
-      `SELECT c.id, c.body, c.image_url, a.display_name AS author_name, a.type AS author_type, c.created_at::text
+      `SELECT c.id, c.body, c.image_url, c.author_id, a.display_name AS author_name, a.type AS author_type, a.avatar_url, c.created_at::text
        FROM comment c JOIN actor a ON a.id = c.author_id
        WHERE c.signal_id = $1 ORDER BY c.created_at ASC`,
       [signal.id]
     );
+    // 이모지 리액션 — 시그널 본문 + 각 답글
+    const cIds = comments.map((c) => c.id);
+    const replyReactions = await reactionsFor("reply", cIds, session.id);
+    const signalReactions = (await reactionsFor("signal", [signal.id], session.id)).get(signal.id) ?? [];
 
     // 투표 집계 (파트 D) — 허들 본문 + 각 코멘트. 내 표(mine) 포함.
     const commentIds = comments.map((c) => c.id);
@@ -128,15 +135,19 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         huddledAt: meta?.huddle_at ?? null,
         imageUrl: imageUrl?.image_url ?? null,
         votes: voteOf("huddle", signal.id),
+        reactions: signalReactions,
       },
       comments: comments.map((c) => ({
         id: c.id,
         body: c.body,
         imageUrl: c.image_url,
+        authorId: c.author_id,
         authorName: c.author_name,
+        avatarUrl: c.avatar_url,
         agent: c.author_type === "agent",
         createdAt: c.created_at,
         votes: voteOf("comment", c.id),
+        reactions: replyReactions.get(c.id) ?? [],
       })),
     });
   } catch (error) {

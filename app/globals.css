@@ -1086,3 +1086,110 @@ body.meeting-on .side { display: none !important; }
 .tdp-create { flex: 1; height: 44px; border: 0; border-radius: 11px; background: var(--brand); color: #fff; font-family: inherit; font-size: 15px; font-weight: 800; cursor: pointer; }
 .tdp-create:hover { filter: brightness(1.06); }
 .tdp-create:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ============================================================
+   협업 번들 — 리치 렌더 · 리액션 칩 · 컴포저 · 대화 스레드 · 알림 · 활동
+   전역(비 .hv) 재사용. 색은 토큰 + color-mix만 (다크 하드코딩 금지).
+   ============================================================ */
+.mention { color: var(--play-text); font-weight: 700; }
+mark.hl { background: color-mix(in srgb, var(--amber) 26%, var(--card)); color: var(--amber-text); border-radius: 3px; padding: 0 3px; box-decoration-break: clone; }
+
+/* LED 상태 pill */
+.sled { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid var(--grid-line); }
+.sled i { width: 7px; height: 7px; border-radius: 50%; }
+.sled.s-open { background: color-mix(in srgb, var(--team) 14%, var(--card)); color: var(--ink-soft); }
+.sled.s-open i { background: var(--team); }
+.sled.s-discussing { background: color-mix(in srgb, var(--amber) 18%, var(--card)); color: var(--amber-text); border-color: color-mix(in srgb, var(--amber) 34%, var(--card)); }
+.sled.s-discussing i { background: var(--amber); box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 22%, transparent); }
+.sled.s-decided { background: color-mix(in srgb, var(--green) 18%, var(--card)); color: var(--green-text); border-color: color-mix(in srgb, var(--green) 34%, var(--card)); }
+.sled.s-decided i { background: var(--green); }
+.sled.s-archived { background: color-mix(in srgb, var(--muted) 14%, var(--card)); color: var(--muted); }
+.sled.s-archived i { background: var(--muted); }
+
+/* 아바타 */
+.cav { border-radius: 50%; flex: 0 0 auto; object-fit: cover; }
+.cav-i { display: inline-flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--play) 20%, var(--card)); color: var(--play-text); font-weight: 800; }
+
+/* 리액션 칩 */
+.rchips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.rchip { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--grid-line); background: var(--card); cursor: pointer; font-size: 13px; }
+.rchip:hover { border-color: color-mix(in srgb, var(--edu) 40%, var(--grid-line)); }
+.rchip.on { background: color-mix(in srgb, var(--edu) 16%, var(--card)); border-color: color-mix(in srgb, var(--edu) 45%, var(--card)); color: var(--edu-text); }
+.rchip .rc { font-size: 12px; font-weight: 700; }
+.radd-wrap { position: relative; display: inline-flex; }
+.radd, .composer-emo { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; border: 1px dashed var(--grid-line); background: transparent; color: var(--muted); cursor: pointer; }
+.radd:hover, .composer-emo:hover { color: var(--ink); border-color: var(--muted); }
+.radd svg, .composer-emo svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.rpick { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 6px; background: var(--card); border: 1px solid var(--grid-line); border-radius: 12px; box-shadow: 0 10px 30px rgba(35,43,54,.14); }
+.rpick.up { top: auto; bottom: calc(100% + 6px); }
+.rpick button { width: 30px; height: 30px; border: 0; background: transparent; border-radius: 8px; font-size: 17px; cursor: pointer; }
+.rpick button:hover { background: color-mix(in srgb, var(--muted) 12%, var(--card)); }
+
+/* 대화 스레드 */
+.thread { margin-top: 16px; border-top: 1px solid var(--grid-line); padding-top: 14px; }
+.thread-h { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.thread-h h3 { font-size: 14px; font-weight: 800; margin: 0; }
+.thread-h .sub { color: var(--muted); font-size: 12px; }
+.thread-empty { color: var(--muted); font-size: 13px; padding: 10px 2px; }
+.thread-list { display: flex; flex-direction: column; gap: 14px; }
+.msg { display: flex; gap: 10px; align-items: flex-start; }
+.msg-b { flex: 1; min-width: 0; }
+.msg-top { display: flex; align-items: center; gap: 8px; }
+.msg-top b { font-size: 13.5px; font-weight: 700; }
+.msg-t { color: var(--muted); font-size: 11.5px; }
+.msg-body { margin-top: 2px; font-size: 14px; line-height: 1.6; color: var(--ink); white-space: pre-wrap; word-break: break-word; }
+.msg.mine .msg-body { background: color-mix(in srgb, var(--edu) 8%, var(--card)); border-radius: 10px; padding: 6px 10px; }
+.msg.ag .msg-body { background: color-mix(in srgb, var(--play) 8%, var(--card)); border-radius: 10px; padding: 6px 10px; }
+.atag.sm { font-size: 10.5px; padding: 1px 6px; }
+
+/* 컴포저 (상시 하단) */
+.composer { margin-top: 14px; border: 1px solid var(--grid-line); border-radius: 14px; background: var(--card); padding: 8px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 0 var(--grid-line); }
+.composer-in { position: relative; }
+.composer-ta { width: 100%; border: 0; outline: none; resize: none; font-family: inherit; font-size: 14px; line-height: 1.6; min-height: 40px; max-height: 160px; background: transparent; color: var(--ink); padding: 6px 6px 0; }
+.composer-tools { display: flex; align-items: center; gap: 8px; }
+.composer-tools .radd-wrap { margin-right: auto; }
+.composer-send { height: 36px; border-radius: 9px; }
+.mpop { position: absolute; z-index: 45; left: 6px; bottom: calc(100% + 4px); min-width: 200px; background: var(--card); border: 1px solid var(--grid-line); border-radius: 12px; box-shadow: 0 12px 32px rgba(35,43,54,.16); padding: 5px; }
+.mpop button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 8px; border: 0; background: transparent; border-radius: 8px; cursor: pointer; font-size: 13.5px; text-align: left; }
+.mpop button:hover { background: color-mix(in srgb, var(--play) 12%, var(--card)); }
+.sresolve { height: 34px; }
+
+/* 알림 인박스 */
+.ninbox { display: flex; flex-direction: column; gap: 2px; }
+.nitem { display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left; padding: 12px 14px; border: 0; border-bottom: 1px solid var(--grid-line); background: transparent; cursor: pointer; position: relative; }
+.nitem:hover { background: color-mix(in srgb, var(--muted) 7%, var(--card)); }
+.nitem.unread { background: color-mix(in srgb, var(--edu) 6%, var(--card)); }
+.nitem.unread::before { content: ""; position: absolute; left: 5px; top: 50%; transform: translateY(-50%); width: 6px; height: 6px; border-radius: 50%; background: var(--coral); }
+.nitem.unread .n-snip { font-weight: 700; color: var(--ink); }
+.n-ic { width: 30px; height: 30px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; font-size: 14px; }
+.n-mention { background: color-mix(in srgb, var(--play) 18%, var(--card)); color: var(--play-text); }
+.n-assign { background: color-mix(in srgb, var(--edu) 18%, var(--card)); color: var(--edu-text); }
+.n-reply { background: color-mix(in srgb, var(--train) 20%, var(--card)); color: var(--train-text); }
+.n-approval { background: color-mix(in srgb, var(--coral) 16%, var(--card)); color: var(--coral-text); }
+.n-share { background: color-mix(in srgb, var(--muted) 16%, var(--card)); color: var(--ink-soft); }
+.n-b { flex: 1; min-width: 0; }
+.n-top { display: flex; align-items: center; gap: 8px; }
+.n-kind { font-size: 11.5px; font-weight: 700; }
+.n-t { color: var(--muted); font-size: 11px; margin-left: auto; }
+.n-snip { font-size: 13.5px; color: var(--ink-soft); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.n-approve { margin-top: 6px; }
+
+/* 활동 피드 (팀 타임라인 공유) */
+.afeed { display: flex; flex-direction: column; gap: 10px; }
+.acard { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--grid-line); border-radius: 14px; background: var(--card); }
+.acard-b { flex: 1; min-width: 0; }
+.acard-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.acard-top b { font-size: 13.5px; }
+.acard-t { color: var(--muted); font-size: 11.5px; margin-left: auto; }
+.a-taskchip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; background: color-mix(in srgb, var(--edu) 12%, var(--card)); color: var(--edu-text); font-size: 12px; font-weight: 600; text-decoration: none; }
+.acard-note { margin-top: 5px; font-size: 13.5px; line-height: 1.55; color: var(--ink); white-space: pre-wrap; }
+.acard-open { font-size: 12.5px; }
+
+/* 타임라인 공유 토글(빠른 생성·상세) */
+.sharebox { border: 1px solid var(--grid-line); border-radius: 12px; padding: 10px 12px; background: color-mix(in srgb, var(--edu) 5%, var(--card)); }
+.sharebox-h { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.sharebox-h input { width: 16px; height: 16px; accent-color: var(--brand); }
+.sharebox-note { margin-top: 8px; width: 100%; border: 1px solid var(--grid-line); border-radius: 9px; padding: 8px 10px; font-family: inherit; font-size: 13px; resize: vertical; min-height: 52px; }
+
+/* FAB 알림 동기 배지 — 사이드바와 같은 미확인 수(purple, 좌상단) */
+.agf-notif { position: absolute; top: -4px; left: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--play); color: #fff; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--card); }

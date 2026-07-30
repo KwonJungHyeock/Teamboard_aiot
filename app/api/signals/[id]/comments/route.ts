@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { jsonError } from "@/lib/api";
+import { notify, notifyMentions } from "@/lib/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,10 +77,18 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const raw = typeof payload.imageUrl === "string" ? payload.imageUrl.trim() : "";
     const imageUrl = /^https?:\/\//.test(raw) ? raw.slice(0, 1000) : null;
     if (!body && !imageUrl) return NextResponse.json({ error: "내용 또는 이미지를 입력하세요." }, { status: 400 });
+    const signalId = Number(params.id);
     const comment = await queryOne<{ id: number }>(
       `INSERT INTO comment (signal_id, author_id, body, image_url) VALUES ($1,$2,$3,$4) RETURNING id`,
-      [Number(params.id), session.id, body, imageUrl]
+      [signalId, session.id, body, imageUrl]
     );
+    // 알림 — @멘션 대상 + 시그널 작성자(답글). 자기 자신·중복은 제외.
+    const snippet = body || "이미지 답글";
+    const mentioned = await notifyMentions(body, session.id, "signal", signalId, snippet);
+    const author = guarded.signal.author_id;
+    if (author !== session.id && !mentioned.includes(author)) {
+      await notify({ userId: author, type: "reply", refType: "signal", refId: signalId, snippet, actorId: session.id });
+    }
     return NextResponse.json({ id: comment!.id });
   } catch (error) {
     return jsonError(error);

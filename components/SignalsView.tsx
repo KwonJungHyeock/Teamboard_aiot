@@ -208,8 +208,12 @@ export default function SignalsView({ user }: { user: SessionUser }) {
   const [composerType, setComposerType] = useState("memo");
   const [composing, setComposing] = useState(false);
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get("type");
+    const sp = new URLSearchParams(window.location.search);
+    const q = sp.get("type");
     if (q && ["memo", "decision", "review", "risk"].includes(q)) { setComposerType(q); setComposing(true); }
+    // 알림에서 진입 — ?signal=id 로 해당 스레드 자동 열기
+    const sid = Number(sp.get("signal"));
+    if (Number.isInteger(sid) && sid > 0) setSelectedId(sid);
   }, []);
 
   const load = useCallback(async () => {

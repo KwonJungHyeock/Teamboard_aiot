@@ -69,6 +69,13 @@ export default function AgentFab({ user }: { user: SessionUser }) {
     };
   }, []);
   const panelOpen = taskPanel || goalPanel;
+  // 미확인 알림 수 — 사이드바 폴링과 같은 소스(tb:notif-count 이벤트)로 동기
+  const [notifCount, setNotifCount] = useState(0);
+  useEffect(() => {
+    const onCount = (e: Event) => setNotifCount((e as CustomEvent).detail ?? 0);
+    window.addEventListener("tb:notif-count", onCount);
+    return () => window.removeEventListener("tb:notif-count", onCount);
+  }, []);
   const [tab, setTab] = useState<"notify" | "dispatch">("notify");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [unseen, setUnseen] = useState(0);
@@ -195,6 +202,7 @@ export default function AgentFab({ user }: { user: SessionUser }) {
             <path d="M12 4v4M9 14h.01M15 14h.01M2 13h2M20 13h2" />
           </svg>
           {unseen > 0 && <span className="agf-badge">{unseen > 9 ? "9+" : unseen}</span>}
+          {notifCount > 0 && <span className="agf-notif" aria-label={`알림 ${notifCount}건`}>{notifCount > 9 ? "9+" : notifCount}</span>}
         </button>
       )}
 

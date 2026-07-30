@@ -35,6 +35,8 @@ export default function QuickCreate() {
   const [projectId, setProjectId] = useState<number | 0>(0);
   const [priority, setPriority] = useState("mid");
   const [status, setStatus] = useState("todo"); // 보드 상태 컬럼 프리셋(비노출 캐리)
+  const [share, setShare] = useState(false);     // 팀 타임라인 공유(협업 A)
+  const [shareNote, setShareNote] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
   const reset = useCallback((p: QuickPrefill) => {
@@ -44,6 +46,7 @@ export default function QuickCreate() {
     setAreaId(p.areaId ?? 0);
     setProjectId(0); setPriority("mid");
     setStatus(p.status ?? "todo");
+    setShare(false); setShareNote("");
   }, []);
 
   useEffect(() => {
@@ -91,10 +94,17 @@ export default function QuickCreate() {
       });
       const data = await res.json();
       if (!res.ok) { setErr(data.error ?? "생성 실패"); setBusy(false); return; }
+      // 팀 타임라인 공유(협업 A) — 업무 생성 후 공유 포스트 + @멘션 알림
+      if (share && data.id) {
+        await fetch("/api/feed", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ taskId: data.id, note: shareNote.trim() }),
+        }).catch(() => {});
+      }
       setOpen(false);
       // 단일 흐름 — 화면 이동 없이 즉시 전역 연동 + 토스트만. 상세로 튀지 않는다.
       notifyTaskUpdated();
-      toast("업무가 생성됐어요");
+      toast(share ? "업무 생성 + 팀 타임라인 공유됨" : "업무가 생성됐어요");
     } catch {
       setErr("네트워크 오류로 생성하지 못했어요."); setBusy(false);
     }
@@ -141,6 +151,20 @@ export default function QuickCreate() {
           </label>
         </div>
       )}
+      <div className="sharebox" style={{ marginTop: 10 }}>
+        <label className="sharebox-h">
+          <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />
+          팀 타임라인 공유
+        </label>
+        {share && (
+          <textarea
+            className="sharebox-note"
+            placeholder="공유 노트 (선택) — @이름으로 멘션하면 알림이 갑니다"
+            value={shareNote}
+            onChange={(e) => setShareNote(e.target.value)}
+          />
+        )}
+      </div>
       <div className="qc-foot">
         {!more && <button className="qc-more" onClick={() => setMore(true)}>+ 옵션</button>}
         <span style={{ flex: 1 }} />

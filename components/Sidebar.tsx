@@ -50,6 +50,12 @@ const IC = {
     </>
   ),
   signal: <path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" />,
+  bell: (
+    <>
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+    </>
+  ),
   huddle: (
     <>
       <circle cx="9" cy="8" r="3" />
@@ -169,11 +175,27 @@ export default function Sidebar({
 }) {
   const pathname = usePathname();
   const [rail, setRail] = useState(false);
+  const [notif, setNotif] = useState(0);
 
   useEffect(() => {
     const saved = localStorage.getItem(RAIL_KEY) === "1";
     setRail(saved);
     document.body.classList.toggle("rail", saved);
+  }, []);
+
+  // 미확인 알림 수 — 상시 폴링 + 읽음 이벤트 시 즉시 갱신. FAB와 같은 소스로 동기.
+  useEffect(() => {
+    let alive = true;
+    const fetchCount = () =>
+      fetch("/api/notifications")
+        .then((r) => r.json())
+        .then((d) => { if (alive) { setNotif(d.unread ?? 0); window.dispatchEvent(new CustomEvent("tb:notif-count", { detail: d.unread ?? 0 })); } })
+        .catch(() => {});
+    fetchCount();
+    const t = setInterval(fetchCount, 8000);
+    const onChanged = () => fetchCount();
+    window.addEventListener("tb:notif-changed", onChanged);
+    return () => { alive = false; clearInterval(t); window.removeEventListener("tb:notif-changed", onChanged); };
   }, []);
 
   function toggleRail() {
@@ -224,6 +246,8 @@ export default function Sidebar({
         <NavLink href="/calendar" icon={IC.calendar} label="캘린더" current={cur("/calendar")} />
         {/* 승인 대기 — 사람/에이전트 공간의 유일한 통로. 카운트 배지 */}
         <NavLink href="/inbox" icon={IC.inbox} label="승인 대기" current={cur("/inbox")} count={inboxCount} />
+        {/* 알림 — @멘션·답글·공유 인박스. 미확인 배지 */}
+        <NavLink href="/notifications" icon={IC.bell} label="알림" current={cur("/notifications")} count={notif > 0 ? notif : undefined} />
         {/* My Agent — 전 구성원 각자의 에이전트 */}
         <NavLink href="/assistant" icon={IC.bot} label="My Agent" current={cur("/assistant")} />
       </nav>
