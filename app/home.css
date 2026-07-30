@@ -1593,3 +1593,24 @@
 .hv .gt2-foot { display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.07); }
 .hv .gt2-hint { font-size: 11.5px; color: #78818F; }
 .hv .gt2-c { margin-left: auto; font-size: 11.5px; color: #9AA3B2; }
+
+/* ── 홈 보완 (버그 3건 + 목표) ── */
+/* A2/A3: 바는 영역색 유지, 지연=우측 코랄 캡. 좁은 바(<90px) 내부 텍스트 숨김(컨테이너 쿼리) */
+.hv .gt2-bar { container-type: inline-size; display: block; padding: 0; min-width: 10px; overflow: hidden; }
+.hv .gt2-bar-in { display: flex; align-items: center; gap: 7px; padding: 0 9px; height: 100%; overflow: hidden; }
+@container (max-width: 90px) { .hv .gt2-bar-in { display: none; } }
+.hv .gt2-cap { position: absolute; right: 0; top: 0; bottom: 0; width: 4px; background: var(--coral); box-shadow: 0 0 6px rgba(234,74,79,.6); }
+.hv .gt2-warn { font-size: 11px; flex: 0 0 auto; filter: saturate(1.4); }
+
+/* C: 목표 모듈 — 연간 큰 게이지 + 분기 리스트 */
+.hv .gmore { text-decoration: none; color: var(--blue-d) !important; font-weight: 600; }
+.hv .gm-sec-l { font-family: var(--f-d); font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 8px; }
+.hv .gm-sec-l:first-child { margin-top: 0; }
+.hv .ann-row { display: block; text-decoration: none; padding: 2px 0 4px; }
+.hv .ann-top { display: flex; align-items: baseline; gap: 8px; }
+.hv .ann-t { flex: 1; font-size: 15px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hv .ann-pct { font-size: 17px; font-weight: 800; color: var(--blue-d); }
+.hv .ann-track { height: 10px; border-radius: 99px; background: var(--track-bg); overflow: hidden; margin-top: 6px; }
+.hv .ann-track i { display: block; height: 100%; border-radius: 99px; }
+.hv .gm-empty { display: block; padding: 9px 11px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); font-size: 12.5px; text-decoration: none; }
+.hv .gm-empty:hover { color: var(--ink); border-color: var(--muted); }

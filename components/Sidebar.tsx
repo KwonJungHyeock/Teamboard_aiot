@@ -176,6 +176,14 @@ export default function Sidebar({
   const pathname = usePathname();
   const [rail, setRail] = useState(false);
   const [notif, setNotif] = useState(0);
+  // B: 업무 영역 아코디언 — 하위 프로젝트 접기/펼치기. 디폴트 닫힘.
+  const [openAreas, setOpenAreas] = useState<Record<number, boolean>>({});
+  const toggleArea = (id: number) => setOpenAreas((p) => ({ ...p, [id]: !p[id] }));
+  // 활성 하위 항목이 있는 영역은 자동 펼침(사용자 토글은 보존)
+  useEffect(() => {
+    const active = areas.find((a) => a.projects?.some((p) => pathname.startsWith(`/projects/${p.id}`)));
+    if (active) setOpenAreas((prev) => (prev[active.id] ? prev : { ...prev, [active.id]: true }));
+  }, [pathname, areas]);
 
   useEffect(() => {
     const saved = localStorage.getItem(RAIL_KEY) === "1";
@@ -280,26 +288,45 @@ export default function Sidebar({
               </svg>
             </a>
           ) : (
-            <div key={area.id}>
-              <Link
-                href={`/areas/${area.id}`}
-                aria-current={pathname === `/areas/${area.id}` ? "page" : undefined}
-              >
-                <span className={`pjdot ${area.color_key ?? "team"}`} />
-                <span>{area.name}</span>
-              </Link>
-              {area.projects.map((project) => (
-                <Link
-                  key={project.id}
-                  className="subproj"
-                  href={`/projects/${project.id}`}
-                  aria-current={cur(`/projects/${project.id}`) ? "page" : undefined}
-                >
-                  <span className={`pjdot ${project.color_key ?? "team"}`} />
-                  <span>{project.name}</span>
-                </Link>
-              ))}
-            </div>
+            (() => {
+              const hasSub = (area.projects?.length ?? 0) > 0;
+              const open = !!openAreas[area.id];
+              return (
+                <div key={area.id} className="area-grp">
+                  <div className="area-row">
+                    <Link
+                      className="area-link"
+                      href={`/areas/${area.id}`}
+                      aria-current={pathname === `/areas/${area.id}` ? "page" : undefined}
+                    >
+                      <span className={`pjdot ${area.color_key ?? "team"}`} />
+                      <span>{area.name}</span>
+                    </Link>
+                    {hasSub && (
+                      <button
+                        className={`area-cv${open ? " open" : ""}`}
+                        onClick={() => toggleArea(area.id)}
+                        aria-label={open ? "하위 접기" : "하위 펼치기"}
+                        aria-expanded={open}
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+                      </button>
+                    )}
+                  </div>
+                  {hasSub && open && area.projects.map((project) => (
+                    <Link
+                      key={project.id}
+                      className="subproj"
+                      href={`/projects/${project.id}`}
+                      aria-current={cur(`/projects/${project.id}`) ? "page" : undefined}
+                    >
+                      <span className={`pjdot ${project.color_key ?? "team"}`} />
+                      <span>{project.name}</span>
+                    </Link>
+                  ))}
+                </div>
+              );
+            })()
           )
         )}
         <Link className="moreln" href="/projects">

@@ -126,6 +126,13 @@ export interface HomeSummary {
     commentCount: number;
   }[];
   // ── 홈 재편 (테마 재편 §3) ──
+  annualGoals: {
+    id: number;
+    title: string;
+    progress: number | null;
+    colorKey: string | null;
+  }[];
+  annualLabel: string; // 예: 2026
   quarterGoals: {
     id: number;
     title: string;
@@ -705,6 +712,23 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   const qNum = Math.floor((Number(today.slice(5, 7)) - 1) / 3) + 1;
   const quarterLabel = `${today.slice(0, 4)} Q${qNum}`;
 
+  // §C: 연간 목표 (level=annual, 올해 커버) — 상단 큰 게이지
+  const annualRows = await query<{ id: number; title: string; progress: string | null; color_key: string | null }>(
+    `SELECT g.id, g.title, g.progress::text, p.color_key
+     FROM goal g LEFT JOIN project p ON p.id = g.project_id
+     WHERE g.is_active = true
+       AND (g.level = 'annual' OR g.period_type = 'year')
+       AND g.period_start <= $1::date AND g.period_end >= $1::date
+     ORDER BY g.id LIMIT 2`,
+    [today]
+  );
+  const annualGoals = annualRows.map((g) => ({
+    id: g.id, title: g.title,
+    progress: g.progress === null ? null : Math.round(Number(g.progress)),
+    colorKey: g.color_key,
+  }));
+  const annualLabel = today.slice(0, 4);
+
   // ── 홈 재편 §3-1: 다가오는 일정 (회의 event + 마감 task, 오늘~+14일) ──
   const in14 = addDays(today, 14);
   const upEvents = await query<{ id: number; title: string; start_at: string }>(
@@ -713,20 +737,34 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
      ORDER BY start_at LIMIT 6`,
     [kstDayStart(today), kstDayStart(in14)]
   );
+  // A1: 미래만 — 오늘 이상 ~ +14일. 지난 마감은 제외(타임라인 지연 표시로만).
   const upTasks = await query<{ id: number; title: string; due_date: string }>(
     `SELECT t.id, t.title, t.due_date::text FROM task t
-     WHERE ${OPEN_TASK} AND t.due_date IS NOT NULL AND t.due_date <= $1::date
+     WHERE ${OPEN_TASK} AND t.due_date IS NOT NULL
+       AND t.due_date >= $1::date AND t.due_date <= $2::date
      ORDER BY t.due_date LIMIT 8`,
-    [in14]
+    [today, in14]
+  );
+  // (b) 예정 리뷰세션 — scheduled_at 미래(0012에서 컬럼 추가, 없으면 결과 없음)
+  const upReviews = await query<{ id: number; title: string; scheduled_at: string }>(
+    `SELECT id, title, scheduled_at::text FROM review_session
+     WHERE is_active = true AND scheduled_at IS NOT NULL
+       AND scheduled_at >= $1::timestamptz AND scheduled_at < $2::timestamptz
+     ORDER BY scheduled_at LIMIT 6`,
+    [kstDayStart(today), kstDayStart(in14)]
   );
   const upcoming = [
     ...upEvents.map((e) => ({
       key: `e${e.id}`, kind: "meeting" as const, title: e.title,
       date: isoify(e.start_at).slice(0, 10), dday: null, overdue: false,
     })),
+    ...upReviews.map((r) => ({
+      key: `r${r.id}`, kind: "review" as const, title: r.title,
+      date: isoify(r.scheduled_at).slice(0, 10), dday: null, overdue: false,
+    })),
     ...upTasks.map((t) => ({
       key: `t${t.id}`, kind: "deadline" as const, title: t.title,
-      date: t.due_date, dday: dday(t.due_date, today), overdue: t.due_date < today,
+      date: t.due_date, dday: dday(t.due_date, today), overdue: false,
     })),
   ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 4);
 
@@ -839,6 +877,8 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       authorName: h.author_name,
       commentCount: Number(h.comment_count),
     })),
+    annualGoals,
+    annualLabel,
     quarterGoals,
     quarterLabel,
     upcoming,

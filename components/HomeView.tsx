@@ -93,7 +93,7 @@ export default function HomeView({
         <div className="home3">
           {/* Row1 — Q3 목표 / 다가오는 일정 */}
           <div className="hrow r13">
-            <QuarterGoals goals={summary.quarterGoals} label={summary.quarterLabel} />
+            <GoalsModule annual={summary.annualGoals} quarter={summary.quarterGoals} annualLabel={summary.annualLabel} quarterLabel={summary.quarterLabel} />
             <Upcoming items={summary.upcoming} />
           </div>
 
@@ -124,30 +124,51 @@ const GOAL_STATUS: Record<string, { color: string; label: string }> = {
   wait: { color: "var(--slate)", label: "대기" },
 };
 
-function QuarterGoals({ goals, label }: { goals: HomeSummary["quarterGoals"]; label: string }) {
+function GoalsModule({ annual, quarter, annualLabel, quarterLabel }: {
+  annual: HomeSummary["annualGoals"]; quarter: HomeSummary["quarterGoals"]; annualLabel: string; quarterLabel: string;
+}) {
+  const empty = annual.length === 0 && quarter.length === 0;
   return (
-    <section className="tile mod" aria-label="분기 목표 달성 현황">
-      <div className="th"><h3>{label} 목표</h3><span className="m">{goals.length}개</span></div>
-      {goals.length === 0 ? (
-        <EmptyState compact title="이번 분기 목표가 없어요" hint="분기 목표를 추가하면 달성 현황이 모입니다." action={<Link className="btn small primary" href="/goals">목표 추가</Link>} />
+    <section className="tile mod" aria-label="목표 달성 현황">
+      <div className="th"><h3>목표</h3><Link className="m gmore" href="/goals">전체 관리 →</Link></div>
+      {empty ? (
+        <EmptyState compact title="등록된 목표가 없어요" hint="연간·분기 목표를 추가하면 달성 현황이 모입니다." action={<Link className="btn small primary" href="/goals">목표 추가</Link>} />
       ) : (
-        <div className="qg">
-          {goals.map((g) => {
-            const st = GOAL_STATUS[g.status];
-            return (
-              <Link className="qg-row" key={g.id} href="/goals">
-                <div className="qg-top">
-                  <span className="qg-t">{g.title}</span>
-                  <span className="qg-chip" style={{ color: st.color, background: `color-mix(in srgb, ${st.color} 14%, var(--card))` }}>{st.label}</span>
-                </div>
-                <div className="qg-bar">
-                  <div className="qg-track"><i style={{ width: `${Math.max(g.progress ?? 0, 2)}%`, background: st.color }} /></div>
-                  <span className="qg-pct num">{g.progress === null ? "-" : `${g.progress}%`}</span>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+        <>
+          {/* 연간 — 큰 게이지 */}
+          <div className="gm-sec-l">연간 · {annualLabel}</div>
+          {annual.length === 0 ? (
+            <Link className="gm-empty" href="/goals">＋ 올해 연간 목표를 추가하세요</Link>
+          ) : annual.map((g) => (
+            <Link className="ann-row" key={g.id} href="/goals">
+              <div className="ann-top"><span className="ann-t">{g.title}</span><span className="ann-pct num">{g.progress === null ? "-" : `${g.progress}%`}</span></div>
+              <div className="ann-track"><i style={{ width: `${Math.max(g.progress ?? 0, 2)}%`, background: "var(--blue)" }} /></div>
+            </Link>
+          ))}
+          {/* 분기 — 리스트 */}
+          <div className="gm-sec-l">분기 · {quarterLabel.split(" ")[1] ?? quarterLabel}</div>
+          {quarter.length === 0 ? (
+            <Link className="gm-empty" href="/goals">＋ 이번 분기 목표를 추가하세요</Link>
+          ) : (
+            <div className="qg">
+              {quarter.map((g) => {
+                const st = GOAL_STATUS[g.status];
+                return (
+                  <Link className="qg-row" key={g.id} href="/goals">
+                    <div className="qg-top">
+                      <span className="qg-t">{g.title}</span>
+                      <span className="qg-chip" style={{ color: st.color, background: `color-mix(in srgb, ${st.color} 14%, var(--card))` }}>{st.label}</span>
+                    </div>
+                    <div className="qg-bar">
+                      <div className="qg-track"><i style={{ width: `${Math.max(g.progress ?? 0, 2)}%`, background: st.color }} /></div>
+                      <span className="qg-pct num">{g.progress === null ? "-" : `${g.progress}%`}</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </section>
   );

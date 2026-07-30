@@ -125,7 +125,8 @@ export default function HeroTimeline({
         const maxE = tasks.reduce((a, t) => (t.end > a ? t.end : a), tasks[0].end);
         const p = place(minS, maxE);
         const avg = Math.round(tasks.reduce((a, t) => a + (t.status === "done" ? 100 : t.progress), 0) / tasks.length);
-        const bars: Bar[] = p ? [{ id: `g${area}`, taskId: null, label: `${tasks.length}개 · 평균 ${avg}%`, color: anyLate ? "var(--coral)" : col, late: anyLate, startIdx: p.startIdx, span: p.span, sub: "" }] : [];
+        // A2: 롤업 바는 항상 영역색. 지연은 우측 코랄 캡으로만 표기(영역 정체성 유지).
+        const bars: Bar[] = p ? [{ id: `g${area}`, taskId: null, label: `${tasks.length}개 · 평균 ${avg}%`, color: col, late: anyLate, startIdx: p.startIdx, span: p.span, sub: "" }] : [];
         return { key: area, name: area, color: col, bars };
       }).filter((g) => g.bars.length > 0);
     }
@@ -136,7 +137,8 @@ export default function HeroTimeline({
         const p = place(t.start, t.end);
         if (!p) continue;
         const tplus = Math.max(0, diffDays(today, t.start));
-        bars.push({ id: `t${t.id}`, taskId: t.id, label: `#${t.id} ${t.title}`, color: t.late ? "var(--coral)" : col, late: t.late, startIdx: p.startIdx, span: p.span, sub: `${t.assignee} · ${t.progress}% · T+${tplus}d` });
+        // A2/A3: 영역색 유지 + 지연은 코랄 캡. 좁은 바 텍스트는 CSS 컨테이너 쿼리로 숨김.
+        bars.push({ id: `t${t.id}`, taskId: t.id, label: `#${t.id} ${t.title}`, color: col, late: t.late, startIdx: p.startIdx, span: p.span, sub: `${t.assignee} · ${t.progress}%` });
       }
       return { key: area, name: area, color: col, bars };
     }).filter((g) => g.bars.length > 0);
@@ -198,10 +200,14 @@ export default function HeroTimeline({
                       style={{ left: `${pct(b.startIdx)}%`, width: `calc(${(b.span / n) * 100}% - 3px)`, background: b.color }}
                       onClick={b.taskId ? () => openTaskPanel(b.taskId as number) : undefined}
                       disabled={!b.taskId}
-                      title={b.sub ? `${b.label} · ${b.sub}` : b.label}
+                      title={`${b.label}${b.sub ? ` · ${b.sub}` : ""}${b.late ? " · ⚠ 지연" : ""}`}
                     >
-                      <span className="gt2-bar-t">{b.label}</span>
-                      {b.sub && <span className="gt2-bar-s">{b.sub}</span>}
+                      <span className="gt2-bar-in">
+                        {b.late && <span className="gt2-warn" aria-hidden="true">⚠</span>}
+                        <span className="gt2-bar-t">{b.label}</span>
+                        {b.sub && <span className="gt2-bar-s">{b.sub}</span>}
+                      </span>
+                      {b.late && <i className="gt2-cap" aria-hidden="true" />}
                     </button>
                   </div>
                 ))}
