@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { jsonError } from "@/lib/api";
+import { kstToday } from "@/lib/home";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +12,28 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const session = requireSession();
+    // C3: 마감 알림 — 내 담당 미완료 업무의 마감 임박(오늘~+2)·지연(지난 마감). 저장 없이 파생.
+    const today = kstToday();
+    const dueRows = await query<{ id: number; title: string; due_date: string }>(
+      `SELECT id, title, due_date::text FROM task
+       WHERE is_active = true AND status IN ('todo','doing','review')
+         AND assignee_id = $1 AND due_date IS NOT NULL
+         AND due_date <= (($2::date) + 2)
+       ORDER BY due_date ASC LIMIT 12`,
+      [session.id, today]
+    );
+    const dstamp = `${today}T00:00:00+09:00`;
+    const deadlineItems = dueRows.map((r) => {
+      const overdue = r.due_date < today;
+      return {
+        id: overdue ? -200000 - r.id : -100000 - r.id, // 합성 음수 id(저장 아님)
+        type: overdue ? "overdue" : "deadline",
+        refType: "task", refId: r.id,
+        snippet: `${overdue ? "지연" : "마감 임박"} · ${r.title}`,
+        read: false, synthetic: true, actorName: null,
+        createdAt: dstamp,
+      };
+    });
     const rows = await query<{
       id: number;
       type: string;
@@ -30,19 +53,15 @@ export async function GET() {
        LIMIT 60`,
       [session.id]
     );
-    const unread = rows.filter((r) => !r.read).length;
+    const unread = rows.filter((r) => !r.read).length; // 배지는 저장 알림 기준(합성 마감 제외)
+    const stored = rows.map((r) => ({
+      id: r.id, type: r.type, refType: r.ref_type, refId: r.ref_id,
+      snippet: r.snippet, read: r.read, actorName: r.actor_name, createdAt: r.created_at, synthetic: false,
+    }));
     return NextResponse.json({
       unread,
-      items: rows.map((r) => ({
-        id: r.id,
-        type: r.type,
-        refType: r.ref_type,
-        refId: r.ref_id,
-        snippet: r.snippet,
-        read: r.read,
-        actorName: r.actor_name,
-        createdAt: r.created_at,
-      })),
+      // 마감 임박/지연을 상단에 노출(합성) + 저장 알림
+      items: [...deadlineItems, ...stored],
     });
   } catch (error) {
     return jsonError(error);

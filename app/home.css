@@ -1614,3 +1614,67 @@
 .hv .ann-track i { display: block; height: 100%; border-radius: 99px; }
 .hv .gm-empty { display: block; padding: 9px 11px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); font-size: 12.5px; text-decoration: none; }
 .hv .gm-empty:hover { color: var(--ink); border-color: var(--muted); }
+
+/* ============================================================
+   캘린더 (축2) — 월/주 그리드 + 스팬 막대 + 드래그 재조정
+   ============================================================ */
+.hv .cal-nav { display: flex; align-items: center; gap: 6px; }
+.hv .cal-nav .nb { width: 30px; height: 32px; border: 1px solid var(--line); background: var(--card); border-radius: 8px; cursor: pointer; font-size: 16px; color: var(--ink2); }
+.hv .cal-nav .nb:hover { background: color-mix(in srgb, var(--muted) 8%, var(--card)); }
+.hv .cal-nav .cal-mo { font-size: 16px; font-weight: 700; color: var(--ink); min-width: 118px; text-align: center; }
+.hv .cal-nav .tbtn { height: 32px; padding: 0 12px; border: 1px solid var(--line); background: var(--card); border-radius: 8px; font-size: 13px; cursor: pointer; color: var(--ink2); }
+.hv .cal-new { height: 34px; }
+
+.hv .tile.cal2 { background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--e2); padding: 0; overflow: hidden; }
+.hv .cal2-dow { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--line); }
+.hv .cal2-dowc { padding: 10px 0; text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); }
+.hv .cal2-dowc.sun { color: var(--coral); }
+.hv .cal2-dowc.sat { color: var(--blue); }
+.hv .cal2-body { display: flex; flex-direction: column; }
+.hv .cal2-week { position: relative; border-bottom: 1px solid var(--hair); }
+.hv .cal2-week:last-child { border-bottom: 0; }
+.hv .cal2-cells { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(7, 1fr); }
+.hv .cal2-cell { border-right: 1px solid var(--hair); padding: 5px 6px; cursor: pointer; position: relative; }
+.hv .cal2-cell:last-child { border-right: 0; }
+.hv .cal2-cell.out { background: color-mix(in srgb, var(--muted) 5%, transparent); }
+.hv .cal2-cell.wknd { background: color-mix(in srgb, var(--muted) 3%, transparent); }
+.hv .cal2-cell:hover { background: color-mix(in srgb, var(--blue) 4%, transparent); }
+.hv .cal2-dnum-row { display: flex; align-items: center; }
+.hv .cal2-dnum { font-size: 12.5px; font-weight: 600; color: var(--ink); width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; }
+.hv .cal2-cell.out .cal2-dnum { color: var(--muted); }
+.hv .cal2-dnum.sun { color: var(--coral); }
+.hv .cal2-dnum.sat { color: var(--blue); }
+.hv .cal2-dnum.today { background: var(--coral); color: #fff; border-radius: 50%; font-weight: 700; }
+.hv .cal2-add { margin-left: auto; width: 18px; height: 18px; border: 0; background: transparent; color: var(--muted); font-size: 14px; line-height: 1; cursor: pointer; opacity: 0; border-radius: 5px; }
+.hv .cal2-cell:hover .cal2-add { opacity: 1; }
+.hv .cal2-add:hover { background: color-mix(in srgb, var(--blue) 12%, var(--card)); color: var(--blue-d); }
+.hv .cal2-more { position: absolute; bottom: 4px; left: 6px; font-size: 11px; font-weight: 700; color: var(--ink2); background: color-mix(in srgb, var(--muted) 12%, var(--card)); border: 0; border-radius: 6px; padding: 1px 7px; cursor: pointer; }
+.hv .cal2-more:hover { background: color-mix(in srgb, var(--muted) 20%, var(--card)); }
+
+/* 스팬 막대 오버레이 */
+.hv .cal2-bars { position: absolute; inset: 0; pointer-events: none; }
+.hv .cal2-bar { position: absolute; height: 20px; display: flex; align-items: center; gap: 5px; padding: 0 8px 0 4px; border: 1px solid; border-radius: 4px; overflow: hidden; pointer-events: auto; cursor: grab; touch-action: none; }
+.hv .cal2-bar.s-start { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+.hv .cal2-bar.s-end { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+.hv .cal2-bar:not(.s-start) { border-left: 0; margin-left: -1px; }
+.hv .cal2-bar:not(.s-end) { border-right: 0; }
+.hv .cal2-bar:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.hv .cal2-bar.dragging { cursor: grabbing; box-shadow: var(--e2); z-index: 5; opacity: .92; }
+.hv .cal2-prio-i { position: relative; width: 4px; height: 13px; border-radius: 2px; flex: 0 0 4px; cursor: pointer; }
+.hv .cal2-prio-i::before { content: ""; position: absolute; inset: -5px -5px -5px -4px; } /* 클릭 히트 확장 */
+.hv .cal2-led { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
+.hv .cal2-bar-t { font-size: 11.5px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hv .cal2-cap { position: absolute; right: 0; top: 0; bottom: 0; width: 4px; background: var(--coral); }
+.hv .cal2-h { position: absolute; top: 0; bottom: 0; width: 7px; cursor: ew-resize; opacity: 0; }
+.hv .cal2-h.l { left: 0; } .hv .cal2-h.r { right: 0; }
+.hv .cal2-bar:hover .cal2-h { opacity: 1; background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.hv .cal2.week .cal2-bar { height: 23px; }
+
+/* 팝오버 (+N 목록 · 우선순위) */
+.hv .cal2-pop, .hv .cal2-prio { position: fixed; z-index: 60; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--e3); padding: 6px; min-width: 200px; }
+.hv .cal2-pop-h { font-size: 11.5px; font-weight: 700; color: var(--muted); padding: 4px 8px 6px; }
+.hv .cal2-pop-i, .hv .cal2-prio button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 8px; border: 0; background: transparent; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--ink); text-align: left; }
+.hv .cal2-pop-i i, .hv .cal2-prio button i { width: 8px; height: 8px; border-radius: 3px; flex: 0 0 8px; }
+.hv .cal2-pop-i:hover, .hv .cal2-prio button:hover { background: color-mix(in srgb, var(--muted) 10%, var(--card)); }
+.hv .cal2-prio { min-width: 120px; }
+@media (prefers-reduced-motion: reduce) { .hv .cal2-bar { transition: none; } }

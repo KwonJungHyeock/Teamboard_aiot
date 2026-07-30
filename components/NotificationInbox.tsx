@@ -16,6 +16,7 @@ interface NItem {
   read: boolean;
   actorName: string | null;
   createdAt: string;
+  synthetic?: boolean;
 }
 
 const KIND: Record<string, { label: string; cls: string; icon: string }> = {
@@ -24,6 +25,8 @@ const KIND: Record<string, { label: string; cls: string; icon: string }> = {
   reply: { label: "답글", cls: "n-reply", icon: "💬" },
   approval: { label: "승인 필요", cls: "n-approval", icon: "✓" },
   share: { label: "공유", cls: "n-share", icon: "🔗" },
+  deadline: { label: "마감 임박", cls: "n-approval", icon: "⏰" },
+  overdue: { label: "지연", cls: "n-approval", icon: "⚠" },
 };
 
 function hrefFor(n: NItem): string {
@@ -60,7 +63,8 @@ export default function NotificationInbox() {
   }
 
   async function open(n: NItem) {
-    if (!n.read) { await markRead(n.id); setItems((cur) => cur.map((x) => (x.id === n.id ? { ...x, read: true } : x))); }
+    // 합성(마감/지연) 항목은 저장 알림이 아니므로 읽음 처리 없이 이동만
+    if (!n.synthetic && !n.read) { await markRead(n.id); setItems((cur) => cur.map((x) => (x.id === n.id ? { ...x, read: true } : x))); }
     router.push(hrefFor(n));
   }
 
@@ -70,7 +74,7 @@ export default function NotificationInbox() {
     window.dispatchEvent(new CustomEvent("tb:notif-changed"));
   }
 
-  const unread = items.filter((i) => !i.read).length;
+  const unread = items.filter((i) => !i.read && !i.synthetic).length;
 
   return (
     <div className="hv">

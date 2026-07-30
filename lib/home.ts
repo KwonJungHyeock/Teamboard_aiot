@@ -62,6 +62,8 @@ export interface LaneTask {
   areaColorKey: string | null;
   origin: "human" | "agent";
   assigneeId: number | null;
+  assigneeName: string | null;
+  priority: string;          // high | mid | low (표기: 높음/보통/낮음)
   late: boolean;
   dday: string | null; // D-3 / D+2
   progress: number; // 0~100 (수동 진행률)
@@ -400,14 +402,17 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     area_color: string | null;
     origin: "human" | "agent";
     assignee_id: number | null;
+    assignee_name: string | null;
+    priority: string;
     progress: number;
   }>(
     `SELECT t.id, t.title, t.start_date::text, t.due_date::text, t.status, p.color_key,
             ar.name AS area_name, ar.color_key AS area_color,
-            t.origin, t.assignee_id, t.progress
+            t.origin, t.assignee_id, ac.display_name AS assignee_name, t.priority, t.progress
      FROM task t
      LEFT JOIN project p ON p.id = t.project_id
      LEFT JOIN area ar ON ar.id = t.area_id
+     LEFT JOIN actor ac ON ac.id = t.assignee_id
      WHERE ${OPEN_TASK}
      ORDER BY t.due_date ASC NULLS LAST, t.priority = 'high' DESC, t.id`
   );
@@ -438,6 +443,8 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
         areaColorKey: t.area_color,
         origin: t.origin,
         assigneeId: t.assignee_id,
+        assigneeName: t.assignee_name,
+        priority: t.priority,
         late: !!t.due_date && t.due_date < today,
         dday: t.due_date ? dday(t.due_date, today) : null,
         progress: t.progress ?? 0,

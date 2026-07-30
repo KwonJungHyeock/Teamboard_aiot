@@ -35,6 +35,7 @@ export default function QuickCreate() {
   const [projectId, setProjectId] = useState<number | 0>(0);
   const [priority, setPriority] = useState("mid");
   const [status, setStatus] = useState("todo"); // 보드 상태 컬럼 프리셋(비노출 캐리)
+  const [startDate, setStartDate] = useState(""); // 캘린더 일자 클릭 시작일(비노출 캐리)
   const [share, setShare] = useState(false);     // 팀 타임라인 공유(협업 A)
   const [shareNote, setShareNote] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -46,6 +47,7 @@ export default function QuickCreate() {
     setAreaId(p.areaId ?? 0);
     setProjectId(0); setPriority("mid");
     setStatus(p.status ?? "todo");
+    setStartDate(p.startDate ?? "");
     setShare(false); setShareNote("");
   }, []);
 
@@ -88,6 +90,7 @@ export default function QuickCreate() {
           projectId: projectId || undefined,
           assigneeId: assigneeId || undefined,
           dueDate: dueDate || undefined,
+          startDate: startDate || undefined,
           priority,
           status,
         }),

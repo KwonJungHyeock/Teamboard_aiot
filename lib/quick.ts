@@ -6,6 +6,7 @@ export const TOAST_EVENT = "tb:toast";
 
 export interface QuickPrefill {
   dueDate?: string;
+  startDate?: string; // 캘린더 일자 클릭 — 시작일 프리셋
   assigneeId?: number;
   areaId?: number;
   status?: string; // 보드 상태 컬럼 "+추가" — 그 컬럼 상태로 프리셋
