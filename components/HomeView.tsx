@@ -7,13 +7,8 @@ import Link from "next/link";
 import type { HomeSummary } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
 import EmptyState from "./EmptyState";
-import MetricCards from "./MetricCards";
 import NewMenu from "./NewMenu";
-import SignalPanel from "./SignalPanel";
-import TaskTable from "./TaskTable";
-import TeamTimeline, { type TimelineView } from "./TeamTimeline";
-import ActivityFeed from "./ActivityFeed";
-import { openTaskPanel } from "@/lib/task-panel";
+import HeroTimeline from "./HeroTimeline";
 
 // 실시간 시계 (Mission Deck 헤더) — KST, 모노. 매초 갱신.
 function Clock() {
@@ -35,22 +30,6 @@ function Clock() {
   );
 }
 
-// 존 소제목 아이콘 (사이드바 섹션 아이콘과 통일) — wayfinding 색(절제 예외)
-const ZONE_IC: Record<string, React.ReactNode> = {
-  status: (<><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>),
-  schedule: (<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>),
-  progress: <path d="M4 20V11M10 20V4M16 20v-6M3 20h18" />,
-  collab: (<><circle cx="8" cy="9" r="2.6" /><circle cx="16" cy="9" r="2.6" /><path d="M2.5 19c0-2.6 2.4-4.5 5.5-4.5M21.5 19c0-2.6-2.4-4.5-5.5-4.5" /></>),
-};
-function ZoneHead({ tone, children }: { tone: keyof typeof ZONE_IC; children: React.ReactNode }) {
-  return (
-    <div className="zone-h">
-      <span className={`zico z-${tone}`} aria-hidden="true"><svg viewBox="0 0 24 24">{ZONE_IC[tone]}</svg></span>
-      {children}
-    </div>
-  );
-}
-
 function greeting(): string {
   const hour = Number(
     new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Seoul", hour: "2-digit", hour12: false })
@@ -62,15 +41,6 @@ function greeting(): string {
   return "좋은 저녁이에요";
 }
 
-// 진척 바 색 — 프로젝트/영역 색키를 의미색 토큰으로 (wayfinding)
-function barColor(ck: string | null): string {
-  switch (ck) {
-    case "play": case "purple": return "var(--play)";
-    case "green": case "train": return "var(--green)";
-    case "edu": case "blue": case "team": default: return "var(--edu)";
-  }
-}
-
 export default function HomeView({
   summary,
   user,
@@ -78,9 +48,7 @@ export default function HomeView({
   summary: HomeSummary;
   user: SessionUser;
 }) {
-  const [view, setView] = useState<TimelineView>("month"); // v5 — 기본 월 뷰
   const [anchor, setAnchor] = useState<string>(summary.today);
-  const [focusMine, setFocusMine] = useState(true); // 지금 할 일 — 기본 "내 것"
 
   const dateLabel = useMemo(() => {
     const d = new Date(`${summary.today}T00:00:00+09:00`);
@@ -119,214 +87,122 @@ export default function HomeView({
           </div>
           <div className="head-r">
             <Clock />
-            <div className="seg" role="group" aria-label="기간 보기">
-              {(["day", "week", "month"] as TimelineView[]).map((v) => (
-                <button key={v} aria-pressed={view === v} onClick={() => setView(v)}>
-                  {v === "day" ? "일" : v === "week" ? "주" : "월"}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 
-        {(() => {
-          const metric = (k: string) => summary.metrics.find((m) => m.key === k);
-          // 지금 할 일 — 기본 "내 것"(로그인 사용자 담당)만. 토글로 전체.
-          const myOverdue = summary.dueSoon.filter((t) => t.overdue && (!focusMine || t.assigneeId === user.id));
-          const overdueCount = myOverdue.length;
-          const overdueTop = myOverdue.slice(0, 2).map((t) => t.title).join(" · ");
-          const stalledTop = summary.signals.find((s) => s.stalled);
-          const projPcts = summary.projectProgress.map((p) => p.percent).filter((x): x is number => x !== null);
-          const avgProgress = projPcts.length ? Math.round(projPcts.reduce((a, b) => a + b, 0) / projPcts.length) : null;
-          const goalPcts = summary.monthGoals.map((g) => g.progress).filter((x): x is number => x !== null);
-          const goalAvg = goalPcts.length ? Math.round(goalPcts.reduce((a, b) => a + b, 0) / goalPcts.length) : null;
-          const doneM = metric("done"), doingM = metric("doing"), turnM = metric("myTurn"), stalledM = metric("stalled"), blockedM = metric("blocked");
+        <div className="home3">
+          {/* Row1 — Q3 목표 / 다가오는 일정 */}
+          <div className="hrow r13">
+            <QuarterGoals goals={summary.quarterGoals} label={summary.quarterLabel} />
+            <Upcoming items={summary.upcoming} />
+          </div>
 
-          const focus = [
-            { key: "inbox", n: Number(turnM?.value ?? 0), tone: "amber", label: "승인 대기", sub: "에이전트 제안·확인 요청 확정", href: "/inbox" },
-            { key: "over", n: overdueCount, tone: "coral", label: "지연 업무", sub: overdueTop || "지연된 업무를 확인하세요", href: "/tasks?due=overdue" },
-            { key: "stall", n: summary.stalledCount, tone: "play", label: "정체된 논의", sub: stalledTop ? `${stalledTop.title} · ${stalledTop.meta}` : "정체된 논의·결정 확인", href: "/signals" },
-          ];
+          {/* Row2 — 히어로 타임라인 (요약 ⇄ 상세) */}
+          <HeroTimeline
+            lanes={summary.lanes}
+            today={summary.today}
+            anchor={anchor}
+            onAnchorChange={setAnchor}
+          />
 
-          return (
-            <div className="bento">
-              {/* 좌: 히어로 타임라인 + 프로젝트 진척도 (내용 높이에 맞춤) */}
-              <div className="bento-l">
-                <TeamTimeline
-                  lanes={summary.lanes}
-                  initialEvents={summary.events}
-                  today={summary.today}
-                  view={view}
-                  anchor={anchor}
-                  isLead={user.role === "lead"}
-                  onAnchorChange={setAnchor}
-                />
-
-                {/* 프로젝트 진척도 */}
-                <section className="tile" aria-label="프로젝트 진척도">
-                  <div className="th"><span className="i" aria-hidden="true">📈</span><h3>프로젝트 진척도</h3><span className="m">W{summary.isoWeek} · 평균 {avgProgress ?? 0}%</span></div>
-                  {summary.projectProgress.length === 0 ? (
-                    <EmptyState compact title="진행 중 프로젝트가 없어요" hint="업무를 추가하면 소속 프로젝트 진척이 모입니다." action={<Link className="btn small primary" href="/projects">프로젝트 보기</Link>} />
-                  ) : (
-                    <div className="pb2">
-                      {summary.projectProgress.map((p) => (
-                        <div className="pi-row" key={p.id}>
-                          <div className="pi"><span className="pi-l">{p.name}</span><span className="p num">{p.percent === null ? "-" : `${p.percent}%`}</span></div>
-                          <div className="t2"><i style={{ width: `${Math.max(p.percent ?? 0, 2)}%`, background: barColor(p.colorKey) }} /></div>
-                        </div>
-                      ))}
-                      <div className="pi-row">
-                        <div className="pi"><span className="pi-l">이번 달 목표 평균</span><span className="p num">{goalAvg === null ? "-" : `${goalAvg}%`}</span></div>
-                        <div className="t2"><i style={{ width: `${Math.max(goalAvg ?? 0, 2)}%`, background: "var(--amber)" }} /></div>
-                      </div>
-                    </div>
-                  )}
-                </section>
-              </div>
-
-              {/* 우: 지금 할 일 + KPI 스트립 + 논의·결정 */}
-              <div className="bento-r">
-              {/* 🔥 지금 할 일 — 실행 포커스 */}
-              <section className="tile focus-tile" aria-label="지금 할 일">
-                <div className="ft-row">
-                  <div className="ft">🔥 지금 할 일</div>
-                  <div className="ft-seg" role="group" aria-label="범위">
-                    <button aria-pressed={focusMine} onClick={() => setFocusMine(true)}>내 것</button>
-                    <button aria-pressed={!focusMine} onClick={() => setFocusMine(false)}>전체</button>
-                  </div>
-                </div>
-                <div className="fs">{focusMine ? "내 담당 · 급한 것부터" : "팀 전체 · 급한 것부터"}</div>
-                {focus.map((f) => (
-                  <Link className="fi" key={f.key} href={f.href}>
-                    <span className="n" style={{ background: `var(--${f.tone})` }}>{f.n}</span>
-                    <span className="x">{f.label}<small>{f.sub}</small></span>
-                    <span className="go" aria-hidden="true">›</span>
-                  </Link>
-                ))}
-              </section>
-
-              {/* 미니 KPI 스트립 — 4구획 */}
-              <section className="tile" aria-label="핵심 지표">
-                <div className="mstrip">
-                  <Link className="ms" href={doingM?.href ?? "/tasks?status=doing"}><div className="v num">{doingM?.value ?? "0"}</div><div className="l">진행 중</div></Link>
-                  <Link className="ms" href={doneM?.href ?? "/tasks?status=done"}><div className="v num">{doneM?.value ?? "0"}{doneM?.em && <span className="ms-em">{doneM.em}</span>}</div><div className="l">이번 주 완료</div></Link>
-                  <Link className="ms" href={stalledM?.href ?? "/tasks?due=overdue"}><div className="v num v-coral">{stalledM?.value ?? "0"}</div><div className="l">지연 · 정체</div></Link>
-                  <Link className="ms" href="/status"><div className="v num v-green">{avgProgress ?? "—"}{avgProgress !== null && <span className="ms-em">%</span>}</div><div className="l">평균 진척</div></Link>
-                  {(() => {
-                    const n = Number(blockedM?.value ?? "0");
-                    return (
-                      <Link className="ms ms-blocked" href={blockedM?.href ?? "/tasks?blocked=1"} title={blockedM?.deltaText}>
-                        <div className={`v num ${n > 0 ? "v-block" : "v-mut"}`}>{blockedM?.value ?? "0"}</div>
-                        <div className="l">
-                          <svg className="ms-lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-                          막힌 업무
-                        </div>
-                        <div className={`ms-reason num${n > 0 ? "" : " ok"}`}>{blockedM?.deltaText}</div>
-                      </Link>
-                    );
-                  })()}
-                </div>
-              </section>
-
-              {/* 논의 · 결정 (협업) */}
-              <section className="tile" aria-label="논의·결정">
-                <div className="th"><span className="i" aria-hidden="true">💬</span><h3>논의 · 결정</h3><span className="m">정체 {summary.stalledCount}</span></div>
-                {summary.signals.length === 0 ? (
-                  <EmptyState compact title="논의·결정이 없어요" hint="결정·리스크·확인 요청이 여기에 모입니다." action={<Link className="btn small" href="/signals">논의·결정으로 가기</Link>} />
-                ) : (
-                  <div className="clist">
-                    {summary.signals.slice(0, 5).map((s) => (
-                      <Link className="cli" key={s.id} href="/signals">
-                        <span className="dotc" style={{ background: s.stalled ? "var(--coral)" : s.badge === "wait" ? "var(--amber)" : "var(--muted)" }} />
-                        <span className="cli-t">{s.title}</span>
-                        {s.badgeLabel && <span className="cli-d" style={{ color: s.stalled ? "var(--coral-text)" : "var(--muted)" }}>{s.badgeLabel}</span>}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-                <Link className="collab-more" href="/huddle">허들룸 공유 {summary.huddles.length} →</Link>
-              </section>
-
-              {/* 팀 타임라인 — 업무 공유 활동 (협업 A) */}
-              <section className="tile" aria-label="팀 타임라인">
-                <div className="th"><span className="i" aria-hidden="true">📣</span><h3>팀 타임라인</h3></div>
-                <ActivityFeed compact />
-              </section>
-              </div>
-            </div>
-          );
-        })()}
+          {/* Row3 — 결정 대기 / 나의 초점 */}
+          <div className="hrow r13">
+            <DecisionsWaiting items={summary.decisionsWaiting} />
+            <MyFocus items={summary.myFocus} agent={summary.agent} />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-// ── 2순위 요약 카드 — 한 줄 요약 + 링 게이지 하나. 클릭 시 개별 진행률 바 확대 ──
-type SummaryRow = {
-  id: string;
-  label: string;
-  percent: number | null;
-  colorKey?: string | null;
-  meta?: string;
+
+// ── 홈 재편 모듈 (테마 재편 §3) ──
+const GOAL_STATUS: Record<string, { color: string; label: string }> = {
+  risk: { color: "var(--coral)", label: "리스크" },
+  ontrack: { color: "var(--green)", label: "온트랙" },
+  wait: { color: "var(--slate)", label: "대기" },
 };
 
-function SummaryProgress({
-  title,
-  sub,
-  rows,
-  done,
-  total,
-  emptyText,
-  emptyHint,
-  emptyAction,
-  ringColor,
-  accent,
-}: {
-  title: string;
-  sub: string;
-  rows: SummaryRow[];
-  done?: number;
-  total?: number;
-  emptyText: string;
-  emptyHint?: string;
-  emptyAction?: React.ReactNode;
-  ringColor?: string;
-  accent?: string;
-}) {
-  // 집계 진행률 — done/total(가중) 우선, 없으면 percent 단순 평균 (부제 표기용).
-  const withPct = rows.filter((r) => r.percent !== null);
-  const overall =
-    total && total > 0
-      ? Math.round(((done ?? 0) / total) * 100)
-      : withPct.length > 0
-      ? Math.round(withPct.reduce((a, r) => a + (r.percent ?? 0), 0) / withPct.length)
-      : null;
-  // 막대 색 — 진행=blue(중립) / 목표=green(달성). 도넛 잔재 제거, 개별 진행 바로 표기.
-  const fill = ringColor === "green" ? "pf-green" : "pf-blue";
-
+function QuarterGoals({ goals, label }: { goals: HomeSummary["quarterGoals"]; label: string }) {
   return (
-    <section className={`card sumcard${accent ? ` acc-${accent}` : ""}`} aria-label={title}>
-      <div className="ch">
-        <h2>{title}</h2>
-        <span className="sub">{sub}{overall !== null ? ` · 평균 ${overall}%` : ""}</span>
-      </div>
-      {rows.length === 0 ? (
-        <EmptyState compact title={emptyText} hint={emptyHint} action={emptyAction} />
+    <section className="tile mod" aria-label="분기 목표 달성 현황">
+      <div className="th"><h3>{label} 목표</h3><span className="m">{goals.length}개</span></div>
+      {goals.length === 0 ? (
+        <EmptyState compact title="이번 분기 목표가 없어요" hint="분기 목표를 추가하면 달성 현황이 모입니다." action={<Link className="btn small primary" href="/goals">목표 추가</Link>} />
       ) : (
-        <div className="prbars">
-          {rows.map((r) => (
-            <div className="pr" key={r.id}>
-              <div className="pr-t">
-                <span className="pr-l">{r.label}</span>
-                <span className="pr-v">
-                  {r.meta && <em className="gdrop">{r.meta}</em>}
-                  {r.percent === null ? "-" : `${r.percent}%`}
+        <div className="qg">
+          {goals.map((g) => {
+            const st = GOAL_STATUS[g.status];
+            return (
+              <Link className="qg-row" key={g.id} href="/goals">
+                <div className="qg-top">
+                  <span className="qg-t">{g.title}</span>
+                  <span className="qg-chip" style={{ color: st.color, background: `color-mix(in srgb, ${st.color} 14%, var(--card))` }}>{st.label}</span>
+                </div>
+                <div className="qg-bar">
+                  <div className="qg-track"><i style={{ width: `${Math.max(g.progress ?? 0, 2)}%`, background: st.color }} /></div>
+                  <span className="qg-pct num">{g.progress === null ? "-" : `${g.progress}%`}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+const UP_KIND: Record<string, { label: string; color: string }> = {
+  meeting: { label: "회의", color: "var(--blue)" },
+  review: { label: "리뷰", color: "var(--amber)" },
+  deadline: { label: "마감", color: "var(--coral)" },
+};
+function Upcoming({ items }: { items: HomeSummary["upcoming"] }) {
+  return (
+    <section className="tile mod" aria-label="다가오는 일정">
+      <div className="th"><h3>다가오는 일정</h3></div>
+      {items.length === 0 ? (
+        <EmptyState compact title="예정된 일정이 없어요" hint="회의·마감이 14일 안에 잡히면 여기에 모입니다." />
+      ) : (
+        <div className="up">
+          {items.map((it) => {
+            const k = UP_KIND[it.kind];
+            const [, mm, dd] = it.date.split("-");
+            return (
+              <Link className="up-row" key={it.key} href={it.kind === "meeting" ? "/calendar" : `/tasks`}>
+                <span className="up-date"><b className="num">{Number(mm)}-{Number(dd)}</b></span>
+                <span className="up-b">
+                  <span className="up-t">{it.title}</span>
+                  <span className="up-chip" style={{ color: k.color, background: `color-mix(in srgb, ${k.color} 14%, var(--card))` }}>{k.label}</span>
                 </span>
-              </div>
-              <div className="bar">
-                <i className={fill} style={{ width: `${Math.min(r.percent ?? 0, 100)}%` }} />
-              </div>
-            </div>
+                {it.dday && <span className={`up-dd num${it.overdue ? " over" : ""}`}>{it.dday}</span>}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function DecisionsWaiting({ items }: { items: HomeSummary["decisionsWaiting"] }) {
+  return (
+    <section className="tile mod" aria-label="결정 대기">
+      <div className="th"><h3>결정 대기</h3><span className="m">논의중 {items.length}</span></div>
+      {items.length === 0 ? (
+        <EmptyState compact title="대기 중인 결정이 없어요" hint="논의중인 결정이 여기에 오래된 순으로 쌓입니다." action={<Link className="btn small" href="/signals">논의·결정으로</Link>} />
+      ) : (
+        <div className="dw">
+          {items.map((d) => (
+            <Link className={`dw-row${d.alert ? " alert" : ""}`} key={d.id} href={`/signals?signal=${d.id}`}>
+              <span className="dw-dot" style={{ background: d.alert ? "var(--coral)" : "var(--slate)" }} />
+              <span className="dw-b">
+                <span className="dw-t">{d.title}</span>
+                <span className="dw-meta">{d.authorName} · 답글 {d.commentCount}</span>
+              </span>
+              <span className={`dw-age num${d.alert ? " over" : ""}`}>{d.ageDays}일</span>
+            </Link>
           ))}
         </div>
       )}
@@ -334,57 +210,55 @@ function SummaryProgress({
   );
 }
 
-// ── 3순위 허들룸 — 접힌 상태로 최근 1건, 나머지는 "더 보기" ──
-function HuddleFeed({
-  huddles,
-}: {
-  huddles: HomeSummary["huddles"];
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? huddles : huddles.slice(0, 1);
+const FOCUS_IC: Record<string, { color: string; glyph: string }> = {
+  mention: { color: "var(--purple)", glyph: "@" },
+  approval: { color: "var(--coral)", glyph: "!" },
+  task: { color: "var(--teal)", glyph: "◱" },
+};
+function focusTime(iso: string | null): string {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const m = Math.floor((Date.now() - t) / 60000);
+  if (m < 1) return "방금";
+  if (m < 60) return `${m}분 전`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}시간 전`;
+  return `${Math.floor(h / 24)}일 전`;
+}
+
+function MyFocus({ items, agent }: { items: HomeSummary["myFocus"]; agent: HomeSummary["agent"] }) {
+  const AS: Record<string, { label: string; cls: string }> = {
+    working: { label: "작업 중", cls: "working" },
+    pending: { label: "보고 대기", cls: "pending" },
+    idle: { label: "대기", cls: "idle" },
+  };
+  const a = AS[agent.status];
   return (
-    <section className="card huddle-lo acc-ink" aria-label="허들룸">
-      <div className="ch">
-        <h2>허들룸</h2>
-        <span className="sub">공유 {huddles.length}</span>
-      </div>
-      {huddles.length === 0 && (
-        <EmptyState
-          compact
-          title="공유된 허들룸이 없어요"
-          hint="논의·결정에서 메모를 허들룸으로 보내면 팀이 함께 볼 결정·논의로 올라옵니다."
-          action={<Link className="btn small" href="/signals">논의·결정으로 가기</Link>}
-        />
-      )}
-      {visible.map((huddle) => (
-        <div className="hud" key={huddle.id}>
-          <div className="h">{huddle.title}</div>
-          <div className="b">{huddle.body}</div>
-          <div className="f">
-            <span className="w">
-              <span
-                className="av"
-                style={{
-                  width: 18,
-                  height: 18,
-                  flexBasis: 18,
-                  fontSize: 10.5,
-                  background: "linear-gradient(140deg,var(--edu),var(--play))",
-                }}
-              >
-                {huddle.authorName.slice(0, 1)}
-              </span>
-              {huddle.authorName}
-            </span>
-            <span>코멘트 {huddle.commentCount}</span>
-          </div>
+    <section className="tile mod focus" aria-label="나의 초점">
+      <div className="th"><h3>나의 초점</h3></div>
+      {items.length === 0 ? (
+        <EmptyState compact title="지금 처리할 것이 없어요" hint="멘션·승인·오늘 마감이 생기면 여기에 모입니다." />
+      ) : (
+        <div className="mf">
+          {items.map((f) => {
+            const ic = FOCUS_IC[f.kind];
+            return (
+              <Link className="mf-row" key={f.key} href={f.href}>
+                <span className="mf-ic" style={{ color: ic.color, background: `color-mix(in srgb, ${ic.color} 15%, var(--card))` }}>{ic.glyph}</span>
+                <span className="mf-t">{f.summary}</span>
+                {f.time && <span className="mf-time num">{focusTime(f.time)}</span>}
+              </Link>
+            );
+          })}
         </div>
-      ))}
-      {huddles.length > 1 && (
-        <button className="lk mu" style={{ marginTop: 10 }} onClick={() => setExpanded((v) => !v)}>
-          {expanded ? "접기" : `+ ${huddles.length - 1}건 더 보기`}
-        </button>
       )}
+      {/* 에이전트 상태 칩 — 실사용량 연동 */}
+      <Link className={`agchip s-${a.cls}`} href="/assistant" aria-label={`에이전트 ${a.label}`}>
+        <span className={`agchip-led ${a.cls}`} aria-hidden="true" />
+        <span className="agchip-l">에이전트 {a.label}</span>
+        <span className="agchip-tok num">{agent.spentTokens.toLocaleString()} tok · ₩{agent.won.toLocaleString()}</span>
+      </Link>
     </section>
   );
 }

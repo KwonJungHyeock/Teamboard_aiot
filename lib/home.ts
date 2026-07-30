@@ -3,6 +3,7 @@
 import { query, queryOne, getInboxCount } from "./db";
 import { getCurrentMonthGoals } from "./goals";
 import { getDecidedStaleDays, signalVisibilityClause } from "./signals";
+import { creditState } from "./agent";
 
 const TZ_OFFSET = "+09:00"; // Asia/Seoul — 팀 기준 시간대
 
@@ -57,6 +58,8 @@ export interface LaneTask {
   dueDate: string | null;
   status: string;
   colorKey: string | null;
+  areaName: string | null;   // 히어로 영역 롤업용
+  areaColorKey: string | null;
   origin: "human" | "agent";
   assigneeId: number | null;
   late: boolean;
@@ -122,6 +125,43 @@ export interface HomeSummary {
     authorName: string;
     commentCount: number;
   }[];
+  // ── 홈 재편 (테마 재편 §3) ──
+  quarterGoals: {
+    id: number;
+    title: string;
+    progress: number | null;
+    status: "ontrack" | "risk" | "wait";
+    colorKey: string | null;
+  }[];
+  quarterLabel: string; // 예: 2026 Q3
+  upcoming: {
+    key: string;
+    kind: "meeting" | "deadline" | "review";
+    title: string;
+    date: string;       // YYYY-MM-DD (정렬·표시)
+    dday: string | null; // 마감만
+    overdue: boolean;
+  }[];
+  decisionsWaiting: {
+    id: number;
+    title: string;
+    authorName: string;
+    commentCount: number;
+    ageDays: number;
+    alert: boolean; // 14일 초과
+  }[];
+  myFocus: {
+    key: string;
+    kind: "mention" | "approval" | "task";
+    summary: string;
+    time: string | null; // 멘션만 mono 시각
+    href: string;
+  }[];
+  agent: {
+    status: "working" | "pending" | "idle";
+    spentTokens: number;
+    won: number;
+  };
 }
 
 export interface HomeSignal {
@@ -349,12 +389,18 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     due_date: string | null;
     status: string;
     color_key: string | null;
+    area_name: string | null;
+    area_color: string | null;
     origin: "human" | "agent";
     assignee_id: number | null;
     progress: number;
   }>(
-    `SELECT t.id, t.title, t.start_date::text, t.due_date::text, t.status, p.color_key, t.origin, t.assignee_id, t.progress
-     FROM task t LEFT JOIN project p ON p.id = t.project_id
+    `SELECT t.id, t.title, t.start_date::text, t.due_date::text, t.status, p.color_key,
+            ar.name AS area_name, ar.color_key AS area_color,
+            t.origin, t.assignee_id, t.progress
+     FROM task t
+     LEFT JOIN project p ON p.id = t.project_id
+     LEFT JOIN area ar ON ar.id = t.area_id
      WHERE ${OPEN_TASK}
      ORDER BY t.due_date ASC NULLS LAST, t.priority = 'high' DESC, t.id`
   );
@@ -381,6 +427,8 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
         dueDate: t.due_date,
         status: t.status,
         colorKey: t.color_key,
+        areaName: t.area_name,
+        areaColorKey: t.area_color,
         origin: t.origin,
         assigneeId: t.assignee_id,
         late: !!t.due_date && t.due_date < today,
@@ -627,6 +675,111 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
      ORDER BY s.created_at DESC LIMIT 4`
   );
 
+  // ── 홈 재편 §3-1: 이번 분기 목표 (현재 분기만) ──
+  const quarterRows = await query<{
+    id: number; title: string; progress: string | null; color_key: string | null;
+    elapsed: string; period_start: string;
+  }>(
+    `SELECT g.id, g.title, g.progress::text, p.color_key,
+            LEAST(1, GREATEST(0, EXTRACT(EPOCH FROM (now() - g.period_start)) /
+              NULLIF(EXTRACT(EPOCH FROM ((g.period_end + interval '1 day') - g.period_start)), 0)))::text AS elapsed,
+            to_char(g.period_start, 'YYYY') AS period_start
+     FROM goal g LEFT JOIN project p ON p.id = g.project_id
+     WHERE g.is_active = true AND g.period_type = 'quarter'
+       AND g.period_start <= $1::date AND g.period_end >= $1::date
+     ORDER BY g.id`,
+    [today]
+  );
+  const quarterGoals = quarterRows.map((g) => {
+    const prog = g.progress === null ? null : Math.round(Number(g.progress));
+    const elapsed = Number(g.elapsed) * 100; // 분기 경과 %
+    let status: "ontrack" | "risk" | "wait";
+    if (prog === null || prog === 0) status = "wait";
+    else if (prog < elapsed - 15) status = "risk"; // 일정 대비 15%p 이상 지연
+    else status = "ontrack";
+    return { id: g.id, title: g.title, progress: prog, status, colorKey: g.color_key };
+  });
+  // 정렬: 리스크 > 온트랙 > 대기
+  const statusRank = { risk: 0, ontrack: 1, wait: 2 } as const;
+  quarterGoals.sort((a, b) => statusRank[a.status] - statusRank[b.status]);
+  const qNum = Math.floor((Number(today.slice(5, 7)) - 1) / 3) + 1;
+  const quarterLabel = `${today.slice(0, 4)} Q${qNum}`;
+
+  // ── 홈 재편 §3-1: 다가오는 일정 (회의 event + 마감 task, 오늘~+14일) ──
+  const in14 = addDays(today, 14);
+  const upEvents = await query<{ id: number; title: string; start_at: string }>(
+    `SELECT id, title, start_at::text FROM event
+     WHERE is_active = true AND start_at >= $1::timestamptz AND start_at < $2::timestamptz
+     ORDER BY start_at LIMIT 6`,
+    [kstDayStart(today), kstDayStart(in14)]
+  );
+  const upTasks = await query<{ id: number; title: string; due_date: string }>(
+    `SELECT t.id, t.title, t.due_date::text FROM task t
+     WHERE ${OPEN_TASK} AND t.due_date IS NOT NULL AND t.due_date <= $1::date
+     ORDER BY t.due_date LIMIT 8`,
+    [in14]
+  );
+  const upcoming = [
+    ...upEvents.map((e) => ({
+      key: `e${e.id}`, kind: "meeting" as const, title: e.title,
+      date: isoify(e.start_at).slice(0, 10), dday: null, overdue: false,
+    })),
+    ...upTasks.map((t) => ({
+      key: `t${t.id}`, kind: "deadline" as const, title: t.title,
+      date: t.due_date, dday: dday(t.due_date, today), overdue: t.due_date < today,
+    })),
+  ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 4);
+
+  // ── 홈 재편 §3-3: 결정 대기 (논의중, 오래된 것 먼저) ──
+  const decisionRows = await query<{
+    id: number; title: string; author_name: string; comment_count: string; age_days: string;
+  }>(
+    `SELECT s.id, s.title, a.display_name AS author_name,
+            (SELECT count(*) FROM comment c WHERE c.signal_id = s.id) AS comment_count,
+            floor(EXTRACT(EPOCH FROM (now() - s.created_at)) / 86400) AS age_days
+     FROM signal s JOIN actor a ON a.id = s.author_id
+     WHERE s.is_active = true AND s.status = 'discussing'
+       AND ${signalVisibilityClause("$1")}
+     ORDER BY s.created_at ASC LIMIT 3`,
+    [viewerId]
+  );
+  const decisionsWaiting = decisionRows.map((d) => ({
+    id: d.id, title: d.title, authorName: d.author_name,
+    commentCount: Number(d.comment_count), ageDays: Number(d.age_days),
+    alert: Number(d.age_days) > 14,
+  }));
+
+  // ── 홈 재편 §3-3: 나의 초점 (안읽은 멘션 + 승인 대기 + 오늘/지연 내 업무) ──
+  const myFocus: HomeSummary["myFocus"] = [];
+  const mentionRows = await query<{ id: number; snippet: string; ref_type: string; ref_id: number | null; created_at: string }>(
+    `SELECT id, snippet, ref_type, ref_id, created_at::text FROM notification
+     WHERE user_id = $1 AND type = 'mention' AND read = false
+     ORDER BY created_at DESC LIMIT 4`,
+    [viewerId]
+  );
+  for (const m of mentionRows) {
+    const href = m.ref_type === "signal" ? `/signals?signal=${m.ref_id}` : m.ref_type === "task" ? `/tasks?task=${m.ref_id}` : "/notifications";
+    myFocus.push({ key: `m${m.id}`, kind: "mention", summary: m.snippet, time: isoify(m.created_at), href });
+  }
+  if (myTurn > 0) {
+    myFocus.push({ key: "approval", kind: "approval", summary: `승인 대기 ${myTurn}건 — 확정이 필요해요`, time: null, href: "/inbox" });
+  }
+  const myTaskRows = await query<{ id: number; title: string; due_date: string }>(
+    `SELECT id, title, due_date::text FROM task t
+     WHERE ${OPEN_TASK} AND t.assignee_id = $1 AND t.due_date IS NOT NULL AND t.due_date <= $2::date
+     ORDER BY t.due_date ASC LIMIT 4`,
+    [viewerId, today]
+  );
+  for (const t of myTaskRows) {
+    const over = t.due_date < today;
+    myFocus.push({ key: `t${t.id}`, kind: "task", summary: `${over ? "지연" : "오늘 마감"} · ${t.title}`, time: null, href: `/tasks?task=${t.id}` });
+  }
+
+  // 에이전트 상태 + 실사용량 (나의 초점 하단 칩)
+  const credit = await creditState(viewerId);
+  const myAgentStatus = assistantStatusOf(viewerId);
+  const agentWon = Math.max(0, Math.round((credit.spent / 1000) * 6));
+
   // 인사말 보조 문구 — 데이터에서 도출
   const oldestStalledDecision = signalItems.find((s) => s.type === "decision" && s.stalled);
   const greetingSub = oldestStalledDecision
@@ -686,5 +839,11 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       authorName: h.author_name,
       commentCount: Number(h.comment_count),
     })),
+    quarterGoals,
+    quarterLabel,
+    upcoming,
+    decisionsWaiting,
+    myFocus,
+    agent: { status: myAgentStatus, spentTokens: credit.spent, won: agentWon },
   };
 }

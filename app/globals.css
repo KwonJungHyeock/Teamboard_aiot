@@ -1193,3 +1193,59 @@ mark.hl { background: color-mix(in srgb, var(--amber) 26%, var(--card)); color: 
 
 /* FAB 알림 동기 배지 — 사이드바와 같은 미확인 수(purple, 좌상단) */
 .agf-notif { position: absolute; top: -4px; left: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--play); color: #fff; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--card); }
+
+/* ============================================================
+   사이드바 — 다크 앵커 (테마 재편). 다크값은 이 블록·히어로에서만.
+   .side 안에서 밝은 토큰을 다크로 재매핑 → 자식 규칙이 자동 적응.
+   ============================================================ */
+.side {
+  position: relative;
+  --ink: var(--sb-ink); --ink-soft: var(--sb-ink2);
+  --hi: var(--sb-ink); --mid: var(--sb-ink2); --lo: var(--sb-muted);
+  --line: var(--sb-line); --line-hi: var(--sb-line);
+  --glass: rgba(255,255,255,.05);
+  background: linear-gradient(168deg, var(--sb1), var(--sb2));
+  border-right: 1px solid var(--sb-line);
+  box-shadow: none;
+}
+.side::before {
+  content: ""; position: absolute; top: -90px; left: -40px; width: 280px; height: 220px;
+  background: radial-gradient(circle, rgba(234,74,79,.30), transparent 68%);
+  pointer-events: none; z-index: 0;
+}
+.side > * { position: relative; z-index: 1; }
+/* 메뉴 항목 — 기본 dim, hover/활성 bright */
+.side a { color: var(--sb-ink2); }
+.side a:hover { background: rgba(255,255,255,.05); color: var(--sb-ink); }
+.side a[aria-current="page"] {
+  background: linear-gradient(100deg, rgba(234,74,79,.22), rgba(234,74,79,.08));
+  border-left-color: var(--coral); color: #fff; font-weight: 700;
+}
+.side a[aria-current="page"] svg { color: #fff; }
+.side .cnt { color: var(--sb-muted); }
+.side .cnt.alert { color: var(--coral-l); }
+.side a[aria-current="page"] .cnt { color: var(--coral-l); }
+/* 브랜드 */
+.side .brand .nm { color: var(--sb-ink); }
+.side .brand .nm small { color: var(--coral-l); }
+.side .brand .tg { color: var(--sb-muted); }
+.side .brand .tg:hover { background: rgba(255,255,255,.06); color: var(--sb-ink); }
+/* 검색바 */
+.side .kbar { border-color: var(--sb-line); background: rgba(255,255,255,.04); color: var(--sb-ink2); }
+.side .kbar:hover { border-color: rgba(255,255,255,.14); color: var(--sb-ink); }
+.side .kbar kbd { border-color: var(--sb-line); color: var(--sb-muted); }
+/* 그룹 헤더·구분선 */
+.side .navtop { border-bottom-color: var(--sb-line); }
+.side .grp { border-top-color: var(--sb-line); }
+.side .grp > summary { color: var(--sb-ink2); }
+.side .grp > summary .gname { color: var(--sb-ink2); }
+.side .grp > summary:hover { color: var(--sb-ink); background: rgba(255,255,255,.05); }
+.side .grp > summary .gico { color: var(--sb-ink2); }
+.side .grp > summary .cv { stroke: var(--sb-muted); }
+.side .moreln { color: var(--sb-ink2); }
+.side .moreln:hover { color: var(--sb-ink); }
+/* 하단 프로필 카드 */
+.side .acct { background: rgba(255,255,255,.04); border-color: var(--sb-line); }
+.side .acct:hover { border-color: rgba(255,255,255,.14); }
+.side .acct b { color: var(--sb-ink); }
+.side .acct span { color: var(--sb-muted); }
