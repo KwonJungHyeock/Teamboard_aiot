@@ -34,7 +34,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ archived });
     }
 
-    const tree = await getGoalTree({ year: Number.isFinite(year) ? year : undefined, scope, viewerId: session.id });
+    const tree = await getGoalTree({
+      year: Number.isFinite(year) ? year : undefined,
+      scope, viewerId: session.id, isLead: session.role === "lead",
+    });
+
+    // §B3 일괄 연결 배너 — 아직 어떤 목표에도 붙지 않은 프로젝트
+    const unlinked = await query<{ id: number; name: string; color_key: string | null; status: string }>(
+      `SELECT id, name, color_key, status FROM project
+        WHERE is_active = true AND status <> 'archived' AND goal_id IS NULL
+        ORDER BY name`
+    );
 
     // 월 목표의 Task 연결 편집용 — 활성 업무 목록 (Phase 5의 /api/tasks 전까지 최소 제공)
     const linkableTasks = await query<{
@@ -48,7 +58,7 @@ export async function GET(request: Request) {
        WHERE t.is_active = true AND t.status NOT IN ('dropped', 'proposed')
        ORDER BY t.created_at DESC LIMIT 200`
     );
-    return NextResponse.json({ tree, linkableTasks });
+    return NextResponse.json({ tree, linkableTasks, unlinkedProjects: unlinked });
   } catch (error) {
     return jsonError(error);
   }

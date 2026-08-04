@@ -1806,3 +1806,97 @@ body.gpanel-open .agf-fab { display: none; }
   outline: 2px solid var(--edu); outline-offset: 2px;
 }
 @media (prefers-reduced-motion: reduce) { .actv-rail { position: static; } }
+
+/* ══════════════════════════════════════════════════════════════
+   목표 ↔ 프로젝트 연결 및 성과 집계 (MD-P-2026-009)
+   핵심 원칙: 0%(집계했더니 0)와 "-"(집계 대상 없음)를 절대 같게 그리지 않는다.
+   ══════════════════════════════════════════════════════════════ */
+
+/* 빈 진척 바 — 채움 없이 사선 없는 흐린 트랙. 0% 바(폭 2px 코랄)와 구분된다. */
+.bar.empty, .ann-track.empty, .qg-track.empty {
+  background: color-mix(in srgb, var(--muted) 16%, var(--card));
+  opacity: .55;
+}
+.gpv.none, .ann-pct.none, .qg-pct.none, .gdp-proj-p.none, .pws-goal-p.none, .gpp-p.none { color: var(--muted); }
+
+/* 목표 상태 칩 (§D) */
+.gstatus, .gdp-status {
+  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+}
+.gstatus.st-ontrack, .gdp-status.st-ontrack { color: var(--green); background: color-mix(in srgb, var(--green) 13%, var(--card)); }
+.gstatus.st-risk,    .gdp-status.st-risk    { color: var(--coral); background: color-mix(in srgb, var(--coral) 13%, var(--card)); }
+.gstatus.st-wait,    .gdp-status.st-wait    { color: var(--slate); background: color-mix(in srgb, var(--slate) 15%, var(--card)); }
+.gstatus.st-done,    .gdp-status.st-done    { color: var(--blue);  background: color-mix(in srgb, var(--blue) 13%, var(--card)); }
+.qg-chip.none { color: var(--muted); background: color-mix(in srgb, var(--muted) 12%, var(--card)); }
+
+/* 홈 목표 카드 — 집계가 없을 때의 CTA (§F) */
+.gm-cta { display: block; margin-top: 5px; font-size: 11.5px; font-weight: 600; color: var(--coral); }
+.gm-mine { display: block; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--grid-line);
+  font-size: 12.5px; color: var(--ink-soft); text-decoration: none; }
+.gm-mine:hover { color: var(--ink); }
+.gm-mine b { color: var(--ink); }
+
+/* 목표 상세 — 진척 헤더 · 수동 배지 · 연결 프로젝트 (§B1) */
+.gdp-prog-t { display: flex; align-items: center; gap: 7px; }
+.gdp-manual { font-size: 11px; font-weight: 700; color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 14%, var(--card)); padding: 2px 7px; border-radius: 999px; }
+.gdp-nodata { margin-top: 7px; font-size: 12.5px; color: var(--ink-soft); }
+.gdp-nodata b { color: var(--ink); }
+.gdp-nodata .lk { margin-left: 6px; }
+.gdp-autonote { margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+.gdp-addp { margin-left: auto; font-size: 12px; }
+.tdp-sec-h { display: flex; align-items: center; gap: 6px; }
+.gdp-proj { display: flex; align-items: center; gap: 8px; position: relative;
+  padding: 7px 4px; border-bottom: 1px dashed var(--grid-line); font-size: 13.5px; }
+.gdp-proj-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gdp-proj-p { font-weight: 700; font-size: 12.5px; }
+
+/* 연결 팝오버 (§B1) · 일괄 연결 모달 (§B3) */
+.gpp-bg { position: fixed; inset: 0; z-index: 80; background: rgba(23,27,34,.42); display: grid; place-items: center; padding: 20px; }
+.gpp { width: min(460px, 94vw); max-height: 78vh; display: flex; flex-direction: column;
+  background: var(--card); border: 1px solid var(--grid-line); border-radius: 16px; box-shadow: 0 22px 60px rgba(23,27,34,.26); overflow: hidden; }
+.gpp.wide { width: min(620px, 94vw); }
+.gpp-h { display: flex; align-items: center; height: 50px; padding: 0 16px; border-bottom: 1px solid var(--grid-line); }
+.gpp-h b { font-size: 15px; font-weight: 800; }
+.gpp-h .gpanel-x { margin-left: auto; }
+.gpp-q { margin: 12px 16px 6px; height: 36px; padding: 0 11px; font-size: 13.5px;
+  border: 1px solid var(--grid-line); border-radius: 9px; background: var(--card); color: var(--ink); }
+.gpp-list { flex: 1; overflow-y: auto; padding: 6px 12px 12px; }
+.gpp-row { display: flex; align-items: center; gap: 9px; padding: 9px 8px; border-radius: 9px; cursor: pointer; font-size: 13.5px; }
+.gpp-row:hover { background: color-mix(in srgb, var(--muted) 8%, var(--card)); }
+.gpp-row.on { background: color-mix(in srgb, var(--coral) 9%, var(--card)); }
+.gpp-row input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--coral); flex: 0 0 auto; }
+.gpp-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gpp-warn { font-size: 11px; font-weight: 700; color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 13%, var(--card)); padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+.gpp-p { font-size: 12px; font-weight: 700; color: var(--ink-soft); min-width: 34px; text-align: right; }
+.gpp-foot { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--grid-line); }
+.gpp-note { flex: 1; font-size: 11.5px; color: var(--muted); }
+.glink-row { display: flex; align-items: center; gap: 9px; padding: 8px 6px; border-bottom: 1px dashed var(--grid-line); font-size: 13.5px; }
+.glink-row select { width: auto; flex: 0 0 220px; max-width: 220px; height: 32px; font-size: 12.5px; }
+
+/* §B3 배너 — 초기 연결을 유도하는 진입점 */
+.glink-banner { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; margin-bottom: 12px;
+  padding: 12px 14px; border-radius: 12px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--coral) 32%, var(--card));
+  background: color-mix(in srgb, var(--coral) 8%, var(--card)); }
+.glink-banner:hover { background: color-mix(in srgb, var(--coral) 12%, var(--card)); }
+.glink-n { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+  font-size: 14px; font-weight: 800; color: #fff; background: var(--coral); }
+.glink-banner b { display: block; font-size: 13.5px; color: var(--ink); }
+.glink-banner em { display: block; font-style: normal; font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+
+.goal-seg { margin-bottom: 12px; }
+
+.glink-banner:focus-visible, .gpp-row:focus-within { outline: 2px solid var(--edu); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .gpp { animation: none; } }
+/* 하위 목표 우선 규칙 안내 — 프로젝트를 붙였는데 반영이 안 되는 경우를 명시한다 */
+.gdp-warn { margin-top: 8px; padding: 8px 10px; border-radius: 9px; font-size: 12px; color: var(--ink-soft);
+  background: color-mix(in srgb, var(--amber) 11%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--amber) 30%, var(--card)); }
+.gdp-warn b { color: var(--ink); }
+/* 프로젝트 헤더 목표 선택 메뉴 — 연간/분기/월 라벨 */
+.pws-goal-menu button { display: flex; align-items: center; gap: 7px; }
+.pws-goal-lv { flex: 0 0 auto; font-size: 10.5px; font-weight: 800; padding: 1px 6px; border-radius: 999px;
+  color: var(--edu-text); background: color-mix(in srgb, var(--edu) 13%, var(--card)); }
+.pws-goal-menu button em { margin-left: auto; }

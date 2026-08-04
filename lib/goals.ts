@@ -9,6 +9,13 @@ import { query, queryOne } from "./db";
 import type { GoalPeriodType } from "./types";
 import { projectProgressForGoal } from "./projects";
 
+/** KST 기준 오늘(YYYY-MM-DD). lib/home.ts와 같은 규칙이지만
+ *  home.ts가 이 파일을 import하므로 순환을 피해 여기에 둔다. */
+export function kstTodayForGoals(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+}
+const kstToday = kstTodayForGoals;
+
 export interface GoalNode {
   id: number;
   parentId: number | null;
@@ -21,8 +28,18 @@ export interface GoalNode {
   targetValue: number | null;
   currentValue: number | null;
   progressMode: "auto" | "manual";
-  /** 계산된 진척 (0~100). 산출 불가 시 null → "-" */
+  /** 실효 진척 (0~100). 산출 불가 시 null → "-" (0%가 아니다) */
   progress: number | null;
+  /** 집계 결과 — 수동값과 구분해 보여줄 때 쓴다 */
+  progressAuto: number | null;
+  /** 수동 입력값. null이 아니면 UI에 "수동" 배지 */
+  progressManual: number | null;
+  /** 자동 판정 상태(수동 지정 우선). 판정 불가 시 null */
+  status: GoalStatus | null;
+  /** 상태가 수동 지정인지 */
+  statusManual: boolean;
+  /** 연결된 프로젝트 수 — 0이면 "프로젝트를 연결하세요" CTA */
+  projectCount: number;
   ownerActorId: number | null;
   ownerName: string | null;
   projectId: number | null;
@@ -97,58 +114,114 @@ async function subtreeTaskWeight(goalId: number): Promise<number> {
   return row?.n ?? 0;
 }
 
-/** 목표 1건의 진척을 재계산해 goal.progress에 저장하고 계산값을 반환.
- *  월=연결 완료율, 분기·연간=하위 가중평균, manual=저장값 유지. */
+// ─────────────────────────────────────────────────────────────
+// 진척 집계 (MD-P-2026-009 §C) — 규칙을 코드 한 곳에 명문화한다.
+//   1. 업무 진척 = 사용자 입력값(0~100). 완료는 100으로 간주.
+//   2. 프로젝트 진척 = 소속 업무의 기간 길이 가중 평균. 업무 0건이면 null(0%가 아니다).
+//   3. 목표 진척 = progress_manual이 있으면 그 값(수동 배지),
+//                  없으면 연결 프로젝트 진척의 평균(null 프로젝트는 분모에서 제외).
+//                  집계할 대상이 없으면 null → 화면은 "-" + [프로젝트 연결] CTA.
+//   4. 상위 롤업 = 하위 목표가 있으면 하위 평균, 없으면 자기 프로젝트 집계.
+//   5. parent 체인 깊이 3 제한(월→분기→연간) — 순환·과도한 재귀 차단.
+// ─────────────────────────────────────────────────────────────
+
+/** 상위 체인 최대 깊이 (월 → 분기 → 연간). */
+export const MAX_GOAL_DEPTH = 3;
+
+/** 목표 자체의 집계값 — 하위 목표 우선, 없으면 연결 프로젝트, 그것도 없으면 연결 업무. */
+async function computeAuto(goalId: number): Promise<number | null> {
+  // 4) 하위 목표가 있으면 하위 평균 (실효 진척 = 수동 우선)
+  const children = await query<{ progress: string | null }>(
+    `SELECT COALESCE(progress_manual, progress_auto)::text AS progress
+       FROM goal WHERE parent_id = $1 AND is_active = true`,
+    [goalId]
+  );
+  if (children.length > 0) {
+    return rollup(children.map((c) => (c.progress === null ? null : Math.round(Number(c.progress)))));
+  }
+
+  // 3) 연결 프로젝트 진척의 평균 (null 프로젝트는 분모에서 제외)
+  const fromProjects = await projectProgressForGoal(goalId);
+  if (fromProjects !== null) return fromProjects;
+
+  // 프로젝트가 하나도 없을 때에 한해, 목표에 직접 연결된 업무로 집계한다.
+  // (프로젝트 연결 이전에 만들어진 월 목표가 갑자기 "-"로 떨어지지 않게 하는 하위호환 경로)
+  const tasks = await query<{ status: string; progress: number }>(
+    `SELECT t.status, t.progress FROM goal_task gt
+       JOIN task t ON t.id = gt.task_id AND t.is_active = true
+        AND t.status <> 'proposed' AND t.work_type <> 'routine'
+      WHERE gt.goal_id = $1`,
+    [goalId]
+  );
+  return monthProgress("auto", 0, tasks);
+}
+
+// ─────────────────────────────────────────────────────────────
+// 상태 자동 판정 (MD-P-2026-009 §D)
+// 수동 지정(status_manual)이 있으면 그 값이 우선. 없으면 아래 규칙으로 매번 판정한다.
+// 진척이 null(집계 대상 없음)이면 "판정 불가"로 두고 null을 돌려준다 —
+// 0%로 가정해 리스크로 몰면 정직 원칙에 어긋난다.
+// ─────────────────────────────────────────────────────────────
+export type GoalStatus = "ontrack" | "risk" | "wait" | "done";
+export const GOAL_STATUS_LABEL: Record<GoalStatus, string> = {
+  ontrack: "온트랙", risk: "리스크", wait: "대기", done: "완료",
+};
+
+/** 기간 경과율 0~1. 시작 전이면 0, 종료 후면 1. */
+export function elapsedRatio(periodStart: string, periodEnd: string, today: string): number {
+  const s = Date.parse(`${periodStart}T00:00:00Z`);
+  const e = Date.parse(`${periodEnd}T00:00:00Z`) + 86400000; // 종료일 포함
+  const t = Date.parse(`${today}T00:00:00Z`);
+  if (!Number.isFinite(s) || !Number.isFinite(e) || e <= s) return 0;
+  return Math.max(0, Math.min(1, (t - s) / (e - s)));
+}
+
+/** 자동 판정. 판정할 수 없으면 null. */
+export function judgeGoalStatus(
+  progress: number | null,
+  periodStart: string,
+  periodEnd: string,
+  today: string
+): GoalStatus | null {
+  if (progress !== null && progress >= 100) return "done";
+  if (today < periodStart) return "wait";           // 아직 시작 전
+  if (progress === null) return null;               // 집계 대상 없음 → 판정 불가
+  if (progress === 0) return "risk";                // 시작일이 지났는데 0%
+  const elapsed = elapsedRatio(periodStart, periodEnd, today) * 100;
+  return progress - elapsed <= -15 ? "risk" : "ontrack";
+}
+
+/**
+ * 목표 1건의 진척을 재계산해 저장한다.
+ * progress_auto = 집계 결과 / progress = 실효값(수동 우선). 반환값은 실효값.
+ */
 export async function recomputeGoal(goalId: number): Promise<number | null> {
-  const g = await queryOne<{ period_type: GoalPeriodType; progress_mode: "auto" | "manual"; progress: string | null }>(
-    `SELECT period_type, progress_mode, progress::text FROM goal WHERE id = $1 AND is_active = true`,
+  const g = await queryOne<{ progress_manual: string | null }>(
+    `SELECT progress_manual::text FROM goal WHERE id = $1 AND is_active = true`,
     [goalId]
   );
   if (!g) return null;
-  if (g.progress_mode === "manual") {
-    return g.progress === null ? null : Math.round(Number(g.progress));
-  }
 
-  // MD-P-2026-005 §E — 이 목표에 연결된 프로젝트가 있으면 프로젝트 진척 평균을 우선 사용.
-  // (프로젝트 진척 = 소속 업무의 기간 가중 평균) 없으면 기존 규칙(월=연결 업무 / 상위=하위 롤업).
-  const fromProjects = await projectProgressForGoal(goalId);
-  if (fromProjects !== null) {
-    await query(`UPDATE goal SET progress = $1, updated_at = now() WHERE id = $2`, [fromProjects, goalId]);
-    return fromProjects;
-  }
+  const auto = await computeAuto(goalId);
+  const manual = g.progress_manual === null ? null : Math.round(Number(g.progress_manual));
+  const effective = manual !== null ? manual : auto;
 
-  let value: number | null;
-  if (g.period_type === "month") {
-    const tasks = await query<{ status: string; progress: number }>(
-      `SELECT t.status, t.progress FROM goal_task gt
-       JOIN task t ON t.id = gt.task_id AND t.is_active = true AND t.status <> 'proposed' AND t.work_type <> 'routine'
-       WHERE gt.goal_id = $1`,
-      [goalId]
-    );
-    value = monthProgress("auto", 0, tasks);
-  } else {
-    const children = await query<{ id: number; progress: string | null }>(
-      `SELECT id, progress::text FROM goal WHERE parent_id = $1 AND is_active = true`,
-      [goalId]
-    );
-    const withWeights = await Promise.all(
-      children.map(async (c) => ({
-        progress: c.progress === null ? null : Math.round(Number(c.progress)),
-        weight: await subtreeTaskWeight(c.id),
-      }))
-    );
-    value = weightedRollup(withWeights);
-  }
-  await query(`UPDATE goal SET progress = $1, updated_at = now() WHERE id = $2`, [value, goalId]);
-  return value;
+  await query(
+    `UPDATE goal SET progress_auto = $1, progress = $2, updated_at = now() WHERE id = $3`,
+    [auto, effective, goalId]
+  );
+  return effective;
 }
 
-/** 업무/연결 변경 시 호출 — 해당 목표부터 상위(월→분기→연간)까지 연쇄 재계산. */
+/** 업무/연결 변경 시 호출 — 해당 목표부터 상위(월→분기→연간)까지 연쇄 재계산.
+ *  깊이 3 제한 + 방문 집합으로 순환 참조를 차단한다 (§C5). */
 export async function recomputeGoalChain(goalId: number): Promise<void> {
   let cur: number | null = goalId;
   const seen = new Set<number>();
-  while (cur !== null && !seen.has(cur)) {
+  let depth = 0;
+  while (cur !== null && !seen.has(cur) && depth < MAX_GOAL_DEPTH) {
     seen.add(cur);
+    depth += 1;
     await recomputeGoal(cur);
     const parent: { parent_id: number | null } | null = await queryOne(
       `SELECT parent_id FROM goal WHERE id = $1`,
@@ -156,6 +229,17 @@ export async function recomputeGoalChain(goalId: number): Promise<void> {
     );
     cur = parent && parent.parent_id !== null ? parent.parent_id : null;
   }
+}
+
+/** 프로젝트-목표 연결이 바뀌었을 때 — 새 목표와 이전 목표를 모두 재계산한다. */
+export async function recomputeGoalsForProject(projectId: number, alsoGoalIds: (number | null)[] = []): Promise<void> {
+  const linked = await query<{ goal_id: number | null }>(
+    `SELECT goal_id FROM project WHERE id = $1`, [projectId]
+  );
+  const ids = new Set<number>();
+  for (const r of linked) if (r.goal_id) ids.add(r.goal_id);
+  for (const g of alsoGoalIds) if (g) ids.add(g);
+  for (const id of Array.from(ids)) await recomputeGoalChain(id);
 }
 
 /** 특정 업무에 연결된 모든 목표 체인을 재계산 (업무 상태 변경 훅에서 사용). */
@@ -233,8 +317,11 @@ export async function getGoalTree(opts: {
   year?: number;
   scope?: "team" | "personal";
   viewerId?: number;
+  /** 팀장은 개인 목표도 조회할 수 있다 (§E) */
+  isLead?: boolean;
 } = {}): Promise<GoalNode[]> {
   await ensureGoalsBackfilled();
+  const today = kstToday();
   const { year, scope, viewerId } = opts;
   const filters: string[] = ["g.is_active = true"];
   const params: unknown[] = [];
@@ -242,10 +329,15 @@ export async function getGoalTree(opts: {
   if (scope === "team") {
     filters.push(`g.scope = 'team'`);
   } else if (scope === "personal") {
-    params.push(viewerId ?? -1);
-    filters.push(`g.scope = 'personal' AND g.owner_actor_id = $${params.length}`);
-  } else {
-    // 미지정 — 팀 목표 전체 + 본인 개인 목표만 (개인 목표는 lead도 못 봄)
+    // 개인 목표는 본인과 팀장만 조회 (§E)
+    if (opts.isLead) {
+      filters.push(`g.scope = 'personal'`);
+    } else {
+      params.push(viewerId ?? -1);
+      filters.push(`g.scope = 'personal' AND g.owner_actor_id = $${params.length}`);
+    }
+  } else if (!opts.isLead) {
+    // 팀 목표 전체 + 본인 개인 목표
     params.push(viewerId ?? -1);
     filters.push(`(g.scope = 'team' OR g.owner_actor_id = $${params.length})`);
   }
@@ -262,6 +354,10 @@ export async function getGoalTree(opts: {
     current_value: string | null;
     progress_mode: "auto" | "manual";
     progress: string | null;
+    progress_auto: string | null;
+    progress_manual: string | null;
+    status_manual: GoalStatus | null;
+    project_count: number;
     owner_actor_id: number | null;
     owner_name: string | null;
     project_id: number | null;
@@ -273,7 +369,11 @@ export async function getGoalTree(opts: {
   }>(
     `SELECT g.id, g.parent_id, g.period_type, g.period_start::text, g.period_end::text,
             g.title, g.description, g.target_metric, g.target_value::text, g.current_value::text,
-            g.progress_mode, g.progress::text, g.owner_actor_id,
+            g.progress_mode, g.progress::text, g.progress_auto::text, g.progress_manual::text,
+            g.status_manual,
+            (SELECT count(*)::int FROM project pj
+              WHERE pj.goal_id = g.id AND pj.is_active = true AND pj.status <> 'archived') AS project_count,
+            g.owner_actor_id,
             o.display_name AS owner_name, g.project_id, p.name AS project_name,
             COALESCE(p.color_key, ar.color_key) AS color_key,
             g.scope, g.area_id, ar.name AS area_name
@@ -330,6 +430,15 @@ export async function getGoalTree(opts: {
       progressMode: row.progress_mode,
       // 저장값(이벤트 기반 캐시)을 그대로 읽는다 — 조회 시 재계산하지 않음 (파트 B)
       progress: row.progress === null ? null : Math.round(Number(row.progress)),
+      progressAuto: row.progress_auto === null ? null : Math.round(Number(row.progress_auto)),
+      progressManual: row.progress_manual === null ? null : Math.round(Number(row.progress_manual)),
+      status: row.status_manual
+        ?? judgeGoalStatus(
+          row.progress === null ? null : Math.round(Number(row.progress)),
+          row.period_start, row.period_end, today
+        ),
+      statusManual: row.status_manual !== null,
+      projectCount: row.project_count,
       ownerActorId: row.owner_actor_id,
       ownerName: row.owner_name,
       projectId: row.project_id,

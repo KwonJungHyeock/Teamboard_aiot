@@ -1,7 +1,7 @@
 // 홈 대시보드 집계 (Phase 3) — 모든 수치는 서버가 DB에서 산출한다 (금지 3: LLM 수치 생성 금지와 동일 원칙).
 // /api/home/summary 라우트와 홈 서버 페이지가 공유한다.
 import { query, queryOne, getInboxCount } from "./db";
-import { getCurrentMonthGoals } from "./goals";
+import { getCurrentMonthGoals, judgeGoalStatus } from "./goals";
 import { getDecidedStaleDays, signalVisibilityClause } from "./signals";
 import { creditState } from "./agent";
 import { decisionsThisWeek } from "./decisions";
@@ -134,16 +134,22 @@ export interface HomeSummary {
     title: string;
     progress: number | null;
     colorKey: string | null;
+    /** 연결 프로젝트 수 — 0이면 "-" + [프로젝트 연결] CTA (MD-P-2026-009 §F) */
+    projectCount: number;
   }[];
   annualLabel: string; // 예: 2026
   quarterGoals: {
     id: number;
     title: string;
     progress: number | null;
-    status: "ontrack" | "risk" | "wait";
+    /** 자동 판정(수동 지정 우선). 판정 불가 시 null */
+    status: "ontrack" | "risk" | "wait" | "done" | null;
     colorKey: string | null;
+    projectCount: number;
   }[];
   quarterLabel: string; // 예: 2026 Q3
+  /** 내 개인 목표 수 — 홈은 팀 목표만 보여주고 한 줄 링크로 안내 (§E) */
+  myGoalCount: number;
   upcoming: {
     key: string;
     kind: "meeting" | "deadline" | "review";
@@ -695,38 +701,42 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   // ── 홈 재편 §3-1: 이번 분기 목표 (현재 분기만) ──
   const quarterRows = await query<{
     id: number; title: string; progress: string | null; color_key: string | null;
-    elapsed: string; period_start: string;
+    status_manual: "ontrack" | "risk" | "wait" | "done" | null;
+    period_start_d: string; period_end_d: string; project_count: number;
   }>(
-    `SELECT g.id, g.title, g.progress::text, p.color_key,
-            LEAST(1, GREATEST(0, EXTRACT(EPOCH FROM (now() - g.period_start)) /
-              NULLIF(EXTRACT(EPOCH FROM ((g.period_end + interval '1 day') - g.period_start)), 0)))::text AS elapsed,
-            to_char(g.period_start, 'YYYY') AS period_start
+    `SELECT g.id, g.title, g.progress::text, p.color_key, g.status_manual,
+            g.period_start::text AS period_start_d, g.period_end::text AS period_end_d,
+            (SELECT count(*)::int FROM project pj
+              WHERE pj.goal_id = g.id AND pj.is_active = true AND pj.status <> 'archived') AS project_count
      FROM goal g LEFT JOIN project p ON p.id = g.project_id
-     WHERE g.is_active = true AND g.period_type = 'quarter'
+     WHERE g.is_active = true AND g.period_type = 'quarter' AND g.scope = 'team'
        AND g.period_start <= $1::date AND g.period_end >= $1::date
      ORDER BY g.id`,
     [today]
   );
+  // 상태 판정은 lib/goals.ts 단일 소스 (§D). 진척이 null이면 판정하지 않는다(0% 취급 금지).
   const quarterGoals = quarterRows.map((g) => {
     const prog = g.progress === null ? null : Math.round(Number(g.progress));
-    const elapsed = Number(g.elapsed) * 100; // 분기 경과 %
-    let status: "ontrack" | "risk" | "wait";
-    if (prog === null || prog === 0) status = "wait";
-    else if (prog < elapsed - 15) status = "risk"; // 일정 대비 15%p 이상 지연
-    else status = "ontrack";
-    return { id: g.id, title: g.title, progress: prog, status, colorKey: g.color_key };
+    return {
+      id: g.id, title: g.title, progress: prog,
+      status: g.status_manual ?? judgeGoalStatus(prog, g.period_start_d, g.period_end_d, today),
+      colorKey: g.color_key,
+      projectCount: g.project_count,
+    };
   });
-  // 정렬: 리스크 > 온트랙 > 대기
-  const statusRank = { risk: 0, ontrack: 1, wait: 2 } as const;
-  quarterGoals.sort((a, b) => statusRank[a.status] - statusRank[b.status]);
+  // 정렬: 리스크 > 온트랙 > 완료 > 판정 불가/대기
+  const statusRank: Record<string, number> = { risk: 0, ontrack: 1, done: 2, wait: 3, none: 4 };
+  quarterGoals.sort((a, b) => statusRank[a.status ?? "none"] - statusRank[b.status ?? "none"]);
   const qNum = Math.floor((Number(today.slice(5, 7)) - 1) / 3) + 1;
   const quarterLabel = `${today.slice(0, 4)} Q${qNum}`;
 
   // §C: 연간 목표 (level=annual, 올해 커버) — 상단 큰 게이지
-  const annualRows = await query<{ id: number; title: string; progress: string | null; color_key: string | null }>(
-    `SELECT g.id, g.title, g.progress::text, p.color_key
+  const annualRows = await query<{ id: number; title: string; progress: string | null; color_key: string | null; project_count: number }>(
+    `SELECT g.id, g.title, g.progress::text, p.color_key,
+            (SELECT count(*)::int FROM project pj
+              WHERE pj.goal_id = g.id AND pj.is_active = true AND pj.status <> 'archived') AS project_count
      FROM goal g LEFT JOIN project p ON p.id = g.project_id
-     WHERE g.is_active = true
+     WHERE g.is_active = true AND g.scope = 'team'
        AND (g.level = 'annual' OR g.period_type = 'year')
        AND g.period_start <= $1::date AND g.period_end >= $1::date
      ORDER BY g.id LIMIT 2`,
@@ -736,7 +746,17 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     id: g.id, title: g.title,
     progress: g.progress === null ? null : Math.round(Number(g.progress)),
     colorKey: g.color_key,
+    projectCount: g.project_count,
   }));
+
+  // §E — 홈은 팀 목표만. 내 개인 목표는 건수만 한 줄로 안내한다.
+  const myGoalRow = await queryOne<{ n: string }>(
+    `SELECT count(*) AS n FROM goal
+      WHERE is_active = true AND scope = 'personal' AND owner_actor_id = $1
+        AND period_start <= $2::date AND period_end >= $2::date`,
+    [viewerId, today]
+  );
+  const myGoalCount = Number(myGoalRow?.n ?? 0);
   const annualLabel = today.slice(0, 4);
 
   // ── 홈 재편 §3-1: 다가오는 일정 (회의 event + 마감 task, 오늘~+14일) ──
@@ -888,6 +908,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       commentCount: Number(h.comment_count),
     })),
     annualGoals,
+    myGoalCount,
     annualLabel,
     quarterGoals,
     quarterLabel,

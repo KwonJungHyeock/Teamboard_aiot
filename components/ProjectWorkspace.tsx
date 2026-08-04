@@ -71,7 +71,7 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
   const [archiving, setArchiving] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [goalPick, setGoalPick] = useState(false);
-  const [goals, setGoals] = useState<{ id: number; title: string; month: string }[]>([]);
+  const [goals, setGoals] = useState<{ id: number; title: string; level: string; period: string; scope: string }[]>([]);
 
   // URL ?tab= 반영 (공유 가능) — 초기 진입 시 읽고, 전환 시 replaceState
   useEffect(() => {
@@ -108,7 +108,8 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
   }, [load, loadTasks]);
   useEffect(() => {
     if (!goalPick) return;
-    fetch("/api/meta/selectors").then((r) => r.json()).then((d) => setGoals(d.monthGoals ?? [])).catch(() => {});
+    // 연간·분기·월 전부 후보 (§B2) — 월 목표만 뜨던 문제 수정
+    fetch("/api/meta/selectors").then((r) => r.json()).then((d) => setGoals(d.linkGoals ?? [])).catch(() => {});
   }, [goalPick]);
   // 전역 패널 상태 추종 (Esc·URL·뒤로가기는 전역 규칙이 처리)
   useEffect(() => {
@@ -197,8 +198,10 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
             <div className="pws-goal">
               {p.goal ? (
                 <>
-                  <Link className="pws-goal-l" href="/goals">→ {goalLabel(p.goal)}</Link>
-                  {p.goal.progress !== null && <span className="pws-goal-p num">{p.goal.progress}%</span>}
+                  <Link className="pws-goal-l" href={`/goals?goal=${p.goal.id}`}>→ {goalLabel(p.goal)}</Link>
+                  <span className={`pws-goal-p num${p.goal.progress === null ? " none" : ""}`}>
+                    {p.goal.progress === null ? "–" : `${p.goal.progress}%`}
+                  </span>
                   {p.goal.manual && <span className="pws-manual">수동</span>}
                   {!readOnly && <button className="pws-goal-x" onClick={() => patchProject({ goalId: null }, "목표 연결을 해제했어요")}>연결 해제</button>}
                 </>
@@ -210,7 +213,9 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
                       {goals.length === 0 && <p className="pws-goal-none">연결할 목표가 없어요.</p>}
                       {goals.map((g) => (
                         <button key={g.id} onClick={async () => { setGoalPick(false); await patchProject({ goalId: g.id }, "목표를 연결했어요"); }}>
-                          {g.title} <em>{g.month}</em>
+                          <span className="pws-goal-lv">{g.level}</span>
+                          {g.title}
+                          <em>{g.period}{g.scope === "personal" ? " · 개인" : ""}</em>
                         </button>
                       ))}
                     </div>

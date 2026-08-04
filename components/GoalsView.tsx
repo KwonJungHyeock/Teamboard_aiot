@@ -8,10 +8,13 @@ import type { SessionUser } from "@/lib/types";
 import GoalTree, { type LinkableTask } from "./GoalTree";
 import EmptyState from "./EmptyState";
 import NewGoalModal from "./NewGoalModal";
+import GoalLinkBanner from "./GoalLinkBanner";
 import { GOAL_UPDATED_EVENT, openGoalPanel } from "@/lib/goal-panel";
 
 type Tab = "team" | "personal";
 const YEARS = [2025, 2026] as const;
+
+interface UnlinkedProject { id: number; name: string; color_key: string | null; status: string }
 
 interface ArchivedGoal {
   id: number;
@@ -27,12 +30,18 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
   const [tab, setTab] = useState<Tab>("team");
   const [tree, setTree] = useState<GoalNode[]>([]);
   const [linkableTasks, setLinkableTasks] = useState<LinkableTask[]>([]);
+  const [unlinked, setUnlinked] = useState<UnlinkedProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showArchive, setShowArchive] = useState(false);
   const [archived, setArchived] = useState<ArchivedGoal[]>([]);
   const [archiveError, setArchiveError] = useState("");
   const [showNew, setShowNew] = useState(false);
+
+  // 홈의 "내 목표 N건 →" 링크로 들어오면 개인 탭으로 연다 (§E·F)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("scope") === "personal") setTab("personal");
+  }, []);
 
   const yearQ = year ? `&year=${year}` : "";
   const load = useCallback(async () => {
@@ -42,6 +51,7 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
       if (!res.ok) throw new Error(data.error ?? "목표 조회 실패");
       setTree(data.tree ?? []);
       setLinkableTasks(data.linkableTasks ?? []);
+      setUnlinked(data.unlinkedProjects ?? []);
       setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류");
@@ -107,8 +117,8 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
             <h1>목표</h1>
             <p>
               {tab === "team"
-                ? "팀 목표 — 연간 → 분기 → 월. 월 목표에 업무를 연결하면 상위 진척이 가중평균으로 자동 갱신됩니다."
-                : "내 목표 — 나만 보는 개인 목표. 같은 3계층으로 관리하고, 내 업무를 연결하세요."}
+                ? "팀 목표 — 연간 → 분기 → 월. 목표에 프로젝트를 연결하면 프로젝트 진척이 상위로 자동 집계됩니다."
+                : "내 목표 — 본인과 팀장만 봅니다. 같은 3계층·같은 집계 규칙으로 관리하세요."}
             </p>
           </div>
           <div className="head-r">
@@ -122,10 +132,13 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
           </div>
         </div>
 
-        <div className="tabs" role="tablist" style={{ marginBottom: 10 }}>
-          <button className="tab" role="tab" aria-pressed={tab === "team"} onClick={() => setTab("team")}>팀 목표</button>
-          <button className="tab" role="tab" aria-pressed={tab === "personal"} onClick={() => setTab("personal")}>내 목표</button>
+        <div className="seg goal-seg" role="group" aria-label="목표 범위">
+          <button aria-pressed={tab === "team"} onClick={() => setTab("team")}>팀 목표</button>
+          <button aria-pressed={tab === "personal"} onClick={() => setTab("personal")}>내 목표</button>
         </div>
+
+        {/* §B3 — 목표에 안 붙은 프로젝트가 있으면 여기서 한 번에 연결한다 */}
+        {tab === "team" && <GoalLinkBanner projects={unlinked} tree={tree} onLinked={load} />}
 
         <section className="card">
           {loading && <p className="gempty">불러오는 중...</p>}

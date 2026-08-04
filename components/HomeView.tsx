@@ -94,7 +94,7 @@ export default function HomeView({
         <div className="home3">
           {/* Row1 — Q3 목표 / 다가오는 일정 */}
           <div className="hrow r13">
-            <GoalsModule annual={summary.annualGoals} quarter={summary.quarterGoals} annualLabel={summary.annualLabel} quarterLabel={summary.quarterLabel} />
+            <GoalsModule annual={summary.annualGoals} quarter={summary.quarterGoals} annualLabel={summary.annualLabel} quarterLabel={summary.quarterLabel} myGoalCount={summary.myGoalCount} />
             <Upcoming items={summary.upcoming} />
           </div>
 
@@ -119,14 +119,16 @@ export default function HomeView({
 
 
 // ── 홈 재편 모듈 (테마 재편 §3) ──
+// 상태 색·라벨. 판정 불가(null)는 "집계 없음"으로 따로 표기한다 — 0%나 대기와 구분 (§C 제약).
 const GOAL_STATUS: Record<string, { color: string; label: string }> = {
   risk: { color: "var(--coral)", label: "리스크" },
   ontrack: { color: "var(--green)", label: "온트랙" },
   wait: { color: "var(--slate)", label: "대기" },
 };
 
-function GoalsModule({ annual, quarter, annualLabel, quarterLabel }: {
-  annual: HomeSummary["annualGoals"]; quarter: HomeSummary["quarterGoals"]; annualLabel: string; quarterLabel: string;
+function GoalsModule({ annual, quarter, annualLabel, quarterLabel, myGoalCount }: {
+  annual: HomeSummary["annualGoals"]; quarter: HomeSummary["quarterGoals"];
+  annualLabel: string; quarterLabel: string; myGoalCount: number;
 }) {
   const empty = annual.length === 0 && quarter.length === 0;
   return (
@@ -141,9 +143,17 @@ function GoalsModule({ annual, quarter, annualLabel, quarterLabel }: {
           {annual.length === 0 ? (
             <Link className="gm-empty" href="/goals">＋ 올해 연간 목표를 추가하세요</Link>
           ) : annual.map((g) => (
-            <Link className="ann-row" key={g.id} href="/goals">
-              <div className="ann-top"><span className="ann-t">{g.title}</span><span className="ann-pct num">{g.progress === null ? "-" : `${g.progress}%`}</span></div>
-              <div className="ann-track"><i style={{ width: `${Math.max(g.progress ?? 0, 2)}%`, background: "var(--blue)" }} /></div>
+            <Link className="ann-row" key={g.id} href={`/goals?goal=${g.id}`}>
+              <div className="ann-top">
+                <span className="ann-t">{g.title}</span>
+                <span className={`ann-pct num${g.progress === null ? " none" : ""}`}>{g.progress === null ? "-" : `${g.progress}%`}</span>
+              </div>
+              <div className={`ann-track${g.progress === null ? " empty" : ""}`}>
+                {g.progress !== null && <i style={{ width: `${Math.max(g.progress, 2)}%`, background: "var(--blue)" }} />}
+              </div>
+              {g.progress === null && (
+                <span className="gm-cta">{g.projectCount === 0 ? "프로젝트 연결하기 →" : "연결된 프로젝트에 업무가 없어요 →"}</span>
+              )}
             </Link>
           ))}
           {/* 분기 — 리스트 */}
@@ -153,21 +163,31 @@ function GoalsModule({ annual, quarter, annualLabel, quarterLabel }: {
           ) : (
             <div className="qg">
               {quarter.map((g) => {
-                const st = GOAL_STATUS[g.status];
+                const st = g.status ? GOAL_STATUS[g.status] : null;
                 return (
-                  <Link className="qg-row" key={g.id} href="/goals">
+                  <Link className="qg-row" key={g.id} href={`/goals?goal=${g.id}`}>
                     <div className="qg-top">
                       <span className="qg-t">{g.title}</span>
-                      <span className="qg-chip" style={{ color: st.color, background: `color-mix(in srgb, ${st.color} 14%, var(--card))` }}>{st.label}</span>
+                      {st
+                        ? <span className="qg-chip" style={{ color: st.color, background: `color-mix(in srgb, ${st.color} 14%, var(--card))` }}>{st.label}</span>
+                        : <span className="qg-chip none">집계 없음</span>}
                     </div>
                     <div className="qg-bar">
-                      <div className="qg-track"><i style={{ width: `${Math.max(g.progress ?? 0, 2)}%`, background: st.color }} /></div>
-                      <span className="qg-pct num">{g.progress === null ? "-" : `${g.progress}%`}</span>
+                      <div className={`qg-track${g.progress === null ? " empty" : ""}`}>
+                        {g.progress !== null && <i style={{ width: `${Math.max(g.progress, 2)}%`, background: st?.color ?? "var(--slate)" }} />}
+                      </div>
+                      <span className={`qg-pct num${g.progress === null ? " none" : ""}`}>{g.progress === null ? "-" : `${g.progress}%`}</span>
                     </div>
+                    {g.progress === null && (
+                      <span className="gm-cta">{g.projectCount === 0 ? "프로젝트 연결하기 →" : "연결된 프로젝트에 업무가 없어요 →"}</span>
+                    )}
                   </Link>
                 );
               })}
             </div>
+          )}
+          {myGoalCount > 0 && (
+            <Link className="gm-mine" href="/goals?scope=personal">내 목표 <b className="num">{myGoalCount}</b>건 →</Link>
           )}
         </>
       )}

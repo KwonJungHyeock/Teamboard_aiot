@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const session = requireSession();
-    const [actors, projects, monthGoals, areas, myAreas] = await Promise.all([
+    const [actors, projects, monthGoals, linkGoals, areas, myAreas] = await Promise.all([
       query<{ id: number; display_name: string }>(
         `SELECT id, display_name FROM actor WHERE type = 'human' AND is_active = true ORDER BY id`
       ),
@@ -23,6 +23,14 @@ export async function GET() {
         `SELECT id, title, period_start::text FROM goal
          WHERE is_active = true AND period_type = 'month'
          ORDER BY period_start DESC, id LIMIT 100`
+      ),
+      // 프로젝트 헤더 [목표 연결] 후보 (MD-P-2026-009 §B2) —
+      // 연간·분기·월 전부. 개인 목표는 본인 것만 노출한다(남의 개인 목표에 팀 프로젝트를 붙일 수 없다).
+      query<{ id: number; title: string; period_type: string; period: string | null; period_start: string; scope: string }>(
+        `SELECT id, title, period_type, period, period_start::text, scope FROM goal
+          WHERE is_active = true AND (scope = 'team' OR owner_actor_id = $1)
+          ORDER BY period_type, period_start DESC, id LIMIT 120`,
+        [session.id]
       ),
       // 업무·목표 선택지 — workspace 만 (link_only·비활성 제외, 파트 0)
       query<{ id: number; name: string; color_key: string | null }>(
@@ -38,6 +46,11 @@ export async function GET() {
       actors: actors.map((a) => ({ id: a.id, name: a.display_name })),
       projects: projects.map((p) => ({ id: p.id, name: p.name, colorKey: p.color_key, areaId: p.area_id })),
       monthGoals: monthGoals.map((g) => ({ id: g.id, title: g.title, month: g.period_start.slice(0, 7) })),
+      linkGoals: linkGoals.map((g) => ({
+        id: g.id, title: g.title, scope: g.scope,
+        level: g.period_type === "year" ? "연간" : g.period_type === "quarter" ? "분기" : "월",
+        period: g.period ?? g.period_start.slice(0, 7),
+      })),
       areas: areas.map((a) => ({ id: a.id, name: a.name, colorKey: a.color_key })),
       myAreaIds: myAreas.map((r) => r.area_id),
     });

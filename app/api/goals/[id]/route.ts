@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
-import { recomputeGoalChain } from "@/lib/goals";
+import { recomputeGoalChain, judgeGoalStatus, kstTodayForGoals as kstToday, type GoalStatus } from "@/lib/goals";
+import { projectsForGoal } from "@/lib/projects";
 import { jsonError } from "@/lib/api";
 
 export const runtime = "nodejs";
@@ -18,11 +19,15 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     const g = await queryOne<{
       id: number; title: string; description: string; period_type: string;
       period_start: string; period_end: string; progress_mode: "auto" | "manual";
-      progress: string | null; scope: string; owner_actor_id: number | null; owner_name: string | null;
+      progress: string | null; progress_auto: string | null; progress_manual: string | null;
+      status_manual: GoalStatus | null;
+      scope: string; owner_actor_id: number | null; owner_name: string | null;
       area_id: number | null; area_name: string | null; project_id: number | null; project_name: string | null;
     }>(
       `SELECT g.id, g.title, g.description, g.period_type, g.period_start::text, g.period_end::text,
-              g.progress_mode, g.progress::text, g.scope, g.owner_actor_id, o.display_name AS owner_name,
+              g.progress_mode, g.progress::text, g.progress_auto::text, g.progress_manual::text,
+              g.status_manual,
+              g.scope, g.owner_actor_id, o.display_name AS owner_name,
               g.area_id, ar.name AS area_name, g.project_id, p.name AS project_name
        FROM goal g
        LEFT JOIN actor o ON o.id = g.owner_actor_id
@@ -32,8 +37,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       [goalId]
     );
     if (!g) return NextResponse.json({ error: "목표를 찾을 수 없습니다." }, { status: 404 });
-    // 개인 목표는 본인만 열람 (lead도 불가)
-    if (g.scope === "personal" && g.owner_actor_id !== session.id) {
+    // 개인 목표는 본인과 팀장만 열람 (§E)
+    if (g.scope === "personal" && g.owner_actor_id !== session.id && session.role !== "lead") {
       return NextResponse.json({ error: "열람 권한이 없습니다." }, { status: 403 });
     }
     const canEdit = g.scope === "personal" ? g.owner_actor_id === session.id : session.role === "lead";
@@ -47,15 +52,32 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     );
     const { getGoalContribution } = await import("@/lib/goals");
     const contribution = g.scope === "team" ? await getGoalContribution(goalId) : [];
+    // 연결된 프로젝트 + 각 진척 (§B1)
+    const linkedProjects = await projectsForGoal(goalId);
+    // 하위 목표가 있으면 집계는 하위 평균이 우선한다(§C4) — 화면에서 그 사실을 알려야
+    // "프로젝트를 붙였는데 왜 반영이 안 되지?"가 생기지 않는다.
+    const childRow = await queryOne<{ n: string }>(
+      `SELECT count(*) AS n FROM goal WHERE parent_id = $1 AND is_active = true`, [goalId]
+    );
+    const childCount = Number(childRow?.n ?? 0);
+
+    const manual = g.progress_manual === null ? null : Math.round(Number(g.progress_manual));
+    const effective = manual !== null ? manual : (g.progress === null ? null : Math.round(Number(g.progress)));
 
     return NextResponse.json({
       goal: {
         id: g.id, title: g.title, description: g.description, periodType: g.period_type,
         periodStart: g.period_start, periodEnd: g.period_end, progressMode: g.progress_mode,
-        progress: g.progress === null ? null : Math.round(Number(g.progress)),
+        progress: effective,
+        progressAuto: g.progress_auto === null ? null : Math.round(Number(g.progress_auto)),
+        progressManual: manual,
+        status: g.status_manual ?? judgeGoalStatus(effective, g.period_start, g.period_end, kstToday()),
+        statusManual: g.status_manual !== null,
         scope: g.scope, ownerActorId: g.owner_actor_id, ownerName: g.owner_name,
         areaId: g.area_id, areaName: g.area_name, projectId: g.project_id, projectName: g.project_name,
       },
+      linkedProjects,
+      childCount,
       tasks: tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, assigneeName: t.assignee_name, dueDate: t.due_date })),
       contribution,
       canEdit,
@@ -140,9 +162,19 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     if (typeof payload.title === "string" && payload.title.trim()) set("title", payload.title.trim().slice(0, 200));
     if (typeof payload.description === "string") set("description", payload.description.slice(0, 2000));
-    if (payload.progressMode === "auto" || payload.progressMode === "manual") set("progress_mode", payload.progressMode);
+    if (payload.progressMode === "auto" || payload.progressMode === "manual") {
+      set("progress_mode", payload.progressMode);
+      // 자동으로 되돌리면 수동값을 비워 집계가 다시 실효값이 되게 한다 (§C3)
+      if (payload.progressMode === "auto") set("progress_manual", null);
+    }
+    // 상태 수동 지정 — null이면 자동 판정으로 되돌린다 (§D)
+    if ("statusManual" in payload) {
+      const v = payload.statusManual;
+      set("status_manual", ["ontrack", "risk", "wait", "done"].includes(v) ? v : null);
+    }
     if (payload.progress != null && Number.isFinite(Number(payload.progress))) {
-      set("progress", Math.max(0, Math.min(100, Number(payload.progress))));
+      // 수동 입력은 progress_manual에 남긴다. progress(실효값)는 재계산이 채운다.
+      set("progress_manual", Math.max(0, Math.min(100, Number(payload.progress))));
     }
     if (payload.targetMetric !== undefined) set("target_metric", payload.targetMetric ? String(payload.targetMetric).slice(0, 100) : null);
     if (payload.targetValue !== undefined) set("target_value", payload.targetValue === null || payload.targetValue === "" ? null : Number(payload.targetValue));

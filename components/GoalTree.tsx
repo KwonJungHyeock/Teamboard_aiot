@@ -8,6 +8,9 @@ import type { SessionUser } from "@/lib/types";
 import GoalProgress from "./GoalProgress";
 import EmptyState from "./EmptyState";
 
+// 상태 라벨 (MD-P-2026-009 §D) — 판정 불가(null)는 칩을 그리지 않는다.
+const GOAL_STATUS_KO: Record<string, string> = { ontrack: "온트랙", risk: "리스크", wait: "대기", done: "완료" };
+
 // 목표 제목 클릭 → 상세 패널 (파트 C). 트리 깊이가 깊어 context로 전달.
 const OpenGoalCtx = createContext<((id: number) => void) | null>(null);
 function GoalTitle({ goal }: { goal: GoalNode }) {
@@ -288,7 +291,8 @@ function MonthGoalRow({
       <div className="grow-h">
         <span className="gtag">{goal.periodStart.slice(5, 7)}월</span>
         <GoalTitle goal={goal} />
-        {goal.progressMode === "manual" && <span className="gtag mu">수동</span>}
+        {goal.progressManual !== null && <span className="gtag mu">수동</span>}
+        {goal.status && <span className={`gstatus st-${goal.status}`}>{GOAL_STATUS_KO[goal.status]}</span>}
         <span className="gsp" />
         {droppedCount > 0 && <em className="gdrop">중단 {droppedCount}건</em>}
         <GoalProgress

@@ -9,18 +9,29 @@ import {
   closeGoalPanel,
   notifyGoalUpdated,
 } from "@/lib/goal-panel";
+import GoalProjectPicker from "./GoalProjectPicker";
+import HoverActions from "./HoverActions";
+import { toast } from "@/lib/quick";
 
 interface Contribution { actorId: number | null; name: string; total: number; done: number; sharePct: number }
+export interface LinkedProject { id: number; name: string; colorKey: string | null; status: string; progress: number | null }
 interface GoalDetail {
   goal: {
     id: number; title: string; description: string; periodType: string; periodStart: string; periodEnd: string;
-    progressMode: "auto" | "manual"; progress: number | null; scope: "team" | "personal";
+    progressMode: "auto" | "manual"; progress: number | null;
+    progressAuto: number | null; progressManual: number | null;
+    status: GoalStatus | null; statusManual: boolean;
+    scope: "team" | "personal";
     ownerName: string | null; areaId: number | null; areaName: string | null; projectName: string | null;
   };
   tasks: { id: number; title: string; status: string; assigneeName: string | null; dueDate: string | null }[];
+  linkedProjects: LinkedProject[];
+  childCount: number;
   contribution: Contribution[];
   canEdit: boolean;
 }
+type GoalStatus = "ontrack" | "risk" | "wait" | "done";
+const GOAL_STATUS: Record<GoalStatus, string> = { ontrack: "온트랙", risk: "리스크", wait: "대기", done: "완료" };
 
 const PERIOD_LABEL: Record<string, string> = { year: "연간", quarter: "분기", month: "월간" };
 const STATUS_LABEL: Record<string, string> = { todo: "대기", doing: "진행", review: "리뷰", done: "완료", dropped: "중단" };
@@ -32,6 +43,7 @@ export default function GoalDetailPanel() {
   const [save, setSave] = useState<"idle" | "saving" | "saved">("idle");
   const [manualVal, setManualVal] = useState("");
   const [areas, setAreas] = useState<{ id: number; name: string }[]>([]);
+  const [picking, setPicking] = useState(false);   // 프로젝트 연결 팝오버 (§B1)
 
   useEffect(() => {
     fetch("/api/meta/selectors").then((r) => r.json()).then((s) => setAreas(s.areas ?? [])).catch(() => {});
@@ -58,7 +70,7 @@ export default function GoalDetailPanel() {
     if (!res.ok) { setErr((await res.json()).error ?? "불러올 수 없습니다."); setD(null); return; }
     const data: GoalDetail = await res.json();
     setD(data);
-    setManualVal(data.goal.progress != null ? String(data.goal.progress) : "");
+    setManualVal(data.goal.progressManual != null ? String(data.goal.progressManual) : "");
   }, []);
 
   useEffect(() => { if (openId != null) load(openId); else setD(null); }, [openId, load]);
@@ -110,13 +122,31 @@ export default function GoalDetailPanel() {
               <h2 className="tdp-title" style={{ border: 0 }}>{d.goal.title}</h2>
             )}
 
-            {/* 진척 바 */}
+            {/* 진척 — 0%와 "-"(집계 대상 없음)를 반드시 구분한다 (§C·제약) */}
             <div className="gdp-prog">
               <div className="gdp-prog-t">
                 <span>진척</span>
+                {d.goal.progressManual != null && <span className="gdp-manual">수동</span>}
+                {d.goal.status && (
+                  <span className={`gdp-status st-${d.goal.status}`}>
+                    {GOAL_STATUS[d.goal.status]}{d.goal.statusManual ? " · 수동" : ""}
+                  </span>
+                )}
+                <span className="gsp" style={{ flex: 1 }} />
                 <b>{d.goal.progress == null ? "–" : `${d.goal.progress}%`}</b>
               </div>
-              <div className="bar"><i className="edu" style={{ width: `${Math.min(d.goal.progress ?? 0, 100)}%` }} /></div>
+              <div className={`bar${d.goal.progress == null ? " empty" : ""}`}>
+                <i className="edu" style={{ width: `${Math.min(d.goal.progress ?? 0, 100)}%` }} />
+              </div>
+              {d.goal.progress == null && (
+                <p className="gdp-nodata">
+                  집계할 대상이 없어요 — 0%가 아니라 <b>데이터 없음</b>입니다.
+                  {d.canEdit && <button className="lk" onClick={() => setPicking(true)}>프로젝트를 연결하세요 →</button>}
+                </p>
+              )}
+              {d.goal.progressManual != null && d.goal.progressAuto != null && (
+                <p className="gdp-autonote">집계값은 {d.goal.progressAuto}% — 수동값이 우선 적용됩니다.</p>
+              )}
             </div>
 
             {/* 속성 */}
@@ -127,8 +157,8 @@ export default function GoalDetailPanel() {
               <label>진척 방식
                 {d.canEdit ? (
                   <select value={d.goal.progressMode} onChange={(e) => patch({ progressMode: e.target.value })}>
-                    <option value="auto">자동(업무 완료율)</option>
-                    <option value="manual">수동 입력</option>
+                    <option value="auto">자동(프로젝트·업무 집계)</option>
+                    <option value="manual">수동 입력(집계보다 우선)</option>
                   </select>
                 ) : <div className="gdp-ro">{d.goal.progressMode === "manual" ? "수동" : "자동"}</div>}
               </label>
@@ -143,7 +173,7 @@ export default function GoalDetailPanel() {
                 )}
               </label>
               <label>연결 프로젝트
-                <div className="gdp-ro">{d.goal.projectName ?? "—"}</div>
+                <div className="gdp-ro num">{d.linkedProjects.length}개</div>
               </label>
             </div>
 
@@ -158,6 +188,54 @@ export default function GoalDetailPanel() {
                 </div>
               </div>
             )}
+
+            {/* 연결된 프로젝트 (§B1) — 여기 진척이 곧 목표 진척의 재료다 */}
+            <div className="tdp-sec">
+              <div className="tdp-sec-h">
+                연결된 프로젝트 <em>({d.linkedProjects.length})</em>
+                {d.canEdit && (
+                  <button className="lk gdp-addp" onClick={() => setPicking(true)}>＋ 프로젝트 연결</button>
+                )}
+              </div>
+              {d.linkedProjects.length === 0 ? (
+                <p className="tdp-muted">
+                  연결된 프로젝트가 없습니다. 연결하면 프로젝트 진척(업무 기간 가중 평균)이 이 목표로 모입니다.
+                </p>
+              ) : (
+                d.linkedProjects.map((p) => (
+                  <div className="gdp-proj ha-host" key={p.id}>
+                    <span className={`pjdot ${p.colorKey ?? "team"}`} />
+                    <span className="gdp-proj-t">{p.name}</span>
+                    <span className={`gdp-proj-p num${p.progress === null ? " none" : ""}`}>
+                      {p.progress === null ? "–" : `${p.progress}%`}
+                    </span>
+                    {d.canEdit && (
+                      <HoverActions more={[{
+                        label: "연결 해제", danger: true,
+                        onClick: async () => {
+                          const res = await fetch(`/api/goals/${d.goal.id}/projects?projectId=${p.id}`, { method: "DELETE" }).catch(() => null);
+                          if (!res || !res.ok) { toast("해제에 실패했어요", "err"); return; }
+                          toast("연결을 해제했어요");
+                          await load(d.goal.id);
+                          notifyGoalUpdated();
+                        },
+                      }]} />
+                    )}
+                  </div>
+                ))
+              )}
+              {d.linkedProjects.some((p) => p.progress === null) && (
+                <p className="tdp-muted" style={{ marginTop: 6 }}>
+                  진척이 “–”인 프로젝트는 업무가 없어 평균 분모에서 빠집니다.
+                </p>
+              )}
+              {d.childCount > 0 && d.linkedProjects.length > 0 && (
+                <p className="gdp-warn">
+                  이 목표에는 하위 목표가 {d.childCount}개 있어 진척은 <b>하위 평균</b>으로 계산됩니다.
+                  위 프로젝트는 집계에 반영되지 않습니다.
+                </p>
+              )}
+            </div>
 
             {/* 연결 업무 (월 목표) */}
             {d.goal.periodType === "month" && (
@@ -203,6 +281,13 @@ export default function GoalDetailPanel() {
               )}
             </div>
           </div>
+        )}
+        {picking && d && (
+          <GoalProjectPicker
+            goalId={d.goal.id}
+            onClose={() => setPicking(false)}
+            onLinked={async () => { setPicking(false); await load(d.goal.id); notifyGoalUpdated(); }}
+          />
         )}
       </aside>
     </>
