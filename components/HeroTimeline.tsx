@@ -197,7 +197,9 @@ export default function HeroTimeline({
                   <div className="gt-line" key={b.id}>
                     <button
                       className={`gt2-bar${b.late ? " late" : ""}`}
-                      style={{ left: `${pct(b.startIdx)}%`, width: `calc(${(b.span / n) * 100}% - 3px)`, background: b.color }}
+                      // 흰 라벨이 얹히는 면이라 영역 색을 그대로 쓰면 대비가 3.0~3.7:1에 그친다.
+                      // 색상(영역 식별)은 유지하고 명도만 낮춰 4.9:1 이상으로 올린다 (MD-P-2026-013).
+                      style={{ left: `${pct(b.startIdx)}%`, width: `calc(${(b.span / n) * 100}% - 3px)`, background: `color-mix(in srgb, ${b.color} 65%, #101720)` }}
                       onClick={b.taskId ? () => openTaskPanel(b.taskId as number) : undefined}
                       disabled={!b.taskId}
                       title={`${b.label}${b.sub ? ` · ${b.sub}` : ""}${b.late ? " · ⚠ 지연" : ""}`}

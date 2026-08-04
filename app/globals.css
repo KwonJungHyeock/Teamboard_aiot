@@ -127,7 +127,7 @@ select:focus {
   background: var(--bg-surface);
   border: 1px solid var(--line);
   border-radius: var(--r);
-  padding: 20px;
+  padding: 18px;             /* 카드 여백 규격 통일 (MD-P-2026-013) */
   box-shadow: var(--card-shadow);
 }
 
@@ -862,7 +862,7 @@ body.meeting-on .side { display: none !important; }
 .meeting-r-input { margin-top: auto; padding-top: 16px; display: flex; flex-direction: column; gap: 8px; }
 .meeting-r-input textarea { background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 8px; color: var(--hi); padding: 10px 12px; font: inherit; font-size: var(--fs-row); resize: vertical; }
 .meeting-decided { font-size: var(--fs-meta); color: var(--ok); margin-top: 10px; }
-.btn-brand { height: var(--btn-h); padding: 0 18px; border: 0; border-radius: 6px; background: var(--brand); color: #fff; font-weight: 600; font-size: var(--fs-row); white-space: nowrap; cursor: pointer; }
+.btn-brand { height: var(--btn-h); padding: 0 18px; border: 0; border-radius: 6px; background: var(--coral-d); color: #fff; font-weight: 600; font-size: var(--fs-row); white-space: nowrap; cursor: pointer; }
 .btn-brand:hover { filter: brightness(1.08); }
 .btn-brand:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 900px) { .meeting-body { grid-template-columns: 1fr; } }
@@ -1207,7 +1207,7 @@ mark.hl { background: color-mix(in srgb, var(--amber) 26%, var(--card)); color: 
 .sharebox-note { margin-top: 8px; width: 100%; border: 1px solid var(--grid-line); border-radius: 9px; padding: 8px 10px; font-family: inherit; font-size: 13px; resize: vertical; min-height: 52px; }
 
 /* FAB 알림 동기 배지 — 사이드바와 같은 미확인 수(purple, 좌상단) */
-.agf-notif { position: absolute; top: -4px; left: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--play); color: #fff; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--card); }
+.agf-notif { position: absolute; top: -4px; left: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--purple); color: #fff; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--card); }
 
 /* ============================================================
    사이드바 — 다크 앵커 (테마 재편). 다크값은 이 블록·히어로에서만.
@@ -1674,9 +1674,9 @@ body.gpanel-open .main { padding-right: 420px; transition: padding-right .18s cu
 ::highlight(tb-find) { background: color-mix(in srgb, var(--coral) 30%, transparent); color: var(--ink); }
 
 /* ── §F 읽음 / 안읽음 ── */
-.readline { position: relative; display: flex; align-items: center; height: 0; border-top: 1px solid var(--coral); margin: 0; }
-.readline span { position: absolute; right: 12px; top: -9px; font-size: 11px; font-weight: 700; color: var(--coral);
-  background: var(--card); padding: 0 7px; border: 1px solid var(--coral); border-radius: 999px; line-height: 17px; }
+.readline { position: relative; display: flex; align-items: center; height: 0; border-top: 1px solid var(--coral-text); margin: 0; }
+.readline span { position: absolute; right: 12px; top: -9px; font-size: 11px; font-weight: 700; color: var(--coral-text);
+  background: var(--card); padding: 0 7px; border: 1px solid var(--coral-text); border-radius: 999px; line-height: 17px; }
 .nitem.unread .n-kind { font-weight: 800; color: var(--ink); }
 .nitem.gone .n-snip { color: var(--muted); text-decoration: line-through; }
 .n-who { font-size: 12px; color: var(--muted); }
@@ -1882,7 +1882,7 @@ body.gpanel-open .agf-fab { display: none; }
   background: color-mix(in srgb, var(--coral) 8%, var(--card)); }
 .glink-banner:hover { background: color-mix(in srgb, var(--coral) 12%, var(--card)); }
 .glink-n { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
-  font-size: 14px; font-weight: 800; color: #fff; background: var(--coral); }
+  font-size: 14px; font-weight: 800; color: #fff; background: var(--coral-d); }
 .glink-banner b { display: block; font-size: 13.5px; color: var(--ink); }
 .glink-banner em { display: block; font-style: normal; font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
 

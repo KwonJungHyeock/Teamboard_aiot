@@ -506,8 +506,31 @@ export default function GoalTree({
         </BranchNode>
       ))}
 
+      {/* 상위 없는 목표도 화면에 띄운다 — 예전엔 건수만 세고 렌더하지 않아 열 방법이 없었다
+          (MD-P-2026-013). 월 목표는 월 행으로, 그 외(분기 등)는 가지로 편다. */}
       {orphans.length > 0 && (
-        <p className="gempty">상위 없는 목표 {orphans.length}건 — 상위 목표를 지정해 정리하세요.</p>
+        <div className="gtree-orphan">
+          <p className="gtree-orphan-h">상위 없는 목표 {orphans.length}건 — 상위 목표를 지정해 정리하세요.</p>
+          {orphans.map((o) =>
+            o.periodType === "month" ? (
+              <MonthGoalRow key={o.id} goal={o} user={user} linkableTasks={linkableTasks} onChanged={onChanged} />
+            ) : (
+              <BranchNode key={o.id} goal={o} user={user} onChanged={onChanged}>
+                {o.children.map((c) =>
+                  c.periodType === "month" ? (
+                    <MonthGoalRow key={c.id} goal={c} user={user} linkableTasks={linkableTasks} onChanged={onChanged} />
+                  ) : (
+                    <BranchNode key={c.id} goal={c} user={user} onChanged={onChanged}>
+                      {c.children.map((m) => (
+                        <MonthGoalRow key={m.id} goal={m} user={user} linkableTasks={linkableTasks} onChanged={onChanged} />
+                      ))}
+                    </BranchNode>
+                  )
+                )}
+              </BranchNode>
+            )
+          )}
+        </div>
       )}
 
       {canAdd && <AddGoalForm periodType="year" parent={null} year={year} scope={scope} onDone={onChanged} />}

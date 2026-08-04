@@ -153,7 +153,13 @@ export default function HandoverView({ user }: { user: SessionUser }) {
         <div className="rp-cols">
           <aside className="rp-side no-print">
             <div className="ho-sec-h">내 인수인계 <span>{mine.length}</span></div>
-            {mine.length === 0 && <p className="gempty">아직 문서가 없어요. "＋ 새 인수인계"로 시작하세요.</p>}
+            {mine.length === 0 && (
+              // 빈 상태에서 바로 시작할 수 있게 CTA를 안에 둔다 (MD-P-2026-013)
+              <div className="gempty">
+                <p>아직 문서가 없어요.</p>
+                <button className="btn small" onClick={create} disabled={busy}>＋ 새 인수인계</button>
+              </div>
+            )}
             {mine.map((h) => {
               const shared_ = h.status === "shared";
               return (

@@ -195,10 +195,14 @@ export default function ActivityInbox() {
   }, [items, view, channel, kind]);
 
   // "여기까지 읽음" 구분선 (MD-P-2026-006 §F 유지)
-  const dividerId = useMemo(() => {
-    if (!marker) return null;
-    const newer = shown.filter((n) => n.createdAt > marker);
-    return newer.length && newer.length < shown.length ? newer[newer.length - 1].id : null;
+  // 목록은 최신순이다. 기준선보다 오래된 첫 항목 '위'에 선을 건다.
+  // 전부 새 항목이면 걸 자리가 없으므로 목록 맨 아래에 건다(= 위쪽이 전부 새 소식).
+  const divider = useMemo<{ beforeId: number | null; atEnd: boolean }>(() => {
+    if (!marker || shown.length === 0) return { beforeId: null, atEnd: false };
+    const newerCount = shown.filter((n) => n.createdAt > marker).length;
+    if (newerCount === 0) return { beforeId: null, atEnd: false };   // 새 소식 없음 → 선 없음
+    if (newerCount === shown.length) return { beforeId: null, atEnd: true };
+    return { beforeId: shown[newerCount].id, atEnd: false };
   }, [shown, marker]);
 
   function toggleSel(id: number, shift: boolean) {
@@ -417,7 +421,7 @@ export default function ActivityInbox() {
                     const linked = n.refId != null && (n.refType === "task" || n.refType === "signal");
                     return (
                       <div key={n.id}>
-                        {dividerId === n.id && (
+                        {divider.beforeId === n.id && (
                           <div className="readline" role="separator" aria-label="여기까지 읽음">
                             <span>여기까지 읽음</span>
                           </div>
@@ -469,6 +473,11 @@ export default function ActivityInbox() {
                       </div>
                     );
                   })}
+                  {divider.atEnd && (
+                    <div className="readline" role="separator" aria-label="여기까지 읽음">
+                      <span>여기까지 읽음</span>
+                    </div>
+                  )}
                 </div>
               </section>
             )}

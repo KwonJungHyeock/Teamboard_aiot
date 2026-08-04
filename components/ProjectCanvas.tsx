@@ -57,6 +57,7 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
   const [meta, setMeta] = useState<{ updatedAt: string | null; updatedByName: string | null }>({ updatedAt: null, updatedByName: null });
   const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
   const lastSaved = useRef<Block[]>([]);
+  const baseUpdatedAt = useRef<string | null>(null);   // 동시 편집 감지 기준 시각
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -66,6 +67,7 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
         if (!alive) return;
         const b = d.blocks ?? [];
         setBlocks(b); lastSaved.current = b;
+        baseUpdatedAt.current = d.updatedAt ?? null;
         setMeta({ updatedAt: d.updatedAt ?? null, updatedByName: d.updatedByName ?? null });
       })
       .catch(() => {})
@@ -81,8 +83,22 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
       setSaving("saving");
       const res = await fetch(`/api/projects/${projectId}/canvas`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blocks: next }),
+        // 내가 불러온 시점을 함께 보낸다 — 그 사이 다른 창이 저장했으면 서버가 409로 막는다
+        body: JSON.stringify({ blocks: next, baseUpdatedAt: baseUpdatedAt.current }),
       }).catch(() => null);
+      if (res && res.status === 409) {
+        // 조용한 덮어쓰기 대신 최신본을 다시 불러온다. 내 편집은 버리지 않고 알린다.
+        const latest = await fetch(`/api/projects/${projectId}/canvas`).then((r) => r.json()).catch(() => null);
+        if (latest) {
+          setBlocks(latest.blocks ?? []);
+          lastSaved.current = latest.blocks ?? [];
+          baseUpdatedAt.current = latest.updatedAt ?? null;
+          setMeta({ updatedAt: latest.updatedAt ?? null, updatedByName: latest.updatedByName ?? null });
+        }
+        setSaving("idle");
+        toast("다른 창에서 먼저 저장해 최신 내용을 불러왔어요", "err");
+        return;
+      }
       if (!res || !res.ok) {
         setBlocks(lastSaved.current);
         setSaving("idle");
@@ -91,6 +107,7 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
       }
       const d = await res.json();
       lastSaved.current = d.blocks ?? next;
+      baseUpdatedAt.current = d.updatedAt ?? null;
       setMeta({ updatedAt: d.updatedAt ?? null, updatedByName: d.updatedByName ?? null });
       setSaving("saved");
       setTimeout(() => setSaving("idle"), 1600);

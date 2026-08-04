@@ -42,6 +42,21 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (!Array.isArray(payload.blocks)) {
       return NextResponse.json({ error: "blocks 배열이 필요합니다." }, { status: 400 });
     }
+    // 동시 편집 보호 (MD-P-2026-013) — 클라이언트가 들고 있던 baseUpdatedAt보다 서버가
+    // 더 최신이면 다른 창이 먼저 저장한 것이다. 조용히 덮어쓰지 않고 409로 알린다.
+    if (typeof payload.baseUpdatedAt === "string" || payload.baseUpdatedAt === null) {
+      const cur = await queryOne<{ updated_at: string | null }>(
+        `SELECT updated_at::text FROM project_canvas WHERE project_id = $1`, [projectId]
+      );
+      const server = cur?.updated_at ?? null;
+      if (server && server !== payload.baseUpdatedAt) {
+        return NextResponse.json({
+          error: "다른 창에서 먼저 저장했어요. 최신 내용을 불러온 뒤 다시 편집하세요.",
+          conflict: true,
+          serverUpdatedAt: server,
+        }, { status: 409 });
+      }
+    }
     // 정규화 — 알 수 없는 타입·필드는 버린다. 이미지는 스토리지 연결 전까지 저장하지 않음.
     const blocks: CanvasBlock[] = payload.blocks
       .filter((b: CanvasBlock) => b && (TYPES as readonly string[]).includes(b.type) && b.type !== "image")

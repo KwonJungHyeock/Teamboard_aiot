@@ -47,13 +47,14 @@ export default function TimelineView() {
 
   return (
     <div className="card">
+      {/* 다크 시절 잔재였던 흰색 틴트·다크 폴백을 토큰으로 교체 (MD-P-2026-013) */}
       <p
         style={{
           fontSize: 12.5,
-          color: "var(--text-dim, #9aa)",
-          background: "rgba(255,255,255,.04)",
-          border: "1px solid var(--line, #23252c)",
-          borderLeft: "2px solid var(--accent, #4b8df8)",
+          color: "var(--text-dim)",
+          background: "color-mix(in srgb, var(--slate) 6%, var(--card))",
+          border: "1px solid var(--hair)",
+          borderLeft: "2px solid var(--coral)",
           borderRadius: 6,
           padding: "9px 12px",
           marginBottom: 14,
@@ -91,7 +92,14 @@ export default function TimelineView() {
       </div>
 
       {loading && <p className="muted">Notion에서 불러오는 중...</p>}
-      {error && <p className="error-text">{error}</p>}
+      {/* 빈·오류 상태에도 다음 행동을 남긴다 (MD-P-2026-013 디자인 마감 기준) */}
+      {error && (
+        <div className="gempty">
+          <p>Notion 타임라인을 불러오지 못했어요.</p>
+          <p className="sub">{error}</p>
+          <a className="btn small" href="/settings">설정에서 Notion 연동 확인 →</a>
+        </div>
+      )}
 
       {!loading && !error && (
         <div style={{ overflowX: "auto" }}>
