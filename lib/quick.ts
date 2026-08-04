@@ -18,7 +18,12 @@ export function openQuickCreate(anchor: QuickAnchor, prefill: QuickPrefill = {})
   window.dispatchEvent(new CustomEvent(QUICK_CREATE_EVENT, { detail: { anchor, prefill } }));
 }
 
-/** 미세 피드백 토스트. tone: ok | err */
-export function toast(message: string, tone: "ok" | "err" = "ok") {
-  window.dispatchEvent(new CustomEvent(TOAST_EVENT, { detail: { message, tone } }));
+/** 미세 피드백 토스트. tone: ok | err
+ *  action을 주면 토스트 안에 버튼이 붙는다 — 일괄 처리 실행취소에 쓴다 (MD-P-2026-007 §C). */
+export function toast(
+  message: string,
+  tone: "ok" | "err" = "ok",
+  action?: { label: string; onClick: () => void }
+) {
+  window.dispatchEvent(new CustomEvent(TOAST_EVENT, { detail: { message, tone, action } }));
 }

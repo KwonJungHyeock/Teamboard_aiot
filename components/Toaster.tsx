@@ -4,17 +4,19 @@
 import { useEffect, useState } from "react";
 import { TOAST_EVENT } from "@/lib/quick";
 
-interface T { id: number; message: string; tone: "ok" | "err" }
+interface ToastAction { label: string; onClick: () => void }
+interface T { id: number; message: string; tone: "ok" | "err"; action?: ToastAction }
 let seq = 1;
 
 export default function Toaster() {
   const [items, setItems] = useState<T[]>([]);
   useEffect(() => {
     const onToast = (e: Event) => {
-      const d = (e as CustomEvent).detail as { message: string; tone?: "ok" | "err" };
+      const d = (e as CustomEvent).detail as { message: string; tone?: "ok" | "err"; action?: ToastAction };
       const id = seq++;
-      setItems((prev) => [...prev, { id, message: d.message, tone: d.tone ?? "ok" }]);
-      setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), 3200);
+      setItems((prev) => [...prev, { id, message: d.message, tone: d.tone ?? "ok", action: d.action }]);
+      // 실행취소가 붙은 토스트는 조금 더 오래 남긴다
+      setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), d.action ? 6000 : 3200);
     };
     window.addEventListener(TOAST_EVENT, onToast);
     return () => window.removeEventListener(TOAST_EVENT, onToast);
@@ -27,6 +29,12 @@ export default function Toaster() {
         <div key={t.id} className={`toast t-${t.tone}`}>
           <span className="toast-dot" />
           {t.message}
+          {t.action && (
+            <button className="toast-act" onClick={() => {
+              t.action!.onClick();
+              setItems((prev) => prev.filter((x) => x.id !== t.id));
+            }}>{t.action.label}</button>
+          )}
         </div>
       ))}
     </div>

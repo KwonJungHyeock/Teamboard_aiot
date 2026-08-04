@@ -87,7 +87,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const mentioned = await notifyMentions(body, session.id, "signal", signalId, snippet);
     const author = guarded.signal.author_id;
     if (author !== session.id && !mentioned.includes(author)) {
-      await notify({ userId: author, type: "reply", refType: "signal", refId: signalId, snippet, actorId: session.id });
+      // 같은 스레드에 답글이 연속되면 "답글 N개"로 묶는다 (MD-P-2026-007 §E)
+      await notify({ userId: author, type: "reply", refType: "signal", refId: signalId, snippet, actorId: session.id, bundle: true });
     }
     return NextResponse.json({ id: comment!.id });
   } catch (error) {

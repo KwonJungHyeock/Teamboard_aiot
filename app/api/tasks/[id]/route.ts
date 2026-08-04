@@ -7,6 +7,7 @@ import { logActivity } from "@/lib/activity";
 import { recomputeGoalChain } from "@/lib/goals";
 import { jsonError } from "@/lib/api";
 import { decisionsForTask } from "@/lib/decisions";
+import { notify } from "@/lib/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,6 +69,14 @@ export async function PUT(request: Request, { params }: { params: { id: string }
           : [];
         const nm = (id: number | null) => (id ? names.find((n) => n.id === id)?.display_name ?? `#${id}` : "미지정");
         extraLogs.push(`${session.name}이(가) 담당 변경 (${nm(task.assignee_id)} → ${nm(newAssignee)}) — "${task.title}"`);
+        // 배정 알림 (MD-P-2026-007 §A "배정") — 기존 assign 타입을 그대로 쓴다.
+        // 내가 나에게 배정한 경우는 createNotification이 걸러낸다.
+        if (newAssignee) {
+          await notify({
+            userId: newAssignee, type: "assign", refType: "task", refId: taskId,
+            snippet: `업무 배정 · ${task.title}`, actorId: session.id,
+          });
+        }
       }
     }
     const isDate = (v: unknown): v is string =>

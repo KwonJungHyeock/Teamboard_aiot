@@ -1,10 +1,13 @@
-// 알림 인박스 (협업 C) — 내 알림 목록·미확인 수 조회, 읽음 처리.
-// type: mention·assign·reply·approval·share. read=false가 미확인.
+// 활동 인박스 API (MD-P-2026-007) — 조회 · 일괄 처리.
+// 조회 시 마감·승인 대기 알림을 동기화하지만, dedupe_key 덕분에 몇 번을 조회해도 늘지 않는다 (§E).
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { jsonError } from "@/lib/api";
-import { kstToday } from "@/lib/home";
+import {
+  listActivity, countsFor, getMuteState, shouldSync,
+  syncDeadlineNotifications, syncApprovalNotifications,
+} from "@/lib/activity-inbox";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,75 +15,82 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const session = requireSession();
-    // C3: 마감 알림 — 내 담당 미완료 업무의 마감 임박(오늘~+2)·지연(지난 마감). 저장 없이 파생.
-    const today = kstToday();
-    const dueRows = await query<{ id: number; title: string; due_date: string }>(
-      `SELECT id, title, due_date::text FROM task
-       WHERE is_active = true AND status IN ('todo','doing','review')
-         AND assignee_id = $1 AND due_date IS NOT NULL
-         AND due_date <= (($2::date) + 2)
-       ORDER BY due_date ASC LIMIT 12`,
-      [session.id, today]
-    );
-    const dstamp = `${today}T00:00:00+09:00`;
-    const deadlineItems = dueRows.map((r) => {
-      const overdue = r.due_date < today;
-      return {
-        id: overdue ? -200000 - r.id : -100000 - r.id, // 합성 음수 id(저장 아님)
-        type: overdue ? "overdue" : "deadline",
-        refType: "task", refId: r.id,
-        snippet: `${overdue ? "지연" : "마감 임박"} · ${r.title}`,
-        read: false, synthetic: true, actorName: null,
-        createdAt: dstamp,
-      };
-    });
-    const rows = await query<{
-      id: number;
-      type: string;
-      ref_type: string;
-      ref_id: number | null;
-      snippet: string;
-      read: boolean;
-      actor_name: string | null;
-      created_at: string;
-    }>(
-      `SELECT n.id, n.type, n.ref_type, n.ref_id, n.snippet, n.read,
-              a.display_name AS actor_name, n.created_at::text
-       FROM notification n
-       LEFT JOIN actor a ON a.id = n.actor_id
-       WHERE n.user_id = $1
-       ORDER BY n.created_at DESC
-       LIMIT 60`,
-      [session.id]
-    );
-    const unread = rows.filter((r) => !r.read).length; // 배지는 저장 알림 기준(합성 마감 제외)
-    const stored = rows.map((r) => ({
-      id: r.id, type: r.type, refType: r.ref_type, refId: r.ref_id,
-      snippet: r.snippet, read: r.read, actorName: r.actor_name, createdAt: r.created_at, synthetic: false,
-    }));
+    // 파생 알림(마감·승인 대기)을 저장 알림으로 맞춘다 — 중복은 dedupe_key가 막는다.
+    // 폴링마다 돌 필요는 없어 5분에 한 번으로 줄인다(멱등이라 건너뛰어도 안전).
+    if (shouldSync(session.id)) {
+      await Promise.all([
+        syncDeadlineNotifications(session.id),
+        syncApprovalNotifications(session.id),
+      ]);
+    }
+
+    const items = await listActivity(session.id);
+    const counts = countsFor(items);
+    const mute = await getMuteState(session.id);
+
     return NextResponse.json({
-      unread,
-      // 마감 임박/지연을 상단에 노출(합성) + 저장 알림
-      items: [...deadlineItems, ...stored],
+      items,
+      counts,
+      mute,
+      // 사이드바 배지 = 사람 안읽음만 (§B). 시스템은 숫자 없이 점으로만 알린다.
+      // 임시 음소거 중에는 둘 다 죽여 완전히 조용하게 한다 — 항목은 그대로 남는다.
+      unread: mute.allUntil ? 0 : counts.human,
+      systemUnread: mute.allUntil ? 0 : counts.system,
     });
   } catch (error) {
     return jsonError(error);
   }
 }
 
-// 읽음 처리 — { id } 단건 또는 { all: true } 전체.
+/**
+ * 일괄 처리 (§C) — { ids, action } 또는 { all: true } / { id }.
+ * action: read | unread | archive | unarchive. 실행취소를 위해 실제 바뀐 id를 돌려준다.
+ */
 export async function POST(request: Request) {
   try {
     const session = requireSession();
     const payload = await request.json().catch(() => ({}));
+
+    // 전체 읽음 — types를 주면 "이 필터 모두 읽음"이 된다.
     if (payload.all === true) {
-      await query(`UPDATE notification SET read = true WHERE user_id = $1 AND read = false`, [session.id]);
-    } else if (Number.isInteger(Number(payload.id))) {
-      await query(`UPDATE notification SET read = true WHERE id = $1 AND user_id = $2`, [Number(payload.id), session.id]);
-    } else {
-      return NextResponse.json({ error: "id 또는 all이 필요합니다." }, { status: 400 });
+      const types: string[] | null = Array.isArray(payload.types) && payload.types.length
+        ? payload.types.map(String) : null;
+      const changed = types
+        ? await query<{ id: number }>(
+            `UPDATE notification SET read = true
+              WHERE user_id = $1 AND read = false AND archived = false AND type = ANY($2::text[])
+              RETURNING id`,
+            [session.id, types]
+          )
+        : await query<{ id: number }>(
+            `UPDATE notification SET read = true
+              WHERE user_id = $1 AND read = false AND archived = false RETURNING id`,
+            [session.id]
+          );
+      return NextResponse.json({ ok: true, changed: changed.map((r) => r.id) });
     }
-    return NextResponse.json({ ok: true });
+
+    const ids: number[] = Array.isArray(payload.ids)
+      ? payload.ids.map(Number).filter((n: number) => Number.isInteger(n) && n > 0)
+      : Number.isInteger(Number(payload.id)) ? [Number(payload.id)] : [];
+    if (ids.length === 0) {
+      return NextResponse.json({ error: "id 또는 ids가 필요합니다." }, { status: 400 });
+    }
+
+    const action = String(payload.action ?? "read");
+    const SET: Record<string, string> = {
+      read: "read = true",
+      unread: "read = false",
+      archive: "archived = true",
+      unarchive: "archived = false",
+    };
+    if (!SET[action]) return NextResponse.json({ error: "알 수 없는 처리입니다." }, { status: 400 });
+
+    const changed = await query<{ id: number }>(
+      `UPDATE notification SET ${SET[action]} WHERE id = ANY($1::int[]) AND user_id = $2 RETURNING id`,
+      [ids, session.id]
+    );
+    return NextResponse.json({ ok: true, changed: changed.map((r) => r.id) });
   } catch (error) {
     return jsonError(error);
   }

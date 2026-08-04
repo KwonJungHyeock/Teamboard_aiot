@@ -141,17 +141,20 @@ function NavLink({
   label,
   current,
   count,
+  dot,
 }: {
   href: string;
   icon: React.ReactNode;
   label: string;
   current: boolean;
   count?: number; // 지정 시 우측 카운트 배지 (0이면 회색, >0이면 강조)
+  dot?: boolean;  // 숫자 없는 작은 점 — 시스템 알림용 (MD-P-2026-007 §B)
 }) {
   return (
     <Link href={href} aria-current={current ? "page" : undefined}>
       <Icon d={icon} />
       <span>{label}</span>
+      {dot && <span className="navdot" title="새 시스템 알림" />}
       {count !== undefined && <span className={`cnt ${count > 0 ? "alert" : ""}`}>{count}</span>}
     </Link>
   );
@@ -176,7 +179,8 @@ export default function Sidebar({
 }) {
   const pathname = usePathname();
   const [rail, setRail] = useState(false);
-  const [notif, setNotif] = useState(0);
+  const [notif, setNotif] = useState(0);         // 사람 안읽음 (배지 숫자)
+  const [sysNotif, setSysNotif] = useState(0);  // 시스템 안읽음 (점만)
   // B: 업무 영역 아코디언 — 하위 프로젝트 접기/펼치기. 디폴트 닫힘.
   const [openAreas, setOpenAreas] = useState<Record<number, boolean>>({});
   // 보관된 프로젝트는 트리에서 숨기고 토글로만 노출 (MD-P-2026-005 §D·F)
@@ -200,7 +204,13 @@ export default function Sidebar({
     const fetchCount = () =>
       fetch("/api/notifications")
         .then((r) => r.json())
-        .then((d) => { if (alive) { setNotif(d.unread ?? 0); window.dispatchEvent(new CustomEvent("tb:notif-count", { detail: d.unread ?? 0 })); } })
+        .then((d) => {
+          if (!alive) return;
+          // 배지 숫자 = 사람 안읽음만. 시스템은 점으로만 알린다 (MD-P-2026-007 §B).
+          setNotif(d.unread ?? 0);
+          setSysNotif(d.systemUnread ?? 0);
+          window.dispatchEvent(new CustomEvent("tb:notif-count", { detail: d.unread ?? 0 }));
+        })
         .catch(() => {});
     fetchCount();
     const t = setInterval(fetchCount, 8000);
@@ -263,7 +273,8 @@ export default function Sidebar({
         {/* 승인 대기 — 사람/에이전트 공간의 유일한 통로. 카운트 배지 */}
         <NavLink href="/inbox" icon={IC.inbox} label="승인 대기" current={cur("/inbox")} count={inboxCount} />
         {/* 활동 — @멘션·답글·공유 인박스 (MD-P-2026-006 §G, 구 "알림"). 미확인 배지 */}
-        <NavLink href="/activity" icon={IC.bell} label="활동" current={cur("/activity")} count={notif > 0 ? notif : undefined} />
+        <NavLink href="/activity" icon={IC.bell} label="활동" current={cur("/activity")}
+          count={notif > 0 ? notif : undefined} dot={notif === 0 && sysNotif > 0} />
         {/* 저장됨 — hover 액션 바에서 담은 항목 */}
         <NavLink href="/saved" icon={IC.bookmark} label="저장됨" current={cur("/saved")} />
         {/* My Agent — 전 구성원 각자의 에이전트 */}

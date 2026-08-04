@@ -1,25 +1,33 @@
 // 협업 알림 — 서버 전용 헬퍼. @멘션 파싱 + 알림 생성.
+// 생성 규칙(자기 알림 금지 · 중복 방지 · 답글 묶음 · 프로젝트 음소거)은
+// lib/activity-inbox.ts의 createNotification 한 곳에 모여 있다 (MD-P-2026-007 §E).
 import { query } from "@/lib/db";
+import { createNotification } from "./activity-inbox";
 
 export type NotifType = "mention" | "assign" | "reply" | "approval" | "share";
 
 export interface NotifyInput {
   userId: number;      // 받는 사람
   type: NotifType;
-  refType: string;     // signal | task | activity
+  refType: string;     // signal | task | activity | draft
   refId: number | null;
   snippet: string;
   actorId: number;     // 유발한 사람
+  /** 같은 스레드 답글을 "답글 N개"로 묶을지 (§E) */
+  bundle?: boolean;
 }
 
 /** 알림 1건 생성. 자기 자신에게는 만들지 않는다. */
 export async function notify(n: NotifyInput): Promise<void> {
-  if (n.userId === n.actorId) return;
-  await query(
-    `INSERT INTO notification (user_id, type, ref_type, ref_id, snippet, actor_id)
-     VALUES ($1,$2,$3,$4,$5,$6)`,
-    [n.userId, n.type, n.refType, n.refId, n.snippet.slice(0, 200), n.actorId]
-  );
+  await createNotification({
+    userId: n.userId,
+    type: n.type,
+    refType: n.refType,
+    refId: n.refId,
+    snippet: n.snippet,
+    actorId: n.actorId,
+    bundle: n.bundle,
+  });
 }
 
 function escapeRegExp(s: string): string {
@@ -46,7 +54,8 @@ export async function resolveMentions(
   return hits;
 }
 
-/** 멘션 대상 전원에게 알림 생성(작성자 제외는 resolveMentions에서 처리). */
+/** 멘션 대상 전원에게 알림 생성(작성자 제외는 resolveMentions에서 처리).
+ *  멘션은 묶지 않는다 — 나를 부른 건 건마다 봐야 한다. */
 export async function notifyMentions(
   body: string,
   authorId: number,

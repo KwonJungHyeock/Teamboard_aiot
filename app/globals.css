@@ -1725,3 +1725,84 @@ body.gpanel-open .agf-fab { display: none; }
 
 /* 패널 안 스레드 제목은 잘릴 때 말줄임으로 (그냥 잘리지 않게) */
 .gpanel .ch h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+/* ══════════════════════════════════════════════════════════════
+   활동 인박스 고도화 (MD-P-2026-007)
+   사람 ⇄ 시스템 분리가 핵심 — 시스템은 숫자 대신 점으로만 알린다.
+   시각 토큰은 그대로. 다크값은 사이드바·히어로에만 남는다.
+   ══════════════════════════════════════════════════════════════ */
+
+/* 활동 헤더 — 액션이 3개라 세로로 쌓이면 제목을 밀어낸다. 가로 정렬 + 줄바꿈 허용. */
+.hv.actv .head-r { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+.hv.actv .head { align-items: center; }
+
+.actv-body { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 1100px) { .actv-body { grid-template-columns: 1fr; } }
+
+/* ── 필터 레일 (200px) ── */
+.actv-rail { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 2px; }
+.actv-r { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; position: relative;
+  padding: 7px 10px; border: 0; border-radius: 9px; background: transparent; color: var(--ink-soft);
+  font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.actv-r:hover { background: color-mix(in srgb, var(--muted) 10%, var(--card)); color: var(--ink); }
+.actv-r.on { background: color-mix(in srgb, var(--coral) 11%, var(--card)); color: var(--ink); }
+.actv-r.on::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 2px; background: var(--coral); }
+.actv-r > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.actv-r > em { font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.actv-r.on > em { color: var(--coral); }
+.actv-r.sm { font-weight: 500; font-size: 13px; padding-left: 12px; }
+.actv-r-b { flex: 1; text-align: left; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; padding: 0; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.actv-ic { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+.actv-rail-sep { height: 1px; background: var(--grid-line); margin: 10px 0 6px; }
+.actv-rail-h { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; color: var(--muted); padding: 2px 10px 5px; text-transform: uppercase; }
+.actv-save { display: flex; gap: 6px; align-items: center; margin-top: 8px; padding: 0 2px; }
+.actv-save input { flex: 1; min-width: 0; height: 30px; font-size: 12.5px; padding: 0 8px;
+  border: 1px solid var(--grid-line); border-radius: 8px; background: var(--card); color: var(--ink); }
+
+/* ── 목록 상단 바 ── */
+.actv-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.actv-viewtag { font-size: 12px; color: var(--muted); }
+.actv-bulk { display: flex; align-items: center; gap: 7px; padding: 5px 9px; border-radius: 10px;
+  background: color-mix(in srgb, var(--coral) 9%, var(--card)); border: 1px solid color-mix(in srgb, var(--coral) 28%, var(--card)); }
+.actv-bulk b { font-size: 12.5px; color: var(--coral); }
+/* 시스템 채널 — 숫자 없이 점 (§B) */
+.actv-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--coral); margin-left: 6px; vertical-align: middle; }
+.navdot { width: 6px; height: 6px; border-radius: 50%; background: var(--coral); margin-left: auto; flex: 0 0 auto; }
+
+/* ── 항목 ── */
+.actv-check { flex: 0 0 auto; display: grid; place-items: center; padding-top: 2px; }
+.actv-check input { width: 15px; height: 15px; accent-color: var(--coral); cursor: pointer; }
+.nitem.picked { background: color-mix(in srgb, var(--coral) 8%, var(--card)); }
+.actv-bundle { font-size: 11px; font-weight: 700; color: var(--coral);
+  background: color-mix(in srgb, var(--coral) 12%, var(--card)); padding: 1px 7px; border-radius: 999px; }
+.actv-empty { padding: 44px 16px; text-align: center; color: var(--ink-soft); }
+.actv-empty p { font-size: 15px; font-weight: 600; }
+.actv-empty .sub { font-size: 13px; font-weight: 400; color: var(--muted); margin-top: 6px; }
+
+/* ── 음소거 (§F) ── */
+.actv-mute-wrap { position: relative; }
+.actv-mute-menu { position: absolute; top: 38px; right: 0; z-index: 20; min-width: 170px; padding: 5px;
+  background: var(--card); border: 1px solid var(--grid-line); border-radius: 10px; box-shadow: 0 8px 24px rgba(23,27,34,.16);
+  display: flex; flex-direction: column; }
+.actv-mute-menu button { text-align: left; border: 0; background: transparent; padding: 8px 10px; border-radius: 7px;
+  font-size: 13px; color: var(--ink); cursor: pointer; }
+.actv-mute-menu button:hover { background: color-mix(in srgb, var(--muted) 10%, var(--card)); }
+.actv-muted { font-size: 12px; font-weight: 700; color: var(--coral);
+  background: color-mix(in srgb, var(--coral) 11%, var(--card)); padding: 5px 10px; border-radius: 999px; }
+
+/* 실행취소 버튼 (토스트 안) */
+/* 토스터는 클릭을 통과시키지만(pointer-events:none) 실행취소 버튼만은 눌려야 한다 */
+.toast:has(.toast-act) { pointer-events: auto; }
+.toast-act { margin-left: 10px; border: 0; background: transparent; color: var(--coral-l, var(--coral));
+  font-size: 12.5px; font-weight: 700; cursor: pointer; text-decoration: underline; pointer-events: auto; }
+.toast-act:hover { color: #fff; }
+.toast-act:focus-visible { outline: 2px solid var(--coral-l, var(--coral)); outline-offset: 2px; border-radius: 4px; }
+
+/* 필터 레일의 저장된 뷰 hover 액션은 행 안쪽에 붙는다 */
+.actv-r.ha-host .ha { top: 3px; right: 4px; }
+
+.actv-r:focus-visible, .actv-r-b:focus-visible, .actv-check input:focus-visible {
+  outline: 2px solid var(--edu); outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) { .actv-rail { position: static; } }
