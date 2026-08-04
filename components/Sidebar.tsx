@@ -371,9 +371,8 @@ export default function Sidebar({
           <Chevron />
         </summary>
         <NavLink href="/goals" icon={IC.goal} label="목표" current={cur("/goals")} />
-        {isLead && (
-          <NavLink href="/reports" icon={IC.report} label="월간 보고" current={cur("/reports")} />
-        )}
+        {/* 성과 리포트는 전원 조회 가능 (MD-P-2026-010 §F) — 승인 보고서 탭만 팀장 전용 */}
+        <NavLink href="/reports" icon={IC.report} label="월간 보고" current={cur("/reports")} />
       </details>
 
       <details className="grp" open>

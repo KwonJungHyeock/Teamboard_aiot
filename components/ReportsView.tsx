@@ -1,9 +1,12 @@
 "use client";
 
-// 월간 보고 화면 (Phase 7) — 월별 목록 + 생성 + 상세(보기/편집) + 승인 + 인쇄(PDF). lead 전용.
+// 월간 보고 화면 — 두 갈래를 한 메뉴에서 (MD-P-2026-010 §범위: 신규 메뉴 생성 금지)
+//   [성과 리포트] 월별 PDF (전원)  ·  [승인 보고서] 기존 서술·승인·Notion 흐름 (팀장)
 import { useCallback, useEffect, useState } from "react";
 import ReportView, { type ReportData } from "./ReportView";
 import ReportEditor from "./ReportEditor";
+import PerfReport from "./PerfReport";
+import type { SessionUser } from "@/lib/types";
 
 interface ReportListItem {
   id: number;
@@ -31,7 +34,9 @@ interface ReportDetail {
   narration: Record<string, string>;
 }
 
-export default function ReportsView({ notionConnected = true }: { notionConnected?: boolean }) {
+export default function ReportsView({ user, notionConnected = true }: { user: SessionUser; notionConnected?: boolean }) {
+  const isLead = user.role === "lead";
+  const [mainTab, setMainTab] = useState<"perf" | "approval">("perf");
   const now = new Date();
   const [list, setList] = useState<ReportListItem[]>([]);
   const [genYear, setGenYear] = useState(now.getUTCFullYear());
@@ -132,10 +137,25 @@ export default function ReportsView({ notionConnected = true }: { notionConnecte
           <div>
             <div className="eb">REPORTS</div>
             <h1>월간 보고</h1>
-            <p>모든 수치는 DB 집계 값이며, 에이전트는 서술만 작성합니다. 승인 시 {notionConnected ? "Notion에 기록됩니다." : "확정됩니다."}</p>
+            <p>
+              {mainTab === "perf"
+                ? "월별 성과를 그대로 인쇄해 PDF로 저장합니다. 화면에 보이는 그대로 출력됩니다."
+                : "모든 수치는 DB 집계 값이며, 에이전트는 서술만 작성합니다. 승인 시 " + (notionConnected ? "Notion에 기록됩니다." : "확정됩니다.")}
+            </p>
           </div>
         </div>
 
+        {isLead && (
+          <div className="seg no-print" role="group" aria-label="보고 종류" style={{ marginBottom: 12 }}>
+            <button aria-pressed={mainTab === "perf"} onClick={() => setMainTab("perf")}>성과 리포트</button>
+            <button aria-pressed={mainTab === "approval"} onClick={() => setMainTab("approval")}>승인 보고서</button>
+          </div>
+        )}
+
+        {mainTab === "perf" && <PerfReport user={user} />}
+
+        {mainTab === "approval" && isLead && (
+        <>
         {error && <p className="gerr">{error}</p>}
         {notice && <p className="rp-notice no-print">{notice}</p>}
 
@@ -229,6 +249,8 @@ export default function ReportsView({ notionConnected = true }: { notionConnecte
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );
