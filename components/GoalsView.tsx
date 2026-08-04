@@ -9,6 +9,7 @@ import GoalTree, { type LinkableTask } from "./GoalTree";
 import EmptyState from "./EmptyState";
 import NewGoalModal from "./NewGoalModal";
 import GoalLinkBanner from "./GoalLinkBanner";
+import SnapshotMenu from "./SnapshotMenu";
 import { GOAL_UPDATED_EVENT, openGoalPanel } from "@/lib/goal-panel";
 
 type Tab = "team" | "personal";
@@ -129,6 +130,8 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
               <button aria-pressed={year === null} onClick={() => setYear(null)}>전체</button>
             </div>
             <button className="btn-brand goal-new" onClick={() => setShowNew(true)}>+ 새 목표</button>
+            {/* 수동 스냅샷 · 적립 이력 (MD-P-2026-011 §D·F) — 팀장만 */}
+            {user.role === "lead" && <SnapshotMenu onSaved={load} />}
           </div>
         </div>
 

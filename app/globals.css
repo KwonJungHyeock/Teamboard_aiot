@@ -2021,3 +2021,37 @@ body.gpanel-open .agf-fab { display: none; }
   .prep-sec h2, .prep-group h3 { break-after: avoid; page-break-after: avoid; }
   .prep-cover { break-after: avoid; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   성과 스냅샷 적립 (MD-P-2026-011)
+   ══════════════════════════════════════════════════════════════ */
+
+/* 월별 추이 미니 차트 (§E) — 스냅샷이 있는 달만 점, 빈 달은 선을 잇지 않는다 */
+.gtr-svg { width: 100%; height: 64px; display: block; }
+.gtr-grid { stroke: var(--grid-line); stroke-width: 1; }
+.gtr-line { fill: none; stroke: var(--edu, var(--blue)); stroke-width: 2; stroke-linecap: round; }
+.gtr-dot { fill: var(--card); stroke: var(--edu, var(--blue)); stroke-width: 2; }
+.gtr-x { display: flex; justify-content: space-between; padding: 2px 6px 0; font-size: 10.5px; color: var(--muted); }
+.gtr-note { margin-top: 6px; font-size: 11px; color: var(--muted); }
+
+/* 수동 스냅샷 메뉴 (§D) */
+.snapm { position: relative; }
+.snapm-menu { position: absolute; top: 36px; right: 0; z-index: 30; width: 300px; padding: 6px;
+  background: var(--card); border: 1px solid var(--grid-line); border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(23,27,34,.18); display: flex; flex-direction: column; }
+.snapm-menu > button { text-align: left; border: 0; background: transparent; padding: 9px 10px;
+  border-radius: 8px; font-size: 13px; color: var(--ink); cursor: pointer; }
+.snapm-menu > button:hover:not(:disabled) { background: color-mix(in srgb, var(--muted) 10%, var(--card)); }
+.snapm-menu > button:disabled { color: var(--muted); cursor: default; }
+.snapm-note { padding: 4px 10px 8px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--grid-line); margin-top: 4px; }
+.snapm-runs { max-height: 220px; overflow-y: auto; border-top: 1px solid var(--grid-line); padding-top: 4px; }
+.snapm-run { display: flex; align-items: center; gap: 7px; padding: 5px 10px; font-size: 11.5px; color: var(--ink-soft); }
+.snapm-run.bad { color: var(--coral); }
+.snapm-led { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; }
+.snapm-led.ok { background: var(--green); }
+.snapm-led.bad { background: var(--coral); }
+.snapm-src { font-size: 10.5px; color: var(--muted); }
+.snapm-none { padding: 8px 10px; font-size: 11.5px; color: var(--muted); }
+
+.snapm .pws-more:focus-visible, .snapm-menu button:focus-visible { outline: 2px solid var(--edu); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .gtr-line { transition: none; } }

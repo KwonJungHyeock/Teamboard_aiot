@@ -6,6 +6,7 @@ import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { recomputeGoalChain, judgeGoalStatus, kstTodayForGoals as kstToday, type GoalStatus } from "@/lib/goals";
 import { projectsForGoal } from "@/lib/projects";
+import { goalTrend } from "@/lib/goal-snapshot";
 import { jsonError } from "@/lib/api";
 
 export const runtime = "nodejs";
@@ -60,6 +61,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       `SELECT count(*) AS n FROM goal WHERE parent_id = $1 AND is_active = true`, [goalId]
     );
     const childCount = Number(childRow?.n ?? 0);
+    // 최근 6개월 추이 (§E) — 스냅샷이 있는 달만 점으로. 없는 달은 배열에 없다.
+    const trend = await goalTrend(goalId, 6);
 
     const manual = g.progress_manual === null ? null : Math.round(Number(g.progress_manual));
     const effective = manual !== null ? manual : (g.progress === null ? null : Math.round(Number(g.progress)));
@@ -78,6 +81,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       },
       linkedProjects,
       childCount,
+      trend,
       tasks: tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, assigneeName: t.assignee_name, dueDate: t.due_date })),
       contribution,
       canEdit,

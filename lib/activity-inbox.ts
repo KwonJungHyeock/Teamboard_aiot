@@ -37,6 +37,8 @@ export function classify(type: string, refType: string): { kind: ActivityKind; c
   }
   // 마감·지연은 사람이 만든 사건이 아니다 → 시스템 채널 (배지 없음)
   if (type === "deadline" || type === "overdue") return { kind: "deadline", channel: "system" };
+  // 적립 실패 같은 운영 알림 (MD-P-2026-011 §F) — 사람 알림을 밀어내지 않게 시스템 채널로
+  if (type === "system") return { kind: "system", channel: "system" };
   return { kind: "share", channel: "human" };
 }
 

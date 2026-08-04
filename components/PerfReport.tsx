@@ -160,8 +160,8 @@ export default function PerfReport({ user }: { user: SessionUser }) {
             )}
             {data.missingSnapshot && (
               <p className="prep-note">
-                이 달의 진척 스냅샷이 없어 <b>당시 값을 표시할 수 없습니다</b>.
-                현재 값을 과거 성과로 적지 않습니다. 스냅샷은 해당 월에 리포트를 한 번이라도 열면 남습니다.
+                진척이 “–”인 목표는 <b>이 달 스냅샷이 없어 당시 값을 알 수 없다</b>는 뜻입니다.
+                현재 값을 과거 성과로 적지 않습니다. 스냅샷은 매일 00:10(KST) 자동 적립됩니다.
               </p>
             )}
           </section>

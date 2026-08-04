@@ -10,6 +10,7 @@ import {
   notifyGoalUpdated,
 } from "@/lib/goal-panel";
 import GoalProjectPicker from "./GoalProjectPicker";
+import GoalTrend, { type TrendPoint } from "./GoalTrend";
 import HoverActions from "./HoverActions";
 import { toast } from "@/lib/quick";
 
@@ -27,6 +28,7 @@ interface GoalDetail {
   tasks: { id: number; title: string; status: string; assigneeName: string | null; dueDate: string | null }[];
   linkedProjects: LinkedProject[];
   childCount: number;
+  trend: TrendPoint[];
   contribution: Contribution[];
   canEdit: boolean;
 }
@@ -188,6 +190,12 @@ export default function GoalDetailPanel() {
                 </div>
               </div>
             )}
+
+            {/* 월별 추이 (MD-P-2026-011 §E) — 스냅샷이 있는 달만 */}
+            <div className="tdp-sec">
+              <div className="tdp-sec-h">월별 추이 <em>(최근 6개월)</em></div>
+              <GoalTrend points={d.trend ?? []} />
+            </div>
 
             {/* 연결된 프로젝트 (§B1) — 여기 진척이 곧 목표 진척의 재료다 */}
             <div className="tdp-sec">

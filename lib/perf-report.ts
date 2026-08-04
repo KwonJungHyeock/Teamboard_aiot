@@ -7,6 +7,7 @@
 //   · 항목이 없으면 빈 배열로 두고, 화면이 "이번 달 해당 항목이 없습니다"를 쓴다.
 import { query, queryOne } from "./db";
 import { judgeGoalStatus, kstTodayForGoals, type GoalStatus } from "./goals";
+import { ensureTodaySnapshot } from "./goal-snapshot";
 
 export type ReportScope = "team" | "personal";
 
@@ -100,20 +101,6 @@ function bounds(year: number, month: number) {
 
 const LEVEL_LABEL: Record<string, string> = { annual: "연간", quarter: "분기", month: "월간" };
 
-/**
- * 이번 달 목표 진척 스냅샷을 남긴다 (현재 월에 한해서만).
- * 지난 달 값을 지금 와서 만들어내는 것은 날조이므로 하지 않는다.
- */
-async function captureSnapshot(ym: string): Promise<void> {
-  await query(
-    `INSERT INTO goal_snapshot (goal_id, period_ym, progress, captured_at)
-     SELECT id, $1, progress, now() FROM goal WHERE is_active = true
-     ON CONFLICT (goal_id, period_ym)
-     DO UPDATE SET progress = EXCLUDED.progress, captured_at = now()`,
-    [ym]
-  );
-}
-
 export async function buildPerfReport(opts: {
   year: number;
   month: number;
@@ -126,8 +113,8 @@ export async function buildPerfReport(opts: {
   const today = kstTodayForGoals();
   const isCurrentMonth = today.slice(0, 7) === b.ym;
 
-  // 현재 월을 열람할 때만 스냅샷을 갱신한다 → 다음 달에 실제 비교값이 생긴다.
-  if (isCurrentMonth) await captureSnapshot(b.ym);
+  // 오늘자 적립을 보장한다 (§C) — cron이 아직 돌지 않았어도 오늘 기록은 남는다.
+  await ensureTodaySnapshot();
 
   const targetName = opts.actorId
     ? (await queryOne<{ display_name: string }>(`SELECT display_name FROM actor WHERE id = $1`, [opts.actorId]))?.display_name ?? "구성원"
@@ -140,7 +127,7 @@ export async function buildPerfReport(opts: {
     id: number; level: string | null; period_type: string; title: string; period: string | null;
     period_start: string; period_end: string; progress: string | null; progress_manual: string | null;
     status_manual: GoalStatus | null; project_count: number;
-    prev: string | null; snap: string | null; has_snap: boolean;
+    prev: string | null; snap: string | null; has_snap: boolean; snap_status: GoalStatus | null;
   }>(
     `SELECT g.id, g.level, g.period_type, g.title, g.period,
             g.period_start::text, g.period_end::text, g.progress::text, g.progress_manual::text,
@@ -148,11 +135,16 @@ export async function buildPerfReport(opts: {
             (SELECT count(*)::int FROM project pj
               WHERE pj.goal_id = g.id AND pj.is_active = true AND pj.status <> 'archived') AS project_count,
             (SELECT s.progress::text FROM goal_snapshot s
-              WHERE s.goal_id = g.id AND s.period_ym = $3) AS prev,
+              WHERE s.goal_id = g.id AND to_char(s.snapshot_date, 'YYYY-MM') = $3
+              ORDER BY s.snapshot_date DESC LIMIT 1) AS prev,
             (SELECT s.progress::text FROM goal_snapshot s
-              WHERE s.goal_id = g.id AND s.period_ym = $4) AS snap,
+              WHERE s.goal_id = g.id AND to_char(s.snapshot_date, 'YYYY-MM') = $4
+              ORDER BY s.snapshot_date DESC LIMIT 1) AS snap,
             EXISTS (SELECT 1 FROM goal_snapshot s
-                     WHERE s.goal_id = g.id AND s.period_ym = $4) AS has_snap
+                     WHERE s.goal_id = g.id AND to_char(s.snapshot_date, 'YYYY-MM') = $4) AS has_snap,
+            (SELECT s.status FROM goal_snapshot s
+              WHERE s.goal_id = g.id AND to_char(s.snapshot_date, 'YYYY-MM') = $4
+              ORDER BY s.snapshot_date DESC LIMIT 1) AS snap_status
        FROM goal g
       WHERE g.is_active = true
         AND g.period_start <= $2::date AND g.period_end >= $1::date
@@ -191,9 +183,10 @@ export async function buildPerfReport(opts: {
       prevProgress,
       // 둘 다 실제 값일 때만 증감을 낸다 (§E)
       delta: progress !== null && prevProgress !== null ? progress - prevProgress : null,
-      // 과거 월 상태는 그 달 말 기준으로 판정한다
-      status: r.status_manual ?? judgeGoalStatus(progress, r.period_start, r.period_end,
-        isCurrentMonth ? today : b.endDate),
+      // 과거 월은 그 달 스냅샷에 굳어 있던 상태를 그대로 쓴다. 지금 다시 판정하지 않는다.
+      status: isCurrentMonth
+        ? (r.status_manual ?? judgeGoalStatus(progress, r.period_start, r.period_end, today))
+        : (r.snap_status ?? (r.has_snap ? judgeGoalStatus(progress, r.period_start, r.period_end, b.endDate) : null)),
       manual: r.progress_manual !== null,
       projectCount: r.project_count,
     };
