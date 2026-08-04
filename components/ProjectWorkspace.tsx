@@ -11,9 +11,10 @@ import TaskTable, { type TaskTableRow } from "./TaskTable";
 import TaskBoard from "./TaskBoard";
 import ProjectCanvas from "./ProjectCanvas";
 import DecisionLog from "./DecisionLog";
-import SignalThread from "./SignalThread";
 import EmptyState from "./EmptyState";
 import { openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
+import { SIDE_PANEL_EVENT, currentPanel, openPanel } from "@/lib/side-panel";
+import { SIGNAL_CHANGED_EVENT } from "@/lib/collab-events";
 import { openQuickCreate, toast } from "@/lib/quick";
 import { dday } from "@/lib/task-view";
 
@@ -64,7 +65,8 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
   const [tab, setTab] = useState<Tab>("overview");
   const [taskView, setTaskView] = useState<"table" | "board">("table");
   const [fullTasks, setFullTasks] = useState<TaskItem[]>([]);
-  const [panel, setPanel] = useState<{ kind: "discussion"; id: number } | { kind: "member"; id: number } | null>(null);
+  // 우측 패널은 전역 컴포넌트가 그린다 (MD-P-2026-006 §B). 여기서는 열림 여부만 따라간다.
+  const [panel, setPanel] = useState<{ kind: string; id: number } | null>(null);
   const [more, setMore] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -108,13 +110,19 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
     if (!goalPick) return;
     fetch("/api/meta/selectors").then((r) => r.json()).then((d) => setGoals(d.monthGoals ?? [])).catch(() => {});
   }, [goalPick]);
-  // Esc — 우측 패널 닫기
+  // 전역 패널 상태 추종 (Esc·URL·뒤로가기는 전역 규칙이 처리)
   useEffect(() => {
-    if (!panel) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPanel(null); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [panel]);
+    const sync = () => setPanel(currentPanel());
+    sync();
+    window.addEventListener(SIDE_PANEL_EVENT, sync);
+    window.addEventListener("popstate", sync);
+    window.addEventListener(SIGNAL_CHANGED_EVENT, load);
+    return () => {
+      window.removeEventListener(SIDE_PANEL_EVENT, sync);
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener(SIGNAL_CHANGED_EVENT, load);
+    };
+  }, [load]);
 
   const archived = data?.project.status === "archived";
   const readOnly = archived || !data?.canEdit;
@@ -148,7 +156,7 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
   const p = data.project;
 
   return (
-    <div className={`hv pws${panel ? " panel-open" : ""}`}>
+    <div className="hv pws">
       <div className="top">
         <div className="crumb">워크스페이스 / <Link href="/projects">프로젝트</Link> / <b>{p.name}</b></div>
         <span className="sp" />
@@ -216,7 +224,7 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
             {/* 멤버 아바타 스택 (최대 5 + N) — 클릭 시 우측 패널 */}
             <div className="pws-members">
               {data.members.slice(0, 5).map((m) => (
-                <button key={m.id} className="pws-av" title={m.name} onClick={() => setPanel({ kind: "member", id: m.id })}>
+                <button key={m.id} className="pws-av" title={m.name} onClick={() => openPanel("member", m.id)}>
                   {m.name.slice(0, 1)}
                 </button>
               ))}
@@ -283,7 +291,7 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
                 <ul className="pws-list">
                   {data.discussions.filter((d) => d.open).slice(0, 3).map((d) => (
                     <li key={d.id}>
-                      <button onClick={() => { pickTab("discussions"); setPanel({ kind: "discussion", id: d.id }); }}>{d.title}</button>
+                      <button onClick={() => { pickTab("discussions"); openPanel("signal", d.id); }}>{d.title}</button>
                       <span className={`num${d.ageDays > 14 ? " over" : ""}`}>{d.ageDays}일</span>
                     </li>
                   ))}
@@ -343,8 +351,8 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
             ) : (
               <div className="pws-dlist">
                 {data.discussions.map((d) => (
-                  <button key={d.id} className={`pws-drow${d.open ? "" : " closed"}${panel?.kind === "discussion" && panel.id === d.id ? " sel" : ""}`}
-                    onClick={() => setPanel({ kind: "discussion", id: d.id })}>
+                  <button key={d.id} className={`pws-drow${d.open ? "" : " closed"}${panel?.kind === "signal" && panel.id === d.id ? " sel" : ""}`}
+                    onClick={() => openPanel("signal", d.id)}>
                     <span className={`pws-ddot ${d.open ? (d.ageDays > 14 ? "hot" : "open") : "done"}`} />
                     <span className="pws-db">
                       <span className="pws-dt">{d.title}</span>
@@ -365,25 +373,6 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
         {tab === "decisions" && <DecisionLog projectId={projectId} />}
       </div>
 
-      {/* ── 우측 슬라이드인 패널 (§B3) ── */}
-      {panel && (
-        <aside className="pws-panel" role="complementary" aria-label={panel.kind === "discussion" ? "논의 스레드" : "멤버"}>
-          <div className="pws-panel-h">
-            <b>{panel.kind === "discussion" ? "논의" : "멤버"}</b>
-            <button className="pws-panel-x" onClick={() => setPanel(null)} aria-label="닫기">✕</button>
-          </div>
-          <div className="pws-panel-b">
-            {panel.kind === "discussion" ? (
-              <SignalThread signalId={panel.id} user={user} onChanged={load} />
-            ) : (
-              <MemberCard member={data.members.find((m) => m.id === panel.id)!}
-                tasks={fullTasks.filter((t) => t.assigneeId === panel.id)}
-                isOwner={p.ownerId === panel.id} />
-            )}
-          </div>
-        </aside>
-      )}
-
       {/* 보관 확인 */}
       {archiving && (
         <div className="dcf-bg" role="presentation" onClick={() => setArchiving(false)}>
@@ -401,29 +390,6 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-/** 멤버 프로필 — 우측 패널에서 열리는 요약 카드. */
-function MemberCard({ member, tasks, isOwner }: { member: Member; tasks: TaskItem[]; isOwner: boolean }) {
-  const open = tasks.filter((t) => t.status !== "done");
-  return (
-    <div className="pws-member">
-      <div className="pws-member-h">
-        <span className="pws-av big">{member.name.slice(0, 1)}</span>
-        <div>
-          <b>{member.name}</b>
-          {isOwner && <span className="pws-owner">담당자</span>}
-        </div>
-      </div>
-      <div className="pws-member-s">이 프로젝트에서 진행 중 <b className="num">{open.length}</b>건</div>
-      <ul className="pws-list">
-        {open.slice(0, 8).map((t) => (
-          <li key={t.id}><button onClick={() => openTaskPanel(t.id)}>{t.title}</button><span className="num">{t.progress}%</span></li>
-        ))}
-        {open.length === 0 && <li className="pws-ov-none">진행 중인 업무가 없어요.</li>}
-      </ul>
     </div>
   );
 }

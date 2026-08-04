@@ -3,6 +3,7 @@
 // 팀 타임라인 활동 피드 (협업 A) — 업무 공유 포스트: 액터·업무 chip·노트·리액션·[열기].
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { openTaskPanel } from "@/lib/task-panel";
 import { Avatar, ReactionChips, renderRich, relTime, type ReactionSummary, type Person } from "./collab-ui";
 
 interface AItem {
@@ -63,10 +64,10 @@ export default function ActivityFeed({ compact = false }: { compact?: boolean })
               <b>{a.actorName}</b>
               <span className="mu" style={{ fontSize: 12.5, color: "var(--muted)" }}>업무를 공유했어요</span>
               {a.refType === "task" && a.refId && (
-                <Link className="a-taskchip" href={`/tasks?task=${a.refId}`}>
+                <button className="a-taskchip" onClick={() => openTaskPanel(a.refId!)}>
                   <span className="dotc" style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--edu)" }} />
                   {a.taskTitle ?? `#${a.refId}`}
-                </Link>
+                </button>
               )}
               <span className="acard-t num">{relTime(a.createdAt)}</span>
             </div>
@@ -76,7 +77,7 @@ export default function ActivityFeed({ compact = false }: { compact?: boolean })
         </article>
       ))}
       {compact && items.length > shown.length && (
-        <Link className="collab-more" href="/notifications">전체 활동 보기 →</Link>
+        <Link className="collab-more" href="/activity">전체 활동 보기 →</Link>
       )}
     </div>
   );

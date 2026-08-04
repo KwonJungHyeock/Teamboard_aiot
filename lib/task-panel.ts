@@ -18,7 +18,17 @@ export type NewTaskPrefill = {
 /** 현재 URL의 ?task 값. 정수 id | "new"(새 업무) | null */
 export function currentTaskRef(): number | "new" | null {
   if (typeof window === "undefined") return null;
-  const v = new URLSearchParams(window.location.search).get("task");
+  const sp = new URLSearchParams(window.location.search);
+  // MD-P-2026-006 §B — 통합 파라미터 ?panel=task:id 우선, 레거시 ?task= 호환
+  const panel = sp.get("panel");
+  if (panel) {
+    const [kind, idStr] = panel.split(":");
+    if (kind !== "task") return null;
+    if (idStr === "new") return "new";
+    const pid = Number(idStr);
+    return Number.isInteger(pid) && pid > 0 ? pid : null;
+  }
+  const v = sp.get("task");
   if (v === "new") return "new";
   const n = v ? Number(v) : NaN;
   return Number.isInteger(n) && n > 0 ? n : null;
@@ -33,7 +43,9 @@ export function currentTaskParam(): number | null {
 /** 업무 클릭 → 패널 열기 (기존 업무 상세) */
 export function openTaskPanel(id: number) {
   const url = new URL(window.location.href);
-  url.searchParams.set("task", String(id));
+  url.searchParams.set("panel", `task:${id}`);
+  url.searchParams.delete("task");
+  url.searchParams.delete("signal");
   window.history.pushState({}, "", url);
   window.dispatchEvent(new CustomEvent(TASK_PANEL_EVENT, { detail: id }));
 }
@@ -41,7 +53,8 @@ export function openTaskPanel(id: number) {
 /** 빈 상태(새 업무) 패널 열기 — 파트 4 "+ 새로 만들기 > 업무", 파트 6 영역 고정 추가 */
 export function openNewTaskPanel(prefill: NewTaskPrefill = {}) {
   const url = new URL(window.location.href);
-  url.searchParams.set("task", "new");
+  url.searchParams.set("panel", "task:new");
+  url.searchParams.delete("task");
   window.history.pushState({}, "", url);
   window.dispatchEvent(
     new CustomEvent(TASK_PANEL_EVENT, { detail: { mode: "new", prefill } })
@@ -50,6 +63,7 @@ export function openNewTaskPanel(prefill: NewTaskPrefill = {}) {
 
 export function closeTaskPanel() {
   const url = new URL(window.location.href);
+  url.searchParams.delete("panel");
   url.searchParams.delete("task");
   window.history.pushState({}, "", url);
   window.dispatchEvent(new CustomEvent(TASK_PANEL_EVENT, { detail: null }));

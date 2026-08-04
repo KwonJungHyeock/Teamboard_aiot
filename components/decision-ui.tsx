@@ -3,8 +3,8 @@
 // 결정 로그 공용 UI (MD-P-2026-004) — 확정 팝오버 · 스레드 고정 결정 카드.
 // 결정=green LED / 번복=slate 취소선. 결정은 삭제 불가, 번복만 가능.
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { toast } from "@/lib/quick";
+import { openPanel } from "@/lib/side-panel";
 
 export interface Decision {
   id: number;
@@ -199,7 +199,7 @@ export function DecisionListItem({ decision }: { decision: Decision }) {
           <span className="drow-by">{decision.decidedByName}</span>
           <span className="drow-time num">{decTime(decision.decidedAt)}</span>
           {decision.linkedTaskIds.length > 0 && <span className="drow-tasks num">업무 {decision.linkedTaskIds.length}</span>}
-          <Link className="drow-link" href={`/signals?signal=${decision.discussionId}`}>원본 논의 →</Link>
+          <button className="drow-link" onClick={() => openPanel("signal", decision.discussionId)}>원본 논의 →</button>
         </div>
       </div>
     </article>

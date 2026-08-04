@@ -94,3 +94,36 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return jsonError(error);
   }
 }
+
+/** 코멘트 수정 (MD-P-2026-006 §A) — 입력창이 빈 상태에서 ↑로 직전 내 메시지를 고칠 때 쓴다.
+ *  본인 코멘트만 수정 가능하고, 새로 등장한 @멘션에는 알림을 보낸다. */
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const session = requireSession();
+    const guarded = await guardSignal(Number(params.id), session.id, session.role === "lead");
+    if (guarded.error) return guarded.error;
+    const payload = await request.json();
+    const commentId = Number(payload.id);
+    const body = String(payload.body ?? "").trim().slice(0, 2000);
+    if (!Number.isInteger(commentId) || commentId <= 0) {
+      return NextResponse.json({ error: "코멘트를 지정하세요." }, { status: 400 });
+    }
+    if (!body) return NextResponse.json({ error: "내용을 입력하세요." }, { status: 400 });
+
+    const own = await queryOne<{ id: number; body: string }>(
+      `SELECT id, body FROM comment WHERE id = $1 AND signal_id = $2 AND author_id = $3`,
+      [commentId, Number(params.id), session.id]
+    );
+    if (!own) return NextResponse.json({ error: "본인 코멘트만 수정할 수 있습니다." }, { status: 403 });
+
+    await query(`UPDATE comment SET body = $1 WHERE id = $2`, [body, commentId]);
+    // 편집으로 새로 생긴 멘션만 알린다(기존 멘션 재알림 방지)
+    const added = body.replace(own.body, "");
+    if (added.includes("@")) {
+      await notifyMentions(added, session.id, "signal", Number(params.id), body.slice(0, 120));
+    }
+    return NextResponse.json({ id: commentId, body });
+  } catch (error) {
+    return jsonError(error);
+  }
+}

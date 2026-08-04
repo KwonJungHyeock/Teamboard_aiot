@@ -3,6 +3,7 @@
 // 홈 대시보드 (Phase 3) — SPEC 4.1의 6요소를 프로토타입 레이아웃 그대로 조립.
 // ③ "이번 달 목표 진척"은 SPEC 우선 규칙에 따라 프로토타입의 "프로젝트 진행" 자리를 대체.
 import { useEffect, useMemo, useState } from "react";
+import { openPanel } from "@/lib/side-panel";
 import Link from "next/link";
 import type { HomeSummary } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
@@ -216,14 +217,14 @@ function DecisionsWaiting({ items, decidedThisWeek }: { items: HomeSummary["deci
       ) : (
         <div className="dw">
           {items.map((d) => (
-            <Link className={`dw-row${d.alert ? " alert" : ""}`} key={d.id} href={`/signals?signal=${d.id}`}>
+            <button className={`dw-row${d.alert ? " alert" : ""}`} key={d.id} onClick={() => openPanel("signal", d.id)}>
               <span className="dw-dot" style={{ background: d.alert ? "var(--coral)" : "var(--slate)" }} />
               <span className="dw-b">
                 <span className="dw-t">{d.title}</span>
                 <span className="dw-meta">{d.authorName} · 답글 {d.commentCount}</span>
               </span>
               <span className={`dw-age num${d.alert ? " over" : ""}`}>{d.ageDays}일</span>
-            </Link>
+            </button>
           ))}
         </div>
       )}

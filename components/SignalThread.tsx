@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import { VoteButtons, ImageThumb } from "./huddle-ui";
 import { Avatar, ReactionChips, MentionComposer, renderRich, relTime, type ReactionSummary, type Person } from "./collab-ui";
+import HoverActions from "./HoverActions";
 import { DecisionConfirm, DecisionCard, draftRationale, type Decision } from "./decision-ui";
 
 interface Votes { up: number; down: number; mine: string | null }
@@ -78,6 +79,8 @@ export default function SignalThread({
   // 결정 로그 (MD-P-2026-004) — 확정 팝오버 + 이 논의에서 확정된 결정들
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [confirming, setConfirming] = useState<{ supersedesId?: number; defaultTitle: string } | null>(null);
+  // ↑ — 입력창이 비었을 때 직전 내 코멘트 편집 (MD-P-2026-006 §A)
+  const [editing, setEditing] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/signals/${signalId}`);
@@ -99,6 +102,12 @@ export default function SignalThread({
     const t = setInterval(load, 4000);
     return () => clearInterval(t);
   }, [load]);
+  // hover 액션 바의 리액션은 즉시 반영한다(폴링을 기다리지 않게)
+  useEffect(() => {
+    const on = () => load();
+    window.addEventListener("tb:reaction-changed", on);
+    return () => window.removeEventListener("tb:reaction-changed", on);
+  }, [load]);
 
   const names = people.map((p) => p.name);
 
@@ -116,12 +125,24 @@ export default function SignalThread({
     const body = draft.trim();
     if (!body || busy) return;
     setBusy(true);
-    const res = await fetch(`/api/signals/${signalId}/comments`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }),
-    });
+    const res = editing
+      ? await fetch(`/api/signals/${signalId}/comments`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editing, body }),
+        })
+      : await fetch(`/api/signals/${signalId}/comments`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }),
+        });
     setBusy(false);
     if (!res.ok) { setError((await res.json()).error ?? "전송 실패"); return; }
-    setDraft(""); await load(); onChanged();
+    setDraft(""); setEditing(null); await load(); onChanged();
+  }
+
+  /** 입력창이 빈 상태에서 ↑ — 내 마지막 코멘트를 편집 버퍼로 올린다. */
+  function editLast() {
+    const mine = [...comments].reverse().find((c) => c.authorId === user.id);
+    if (!mine) return;
+    setEditing(mine.id);
+    setDraft(mine.body);
   }
 
   function setCommentReactions(id: number, next: ReactionSummary[]) {
@@ -222,7 +243,15 @@ export default function SignalThread({
         <div className="thread-list">
           {comments.length === 0 && <p className="thread-empty">첫 메시지를 남겨 논의를 시작하세요. @이름으로 멘션할 수 있어요.</p>}
           {comments.map((c) => (
-            <div key={c.id} className={`msg ${c.agent ? "ag" : ""} ${c.authorId === user.id ? "mine" : ""}`}>
+            <div key={c.id} tabIndex={0} className={`msg ha-host ${c.agent ? "ag" : ""} ${c.authorId === user.id ? "mine" : ""}`}>
+              <HoverActions
+                reactionTarget={{ type: "reply", id: c.id }}
+                threadLabel="답글"
+                onThread={() => { setDraft((d) => (d ? d : `@${c.authorName} `)); document.querySelector<HTMLTextAreaElement>(".composer-ta")?.focus(); }}
+                more={c.authorId === user.id
+                  ? [{ label: "편집", onClick: () => { setEditing(c.id); setDraft(c.body); } }]
+                  : [{ label: "이 사람에게 답글", onClick: () => { setDraft(`@${c.authorName} `); document.querySelector<HTMLTextAreaElement>(".composer-ta")?.focus(); } }]}
+              />
               <Avatar name={c.authorName} url={c.avatarUrl} />
               <div className="msg-b">
                 <div className="msg-top">
@@ -238,7 +267,10 @@ export default function SignalThread({
           ))}
         </div>
         {/* 상시 하단 컴포저 */}
-        <MentionComposer people={people} value={draft} onChange={setDraft} onSubmit={send} busy={busy} />
+        <MentionComposer value={draft} onChange={setDraft} onSubmit={send} busy={busy}
+          editing={editing !== null}
+          onEditLast={editLast}
+          onCancelEdit={() => { setEditing(null); setDraft(""); }} />
       </div>
 
       {/* 확정된 결정 — 스레드 하단 고정 (MD-P-2026-004 §B-2·E) */}

@@ -1,12 +1,20 @@
 "use client";
 
-// 커맨드 팔레트 (Phase 2) — ⌘K / Ctrl+K.
-// 항목은 아래 배열에만 등록하면 된다 (신규 화면 추가 시 이 파일의 배열만 수정).
+// 빠른 이동 (MD-P-2026-006 §A) — ⌘K / Ctrl+K.
+// 화면 이동 항목 + 프로젝트·업무·사람·결정 통합 검색을 한 입력창에서 처리한다.
+// 검색 결과 선택은 화면을 옮기는 대신 전역 우측 패널을 연다(업무·논의·멤버·결정).
+// 질의가 비어 있으면 최근 항목을 먼저 보여준다(최근 방문 우선).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Role } from "@/lib/types";
 import { openTaskPanel, notifyTaskUpdated } from "@/lib/task-panel";
 import { openQuickCreate } from "@/lib/quick";
+import { openPanel } from "@/lib/side-panel";
+
+interface SearchHit { kind: "project" | "task" | "person" | "decision"; id: number; title: string; meta: string }
+const HIT_LABEL: Record<SearchHit["kind"], string> = {
+  project: "프로젝트", task: "업무", person: "사람", decision: "결정",
+};
 
 interface PaletteItem {
   label: string;
@@ -57,7 +65,22 @@ export default function CommandPalette({ role, notionConnected = true }: { role:
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(0);
   const [creating, setCreating] = useState(false);
+  const [hits, setHits] = useState<SearchHit[]>([]);
+  const [recent, setRecent] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // 통합 검색 — 220ms 디바운스. 열릴 때는 질의 없이 한 번 호출해 최근 항목을 채운다.
+  useEffect(() => {
+    if (!open) { setHits([]); return; }
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(q.trim())}`, { signal: ctrl.signal })
+        .then((r) => r.json())
+        .then((d) => { setHits(d.hits ?? []); setRecent(!!d.recent); })
+        .catch(() => {});
+    }, q.trim() ? 220 : 0);
+    return () => { clearTimeout(t); ctrl.abort(); };
+  }, [q, open]);
 
   // ⌘K 빠른 생성 — 입력한 텍스트를 제목으로 업무 즉시 생성(영역은 서버 기본값), 후 상세 패널 열기
   const quickTitle = q.trim();
@@ -84,16 +107,12 @@ export default function CommandPalette({ role, notionConnected = true }: { role:
   }, []);
 
   useEffect(() => {
+    // ⌘K 자체는 전역 단축키 레이어(Shortcuts)가 소유한다 — 여기서는 신호만 받는다.
     function onKey(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setOpen((v) => !v);
-      } else if (event.key === "Escape") {
-        close();
-      }
+      if (event.key === "Escape") close();
     }
     function onOpen() {
-      setOpen(true);
+      setOpen((v) => !v);
     }
     window.addEventListener("keydown", onKey);
     window.addEventListener("tb:open-palette", onOpen);
@@ -110,6 +129,14 @@ export default function CommandPalette({ role, notionConnected = true }: { role:
   useEffect(() => {
     setSel(0);
   }, [q]);
+
+  /** 검색 결과 열기 — 프로젝트만 화면 이동, 나머지는 전역 패널(§B). */
+  const openHit = useCallback((h: SearchHit) => {
+    close();
+    if (h.kind === "project") { router.push(`/projects/${h.id}`); return; }
+    if (h.kind === "task") { openTaskPanel(h.id); return; }
+    openPanel(h.kind === "person" ? "member" : "decision", h.id);
+  }, [close, router]);
 
   function go(item: PaletteItem) {
     if (item.quick) {
@@ -138,55 +165,56 @@ export default function CommandPalette({ role, notionConnected = true }: { role:
     openTaskPanel(id);
   }, [quickTitle, creating, close]);
 
-  // sel=0은 quickTitle이 있을 때 "새 업무" 액션, 이후 인덱스는 flat 항목
+  // 순서 = 검색 결과 → 이동/만들기/관리 → 빠른 생성(맨 끝).
+  // ⌘K의 1순위는 "빠른 이동"이므로 생성 액션이 검색 결과를 밀어내지 않는다.
   const hasQuick = quickTitle.length > 0;
+  const quickIndex = hits.length + flat.length;
   function onInputKey(event: React.KeyboardEvent) {
-    const max = flat.length - 1 + (hasQuick ? 1 : 0);
+    const max = quickIndex - (hasQuick ? 0 : 1);
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setSel((v) => Math.min(v + 1, max));
+      setSel((v) => Math.min(v + 1, Math.max(max, 0)));
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       setSel((v) => Math.max(v - 1, 0));
     } else if (event.key === "Enter") {
-      if (hasQuick && sel === 0) createQuickTask();
-      else {
-        const item = flat[sel - (hasQuick ? 1 : 0)];
-        if (item) go(item);
-      }
+      if (sel < hits.length) { openHit(hits[sel]); return; }
+      const item = flat[sel - hits.length];
+      if (item) { go(item); return; }
+      if (hasQuick) createQuickTask();
     }
   }
 
   if (!open) return null;
 
-  let index = hasQuick ? 0 : -1;
+  let index = hits.length - 1;
   return (
     <div className={`ovl on`} onClick={close}>
       <div className="pal" role="dialog" aria-label="빠른 이동" onClick={(e) => e.stopPropagation()}>
         <input
           ref={inputRef}
           type="text"
-          placeholder="이동할 곳이나 실행할 작업을 입력하세요"
+          placeholder="프로젝트·업무·사람·결정 검색, 또는 이동할 곳"
           autoComplete="off"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={onInputKey}
         />
         <div className="list">
-          {hasQuick && (
+          {hits.length > 0 && (
             <div>
-              <div className="sec">빠른 생성</div>
-              <div
-                className={`it ${sel === 0 ? "sel" : ""}`}
-                onMouseEnter={() => setSel(0)}
-                onClick={createQuickTask}
-              >
-                {creating ? "만드는 중…" : `＋ 새 업무: “${quickTitle}”`}
-                <span className="k">enter</span>
-              </div>
+              <div className="sec">{recent ? "최근" : "검색 결과"}</div>
+              {hits.map((h, i) => (
+                  <div key={`${h.kind}${h.id}`} className={`it ${i === sel ? "sel" : ""}`}
+                    onMouseEnter={() => setSel(i)} onClick={() => openHit(h)}>
+                    <span className={`pal-k pal-${h.kind}`}>{HIT_LABEL[h.kind]}</span>
+                    <span className="pal-t">{h.title}</span>
+                    <span className="k">{h.meta}</span>
+                  </div>
+              ))}
             </div>
           )}
-          {flat.length === 0 && !hasQuick && <div className="empty">일치하는 항목이 없습니다</div>}
+          {flat.length === 0 && hits.length === 0 && !hasQuick && <div className="empty">일치하는 항목이 없습니다</div>}
           {sections.map((section) => (
             <div key={section.title}>
               <div className="sec">{section.title}</div>
@@ -207,6 +235,19 @@ export default function CommandPalette({ role, notionConnected = true }: { role:
               })}
             </div>
           ))}
+          {hasQuick && (
+            <div>
+              <div className="sec">빠른 생성</div>
+              <div
+                className={`it ${sel === quickIndex ? "sel" : ""}`}
+                onMouseEnter={() => setSel(quickIndex)}
+                onClick={createQuickTask}
+              >
+                {creating ? "만드는 중…" : `＋ 새 업무: “${quickTitle}”`}
+                <span className="k">enter</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

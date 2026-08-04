@@ -2,6 +2,7 @@
 
 // 협업 공용 UI — @멘션·==하이라이트== 리치 렌더, 이모지 리액션 칩, @멘션 컴포저, 아바타.
 import { useRef, useState, type ReactNode } from "react";
+import { useAutocomplete } from "./autocomplete";
 
 export const REACTION_EMOJIS = ["👍", "🎉", "👀", "❤️", "🙌", "🤔", "✅", "🔥"];
 
@@ -131,47 +132,34 @@ export function ReactionChips({
   );
 }
 
-/** @멘션 자동완성 + 이모지 삽입 + 전송. Enter=전송(Shift+Enter=줄바꿈). */
+/** 공용 컴포저 (MD-P-2026-006 §D) — @사람 · :이모지 · #프로젝트 자동완성을 공유 훅으로 처리.
+ *  Enter=전송(Shift+Enter=줄바꿈). 입력창이 비었을 때 ↑ → 직전 내 코멘트 편집(onEditLast). */
 export function MentionComposer({
-  people,
   value,
   onChange,
   onSubmit,
   busy,
-  placeholder = "메시지 — @이름으로 멘션, Enter로 전송",
+  placeholder = "메시지 — @사람 · #프로젝트 · :이모지, Enter로 전송",
   submitLabel = "전송",
+  onEditLast,
+  onCancelEdit,
+  editing = false,
 }: {
-  people: Person[];
+  /** @deprecated 사람 목록은 자동완성 훅이 직접 가져온다. 호출부 호환용으로만 남긴다. */
+  people?: Person[];
   value: string;
   onChange: (v: string) => void;
   onSubmit: () => void;
   busy?: boolean;
   placeholder?: string;
   submitLabel?: string;
+  onEditLast?: () => void;
+  onCancelEdit?: () => void;
+  editing?: boolean;
 }) {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const [emo, setEmo] = useState(false);
-  const [mq, setMq] = useState<{ start: number; q: string } | null>(null);
-
-  function syncMention(text: string, caret: number) {
-    // 캐럿 앞에서 최근 @토큰 탐지 — 공백/줄바꿈 없이 이어진 @부분
-    const upto = text.slice(0, caret);
-    const at = upto.lastIndexOf("@");
-    if (at < 0) { setMq(null); return; }
-    const between = upto.slice(at + 1);
-    if (/[\s]/.test(between)) { setMq(null); return; }
-    setMq({ start: at, q: between });
-  }
-
-  function insertMention(name: string) {
-    if (!mq) return;
-    const before = value.slice(0, mq.start);
-    const after = value.slice(mq.start + 1 + mq.q.length);
-    const next = `${before}@${name} ${after}`;
-    onChange(next);
-    setMq(null);
-    setTimeout(() => taRef.current?.focus(), 0);
-  }
+  const ac = useAutocomplete(value, onChange, taRef);
 
   function insertEmoji(e: string) {
     onChange(value + e);
@@ -179,12 +167,14 @@ export function MentionComposer({
     setTimeout(() => taRef.current?.focus(), 0);
   }
 
-  const matches = mq
-    ? people.filter((p) => p.name.toLowerCase().includes(mq.q.toLowerCase())).slice(0, 6)
-    : [];
-
   return (
-    <div className="composer">
+    <div className={`composer${editing ? " editing" : ""}`}>
+      {editing && (
+        <div className="composer-edit">
+          직전 메시지 편집 중
+          <button className="lk" onClick={onCancelEdit}>취소 (Esc)</button>
+        </div>
+      )}
       <div className="composer-in">
         <textarea
           ref={taRef}
@@ -193,21 +183,18 @@ export function MentionComposer({
           placeholder={placeholder}
           value={value}
           disabled={busy}
-          onChange={(e) => { onChange(e.target.value); syncMention(e.target.value, e.target.selectionStart ?? 0); }}
+          onChange={(e) => { onChange(e.target.value); setTimeout(ac.sync, 0); }}
+          onClick={ac.sync}
+          onKeyUp={(e) => { if (e.key.startsWith("Arrow")) ac.sync(); }}
           onKeyDown={(e) => {
-            if (e.key === "Escape") { setMq(null); setEmo(false); }
-            if (e.key === "Enter" && !e.shiftKey && !mq) { e.preventDefault(); onSubmit(); }
+            if (ac.onKeyDown(e)) return;
+            if (e.key === "Escape") { setEmo(false); if (editing) { e.stopPropagation(); onCancelEdit?.(); } }
+            // 입력창이 비었을 때 ↑ — 직전 내 코멘트 편집 (Slack과 같은 자리·같은 동작)
+            if (e.key === "ArrowUp" && !value && onEditLast) { e.preventDefault(); onEditLast(); return; }
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSubmit(); }
           }}
         />
-        {mq && matches.length > 0 && (
-          <div className="mpop" role="listbox">
-            {matches.map((p) => (
-              <button key={p.id} role="option" onClick={() => insertMention(p.name)}>
-                <Avatar name={p.name} size={22} /> {p.name}
-              </button>
-            ))}
-          </div>
-        )}
+        {ac.menu}
       </div>
       <div className="composer-tools">
         <div className="radd-wrap">
@@ -221,7 +208,7 @@ export function MentionComposer({
           )}
         </div>
         <button className="btn-brand composer-send" onClick={onSubmit} disabled={busy || !value.trim()}>
-          {busy ? "전송 중…" : submitLabel}
+          {busy ? "전송 중…" : editing ? "저장" : submitLabel}
         </button>
       </div>
     </div>

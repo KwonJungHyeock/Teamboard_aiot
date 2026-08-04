@@ -5,7 +5,11 @@
 // 인라인 편집 + 자동저장(디바운스 800ms) + "○○님이 방금 수정" 표시. 실패 시 롤백 + 토스트.
 import { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "./Markdown";
+import { useAutocomplete } from "./autocomplete";
 import { toast } from "@/lib/quick";
+import { openPanel } from "@/lib/side-panel";
+import { openTaskPanel } from "@/lib/task-panel";
+import { useRouter } from "next/navigation";
 
 type BlockType = "text" | "checklist" | "link" | "image";
 interface CheckItem { id: string; text: string; done: boolean }
@@ -16,6 +20,18 @@ interface Block {
   items?: CheckItem[];
   url?: string;
   meta?: { title?: string; domain?: string; thumbnail?: string; provider?: string };
+  /** 내부 링크 언퍼 (MD-P-2026-006 §E) — 업무·결정·프로젝트는 상태 칩·담당·진척%까지 보여준다. */
+  internal?: InternalCard;
+}
+interface InternalCard {
+  kind: "task" | "decision" | "project";
+  id: number;
+  title: string;
+  statusLabel: string;
+  statusTone: string;
+  assigneeName: string | null;
+  progress: number | null;
+  href: string;
 }
 
 const uid = () => `b${Math.random().toString(36).slice(2, 9)}`;
@@ -110,11 +126,12 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
       const d = await res.json();
       // 최신 상태 기준으로 갱신(디바운스 중 다른 편집과 충돌 방지)
       setBlocks((cur) => {
-        const next = cur.map((b) => (b.id === id ? { ...b, url, meta: d.meta } : b));
+        const next = cur.map((b) => (b.id === id ? { ...b, url, meta: d.meta, internal: d.internal } : b));
         scheduleSave(next);
         return next;
       });
     }
+    // 실패(4xx/5xx) 시에는 아무것도 덮어쓰지 않는다 — 원본 링크 텍스트가 그대로 남는다.
   }
 
   if (loading) return <p className="gempty">불러오는 중...</p>;
@@ -149,9 +166,7 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
               {b.type === "text" && (
                 readOnly
                   ? <Markdown className="pcv-md" text={b.text ?? ""} />
-                  : <textarea className="pcv-text" value={b.text ?? ""} rows={Math.max(2, (b.text ?? "").split("\n").length)}
-                      placeholder="메모·설계 노트… (마크다운 지원)"
-                      onChange={(e) => patchBlock(b.id, { text: e.target.value })} />
+                  : <CanvasText value={b.text ?? ""} onChange={(v) => patchBlock(b.id, { text: v })} />
               )}
 
               {b.type === "checklist" && (
@@ -178,7 +193,10 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
                 </div>
               )}
 
-              {b.type === "link" && (
+              {b.type === "link" && b.internal && (
+                <InternalUnfurl card={b.internal} />
+              )}
+              {b.type === "link" && !b.internal && (
                 b.meta?.title ? (
                   <a className="pcv-link" href={b.url} target="_blank" rel="noreferrer">
                     {b.meta.thumbnail
@@ -206,5 +224,54 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
         </div>
       )}
     </section>
+  );
+}
+
+/** 캔버스 텍스트 블록 — 컴포저·코멘트와 같은 자동완성(@ · : · #)을 쓴다 (§D). */
+function CanvasText({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const ac = useAutocomplete(value, onChange, ref);
+  return (
+    <div className="pcv-text-wrap">
+      <textarea
+        ref={ref}
+        className="pcv-text"
+        value={value}
+        rows={Math.max(2, value.split("\n").length)}
+        placeholder="메모·설계 노트… (마크다운 · @사람 · #프로젝트 · :이모지)"
+        onChange={(e) => { onChange(e.target.value); setTimeout(ac.sync, 0); }}
+        onClick={ac.sync}
+        onKeyUp={(e) => { if (e.key.startsWith("Arrow")) ac.sync(); }}
+        onKeyDown={(e) => { ac.onKeyDown(e); }}
+      />
+      {ac.menu}
+    </div>
+  );
+}
+
+/** 내부 링크 언퍼 카드 — 제목 + 상태 칩 + 담당 아바타 + 진척% (§E). */
+function InternalUnfurl({ card }: { card: InternalCard }) {
+  const router = useRouter();
+  const open = () => {
+    if (card.kind === "task") openTaskPanel(card.id);
+    else if (card.kind === "decision") openPanel("decision", card.id);
+    else router.push(`/projects/${card.id}`);
+  };
+  const KIND: Record<InternalCard["kind"], string> = { task: "업무", decision: "결정", project: "프로젝트" };
+  return (
+    <button className="iunf" onClick={open}>
+      <span className="iunf-k">{KIND[card.kind]}</span>
+      <span className="iunf-b">
+        <span className="iunf-t">{card.title}</span>
+        <span className="iunf-m">
+          <span className="iunf-chip" style={{ color: `var(${card.statusTone})`, background: `color-mix(in srgb, var(${card.statusTone}) 13%, var(--card))` }}>
+            {card.statusLabel}
+          </span>
+          {card.assigneeName && <span className="iunf-av" aria-hidden="true">{card.assigneeName.slice(0, 1)}</span>}
+          {card.assigneeName && <span className="iunf-by">{card.assigneeName}</span>}
+          {card.progress !== null && <span className="iunf-p num">{card.progress}%</span>}
+        </span>
+      </span>
+    </button>
   );
 }

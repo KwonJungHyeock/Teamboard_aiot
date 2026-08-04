@@ -1,12 +1,13 @@
 "use client";
 
-// 업무 상세 슬라이드 패널 (파트 1) — 우측 480px 슬라이드. AppShell에 1개만 마운트되어
-// 어느 화면에서든 openTaskPanel(id) 로 열린다. 필드 이탈/변경 시 인라인 자동저장(PATCH).
-// URL ?task=id 반영 → 새로고침에도 유지. ESC·바깥 클릭으로 닫힘.
+// 업무 상세 슬라이드 패널 — 전역 우측 패널 규칙(MD-P-2026-006 §B)을 따른다:
+// 폭 420px · Esc 닫기 · 열린 상태에서 좌측 목록 계속 조작(배경 차단 없음) · 스택 깊이 1 ·
+// URL ?panel=task:id 반영. 편집기 규모 때문에 렌더 컴포넌트만 분리돼 있고 셸 규칙은 동일하다.
 import { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "./Markdown";
 import { decTime, type Decision } from "./decision-ui";
 import { uploadImage } from "@/lib/upload";
+import { openPanel } from "@/lib/side-panel";
 import {
   TASK_PANEL_EVENT,
   currentTaskRef,
@@ -274,7 +275,6 @@ export default function TaskDetailPanel() {
 
   return (
     <>
-      <div className="tdp-backdrop" onClick={() => closeTaskPanel()} />
       <aside className="tdp" role="dialog" aria-label="업무 상세">
         <div className="tdp-head">
           <span className="tdp-crumb">
@@ -544,13 +544,13 @@ export default function TaskDetailPanel() {
               <div className="tdp-sec">
                 <div className="tdp-sec-h">관련 결정 <em>({decisions.length})</em></div>
                 {decisions.map((d) => (
-                  <a key={d.id} className={`tdp-dec${d.status === "superseded" ? " sup" : ""}`} href={`/signals?signal=${d.discussionId}`}>
+                  <button key={d.id} className={`tdp-dec${d.status === "superseded" ? " sup" : ""}`} onClick={() => openPanel("decision", d.id)}>
                     <span className={`tdp-dec-led ${d.status === "superseded" ? "sup" : "ok"}`} aria-hidden="true" />
                     <span className="tdp-dec-b">
                       <span className="tdp-dec-t">{d.title}</span>
                       <span className="tdp-dec-m">{d.decidedByName} · <span className="num">{decTime(d.decidedAt)}</span>{d.status === "superseded" ? " · 번복됨" : ""}</span>
                     </span>
-                  </a>
+                  </button>
                 ))}
               </div>
             )}

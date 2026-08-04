@@ -1,12 +1,14 @@
 "use client";
 
-// 시그널 화면 (Phase 6) — SignalPanel(홈과 공유) + SignalThread + 새 시그널.
+// 논의·결정 화면 — SignalPanel(홈과 공유) + 새 논의 폼 + 결정 로그 탭.
+// 스레드는 전역 우측 패널이 연다 (MD-P-2026-006 §B) — 목록은 열린 채로 계속 조작할 수 있다.
 import { useCallback, useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import { toast } from "@/lib/quick";
 import SignalPanel, { type SignalPanelItem } from "./SignalPanel";
-import SignalThread from "./SignalThread";
 import DecisionLog from "./DecisionLog";
+import { SIDE_PANEL_EVENT, currentPanel, openPanel, closePanel } from "@/lib/side-panel";
+import { SIGNAL_CHANGED_EVENT } from "@/lib/collab-events";
 
 export interface ApiSignal {
   id: number;
@@ -214,9 +216,9 @@ export default function SignalsView({ user }: { user: SessionUser }) {
     const sp = new URLSearchParams(window.location.search);
     const q = sp.get("type");
     if (q && ["memo", "decision", "review", "risk"].includes(q)) { setComposerType(q); setComposing(true); }
-    // 알림에서 진입 — ?signal=id 로 해당 스레드 자동 열기
-    const sid = Number(sp.get("signal"));
-    if (Number.isInteger(sid) && sid > 0) setSelectedId(sid);
+    // 진입 링크 — ?panel=signal:id (레거시 ?signal=id 포함) 로 해당 스레드 자동 열기
+    const ref = currentPanel();
+    if (ref?.kind === "signal") setSelectedId(ref.id);
     // 홈 "이번 주 확정된 결정" 링크 — ?tab=decision 으로 결정 로그 탭 진입
     if (sp.get("tab") === "decision") setMainTab("decision");
   }, []);
@@ -241,6 +243,22 @@ export default function SignalsView({ user }: { user: SessionUser }) {
   useEffect(() => {
     setLoading(true);
     load();
+  }, [load]);
+
+  // 전역 패널과 목록 선택 상태를 잇는다 — 패널이 닫히면 선택도 풀린다 (§B).
+  useEffect(() => {
+    const sync = () => {
+      const ref = currentPanel();
+      setSelectedId(ref?.kind === "signal" ? ref.id : null);
+    };
+    window.addEventListener(SIDE_PANEL_EVENT, sync);
+    window.addEventListener("popstate", sync);
+    window.addEventListener(SIGNAL_CHANGED_EVENT, load);
+    return () => {
+      window.removeEventListener(SIDE_PANEL_EVENT, sync);
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener(SIGNAL_CHANGED_EVENT, load);
+    };
   }, [load]);
 
   useEffect(() => {
@@ -346,21 +364,13 @@ export default function SignalsView({ user }: { user: SessionUser }) {
               <SignalPanel
                 items={signals.map((s) => toPanelItem(s, user))}
                 stalledCount={stalledCount}
-                onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
+                onSelect={(id) => { if (selectedId === id) closePanel(); else openPanel("signal", id); }}
                 selectedId={selectedId}
                 onQuickAct={quickAct}
                 busyId={busyId}
               />
             )}
 
-            {selectedId && (
-              <SignalThread
-                signalId={selectedId}
-                user={user}
-                onChanged={load}
-                onClose={() => setSelectedId(null)}
-              />
-            )}
           </>
         )}
       </div>

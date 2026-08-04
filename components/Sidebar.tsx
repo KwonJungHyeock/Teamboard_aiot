@@ -50,6 +50,7 @@ const IC = {
     </>
   ),
   signal: <path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" />,
+  bookmark: <path d="M6 3h12v18l-6-4.5L6 21V3Z" />,
   bell: (
     <>
       <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -261,8 +262,10 @@ export default function Sidebar({
         <NavLink href="/calendar" icon={IC.calendar} label="캘린더" current={cur("/calendar")} />
         {/* 승인 대기 — 사람/에이전트 공간의 유일한 통로. 카운트 배지 */}
         <NavLink href="/inbox" icon={IC.inbox} label="승인 대기" current={cur("/inbox")} count={inboxCount} />
-        {/* 알림 — @멘션·답글·공유 인박스. 미확인 배지 */}
-        <NavLink href="/notifications" icon={IC.bell} label="알림" current={cur("/notifications")} count={notif > 0 ? notif : undefined} />
+        {/* 활동 — @멘션·답글·공유 인박스 (MD-P-2026-006 §G, 구 "알림"). 미확인 배지 */}
+        <NavLink href="/activity" icon={IC.bell} label="활동" current={cur("/activity")} count={notif > 0 ? notif : undefined} />
+        {/* 저장됨 — hover 액션 바에서 담은 항목 */}
+        <NavLink href="/saved" icon={IC.bookmark} label="저장됨" current={cur("/saved")} />
         {/* My Agent — 전 구성원 각자의 에이전트 */}
         <NavLink href="/assistant" icon={IC.bot} label="My Agent" current={cur("/assistant")} />
       </nav>
