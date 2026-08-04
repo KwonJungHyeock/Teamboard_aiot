@@ -8,6 +8,7 @@ import Markdown from "./Markdown";
 import { decTime, type Decision } from "./decision-ui";
 import { uploadImage } from "@/lib/upload";
 import { openPanel } from "@/lib/side-panel";
+import ResourceLinks from "./ResourceLinks";
 import {
   TASK_PANEL_EVENT,
   currentTaskRef,
@@ -537,6 +538,11 @@ export default function TaskDetailPanel() {
                   <Markdown text={descText} />
                 </div>
               )}
+            </div>
+
+            {/* 연결된 리소스 (MD-P-2026-012 §E) — Notion·Figma·GitHub */}
+            <div className="tdp-sec">
+              <ResourceLinks entityType="task" entityId={t.id} canCreateDoc />
             </div>
 
             {/* 관련 결정 — 이 업무에 연결된 결정 (MD-P-2026-004 §E) */}

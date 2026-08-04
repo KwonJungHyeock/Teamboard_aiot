@@ -119,6 +119,13 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
   async function unfurl(id: string, url: string) {
     if (!url.trim()) return;
     patchBlock(id, { url });
+    // Notion 링크는 캔버스에서 붙여넣어도 "연결된 리소스"에 등록한다 (MD-P-2026-012 §C)
+    if (/notion\.(so|site)/.test(url)) {
+      fetch("/api/links", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entityType: "project", entityId: projectId, url }),
+      }).catch(() => {});
+    }
     const res = await fetch("/api/unfurl", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }),
     }).catch(() => null);

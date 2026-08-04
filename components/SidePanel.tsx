@@ -10,6 +10,7 @@ import { DecisionCard, decTime, type Decision } from "./decision-ui";
 import { SIDE_PANEL_EVENT, currentPanel, closePanel, openPanel, type PanelRef } from "@/lib/side-panel";
 import { openTaskPanel } from "@/lib/task-panel";
 import { SIGNAL_CHANGED_EVENT } from "@/lib/collab-events";
+import ResourceLinks from "./ResourceLinks";
 
 const TITLE: Record<string, string> = { signal: "논의", member: "멤버", decision: "결정", task: "업무" };
 
@@ -188,6 +189,9 @@ function DecisionBody({ id }: { id: number }) {
           </ul>
         </div>
       )}
+      <div className="gpanel-sec">
+        <ResourceLinks entityType="decision" entityId={id} />
+      </div>
       <div className="gpanel-sec">
         <h4>원본 논의</h4>
         <ul className="gpanel-list">

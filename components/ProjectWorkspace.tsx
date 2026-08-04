@@ -12,6 +12,7 @@ import TaskBoard from "./TaskBoard";
 import ProjectCanvas from "./ProjectCanvas";
 import DecisionLog from "./DecisionLog";
 import EmptyState from "./EmptyState";
+import ResourceLinks from "./ResourceLinks";
 import { openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
 import { SIDE_PANEL_EVENT, currentPanel, openPanel } from "@/lib/side-panel";
 import { SIGNAL_CHANGED_EVENT } from "@/lib/collab-events";
@@ -72,6 +73,7 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
   const [renaming, setRenaming] = useState(false);
   const [goalPick, setGoalPick] = useState(false);
   const [goals, setGoals] = useState<{ id: number; title: string; level: string; period: string; scope: string }[]>([]);
+  const [linkCount, setLinkCount] = useState(0);
 
   // URL ?tab= 반영 (공유 가능) — 초기 진입 시 읽고, 전환 시 replaceState
   useEffect(() => {
@@ -100,7 +102,13 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
     if (res.ok) setFullTasks((await res.json()).tasks ?? []);
   }, [projectId]);
 
-  useEffect(() => { load(); loadTasks(); }, [load, loadTasks]);
+  // 연결 리소스 수 (§E) — 개요 탭 헤더에 표시
+  const loadLinkCount = useCallback(async () => {
+    const res = await fetch(`/api/links?entityType=project&entityId=${projectId}&skipRefresh=1`).catch(() => null);
+    if (res && res.ok) setLinkCount(((await res.json()).links ?? []).length);
+  }, [projectId]);
+
+  useEffect(() => { load(); loadTasks(); loadLinkCount(); }, [load, loadTasks, loadLinkCount]);
   useEffect(() => {
     const on = () => { load(); loadTasks(); };
     window.addEventListener(TASK_UPDATED_EVENT, on);
@@ -302,6 +310,12 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
                   ))}
                 </ul>
               )}
+            </section>
+
+            <section className="card pws-ov-card wide">
+              <div className="pws-ov-h">연결된 리소스 <span className="num">{linkCount}</span></div>
+              <ResourceLinks entityType="project" entityId={projectId} canCreateDoc
+                onChanged={() => loadLinkCount()} />
             </section>
 
             <section className="card pws-ov-card wide">
