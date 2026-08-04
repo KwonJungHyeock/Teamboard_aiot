@@ -51,6 +51,21 @@ function areaColor(ck: string | null): string {
   }
 }
 
+/**
+ * 바 위 글자색 — 배경(영역색)은 그대로 두고 글자를 대비가 높은 쪽으로 고른다 (MD-P-2026-016 ③).
+ * 실측 대비(흰색 / 차콜 --ink):
+ *   purple #7C5CE0  4.70 / 3.36 → 흰색
+ *   blue   #4B8DF8  3.25 / 4.86 → 차콜
+ *   teal   #0FA79A  2.99 / 5.28 → 차콜
+ *   green  #4C9A6E  3.41 / 4.63 → 차콜
+ *   amber  #D8A22E  2.30 / 6.87 → 차콜
+ *   slate  #98A1B0  2.61 / 6.06 → 차콜
+ * 보라만 배경이 충분히 어두워 흰 글씨가 이긴다.
+ */
+function areaOnColor(ck: string | null): string {
+  return ck === "play" || ck === "purple" ? "#fff" : "var(--ink)";
+}
+
 function NowClock() {
   const [t, setT] = useState("--:--");
   useEffect(() => {
@@ -67,7 +82,7 @@ interface FlatTask {
   id: number; title: string; start: string; end: string; status: string;
   late: boolean; progress: number; assignee: string; areaName: string; areaColorKey: string | null;
 }
-interface Bar { id: string; taskId: number | null; label: string; color: string; late: boolean; startIdx: number; span: number; sub: string }
+interface Bar { id: string; taskId: number | null; label: string; color: string; on: string; late: boolean; startIdx: number; span: number; sub: string }
 interface GLane { key: string; name: string; color: string; bars: Bar[] }
 
 export default function HeroTimeline({
@@ -120,25 +135,27 @@ export default function HeroTimeline({
     if (mode === "summary") {
       return groups.map(([area, tasks]) => {
         const col = areaColor(tasks[0]?.areaColorKey ?? null);
+        const on = areaOnColor(tasks[0]?.areaColorKey ?? null);
         const anyLate = tasks.some((t) => t.late);
         const minS = tasks.reduce((a, t) => (t.start < a ? t.start : a), tasks[0].start);
         const maxE = tasks.reduce((a, t) => (t.end > a ? t.end : a), tasks[0].end);
         const p = place(minS, maxE);
         const avg = Math.round(tasks.reduce((a, t) => a + (t.status === "done" ? 100 : t.progress), 0) / tasks.length);
         // A2: 롤업 바는 항상 영역색. 지연은 우측 코랄 캡으로만 표기(영역 정체성 유지).
-        const bars: Bar[] = p ? [{ id: `g${area}`, taskId: null, label: `${tasks.length}개 · 평균 ${avg}%`, color: col, late: anyLate, startIdx: p.startIdx, span: p.span, sub: "" }] : [];
+        const bars: Bar[] = p ? [{ id: `g${area}`, taskId: null, label: `${tasks.length}개 · 평균 ${avg}%`, color: col, on, late: anyLate, startIdx: p.startIdx, span: p.span, sub: "" }] : [];
         return { key: area, name: area, color: col, bars };
       }).filter((g) => g.bars.length > 0);
     }
     return groups.map(([area, tasks]) => {
       const col = areaColor(tasks[0]?.areaColorKey ?? null);
+      const on = areaOnColor(tasks[0]?.areaColorKey ?? null);
       const bars: Bar[] = [];
       for (const t of tasks) {
         const p = place(t.start, t.end);
         if (!p) continue;
         const tplus = Math.max(0, diffDays(today, t.start));
         // A2/A3: 영역색 유지 + 지연은 코랄 캡. 좁은 바 텍스트는 CSS 컨테이너 쿼리로 숨김.
-        bars.push({ id: `t${t.id}`, taskId: t.id, label: `#${t.id} ${t.title}`, color: col, late: t.late, startIdx: p.startIdx, span: p.span, sub: `${t.assignee} · ${t.progress}%` });
+        bars.push({ id: `t${t.id}`, taskId: t.id, label: `#${t.id} ${t.title}`, color: col, on, late: t.late, startIdx: p.startIdx, span: p.span, sub: `${t.assignee} · ${t.progress}%` });
       }
       return { key: area, name: area, color: col, bars };
     }).filter((g) => g.bars.length > 0);
@@ -197,9 +214,7 @@ export default function HeroTimeline({
                   <div className="gt-line" key={b.id}>
                     <button
                       className={`gt2-bar${b.late ? " late" : ""}`}
-                      // 흰 라벨이 얹히는 면이라 영역 색을 그대로 쓰면 대비가 3.0~3.7:1에 그친다.
-                      // 색상(영역 식별)은 유지하고 명도만 낮춰 4.9:1 이상으로 올린다 (MD-P-2026-013).
-                      style={{ left: `${pct(b.startIdx)}%`, width: `calc(${(b.span / n) * 100}% - 3px)`, background: `color-mix(in srgb, ${b.color} 65%, #101720)` }}
+                      style={{ left: `${pct(b.startIdx)}%`, width: `calc(${(b.span / n) * 100}% - 3px)`, background: b.color, color: b.on }}
                       onClick={b.taskId ? () => openTaskPanel(b.taskId as number) : undefined}
                       disabled={!b.taskId}
                       title={`${b.label}${b.sub ? ` · ${b.sub}` : ""}${b.late ? " · ⚠ 지연" : ""}`}

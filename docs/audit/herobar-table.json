@@ -1,0 +1,50 @@
+[
+ {
+  "key": "edu",
+  "name": "EDUINO(파랑)",
+  "token": "--blue",
+  "bg": "rgb(75, 141, 248)",
+  "white": "rgb(255, 255, 255)",
+  "picked": "rgb(28, 35, 46)"
+ },
+ {
+  "key": "play",
+  "name": "Playino(보라)",
+  "token": "--purple",
+  "bg": "rgb(124, 92, 224)",
+  "white": "rgb(255, 255, 255)",
+  "picked": "rgb(255, 255, 255)"
+ },
+ {
+  "key": "train",
+  "name": "추론(틸)",
+  "token": "--teal",
+  "bg": "rgb(15, 167, 154)",
+  "white": "rgb(255, 255, 255)",
+  "picked": "rgb(28, 35, 46)"
+ },
+ {
+  "key": "green",
+  "name": "초록",
+  "token": "--green",
+  "bg": "rgb(76, 154, 110)",
+  "white": "rgb(255, 255, 255)",
+  "picked": "rgb(28, 35, 46)"
+ },
+ {
+  "key": "amber",
+  "name": "앰버",
+  "token": "--amber",
+  "bg": "rgb(216, 162, 46)",
+  "white": "rgb(255, 255, 255)",
+  "picked": "rgb(28, 35, 46)"
+ },
+ {
+  "key": "team",
+  "name": "팀(슬레이트)",
+  "token": "--slate",
+  "bg": "rgb(152, 161, 176)",
+  "white": "rgb(255, 255, 255)",
+  "picked": "rgb(28, 35, 46)"
+ }
+]

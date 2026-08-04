@@ -914,7 +914,7 @@ body.meeting-on .side { display: none !important; }
 .rv-add { display: flex; gap: 8px; padding-top: 4px; }
 .rv-add input { flex: 1; max-width: 380px; }
 .rv-err { display: block; font-size: var(--fs-badge); color: var(--coral-text); margin-top: 4px; }
-.rv-zoom { position: fixed; inset: 0; z-index: 90; background: var(--scrim); display: grid; place-items: center; padding: 40px; cursor: zoom-out; }
+.rv-zoom { position: fixed; inset: 0; z-index: 90; background: var(--scrim-strong); display: grid; place-items: center; padding: 40px; cursor: zoom-out; }
 .rv-zoom img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
 /* ── 에이전트 FAB (우측 하단) ── */

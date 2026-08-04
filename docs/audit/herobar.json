@@ -1,0 +1,123 @@
+[
+ {
+  "mode": "요약",
+  "bg": "rgb(75, 141, 248)",
+  "late": true,
+  "sel": ".gt2-bar-t",
+  "color": "rgb(28, 35, 46)",
+  "opacity": "1",
+  "size": 11.5,
+  "weight": "700",
+  "text": "7개 · 평균 20%"
+ },
+ {
+  "mode": "요약",
+  "bg": "rgb(75, 141, 248)",
+  "late": true,
+  "sel": ".gt2-warn",
+  "color": "rgb(28, 35, 46)",
+  "opacity": "1",
+  "size": 11,
+  "weight": "400",
+  "text": "⚠"
+ },
+ {
+  "mode": "요약",
+  "bg": "rgb(15, 167, 154)",
+  "late": false,
+  "sel": ".gt2-bar-t",
+  "color": "rgb(28, 35, 46)",
+  "opacity": "1",
+  "size": 11.5,
+  "weight": "700",
+  "text": "1개 · 평균 50%"
+ },
+ {
+  "mode": "상세",
+  "bg": "rgb(75, 141, 248)",
+  "late": false,
+  "sel": ".gt2-bar-t",
+  "color": "rgb(28, 35, 46)",
+  "opacity": "1",
+  "size": 11.5,
+  "weight": "700",
+  "text": "#72 [플랫폼] 플랫폼 구조 기획(피드백,"
+ },
+ {
+  "mode": "상세",
+  "bg": "rgb(75, 141, 248)",
+  "late": false,
+  "sel": ".gt2-bar-s",
+  "color": "rgb(28, 35, 46)",
+  "opacity": "1",
+  "size": 10.5,
+  "weight": "500",
+  "text": "권정혁 · 10%"
+ },
+ {
+  "mode": "상세",
+  "bg": "rgb(75, 141, 248)",
+  "late": false,
+  "sel": ".gt2-bar-t",
+  "color": "rgb(28, 35, 46)",
+  "opacity": "1",
+  "size": 11.5,
+  "weight": "700",
+  "text": "#84 [플랫폼] Playino 신제품 구성"
+ },
+ {
+  "mode": "상세",
+  "bg": "rgb(75, 141, 248)",
+  "late": false,
+  "sel": ".gt2-bar-s",
+  "color": "rgb(28, 35, 46)",
+  "opacity": "1",
+  "size": 10.5,
+  "weight": "500",
+  "text": "권정혁 · 0%"
+ },
+ {
+  "mode": "상세",
+  "bg": "rgb(75, 141, 248)",
+  "late": false,
+  "sel": ".gt2-bar-t",
+  "color": "rgb(28, 35, 46)",
+  "opacity": "1",
+  "size": 11.5,
+  "weight": "700",
+  "text": "#74 [플랫폼]벤치마킹"
+ },
+ {
+  "mode": "상세",
+  "bg": "rgb(75, 141, 248)",
+  "late": false,
+  "sel": ".gt2-bar-s",
+  "color": "rgb(28, 35, 46)",
+  "opacity": "1",
+  "size": 10.5,
+  "weight": "500",
+  "text": "박주희 · 30%"
+ },
+ {
+  "mode": "상세",
+  "bg": "rgb(15, 167, 154)",
+  "late": false,
+  "sel": ".gt2-bar-t",
+  "color": "rgb(28, 35, 46)",
+  "opacity": "1",
+  "size": 11.5,
+  "weight": "700",
+  "text": "#94 [현장실습] 하계 현장실습 진행"
+ },
+ {
+  "mode": "상세",
+  "bg": "rgb(15, 167, 154)",
+  "late": false,
+  "sel": ".gt2-bar-s",
+  "color": "rgb(28, 35, 46)",
+  "opacity": "1",
+  "size": 10.5,
+  "weight": "500",
+  "text": "권정혁 · 50%"
+ }
+]

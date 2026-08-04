@@ -1587,10 +1587,10 @@
 .hv .gt2 .gt-bgcol.wknd { background: rgba(255,255,255,.02); }
 .hv .gt2 .gt-nowline { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--coral-l); box-shadow: 0 0 10px var(--coral-l); z-index: 3; }
 .hv .gt2 .gt-line { position: relative; height: 28px; }
-.hv .gt2-bar { position: absolute; top: 3px; height: 22px; border-radius: 6px; border: 0; display: flex; align-items: center; gap: 7px; padding: 0 9px; cursor: pointer; overflow: hidden; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.hv .gt2-bar { position: absolute; top: 3px; height: 22px; border-radius: 6px; border: 0; display: flex; align-items: center; gap: 7px; padding: 0 9px; cursor: pointer; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
 .hv .gt2-bar:disabled { cursor: default; }
 .hv .gt2-bar-t { font-size: 11.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hv .gt2-bar-s { font-family: var(--f-d); font-size: 10.5px; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hv .gt2-bar-s { font-family: var(--f-d); font-size: 10.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hv .gt2-bar.late { box-shadow: 0 0 0 1px rgba(255,122,126,.5), 0 1px 3px rgba(0,0,0,.3); }
 .hv .gt2-empty { grid-column: 1 / -1; padding: 30px 16px; text-align: center; color: #78818F; font-size: 13px; }
 .hv .gt2-foot { display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.07); }
