@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
 import GoalProgress from "./GoalProgress";
+import DecisionLog from "./DecisionLog";
 
 interface Detail {
   project: {
@@ -34,6 +35,7 @@ const TABS = [
   ["overview", "개요"],
   ["goals", "목표"],
   ["tasks", "업무"],
+  ["decisions", "결정 로그"],
   ["artifacts", "자료"],
 ] as const;
 
@@ -301,6 +303,9 @@ export default function ProjectDetailView({
             emptyText="이 프로젝트의 업무가 없습니다."
           />
         )}
+
+        {/* 결정 로그 — 논의 해결 시 자동 기록 (MD-P-2026-004 §C) */}
+        {tab === "decisions" && <DecisionLog projectId={projectId} />}
 
         {tab === "artifacts" && (
           <section className="card">

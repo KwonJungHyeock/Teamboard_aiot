@@ -6,6 +6,7 @@ import type { SessionUser } from "@/lib/types";
 import { toast } from "@/lib/quick";
 import SignalPanel, { type SignalPanelItem } from "./SignalPanel";
 import SignalThread from "./SignalThread";
+import DecisionLog from "./DecisionLog";
 
 export interface ApiSignal {
   id: number;
@@ -207,6 +208,8 @@ export default function SignalsView({ user }: { user: SessionUser }) {
   // "+ 새로 만들기 > 시그널/메모" 진입 시 작성 폼 유형 프리셋 (파트 4)
   const [composerType, setComposerType] = useState("memo");
   const [composing, setComposing] = useState(false);
+  // 상단 탭 — 논의(스레드) / 결정(결정 로그, MD-P-2026-004 §C)
+  const [mainTab, setMainTab] = useState<"discussion" | "decision">("discussion");
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const q = sp.get("type");
@@ -214,6 +217,8 @@ export default function SignalsView({ user }: { user: SessionUser }) {
     // 알림에서 진입 — ?signal=id 로 해당 스레드 자동 열기
     const sid = Number(sp.get("signal"));
     if (Number.isInteger(sid) && sid > 0) setSelectedId(sid);
+    // 홈 "이번 주 확정된 결정" 링크 — ?tab=decision 으로 결정 로그 탭 진입
+    if (sp.get("tab") === "decision") setMainTab("decision");
   }, []);
 
   const load = useCallback(async () => {
@@ -297,50 +302,66 @@ export default function SignalsView({ user }: { user: SessionUser }) {
             <p>결정 · 확인 요청 · 메모 · 리스크. 리스크는 상단 고정, 정체는 임계값 기준입니다.</p>
           </div>
           <div className="head-r">
-            <div className="seg" role="group" aria-label="종결 보기">
-              <button aria-pressed={!showClosed} onClick={() => setShowClosed(false)}>
-                열림
-              </button>
-              <button aria-pressed={showClosed} onClick={() => setShowClosed(true)}>
-                종결
-              </button>
-            </div>
-            <button className="newbtn sig-newbtn" onClick={() => setComposing((v) => !v)} aria-expanded={composing}>
-              ＋ 새 논의·결정
-            </button>
+            {mainTab === "discussion" && (
+              <>
+                <div className="seg" role="group" aria-label="종결 보기">
+                  <button aria-pressed={!showClosed} onClick={() => setShowClosed(false)}>
+                    열림
+                  </button>
+                  <button aria-pressed={showClosed} onClick={() => setShowClosed(true)}>
+                    종결
+                  </button>
+                </div>
+                <button className="newbtn sig-newbtn" onClick={() => setComposing((v) => !v)} aria-expanded={composing}>
+                  ＋ 새 논의·결정
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* 새 논의·결정 — 상단 확대 폼(빠른 생성 톤). 버튼으로 열고 닫는다. */}
-        {composing && (
-          <NewSignalForm
-            actors={actors}
-            initialType={composerType}
-            onDone={() => { setComposing(false); load(); }}
-            onCancel={() => setComposing(false)}
-          />
-        )}
+        {/* 상단 탭 — 논의 / 결정 로그 */}
+        <div className="seg sig-tabs" role="group" aria-label="보기">
+          <button aria-pressed={mainTab === "discussion"} onClick={() => setMainTab("discussion")}>논의</button>
+          <button aria-pressed={mainTab === "decision"} onClick={() => setMainTab("decision")}>결정</button>
+        </div>
 
-        {loading && <p className="gempty">불러오는 중...</p>}
-        {error && <p className="gerr">{error}</p>}
-        {!loading && (
-          <SignalPanel
-            items={signals.map((s) => toPanelItem(s, user))}
-            stalledCount={stalledCount}
-            onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
-            selectedId={selectedId}
-            onQuickAct={quickAct}
-            busyId={busyId}
-          />
-        )}
+        {mainTab === "decision" ? (
+          <DecisionLog />
+        ) : (
+          <>
+            {/* 새 논의·결정 — 상단 확대 폼(빠른 생성 톤). 버튼으로 열고 닫는다. */}
+            {composing && (
+              <NewSignalForm
+                actors={actors}
+                initialType={composerType}
+                onDone={() => { setComposing(false); load(); }}
+                onCancel={() => setComposing(false)}
+              />
+            )}
 
-        {selectedId && (
-          <SignalThread
-            signalId={selectedId}
-            user={user}
-            onChanged={load}
-            onClose={() => setSelectedId(null)}
-          />
+            {loading && <p className="gempty">불러오는 중...</p>}
+            {error && <p className="gerr">{error}</p>}
+            {!loading && (
+              <SignalPanel
+                items={signals.map((s) => toPanelItem(s, user))}
+                stalledCount={stalledCount}
+                onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
+                selectedId={selectedId}
+                onQuickAct={quickAct}
+                busyId={busyId}
+              />
+            )}
+
+            {selectedId && (
+              <SignalThread
+                signalId={selectedId}
+                user={user}
+                onChanged={load}
+                onClose={() => setSelectedId(null)}
+              />
+            )}
+          </>
         )}
       </div>
     </div>

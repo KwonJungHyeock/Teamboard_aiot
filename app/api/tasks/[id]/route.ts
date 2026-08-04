@@ -6,6 +6,7 @@ import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { recomputeGoalChain } from "@/lib/goals";
 import { jsonError } from "@/lib/api";
+import { decisionsForTask } from "@/lib/decisions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -299,6 +300,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         blockedBy: t.blocked_by,
       },
       activity,
+      // 양방향 링크 — 이 업무에 연결된 결정 (MD-P-2026-004 §E)
+      decisions: await decisionsForTask(id),
     });
   } catch (error) {
     return jsonError(error);

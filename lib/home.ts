@@ -4,6 +4,7 @@ import { query, queryOne, getInboxCount } from "./db";
 import { getCurrentMonthGoals } from "./goals";
 import { getDecidedStaleDays, signalVisibilityClause } from "./signals";
 import { creditState } from "./agent";
+import { decisionsThisWeek } from "./decisions";
 
 const TZ_OFFSET = "+09:00"; // Asia/Seoul — 팀 기준 시간대
 
@@ -159,6 +160,8 @@ export interface HomeSummary {
     ageDays: number;
     alert: boolean; // 14일 초과
   }[];
+  /** 이번 주 확정된 결정 수 — "결정 대기" 모듈 하단 한 줄 링크 (MD-P-2026-004 §D) */
+  decisionsThisWeek: number;
   myFocus: {
     key: string;
     kind: "mention" | "approval" | "task";
@@ -891,6 +894,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     upcoming,
     decisionsWaiting,
     myFocus,
+    decisionsThisWeek: await decisionsThisWeek(weekStart),
     agent: { status: myAgentStatus, spentTokens: credit.spent, won: agentWon },
   };
 }

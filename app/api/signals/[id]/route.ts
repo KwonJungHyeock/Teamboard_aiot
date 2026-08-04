@@ -9,6 +9,7 @@ import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
 import { reactionsFor } from "@/lib/reactions";
+import { decisionsForDiscussion } from "@/lib/decisions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -149,6 +150,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         votes: voteOf("comment", c.id),
         reactions: replyReactions.get(c.id) ?? [],
       })),
+      // 이 논의에서 확정된 결정 — 스레드 하단 고정 카드 (MD-P-2026-004 §B-2)
+      decisions: await decisionsForDiscussion(signal.id),
     });
   } catch (error) {
     return jsonError(error);

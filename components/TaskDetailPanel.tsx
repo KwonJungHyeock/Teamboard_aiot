@@ -5,6 +5,7 @@
 // URL ?task=id 반영 → 새로고침에도 유지. ESC·바깥 클릭으로 닫힘.
 import { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "./Markdown";
+import { decTime, type Decision } from "./decision-ui";
 import { uploadImage } from "@/lib/upload";
 import {
   TASK_PANEL_EVENT,
@@ -57,6 +58,7 @@ export default function TaskDetailPanel() {
   const [sel, setSel] = useState<Selectors | null>(null);
   const [comments, setComments] = useState<Cmt[]>([]);
   const [activity, setActivity] = useState<Act[]>([]);
+  const [decisions, setDecisions] = useState<Decision[]>([]); // 관련 결정 (MD-P-2026-004 §E)
   const [save, setSave] = useState<"idle" | "saving" | "saved">("idle");
   const [err, setErr] = useState("");
   const [newComment, setNewComment] = useState("");
@@ -104,6 +106,7 @@ export default function TaskDetailPanel() {
     setBlockReason(data.task.blockedReason ?? "");
     setBlockErr("");
     setActivity(data.activity ?? []);
+    setDecisions(data.decisions ?? []);
   }, []);
   const loadComments = useCallback(async (id: number) => {
     const res = await fetch(`/api/tasks/${id}/comments`);
@@ -535,6 +538,22 @@ export default function TaskDetailPanel() {
                 </div>
               )}
             </div>
+
+            {/* 관련 결정 — 이 업무에 연결된 결정 (MD-P-2026-004 §E) */}
+            {decisions.length > 0 && (
+              <div className="tdp-sec">
+                <div className="tdp-sec-h">관련 결정 <em>({decisions.length})</em></div>
+                {decisions.map((d) => (
+                  <a key={d.id} className={`tdp-dec${d.status === "superseded" ? " sup" : ""}`} href={`/signals?signal=${d.discussionId}`}>
+                    <span className={`tdp-dec-led ${d.status === "superseded" ? "sup" : "ok"}`} aria-hidden="true" />
+                    <span className="tdp-dec-b">
+                      <span className="tdp-dec-t">{d.title}</span>
+                      <span className="tdp-dec-m">{d.decidedByName} · <span className="num">{decTime(d.decidedAt)}</span>{d.status === "superseded" ? " · 번복됨" : ""}</span>
+                    </span>
+                  </a>
+                ))}
+              </div>
+            )}
 
             {/* 활동 타임라인 */}
             <div className="tdp-sec">

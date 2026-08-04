@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import { VoteButtons, ImageThumb } from "./huddle-ui";
 import { Avatar, ReactionChips, MentionComposer, renderRich, relTime, type ReactionSummary, type Person } from "./collab-ui";
+import { DecisionConfirm, DecisionCard, draftRationale, type Decision } from "./decision-ui";
 
 interface Votes { up: number; down: number; mine: string | null }
 interface ThreadSignal {
@@ -74,6 +75,9 @@ export default function SignalThread({
   const [taskForm, setTaskForm] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDue, setTaskDue] = useState("");
+  // 결정 로그 (MD-P-2026-004) — 확정 팝오버 + 이 논의에서 확정된 결정들
+  const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [confirming, setConfirming] = useState<{ supersedesId?: number; defaultTitle: string } | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/signals/${signalId}`);
@@ -81,6 +85,7 @@ export default function SignalThread({
     if (!res.ok) { setError(data.error ?? "조회 실패"); setSignal(null); return; }
     setSignal(data.signal);
     setComments(data.comments ?? []);
+    setDecisions(data.decisions ?? []);
     setTaskTitle(data.signal.title);
     setError("");
   }, [signalId]);
@@ -134,13 +139,17 @@ export default function SignalThread({
   const isLead = user.role === "lead";
   const led = STATUS_LED[signal.status] ?? { label: signal.status, tone: "open" };
 
-  // "✓ 해결로 표시" — 타입·권한에 맞는 종결 전이 하나로. 없으면 숨김.
-  let resolveAct: { label: string; run: () => void } | null = null;
-  if (active) {
-    if (signal.type === "decision" && (isAuthor || isLead)) resolveAct = { label: "✓ 결정으로 표시", run: () => act({ status: "decided" }) };
-    else if (signal.type === "review" && (isTarget || isLead)) resolveAct = { label: "✓ 확인 완료", run: () => act({ action: "confirmReview" }) };
-    else if (signal.type === "memo" || signal.type === "risk") resolveAct = { label: "✓ 해결로 표시", run: () => act({ status: "resolved" }) };
-  }
+  // "✓ 해결로 표시" — 타입·권한에 맞을 때만. 클릭하면 결정 확정 팝오버가 뜨고(화면 이동 없음),
+  // 확정 시 결정 로그에 자동 기록된다 (MD-P-2026-004 §B).
+  const canResolve = active && (
+    signal.type === "decision" ? (isAuthor || isLead)
+      : signal.type === "review" ? (isTarget || isLead)
+        : signal.type === "memo" || signal.type === "risk"
+  );
+  const resolveLabel = signal.type === "decision" ? "✓ 결정으로 표시"
+    : signal.type === "review" ? "✓ 확인 완료" : "✓ 해결로 표시";
+  // 근거 초안 — 마지막 3개 답글 요약(사용자가 수정 가능)
+  const rationaleDraft = draftRationale(comments.map((c) => ({ authorName: c.authorName, body: c.body })));
 
   return (
     <section className={`card sthread ${signal.agent ? "agline" : ""}`} aria-label="논의 스레드">
@@ -173,7 +182,12 @@ export default function SignalThread({
 
       {/* 액션 — 해결로 표시(1차) + 생명주기(2차) */}
       <div className="sacts">
-        {resolveAct && <button className="btn-brand sresolve" disabled={busy} onClick={resolveAct.run}>{resolveAct.label}</button>}
+        {canResolve && (
+          <button className="btn-brand sresolve" disabled={busy}
+            onClick={() => setConfirming({ defaultTitle: signal.title })}>
+            {resolveLabel}
+          </button>
+        )}
         {signal.scope !== "huddle" && isAuthor && !signal.huddledAt && (
           <button className="gbtn" disabled={busy} onClick={() => act({ action: "toHuddle" })}>허들로 보내기</button>
         )}
@@ -226,6 +240,32 @@ export default function SignalThread({
         {/* 상시 하단 컴포저 */}
         <MentionComposer people={people} value={draft} onChange={setDraft} onSubmit={send} busy={busy} />
       </div>
+
+      {/* 확정된 결정 — 스레드 하단 고정 (MD-P-2026-004 §B-2·E) */}
+      {decisions.length > 0 && (
+        <div className="dpin">
+          <div className="dpin-h">
+            <h3>확정된 결정</h3>
+            <span className="sub num">{decisions.length}</span>
+          </div>
+          {decisions.map((d) => (
+            <DecisionCard key={d.id} decision={d}
+              onSupersede={(dec) => setConfirming({ supersedesId: dec.id, defaultTitle: dec.title })} />
+          ))}
+        </div>
+      )}
+
+      {/* 결정 확정·번복 팝오버 */}
+      {confirming && (
+        <DecisionConfirm
+          discussionId={signalId}
+          defaultTitle={confirming.defaultTitle}
+          rationaleDraft={rationaleDraft}
+          supersedesId={confirming.supersedesId}
+          onCancel={() => setConfirming(null)}
+          onDone={() => { setConfirming(null); load(); onChanged(); }}
+        />
+      )}
     </section>
   );
 }

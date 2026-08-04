@@ -1300,3 +1300,108 @@ body.rail .side .mk-logo { margin: 0 auto; }
   background: url(/brand/eduino_mark.png) center / contain no-repeat; opacity: .08; z-index: 0; pointer-events: none;
 }
 .empty-state > * { position: relative; z-index: 1; }
+
+/* ============================================================
+   결정 로그 (MD-P-2026-004) — 확정 팝오버 · 고정 결정 카드 · 로그 목록.
+   결정 = green LED / 번복 = slate 취소선. 삭제 없음, 번복만.
+   ============================================================ */
+/* 확정 팝오버 */
+.dcf-bg { position: fixed; inset: 0; z-index: 70; background: rgba(28,35,46,.42); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.dcf { width: min(520px, 96vw); max-height: 88vh; overflow-y: auto; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--e3); padding: 18px; }
+.dcf-h { display: flex; align-items: center; margin-bottom: 14px; }
+.dcf-h b { font-size: 16px; font-weight: 800; letter-spacing: -.01em; }
+.dcf-x { margin-left: auto; width: 26px; height: 26px; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 7px; font-size: 14px; }
+.dcf-x:hover { background: color-mix(in srgb, var(--muted) 12%, var(--card)); color: var(--ink); }
+.dcf-f { display: block; margin-bottom: 14px; }
+.dcf-f > span { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+.dcf-f > span em { font-style: normal; font-weight: 500; font-size: 11.5px; color: var(--muted); margin-left: 6px; }
+.dcf-f > span em.req { color: var(--coral-text); }
+.dcf-title, .dcf-rat { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--ink); background: var(--card); }
+.dcf-title:focus, .dcf-rat:focus { outline: 2px solid var(--blue); outline-offset: -1px; border-color: transparent; }
+.dcf-rat { resize: vertical; line-height: 1.6; }
+.dcf-tasks { max-height: 150px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+.dcf-task { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 7px; font-size: 12.5px; color: var(--ink); cursor: pointer; }
+.dcf-task:hover { background: color-mix(in srgb, var(--muted) 8%, var(--card)); }
+.dcf-task.on { background: color-mix(in srgb, var(--blue) 10%, var(--card)); }
+.dcf-task .num { color: var(--muted); font-size: 11.5px; flex: 0 0 auto; }
+.dcf-task input { width: 15px; height: 15px; accent-color: var(--brand); flex: 0 0 15px; }
+.dcf-none { font-size: 12.5px; color: var(--muted); padding: 6px 7px; }
+.dcf-err { margin: 0 0 10px; font-size: 12.5px; color: var(--coral-text); }
+.dcf-foot { display: flex; align-items: center; gap: 8px; }
+.dcf-note { flex: 1; font-size: 11.5px; color: var(--muted); }
+
+/* 스레드 하단 고정 결정 카드 */
+.dpin { margin-top: 16px; border-top: 1px solid var(--grid-line); padding-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.dpin-h { display: flex; align-items: baseline; gap: 8px; }
+.dpin-h h3 { font-size: 14px; font-weight: 800; margin: 0; }
+.dpin-h .sub { font-size: 12px; color: var(--muted); }
+.dcard { border: 1px solid color-mix(in srgb, var(--green) 34%, var(--card)); background: color-mix(in srgb, var(--green) 7%, var(--card)); border-radius: 13px; padding: 13px 15px; }
+.dcard.sup { border-color: var(--line); background: color-mix(in srgb, var(--muted) 6%, var(--card)); }
+.dcard-top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.dcard-led { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
+.dcard-led.ok { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent); }
+.dcard-led.sup { background: var(--slate); }
+.dcard-k { font-size: 11.5px; font-weight: 800; letter-spacing: .04em; color: var(--green-text); }
+.dcard.sup .dcard-k { color: var(--muted); }
+.dcard-t { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+.dcard-title { margin: 0 0 5px; font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.45; }
+.dcard.sup .dcard-title { text-decoration: line-through; color: var(--muted); }
+.dcard-rat { margin: 0 0 9px; font-size: 13px; color: var(--ink-soft); line-height: 1.6; white-space: pre-wrap; }
+.dcard-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dcard-by { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.dcard-chip { font-size: 11.5px; color: var(--ink-soft); background: color-mix(in srgb, var(--muted) 12%, var(--card)); border-radius: 999px; padding: 2px 9px; }
+.dcard-sup { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); }
+.dcard-act { margin-left: auto; height: 26px; padding: 0 11px; border: 1px solid var(--line); background: var(--card); border-radius: 8px; font-size: 12px; font-family: inherit; color: var(--ink-soft); cursor: pointer; }
+.dcard-act:hover { border-color: var(--coral); color: var(--coral-text); }
+
+/* 결정 로그 목록 */
+.dlog { padding: 0; overflow: hidden; }
+.dlog-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--grid-line); }
+.dlog-q { flex: 1 1 180px; min-width: 150px; height: 34px; border: 1px solid var(--line); border-radius: 9px; padding: 0 11px; font-family: inherit; font-size: 13px; color: var(--ink); background: var(--card); }
+/* 전역 select{width:100%}·input 폭을 눌러 한 줄 인라인 필터로 유지 */
+.dlog-bar select { width: auto; flex: 0 0 auto; max-width: 160px; height: 34px; border: 1px solid var(--line); border-radius: 9px; padding: 0 8px; font-family: inherit; font-size: 12.5px; color: var(--ink); background: var(--card); }
+.dlog-bar input[type="date"] { width: auto; flex: 0 0 auto; height: 34px; border: 1px solid var(--line); border-radius: 9px; padding: 0 8px; font-family: inherit; font-size: 12.5px; color: var(--ink); background: var(--card); }
+.dlog-tilde { color: var(--muted); font-size: 12px; }
+.dlog-reset { height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; background: transparent; font-family: inherit; font-size: 12.5px; color: var(--ink-soft); cursor: pointer; }
+.dlog-reset:hover { border-color: var(--muted); color: var(--ink); }
+.dlist { display: flex; flex-direction: column; }
+.drow { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-bottom: 1px solid var(--hair); }
+.drow:last-child { border-bottom: 0; }
+.drow:hover { background: color-mix(in srgb, var(--muted) 4%, transparent); }
+.drow-led { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; margin-top: 6px; }
+.drow-led.ok { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent); }
+.drow-led.sup { background: var(--slate); }
+.drow-b { flex: 1; min-width: 0; }
+.drow-h { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.drow-t { margin: 0; font-size: 14.5px; font-weight: 700; color: var(--ink); line-height: 1.45; }
+.drow.sup .drow-t { text-decoration: line-through; color: var(--muted); }
+.drow-sup { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); }
+.drow-rat { margin: 4px 0 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.55; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: pre-wrap; }
+.drow-meta { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-top: 8px; }
+.drow-chip { font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 2px 9px; }
+.drow-av { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 800; background: color-mix(in srgb, var(--play) 20%, var(--card)); color: var(--play-text); }
+.drow-by { font-size: 12px; color: var(--ink); font-weight: 600; }
+.drow-time, .drow-tasks { font-size: 11.5px; color: var(--muted); }
+.drow-link { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--edu-text); text-decoration: none; }
+.drow-link:hover { text-decoration: underline; }
+
+/* 논의·결정 상단 탭 */
+.hv .sig-tabs { margin-bottom: 14px; }
+
+/* 홈 — 이번 주 확정된 결정 한 줄 링크 */
+.hv .dw-week { display: block; margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--hair); font-size: 12.5px; color: var(--ink-soft); text-decoration: none; }
+.hv .dw-week:hover { color: var(--ink); }
+.hv .dw-week b { color: var(--green-text); font-weight: 800; }
+
+/* 업무 상세 — 관련 결정 */
+.tdp-dec { display: flex; gap: 9px; align-items: flex-start; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; text-decoration: none; background: color-mix(in srgb, var(--green) 5%, var(--card)); }
+.tdp-dec:hover { border-color: color-mix(in srgb, var(--green) 40%, var(--card)); }
+.tdp-dec.sup { background: color-mix(in srgb, var(--muted) 6%, var(--card)); }
+.tdp-dec-led { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; margin-top: 5px; }
+.tdp-dec-led.ok { background: var(--green); }
+.tdp-dec-led.sup { background: var(--slate); }
+.tdp-dec-b { flex: 1; min-width: 0; }
+.tdp-dec-t { display: block; font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.45; }
+.tdp-dec.sup .tdp-dec-t { text-decoration: line-through; color: var(--muted); }
+.tdp-dec-m { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+@media (prefers-reduced-motion: reduce) { .dcf-bg { backdrop-filter: none; } }

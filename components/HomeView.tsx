@@ -107,7 +107,7 @@ export default function HomeView({
 
           {/* Row3 — 결정 대기 / 나의 초점 */}
           <div className="hrow r13">
-            <DecisionsWaiting items={summary.decisionsWaiting} />
+            <DecisionsWaiting items={summary.decisionsWaiting} decidedThisWeek={summary.decisionsThisWeek} />
             <MyFocus items={summary.myFocus} agent={summary.agent} />
           </div>
         </div>
@@ -207,7 +207,7 @@ function Upcoming({ items }: { items: HomeSummary["upcoming"] }) {
   );
 }
 
-function DecisionsWaiting({ items }: { items: HomeSummary["decisionsWaiting"] }) {
+function DecisionsWaiting({ items, decidedThisWeek }: { items: HomeSummary["decisionsWaiting"]; decidedThisWeek: number }) {
   return (
     <section className="tile mod" aria-label="결정 대기">
       <div className="th"><h3>결정 대기</h3><span className="m">논의중 {items.length}</span></div>
@@ -227,6 +227,10 @@ function DecisionsWaiting({ items }: { items: HomeSummary["decisionsWaiting"] })
           ))}
         </div>
       )}
+      {/* 이번 주 확정된 결정 — 카운터 아님, 한 줄 링크 (MD-P-2026-004 §D) */}
+      <Link className="dw-week" href="/signals?tab=decision">
+        이번 주 확정된 결정 <b className="num">{decidedThisWeek}</b>건 →
+      </Link>
     </section>
   );
 }
