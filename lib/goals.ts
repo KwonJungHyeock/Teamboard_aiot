@@ -7,6 +7,7 @@
 //   재계산 트리거: 업무 done/dropped 전환, 목표-업무 연결 추가·해제 → recomputeGoalChain.
 import { query, queryOne } from "./db";
 import type { GoalPeriodType } from "./types";
+import { projectProgressForGoal } from "./projects";
 
 export interface GoalNode {
   id: number;
@@ -108,6 +109,14 @@ export async function recomputeGoal(goalId: number): Promise<number | null> {
     return g.progress === null ? null : Math.round(Number(g.progress));
   }
 
+  // MD-P-2026-005 §E — 이 목표에 연결된 프로젝트가 있으면 프로젝트 진척 평균을 우선 사용.
+  // (프로젝트 진척 = 소속 업무의 기간 가중 평균) 없으면 기존 규칙(월=연결 업무 / 상위=하위 롤업).
+  const fromProjects = await projectProgressForGoal(goalId);
+  if (fromProjects !== null) {
+    await query(`UPDATE goal SET progress = $1, updated_at = now() WHERE id = $2`, [fromProjects, goalId]);
+    return fromProjects;
+  }
+
   let value: number | null;
   if (g.period_type === "month") {
     const tasks = await query<{ status: string; progress: number }>(
@@ -152,7 +161,16 @@ export async function recomputeGoalChain(goalId: number): Promise<void> {
 /** 특정 업무에 연결된 모든 목표 체인을 재계산 (업무 상태 변경 훅에서 사용). */
 export async function recomputeGoalsForTask(taskId: number): Promise<void> {
   const links = await query<{ goal_id: number }>(`SELECT goal_id FROM goal_task WHERE task_id = $1`, [taskId]);
-  for (const l of links) await recomputeGoalChain(l.goal_id);
+  const goalIds = new Set<number>(links.map((l) => l.goal_id));
+  // MD-P-2026-005 §E — 업무는 소속 프로젝트를 통해서도 목표에 기여한다.
+  // (업무 진척 → 프로젝트 롤업 → 연결 목표) 경로도 함께 재계산.
+  const viaProject = await query<{ goal_id: number }>(
+    `SELECT p.goal_id FROM task t JOIN project p ON p.id = t.project_id
+     WHERE t.id = $1 AND p.goal_id IS NOT NULL`,
+    [taskId]
+  );
+  for (const r of viaProject) goalIds.add(r.goal_id);
+  for (const gid of Array.from(goalIds)) await recomputeGoalChain(gid);
 }
 
 /** 전체 목표 진척 백필 — 최초 1회. 월→분기→연간 순으로 저장값을 채운다. */

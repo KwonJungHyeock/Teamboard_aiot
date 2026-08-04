@@ -223,6 +223,21 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       );
       nowLinks.forEach((l) => affectedGoals.add(l.goal_id));
     }
+    // MD-P-2026-005 §E — 업무는 소속 프로젝트를 통해서도 목표에 기여한다.
+    // 진척·기간·상태가 바뀌면 프로젝트 롤업이 달라지므로 연결 목표도 재계산 대상에 넣는다.
+    const rollupChanged = statusChanged
+      || payload.progress !== undefined
+      || payload.startDate !== undefined
+      || payload.dueDate !== undefined
+      || payload.projectId !== undefined;
+    if (rollupChanged) {
+      const viaProject = await query<{ goal_id: number }>(
+        `SELECT p.goal_id FROM task t JOIN project p ON p.id = t.project_id
+         WHERE t.id = $1 AND p.goal_id IS NOT NULL`,
+        [taskId]
+      );
+      viaProject.forEach((r) => affectedGoals.add(r.goal_id));
+    }
     // 연결 체인(월→분기→연간) 즉시 재계산 — 홈·목표 화면에 바로 반영 (파트 B)
     for (const gid of Array.from(affectedGoals)) await recomputeGoalChain(gid);
 

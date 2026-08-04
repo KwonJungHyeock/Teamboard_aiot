@@ -51,6 +51,8 @@ export interface Project {
   notion_url: string | null;
   is_active: boolean;
   area_id: number;
+  /** 사이드바 트리 — 미해결 논의 수 (MD-P-2026-005 §D) */
+  open_discussions?: number;
 }
 
 export interface Area {

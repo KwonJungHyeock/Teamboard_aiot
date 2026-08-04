@@ -3,7 +3,7 @@
 import { NextResponse } from "next/server";
 import { requireLead, requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
-import { getGoalTree, type GoalNode } from "@/lib/goals";
+import { getGoalTree, recomputeGoalChain, type GoalNode } from "@/lib/goals";
 import { kstToday } from "@/lib/home";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
@@ -11,7 +11,7 @@ import { jsonError } from "@/lib/api";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const PROJECT_STATUSES = ["active", "done", "hold"] as const;
+const PROJECT_STATUSES = ["active", "done", "hold", "archived"] as const;
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {
@@ -114,8 +114,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const projectId = Number(params.id);
     const payload = await request.json();
 
-    const project = await queryOne<{ id: number; name: string }>(
-      "SELECT id, name FROM project WHERE id = $1 AND is_active = true",
+    const project = await queryOne<{ id: number; name: string; goal_id: number | null }>(
+      "SELECT id, name, goal_id FROM project WHERE id = $1 AND is_active = true",
       [projectId]
     );
     if (!project) return NextResponse.json({ error: "프로젝트를 찾을 수 없습니다." }, { status: 404 });
@@ -132,14 +132,31 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (payload.notionUrl !== undefined) {
       set("notion_url", payload.notionUrl ? String(payload.notionUrl).slice(0, 500) : null);
     }
+    // MD-P-2026-005 — 목표 연결 / 보관 / 소유·멤버
+    if (payload.goalId !== undefined) {
+      set("goal_id", payload.goalId ? Number(payload.goalId) : null);
+    }
+    if (payload.status === "archived") set("archived_at", new Date().toISOString());
+    else if (payload.status !== undefined) set("archived_at", null); // 보관 해제
+    if (payload.ownerId !== undefined) set("owner_id", payload.ownerId ? Number(payload.ownerId) : null);
+    if (Array.isArray(payload.memberIds)) {
+      set("member_ids", payload.memberIds.map(Number).filter((n: number) => Number.isInteger(n)).slice(0, 50));
+    }
 
     if (sets.length > 0) {
       values.push(projectId);
       await query(`UPDATE project SET ${sets.join(", ")} WHERE id = $${values.length}`, values);
       await logActivity({
         userId: session.id,
-        message: `${session.name}이(가) 프로젝트 수정 — "${project.name}"`,
+        message: payload.status === "archived"
+          ? `${session.name}이(가) 프로젝트 보관 — "${project.name}"`
+          : `${session.name}이(가) 프로젝트 수정 — "${project.name}"`,
       });
+      // §E — 연결 목표(이전·현재) 진척 재계산
+      const goalIds = new Set<number>();
+      if (project.goal_id) goalIds.add(project.goal_id);
+      if (payload.goalId) goalIds.add(Number(payload.goalId));
+      for (const gid of Array.from(goalIds)) await recomputeGoalChain(gid);
     }
     return NextResponse.json({ ok: true });
   } catch (error) {

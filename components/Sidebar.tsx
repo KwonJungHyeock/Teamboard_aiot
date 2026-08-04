@@ -178,6 +178,8 @@ export default function Sidebar({
   const [notif, setNotif] = useState(0);
   // B: 업무 영역 아코디언 — 하위 프로젝트 접기/펼치기. 디폴트 닫힘.
   const [openAreas, setOpenAreas] = useState<Record<number, boolean>>({});
+  // 보관된 프로젝트는 트리에서 숨기고 토글로만 노출 (MD-P-2026-005 §D·F)
+  const [showArchived, setShowArchived] = useState(false);
   const toggleArea = (id: number) => setOpenAreas((p) => ({ ...p, [id]: !p[id] }));
   // 활성 하위 항목이 있는 영역은 자동 펼침(사용자 토글은 보존)
   useEffect(() => {
@@ -218,6 +220,10 @@ export default function Sidebar({
   }
 
   const isLead = user.role === "lead";
+  // 보관 프로젝트 필터 — 토글이 꺼져 있으면 트리에서 숨긴다
+  const visibleProjects = (area: AreaWithProjects) =>
+    (area.projects ?? []).filter((p) => showArchived || p.status !== "archived");
+  const hasArchived = areas.some((a) => (a.projects ?? []).some((p) => p.status === "archived"));
   const cur = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
@@ -290,7 +296,7 @@ export default function Sidebar({
             </a>
           ) : (
             (() => {
-              const hasSub = (area.projects?.length ?? 0) > 0;
+              const hasSub = visibleProjects(area).length > 0;
               const open = !!openAreas[area.id];
               return (
                 <div key={area.id} className="area-grp">
@@ -314,21 +320,30 @@ export default function Sidebar({
                       </button>
                     )}
                   </div>
-                  {hasSub && open && area.projects.map((project) => (
+                  {hasSub && open && visibleProjects(area).map((project) => (
                     <Link
                       key={project.id}
-                      className="subproj"
+                      className={`subproj${project.status === "archived" ? " arch" : ""}`}
                       href={`/projects/${project.id}`}
                       aria-current={cur(`/projects/${project.id}`) ? "page" : undefined}
+                      title={project.status === "archived" ? "보관됨" : undefined}
                     >
                       <span className={`pjdot ${project.color_key ?? "team"}`} />
                       <span>{project.name}</span>
+                      {(project.open_discussions ?? 0) > 0 && (
+                        <span className="subproj-n">{project.open_discussions}</span>
+                      )}
                     </Link>
                   ))}
                 </div>
               );
             })()
           )
+        )}
+        {hasArchived && (
+          <button className="arch-toggle" onClick={() => setShowArchived((v) => !v)} aria-pressed={showArchived}>
+            {showArchived ? "보관됨 숨기기" : "보관됨 보기"}
+          </button>
         )}
         <Link className="moreln" href="/projects">
           전체 프로젝트 →

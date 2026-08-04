@@ -59,7 +59,15 @@ export async function getActiveHumans(): Promise<Actor[]> {
 
 /** 활성 프로젝트 목록 — 사이드바 동적 렌더 등 */
 export async function getActiveProjects(): Promise<Project[]> {
-  return query<Project>(`SELECT * FROM project WHERE is_active = true ORDER BY id`);
+  // 사이드바 트리(MD-P-2026-005 §D) — 프로젝트별 미해결 논의 수를 함께 집계.
+  // 보관(archived)도 포함해 내려보내고, 노출 여부는 사이드바 토글이 결정한다.
+  return query<Project>(
+    `SELECT p.*,
+            (SELECT count(*)::int FROM signal s
+             WHERE s.project_id = p.id AND s.is_active = true
+               AND s.status IN ('open','discussing')) AS open_discussions
+     FROM project p WHERE p.is_active = true ORDER BY p.id`
+  );
 }
 
 /** 활성 업무 영역 목록 (sort_order) — 사이드바·필터·폼. workspace + link_only 모두 포함 */

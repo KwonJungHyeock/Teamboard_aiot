@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import AppShell from "@/components/AppShell";
-import ProjectDetailView from "@/components/ProjectDetailView";
+import ProjectWorkspace from "@/components/ProjectWorkspace";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,7 @@ export default function Page({ params }: { params: { id: string } }) {
   if (!user) redirect("/login");
   return (
     <AppShell user={user}>
-      <ProjectDetailView user={user} projectId={Number(params.id)} />
+      <ProjectWorkspace user={user} projectId={Number(params.id)} />
     </AppShell>
   );
 }
