@@ -581,7 +581,7 @@ table.tl tr:hover td {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -731,7 +731,7 @@ body.rail .acct { justify-content: center; padding: 7px; }
 .main { min-width: 0; padding: 22px 26px 60px; }
 
 /* ── 커맨드 팔레트 ── */
-.ovl { position: fixed; inset: 0; z-index: 50; background: rgba(4, 6, 11, .72); backdrop-filter: blur(6px); display: none; align-items: flex-start; justify-content: center; padding-top: 14vh; }
+.ovl { position: fixed; inset: 0; z-index: 50; background: var(--scrim); backdrop-filter: blur(6px); display: none; align-items: flex-start; justify-content: center; padding-top: 14vh; }
 .ovl.on { display: flex; }
 .pal { width: min(540px, 92vw); background: var(--bg-elevated); border: 1px solid var(--line-hi); border-radius: var(--r); overflow: hidden; box-shadow: 0 24px 70px rgba(0, 0, 0, .6); }
 .pal input { width: 100%; height: 46px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--hi); font-family: inherit; font-size: 14px; padding: 0 16px; }
@@ -754,7 +754,7 @@ body.rail .acct { justify-content: center; padding: 7px; }
 }
 
 /* ═══════════════ 업무 상세 슬라이드 패널 (파트 1) ═══════════════ */
-.tdp-backdrop { position: fixed; inset: 0; background: rgba(4,6,11,.55); z-index: 60; animation: tdpfade .15s ease; }
+.tdp-backdrop { position: fixed; inset: 0; background: var(--scrim); z-index: 60; animation: tdpfade .15s ease; }
 .tdp { position: fixed; top: 0; right: 0; bottom: 0; width: 480px; max-width: 94vw; background: var(--bg-elevated); border-left: 1px solid var(--line-hi); z-index: 61; display: flex; flex-direction: column; box-shadow: -12px 0 40px rgba(0,0,0,.45); animation: tdpslide .2s cubic-bezier(.4,0,.2,1); }
 @keyframes tdpslide { from { transform: translateX(34px); opacity: .3; } to { transform: none; opacity: 1; } }
 @keyframes tdpfade { from { opacity: 0; } to { opacity: 1; } }
@@ -914,7 +914,7 @@ body.meeting-on .side { display: none !important; }
 .rv-add { display: flex; gap: 8px; padding-top: 4px; }
 .rv-add input { flex: 1; max-width: 380px; }
 .rv-err { display: block; font-size: var(--fs-badge); color: var(--coral-text); margin-top: 4px; }
-.rv-zoom { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.82); display: grid; place-items: center; padding: 40px; cursor: zoom-out; }
+.rv-zoom { position: fixed; inset: 0; z-index: 90; background: var(--scrim); display: grid; place-items: center; padding: 40px; cursor: zoom-out; }
 .rv-zoom img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
 /* ── 에이전트 FAB (우측 하단) ── */
@@ -1306,7 +1306,7 @@ body.rail .side .mk-logo { margin: 0 auto; }
    결정 = green LED / 번복 = slate 취소선. 삭제 없음, 번복만.
    ============================================================ */
 /* 확정 팝오버 */
-.dcf-bg { position: fixed; inset: 0; z-index: 70; background: rgba(28,35,46,.42); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.dcf-bg { position: fixed; inset: 0; z-index: 70; background: var(--scrim); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 20px; }
 .dcf { width: min(520px, 96vw); max-height: 88vh; overflow-y: auto; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--e3); padding: 18px; }
 .dcf-h { display: flex; align-items: center; margin-bottom: 14px; }
 .dcf-h b { font-size: 16px; font-weight: 800; letter-spacing: -.01em; }
@@ -1852,7 +1852,7 @@ body.gpanel-open .agf-fab { display: none; }
 .gdp-proj-p { font-weight: 700; font-size: 12.5px; }
 
 /* 연결 팝오버 (§B1) · 일괄 연결 모달 (§B3) */
-.gpp-bg { position: fixed; inset: 0; z-index: 80; background: rgba(23,27,34,.42); display: grid; place-items: center; padding: 20px; }
+.gpp-bg { position: fixed; inset: 0; z-index: 80; background: var(--scrim); display: grid; place-items: center; padding: 20px; }
 .gpp { width: min(460px, 94vw); max-height: 78vh; display: flex; flex-direction: column;
   background: var(--card); border: 1px solid var(--grid-line); border-radius: 16px; box-shadow: 0 22px 60px rgba(23,27,34,.26); overflow: hidden; }
 .gpp.wide { width: min(620px, 94vw); }
