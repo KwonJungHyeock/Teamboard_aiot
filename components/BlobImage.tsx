@@ -4,7 +4,7 @@
 // src 는 언제나 /api/blob 라우트다. blob 원본 URL(*.private.blob.vercel-storage.com)을 쓰지 않는다.
 // 실패하면 깨진 이미지 대신 사유 + [다시 시도] 를 보여준다.
 // 썸네일·라이트박스가 같은 경로를 쓴다 — 두 벌로 만들지 않는다.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { imageSrc } from "@/lib/upload";
 
 export default function BlobImage({
@@ -21,8 +21,24 @@ export default function BlobImage({
   const [nonce, setNonce] = useState(0);
   const [state, setState] = useState<"load" | "ok" | "err">("load");
   const [zoom, setZoom] = useState(false);
+  const autoRetried = useRef(false);
 
-  useEffect(() => { setState("load"); }, [value, nonce]);
+  useEffect(() => { setState("load"); autoRetried.current = false; }, [value]);
+  useEffect(() => { setState("load"); }, [nonce]);
+
+  /**
+   * 실패 시 1회만 자동 재시도한다.
+   * 참조가 저장된 직후 아주 짧은 순간에 요청이 겹칠 수 있어 흡수용 안전망을 둔다.
+   * 권한 규칙 자체는 손대지 않는다 — 두 번째도 실패하면 그대로 사유를 보여준다.
+   */
+  function onImgError() {
+    if (!autoRetried.current) {
+      autoRetried.current = true;
+      setTimeout(() => setNonce((n) => n + 1), 600);
+      return;
+    }
+    setState("err");
+  }
 
   useEffect(() => {
     if (!zoom) return;
@@ -52,7 +68,7 @@ export default function BlobImage({
         alt={alt}
         loading="lazy"
         onLoad={() => setState("ok")}
-        onError={() => setState("err")}
+        onError={onImgError}
         onClick={zoomable ? () => setZoom(true) : undefined}
       />
       {zoom && (

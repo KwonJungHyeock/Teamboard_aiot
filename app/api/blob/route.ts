@@ -29,16 +29,25 @@ export async function GET(request: Request) {
   if (!scope) return notFound();
 
   // ② 권한 — 그 엔티티에 실제로 붙어 있고, 볼 수 있는 사람인가
-  if (!(await canReadBlob(scope, pathname, session.id))) return notFound();
+  if (!(await canReadBlob(scope, pathname, session.id))) {
+    // 응답은 404 로 통일하되(존재 여부 비노출), 로그에는 어느 단계에서 막혔는지 남긴다.
+    // 이게 없으면 "권한 거부"와 "스토리지 오류"를 운영 중에 구분할 수 없다.
+    console.warn(`[blob] denied by access check — user=${session.id} scope=${scope.kind}:${scope.id} pathname=${pathname}`);
+    return notFound();
+  }
 
   // ③ 조건부 요청을 그대로 넘긴다 — 안 바뀌었으면 본문 없이 304
   const ifNoneMatch = request.headers.get("if-none-match");
   try {
     const result = await getPrivate(pathname, ifNoneMatch);
-    if (!result) return notFound();
+    if (!result) {
+      console.warn(`[blob] storage returned null — pathname=${pathname}`);
+      return notFound();
+    }
     return buildBlobResponse(result);
-  } catch {
-    // 스토리지 오류도 존재 여부를 흘리지 않는다
+  } catch (e) {
+    // 응답은 404 로 통일하되(존재 여부 비노출), 원인은 로그로 남긴다.
+    console.error(`[blob] storage error — pathname=${pathname}`, e instanceof Error ? e.message : e);
     return notFound();
   }
 }

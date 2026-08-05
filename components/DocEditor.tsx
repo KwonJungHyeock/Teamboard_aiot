@@ -61,6 +61,7 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
   const [slash, setSlash] = useState<{ blockId: string; q: string } | null>(null);
   const base = useRef<string | null>(null);
   const lastOk = useRef<DocBlock[]>([]);
+  const blocksRef = useRef<DocBlock[]>([]);   // flushSave 가 최신 blocks 를 읽기 위한 참조
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── 적재 ──
@@ -82,6 +83,8 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
   }, [taskId]);
+
+  useEffect(() => { blocksRef.current = blocks; }, [blocks]);
 
   // 블록이 바뀔 때마다 부모에 통지 (§F3) — 삭제도 그대로 전달돼 리소스 섹션이 따라 줄어든다
   useEffect(() => { onBlocks?.(blocks); }, [blocks, onBlocks]);
@@ -128,6 +131,28 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
 
   const update = useCallback((next: DocBlock[]) => { setBlocks(next); schedule(next); }, [schedule]);
 
+  /**
+   * 즉시 저장 (디바운스 건너뜀) — 이미지 참조는 화면에 뜨기 전에 DB에 있어야 한다.
+   * 읽기 권한이 "그 pathname 이 문서에 저장돼 있는가"로 판정되기 때문이다 (MD-P-2026-014a P1).
+   */
+  const flushSave = useCallback(async (next: DocBlock[]): Promise<boolean> => {
+    if (readOnly) return false;
+    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+    setSave("saving");
+    const res = await fetch(`/api/tasks/${taskId}/doc`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ blocks: next, baseUpdatedAt: base.current }),
+    }).catch(() => null);
+    if (!res || !res.ok) { setSave("err"); return false; }
+    const d = await res.json();
+    lastOk.current = d.blocks ?? next;
+    base.current = d.updatedAt ?? null;
+    setSavedAt(d.updatedAt ?? null);
+    setSave("saved");
+    setTimeout(() => setSave("idle"), 1600);
+    return true;
+  }, [taskId, readOnly]);
+
   const patch = useCallback((id: string, p: Partial<DocBlock>) => {
     setBlocks((cur) => {
       const next = cur.map((b) => (b.id === id ? { ...b, ...p } : b));
@@ -160,17 +185,27 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
   }, [patch]);
 
   // ── 이미지 업로드 (MD-P-2026-014 §A + 014a) — 서버 라우트 경유, pathname 만 저장 ──
+  // 순서가 중요하다: 업로드 → **저장 완료** → 그 다음에 이미지를 그린다.
   const insertImage = useCallback(async (afterId: string | null, file: File) => {
     const ph: DocBlock = { id: uid(), type: "image", name: file.name };
     addAfter(afterId, ph);
     try {
       const up = await uploadImage(file, { kind: "task", id: taskId });
-      patch(ph.id, { pathname: up.pathname, name: up.name, size: up.size, contentType: up.contentType });
+      const withPath = (cur: DocBlock[]) => cur.map((b) => (b.id === ph.id
+        ? { ...b, pathname: up.pathname, name: up.name, size: up.size, contentType: up.contentType }
+        : b));
+      const saved = await flushSave(withPath(blocksRef.current));
+      if (!saved) {
+        remove(ph.id);
+        toast("이미지를 저장하지 못했어요. 다시 시도해 주세요", "err");
+        return;
+      }
+      setBlocks(withPath);
     } catch (err) {
       remove(ph.id);
       toast(err instanceof Error ? err.message : "이미지 업로드 실패", "err");
     }
-  }, [addAfter, patch, remove, taskId]);
+  }, [addAfter, remove, taskId, flushSave]);
 
   // ── 붙여넣기 자동 인식 (§F2) ──
   const onPaste = useCallback((blockId: string, e: React.ClipboardEvent<HTMLTextAreaElement>) => {

@@ -28,9 +28,16 @@ export async function canReadBlob(scope: BlobScope, pathname: string, viewerId: 
       return !!row;
     }
     case "task": {
+      // 업무에 이미지가 붙는 자리는 세 곳이다 — 문서 본문(doc) · 설명(description) · 코멘트(task_comment).
+      // 설명·코멘트는 마크다운 안에 /api/blob?pathname=… 형태로 들어가므로 문자열 포함으로 확인한다.
+      // (doc 만 보면 설명·코멘트에 넣은 이미지가 영구히 404 가 된다 — MD-P-2026-014a P1 후속)
       const row = await queryOne<{ ok: number }>(
         `SELECT 1 AS ok FROM task t
-          WHERE t.id = $1 AND t.is_active = true AND t.doc ${HAS_PATH}`,
+          WHERE t.id = $1 AND t.is_active = true
+            AND (t.doc ${HAS_PATH}
+                 OR position($2 in coalesce(t.description, '')) > 0
+                 OR EXISTS (SELECT 1 FROM task_comment tc
+                             WHERE tc.task_id = t.id AND position($2 in tc.body) > 0))`,
         [scope.id, pathname]
       );
       return !!row;

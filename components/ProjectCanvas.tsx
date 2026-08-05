@@ -55,6 +55,7 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
   const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
   const [blobReady, setBlobReady] = useState(false);
   const lastSaved = useRef<Block[]>([]);
+  const blocksRef = useRef<Block[]>([]);   // flushSave 가 최신 blocks 를 읽기 위한 참조
   const baseUpdatedAt = useRef<string | null>(null);   // 동시 편집 감지 기준 시각
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -113,6 +114,8 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
     }, 800);
   }, [projectId, readOnly]);
 
+  useEffect(() => { blocksRef.current = blocks; }, [blocks]);
+
   function update(next: Block[]) {
     setBlocks(next);
     scheduleSave(next);
@@ -131,7 +134,32 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
     update(blocks.filter((b) => b.id !== id));
   }
 
+  /**
+   * 즉시 저장 (디바운스 건너뜀).
+   * 이미지 읽기 권한은 "그 pathname 이 캔버스에 저장돼 있는가"로 판정된다.
+   * 그래서 이미지 블록은 화면에 뜨기 전에 반드시 DB에 있어야 한다.
+   * 800ms 디바운스를 그대로 타면 <img> 가 먼저 요청을 보내 404 를 받는다 (MD-P-2026-014a P1).
+   */
+  const flushSave = useCallback(async (next: Block[]): Promise<boolean> => {
+    if (readOnly) return false;
+    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+    setSaving("saving");
+    const res = await fetch(`/api/projects/${projectId}/canvas`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ blocks: next, baseUpdatedAt: baseUpdatedAt.current }),
+    }).catch(() => null);
+    if (!res || !res.ok) { setSaving("idle"); return false; }
+    const d = await res.json();
+    lastSaved.current = d.blocks ?? next;
+    baseUpdatedAt.current = d.updatedAt ?? null;
+    setMeta({ updatedAt: d.updatedAt ?? null, updatedByName: d.updatedByName ?? null });
+    setSaving("saved");
+    setTimeout(() => setSaving("idle"), 1600);
+    return true;
+  }, [projectId, readOnly]);
+
   // 이미지 업로드 (MD-P-2026-014 §A + 014a) — 서버 라우트 경유, pathname 만 저장한다.
+  // 순서가 중요하다: 업로드 → **저장 완료** → 그 다음에 이미지를 그린다.
   async function insertImage(file: File) {
     if (readOnly) return;
     if (!blobReady) { toast("이미지 저장소가 연결되지 않았어요", "err"); return; }
@@ -139,13 +167,18 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
     setBlocks((cur) => [...cur, ph]);
     try {
       const up = await uploadImage(file, { kind: "project", id: projectId });
-      setBlocks((cur) => {
-        const next = cur.map((b) => (b.id === ph.id
-          ? { ...b, pathname: up.pathname, name: up.name, size: up.size, contentType: up.contentType }
-          : b));
-        scheduleSave(next);
-        return next;
-      });
+      const withPath = (cur: Block[]) => cur.map((b) => (b.id === ph.id
+        ? { ...b, pathname: up.pathname, name: up.name, size: up.size, contentType: up.contentType }
+        : b));
+      // 현재 상태를 읽어 저장본을 만든 뒤, 저장이 끝난 다음에만 pathname 을 화면에 반영한다.
+      const target = withPath(blocksRef.current);
+      const saved = await flushSave(target);
+      if (!saved) {
+        setBlocks((cur) => cur.filter((b) => b.id !== ph.id));
+        toast("이미지를 저장하지 못했어요. 다시 시도해 주세요", "err");
+        return;
+      }
+      setBlocks(withPath);
     } catch (e) {
       setBlocks((cur) => cur.filter((b) => b.id !== ph.id));
       toast(e instanceof Error ? e.message : "이미지 업로드 실패", "err");
