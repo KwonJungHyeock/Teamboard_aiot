@@ -1,0 +1,65 @@
+[
+ {
+  "label": "홈 (문서)",
+  "path": "/",
+  "min": 60,
+  "med": 68,
+  "max": 88
+ },
+ {
+  "label": "홈 요약 API",
+  "path": "/api/home/summary",
+  "min": 30,
+  "med": 34,
+  "max": 38
+ },
+ {
+  "label": "활동 (문서)",
+  "path": "/activity",
+  "min": 21,
+  "med": 22,
+  "max": 24
+ },
+ {
+  "label": "활동 API",
+  "path": "/api/notifications",
+  "min": 6,
+  "med": 7,
+  "max": 8
+ },
+ {
+  "label": "프로젝트 상세",
+  "path": "/projects/1",
+  "min": 23,
+  "med": 27,
+  "max": 36
+ },
+ {
+  "label": "프로젝트 워크스페이스",
+  "path": "/api/projects/1/workspace",
+  "min": 12,
+  "med": 12,
+  "max": 18
+ },
+ {
+  "label": "내 업무 API",
+  "path": "/api/tasks",
+  "min": 10,
+  "med": 11,
+  "max": 15
+ },
+ {
+  "label": "목표 API",
+  "path": "/api/goals",
+  "min": 8,
+  "med": 9,
+  "max": 10
+ },
+ {
+  "label": "월간 리포트 API",
+  "path": "/api/reports/monthly?ym=2026-08&scope=team",
+  "min": 9,
+  "med": 10,
+  "max": 18
+ }
+]

@@ -1,0 +1,142 @@
+[
+ {
+  "label": "홈 요약",
+  "path": "/api/home/summary",
+  "queries": 167,
+  "top": [
+   [
+    "(bind/parse)",
+    104
+   ],
+   [
+    "SELECT count(*) AS n FROM task t",
+    33
+   ],
+   [
+    "SELECT count(*) AS n FROM task t WHERE t.is_active = true AN",
+    2
+   ]
+  ]
+ },
+ {
+  "label": "활동 인박스",
+  "path": "/api/notifications",
+  "queries": 6,
+  "top": [
+   [
+    "(bind/parse)",
+    4
+   ],
+   [
+    "SELECT n.id, n.type, n.ref_type, n.ref_id, n.snippet, n.read",
+    1
+   ],
+   [
+    "SELECT scope, until::text FROM notification_mute",
+    1
+   ]
+  ]
+ },
+ {
+  "label": "프로젝트 워크스페이스",
+  "path": "/api/projects/1/workspace",
+  "queries": 18,
+  "top": [
+   [
+    "(bind/parse)",
+    12
+   ],
+   [
+    "SELECT p.id, p.name, p.status, p.color_key, p.start_date::te",
+    1
+   ],
+   [
+    "SELECT t.id, t.title, t.status, t.priority, t.assignee_id, a",
+    1
+   ]
+  ]
+ },
+ {
+  "label": "프로젝트 목록",
+  "path": "/api/projects",
+  "queries": 1,
+  "top": [
+   [
+    "SELECT p.id, p.name, p.status, p.color_key, p.start_date::te",
+    1
+   ]
+  ]
+ },
+ {
+  "label": "내 업무",
+  "path": "/api/tasks",
+  "queries": 2,
+  "top": [
+   [
+    "SELECT t.id, t.title, t.description, t.status, t.priority, t",
+    1
+   ],
+   [
+    "SELECT t.id, t.title, t.description, p.name AS project_name,",
+    1
+   ]
+  ]
+ },
+ {
+  "label": "목표 목록",
+  "path": "/api/goals",
+  "queries": 4,
+  "top": [
+   [
+    "SELECT g.id, g.parent_id, g.period_type, g.period_start::tex",
+    1
+   ],
+   [
+    "SELECT gt.goal_id, t.id, t.title, t.status, a.display_name A",
+    1
+   ],
+   [
+    "SELECT id, name, color_key, status FROM project",
+    1
+   ]
+  ]
+ },
+ {
+  "label": "목표-프로젝트 연결",
+  "path": "/api/goals/12/projects",
+  "queries": 13,
+  "top": [
+   [
+    "(bind/parse)",
+    8
+   ],
+   [
+    "SELECT t.id, t.title, t.status, t.priority, t.assignee_id, a",
+    3
+   ],
+   [
+    "SELECT id, title, scope, owner_actor_id FROM goal WHERE id =",
+    1
+   ]
+  ]
+ },
+ {
+  "label": "월간 리포트",
+  "path": "/api/reports/monthly?ym=2026-08&scope=team",
+  "queries": 16,
+  "top": [
+   [
+    "(bind/parse)",
+    10
+   ],
+   [
+    "",
+    3
+   ],
+   [
+    "SELECT g.id, g.level, g.period_type, g.title, g.period,",
+    1
+   ]
+  ]
+ }
+]

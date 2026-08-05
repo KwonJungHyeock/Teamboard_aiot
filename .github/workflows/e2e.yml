@@ -1,0 +1,64 @@
+# 로그인 → 홈 진입 e2e 스모크 (MD-P-2026-015 §D)
+# 배포 전에 "앱이 뜨고 로그인이 되는가"만 막아선다. 실패하면 머지하지 않는다.
+name: e2e smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: teamboard
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # 스키마는 첫 DB 접근 시 db/migrations 가 자동 적용된다(lib/migrate.ts).
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/teamboard
+      AUTH_SECRET: ci-only-not-a-real-secret-0123456789abcdef
+      SEED_DEFAULT_PASSWORD: ci-seed-not-used
+      E2E_PORT: "3410"
+      CI: "true"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: 브라우저 설치
+        run: npx playwright install --with-deps chromium
+
+      - name: 스키마 · 기준 데이터 준비
+        run: npm run db:init
+
+      - name: e2e 스모크
+        run: npm run e2e
+
+      - name: 실패 시 리포트 업로드
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

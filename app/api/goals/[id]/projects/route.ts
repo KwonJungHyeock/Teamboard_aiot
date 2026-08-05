@@ -3,6 +3,7 @@
 // 이미 다른 목표에 연결된 프로젝트도 고를 수 있고, 그 경우 연결이 이 목표로 옮겨간다.
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
+import type { SessionUser } from "@/lib/types";
 import { query, queryOne } from "@/lib/db";
 import { jsonError } from "@/lib/api";
 import { logActivity } from "@/lib/activity";
@@ -15,6 +16,32 @@ export const dynamic = "force-dynamic";
 interface Row {
   id: number; name: string; color_key: string | null; status: string;
   goal_id: number | null; goal_title: string | null;
+}
+
+/**
+ * 목표 접근 가드 (MD-P-2026-015 §C).
+ * 예전엔 requireSession()만 걸려 있어서, 남의 개인 목표에 붙은 프로젝트를 읽고
+ * 심지어 연결·해제까지 할 수 있었다. /api/goals/[id] 와 같은 규칙으로 맞춘다.
+ *   개인 목표 — 읽기: 본인·팀장 / 쓰기: 본인만
+ *   팀   목표 — 읽기: 전원   / 쓰기: 팀장만
+ */
+async function guardGoal(goalId: number, session: SessionUser, mode: "read" | "write") {
+  const g = await queryOne<{ id: number; title: string; scope: string; owner_actor_id: number | null }>(
+    `SELECT id, title, scope, owner_actor_id FROM goal WHERE id = $1 AND is_active = true`,
+    [goalId]
+  );
+  if (!g) return { error: NextResponse.json({ error: "목표를 찾을 수 없습니다." }, { status: 404 }) };
+  const isLead = session.role === "lead";
+  const isOwner = g.owner_actor_id === session.id;
+  if (g.scope === "personal") {
+    const allowed = mode === "read" ? isOwner || isLead : isOwner;
+    if (!allowed) {
+      return { error: NextResponse.json({ error: "열람 권한이 없습니다." }, { status: 403 }) };
+    }
+  } else if (mode === "write" && !isLead) {
+    return { error: NextResponse.json({ error: "팀 목표는 팀장만 수정할 수 있습니다." }, { status: 403 }) };
+  }
+  return { goal: g };
 }
 
 async function withProgress(rows: Row[]) {
@@ -35,9 +62,11 @@ async function withProgress(rows: Row[]) {
 /** 연결된 프로젝트 + 연결 후보(전체). 후보에는 "다른 목표에 연결됨" 표시를 위한 정보가 붙는다. */
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   try {
-    requireSession();
+    const session = requireSession();
     const goalId = Number(params.id);
     if (!Number.isInteger(goalId)) return NextResponse.json({ error: "잘못된 목표입니다." }, { status: 400 });
+    const gate = await guardGoal(goalId, session, "read");
+    if (gate.error) return gate.error;
 
     const rows = await query<Row>(
       `SELECT p.id, p.name, p.color_key, p.status, p.goal_id, g.title AS goal_title
@@ -67,10 +96,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (!Number.isInteger(goalId) || ids.length === 0) {
       return NextResponse.json({ error: "연결할 프로젝트를 고르세요." }, { status: 400 });
     }
-    const goal = await queryOne<{ id: number; title: string }>(
-      `SELECT id, title FROM goal WHERE id = $1 AND is_active = true`, [goalId]
-    );
-    if (!goal) return NextResponse.json({ error: "목표를 찾을 수 없습니다." }, { status: 404 });
+    const gate = await guardGoal(goalId, session, "write");
+    if (gate.error) return gate.error;
+    const goal = gate.goal!;
 
     // 옮겨오기 전 목표들도 함께 재계산해야 진척이 정확해진다.
     const prev = await query<{ goal_id: number | null }>(
@@ -105,6 +133,8 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     if (!Number.isInteger(goalId) || !Number.isInteger(projectId)) {
       return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
     }
+    const gate = await guardGoal(goalId, session, "write");
+    if (gate.error) return gate.error;
     const rows = await query<{ id: number; name: string }>(
       `UPDATE project SET goal_id = NULL WHERE id = $1 AND goal_id = $2 RETURNING id, name`,
       [projectId, goalId]

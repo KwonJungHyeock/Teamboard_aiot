@@ -10,6 +10,7 @@ import {
   SHORTCUTS, FIND_EVENT, SHORTCUTS_EVENT, REACTION_PICKER_EVENT, READ_LIST_EVENT,
   isMac, isTyping, keyLabel,
 } from "@/lib/shortcuts";
+import { FIRSTRUN_EVENT } from "./FirstRun";
 
 export default function Shortcuts() {
   const router = useRouter();
@@ -111,7 +112,17 @@ function ShortcutList({ mac, onClose }: { mac: boolean; onClose: () => void }) {
             </section>
           ))}
         </div>
-        <p className="scut-foot">입력 중에는 {keyLabel(["mod", "K"], mac)}·{keyLabel(["mod", "N"], mac)}만 동작합니다.</p>
+        <p className="scut-foot">
+          입력 중에는 {keyLabel(["mod", "K"], mac)}·{keyLabel(["mod", "N"], mac)}만 동작합니다.
+          <span className="gsp" style={{ flex: 1 }} />
+          {/* 첫 사용 안내로 되돌아가는 통로 (MD-P-2026-015 §A) */}
+          <button
+            className="lk"
+            onClick={() => { onClose(); window.dispatchEvent(new Event(FIRSTRUN_EVENT)); }}
+          >
+            처음이신가요? 안내 다시 보기
+          </button>
+        </p>
       </div>
     </div>
   );
