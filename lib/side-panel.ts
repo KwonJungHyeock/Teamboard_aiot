@@ -29,6 +29,9 @@ export function currentPanel(): PanelRef | null {
   return null;
 }
 
+/** 업무 패널은 TaskDetailPanel이 그린다 — 그쪽은 별도 이벤트를 듣는다. */
+export const TASK_PANEL_EVENT_NAME = "tb:open-task";
+
 /** 패널 열기 — 스택 깊이 1이므로 항상 "교체"다. */
 export function openPanel(kind: PanelKind, id: number) {
   const url = new URL(window.location.href);
@@ -38,6 +41,12 @@ export function openPanel(kind: PanelKind, id: number) {
   url.searchParams.delete("signal");
   window.history.pushState({}, "", url);
   window.dispatchEvent(new CustomEvent(SIDE_PANEL_EVENT, { detail: { kind, id } }));
+  // 업무는 SidePanel이 그리지 않으므로 여기서 TaskDetailPanel에도 알린다.
+  // (MD-P-2026-018 §A) 예전엔 이 통지가 없어서 SidePanel이 레이아웃만 420px 줄이고
+  // 정작 내용은 아무도 그리지 않았다 — "간격만 좁아지고 내용이 안 보임"의 원인.
+  if (kind === "task") {
+    window.dispatchEvent(new CustomEvent(TASK_PANEL_EVENT_NAME, { detail: id }));
+  }
 }
 
 export function closePanel() {

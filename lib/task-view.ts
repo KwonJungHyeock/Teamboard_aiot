@@ -22,6 +22,9 @@ export interface TaskItem {
   createdByName: string | null;
   blocked: boolean;
   blockedReason: string | null;
+  /** 완료 시각 — 완료 업무는 D+ 대신 이 날짜를 보여준다 (MD-P-2026-018 §E) */
+  completedAt?: string | null;
+  createdAt?: string | null;
 }
 
 export type TaskLens = "sheet" | "board" | "calendar" | "timeline";
@@ -110,4 +113,23 @@ export function dday(due: string | null, today: string): { text: string | null; 
     text: diff < 0 ? `D+${-diff}` : diff === 0 ? "D-DAY" : `D-${diff}`,
     overdue: diff < 0,
   };
+}
+
+/**
+ * 기한 표기 (MD-P-2026-018 §E).
+ * 완료·중단된 업무에 D+26 을 계속 띄우면 아직 지연 중인 것으로 읽힌다.
+ * 끝난 업무는 "완료 2026-07-09" 처럼 끝난 날을 보여주고, 날짜가 없으면 "완료"만 —
+ * 없는 날짜를 추정하지 않는다.
+ */
+export function dueLabel(
+  task: { status: string; dueDate: string | null; completedAt?: string | null },
+  today: string
+): { text: string | null; overdue: boolean; done: boolean } {
+  if (task.status === "done" || task.status === "dropped") {
+    const label = task.status === "done" ? "완료" : "중단";
+    const day = task.completedAt ? task.completedAt.slice(0, 10) : null;
+    return { text: day ? `${label} ${day}` : label, overdue: false, done: true };
+  }
+  const d = dday(task.dueDate, today);
+  return { ...d, done: false };
 }

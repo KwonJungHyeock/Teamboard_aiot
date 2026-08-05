@@ -10,7 +10,7 @@ import TaskCalendar from "./TaskCalendar";
 import TaskGantt from "./TaskGantt";
 import { toast, openQuickCreate } from "@/lib/quick";
 import {
-  type TaskItem, type TaskLens, type BoardGroup, LENS_LABEL, GROUP_LABEL, dday,
+  type TaskItem, type TaskLens, type BoardGroup, LENS_LABEL, GROUP_LABEL, dueLabel,
 } from "@/lib/task-view";
 import { openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
 
@@ -67,6 +67,16 @@ const DUE_OPTIONS = [
   ["none", "기한 없음"],
 ] as const;
 
+/** 정렬 기준 (MD-P-2026-018 §D) — 기본은 기한순. 선택은 사용자별로 기억한다. */
+type SortKey = "due" | "priority" | "recent" | "progress";
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "due", label: "기한순" },
+  { key: "priority", label: "우선순위순" },
+  { key: "recent", label: "최신 작성순" },
+  { key: "progress", label: "진척순" },
+];
+const PRIORITY_RANK: Record<string, number> = { high: 0, mid: 1, medium: 1, normal: 1, low: 2 };
+
 export default function TasksView({ user }: { user: SessionUser }) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [inbox, setInbox] = useState<InboxItem[]>([]);
@@ -75,6 +85,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [areas, setAreas] = useState<AreaOption[]>([]);
   const [myAreaIds, setMyAreaIds] = useState<number[]>([]);
   const [monthGoals, setMonthGoals] = useState<MonthGoalOption[]>([]);
+  const [linkGoals, setLinkGoals] = useState<{ id: number; title: string }[]>([]);
   const [today, setToday] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -87,6 +98,9 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [fStatus, setFStatus] = useState("");
   const [fDue, setFDue] = useState("");
   const [fBlocked, setFBlocked] = useState(false); // 홈 5칸 진입(?blocked=1)
+  // 완료 표시 여부 · 정렬 기준 (MD-P-2026-018 §D). 기본은 "완료 제외 + 기한순".
+  const [showDone, setShowDone] = useState(false);
+  const [sortBy, setSortBy] = useState<SortKey>("due");
   const [areaDefaulted, setAreaDefaulted] = useState(false);
   const isMine = fAssignee === String(user.id);
 
@@ -107,7 +121,20 @@ export default function TasksView({ user }: { user: SessionUser }) {
     if (v && ["sheet", "board", "calendar", "timeline"].includes(v)) setLens(v);
     const g = localStorage.getItem("tb:tasks-group") as BoardGroup | null;
     if (g && ["status", "area", "assignee"].includes(g)) setBoardGroup(g);
+    // URL 이 있으면 URL 우선(공유 링크), 없으면 지난 선택을 되살린다
+    const sp = new URLSearchParams(window.location.search);
+    const urlSort = sp.get("sort") as SortKey | null;
+    const urlDone = sp.get("done");
+    const savedSort = localStorage.getItem("tb:tasks-sort") as SortKey | null;
+    const savedDone = localStorage.getItem("tb:tasks-done");
+    const sortPick = urlSort ?? savedSort;
+    if (sortPick && SORT_OPTIONS.some((o) => o.key === sortPick)) setSortBy(sortPick);
+    if (urlDone === "1") setShowDone(true);
+    else if (urlDone === null && savedDone === "1") setShowDone(true);
   }, []);
+
+  function pickSort(v: SortKey) { setSortBy(v); localStorage.setItem("tb:tasks-sort", v); }
+  function toggleDone(v: boolean) { setShowDone(v); localStorage.setItem("tb:tasks-done", v ? "1" : "0"); }
   function pickLens(v: TaskLens) { setLens(v); localStorage.setItem("tb:tasks-lens", v); }
   function pickGroup(g: BoardGroup) { setBoardGroup(g); localStorage.setItem("tb:tasks-group", g); }
 
@@ -144,6 +171,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
       setAreas(data.areas ?? []);
       setMyAreaIds(data.myAreaIds ?? []);
       setMonthGoals(data.monthGoals ?? []);
+      setLinkGoals(data.linkGoals ?? []);
     }
   }, []);
 
@@ -219,9 +247,12 @@ export default function TasksView({ user }: { user: SessionUser }) {
     load();
   }
 
+  // 목표 이름 조회 — 월 목표만 보면 분기·연간 목표에 연결된 업무가 링크가 있는데도
+  // "—" 로 보인다. 전 레벨 목록(linkGoals)을 먼저 보고 없으면 월 목표로 떨어진다
+  // (MD-P-2026-018 §F).
   const goalTitleOf = useCallback(
-    (id: number) => monthGoals.find((g) => g.id === id)?.title,
-    [monthGoals]
+    (id: number) => linkGoals.find((g) => g.id === id)?.title ?? monthGoals.find((g) => g.id === id)?.title,
+    [linkGoals, monthGoals]
   );
 
   // 보드 드래그 → 기준값 변경 (낙관적 반영 + 실패 시 롤백, 토스트)
@@ -247,22 +278,57 @@ export default function TasksView({ user }: { user: SessionUser }) {
     }
   }
 
-  // 검색 적용된 업무 목록 — 모든 렌즈가 공유
+  // 검색·완료필터·정렬이 적용된 업무 목록 — 모든 렌즈가 공유 (MD-P-2026-018 §D)
   const filteredTasks = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return tasks.filter(
+    const out = tasks.filter(
       (t) =>
-        !q ||
-        t.title.toLowerCase().includes(q) ||
-        (t.projectName ?? "").toLowerCase().includes(q) ||
-        (t.assigneeName ?? "").toLowerCase().includes(q)
+        (showDone || (t.status !== "done" && t.status !== "dropped")) &&
+        (!q ||
+          t.title.toLowerCase().includes(q) ||
+          (t.projectName ?? "").toLowerCase().includes(q) ||
+          (t.assigneeName ?? "").toLowerCase().includes(q))
     );
-  }, [tasks, search]);
+
+    const prio = (t: TaskItem) => PRIORITY_RANK[t.priority] ?? 1;
+    // 기한 없는 항목은 항상 맨 뒤 — 날짜 비교에 끌어들이면 순서가 뒤죽박죽이 된다
+    const dueKey = (t: TaskItem) => t.dueDate ?? "9999-12-31";
+    const recent = (t: TaskItem) => t.createdAt ?? "";
+
+    const cmp: Record<SortKey, (a: TaskItem, b: TaskItem) => number> = {
+      // 지연 → 임박 → 여유 → 기한없음. 동률이면 우선순위, 그다음 최신 작성순.
+      due: (a, b) =>
+        dueKey(a).localeCompare(dueKey(b)) || prio(a) - prio(b) || recent(b).localeCompare(recent(a)),
+      priority: (a, b) =>
+        prio(a) - prio(b) || dueKey(a).localeCompare(dueKey(b)) || recent(b).localeCompare(recent(a)),
+      recent: (a, b) => recent(b).localeCompare(recent(a)) || b.id - a.id,
+      progress: (a, b) => (b.progress ?? 0) - (a.progress ?? 0) || dueKey(a).localeCompare(dueKey(b)),
+    };
+    return out.slice().sort(cmp[sortBy]);
+  }, [tasks, search, showDone, sortBy]);
+
+  // 필터·정렬을 URL 에 반영해 링크로 공유할 수 있게 한다 (MD-P-2026-018 §D).
+  // history 를 쌓지 않는다 — 뒤로가기가 필터 변경 이력으로 채워지면 화면을 벗어날 수 없다.
+  useEffect(() => {
+    if (loading) return;
+    const sp = new URLSearchParams(window.location.search);
+    const set = (k: string, v: string | null) => (v ? sp.set(k, v) : sp.delete(k));
+    set("area", fArea || null);
+    set("project", fProject || null);
+    set("assignee", fAssignee || null);
+    set("status", fStatus || null);
+    set("due", fDue || null);
+    set("blocked", fBlocked ? "1" : null);
+    set("sort", sortBy === "due" ? null : sortBy);
+    set("done", showDone ? "1" : null);
+    const qs = sp.toString();
+    window.history.replaceState({}, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+  }, [loading, fArea, fProject, fAssignee, fStatus, fDue, fBlocked, sortBy, showDone]);
 
   const rows: TaskTableRow[] = useMemo(() => {
     return filteredTasks
       .map((t) => {
-        const d = dday(t.dueDate, today);
+        const d = dueLabel(t, today);   // 완료면 "완료 YYYY-MM-DD" (§E)
         return {
           id: t.id,
           title: t.title,
@@ -404,6 +470,20 @@ export default function TasksView({ user }: { user: SessionUser }) {
               ))}
             </div>
           )}
+          {/* 정렬 · 완료 포함 (MD-P-2026-018 §D) — 선택은 기억하고 URL에도 남긴다 */}
+          <span className="sp" style={{ flex: 1 }} />
+          <label className="lens-done">
+            <input type="checkbox" checked={showDone} onChange={(e) => toggleDone(e.target.checked)} />
+            <span>완료 포함</span>
+          </label>
+          <label className="lens-sort">
+            <span className="lens-group-l">정렬</span>
+            <select value={sortBy} onChange={(e) => pickSort(e.target.value as SortKey)} aria-label="정렬 기준">
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.key} value={o.key}>{o.label}{o.key === "due" ? " (기본)" : ""}</option>
+              ))}
+            </select>
+          </label>
         </div>
 
         {loading && <p className="gempty">불러오는 중...</p>}

@@ -103,6 +103,8 @@ export async function GET(request: Request) {
       created_by_name: string | null;
       blocked: boolean;
       blocked_reason: string | null;
+      completed_at: string | null;
+      created_at: string;
     }>(
       `SELECT t.id, t.title, t.description, t.status, t.priority, t.origin,
               t.project_id, p.name AS project_name, p.color_key,
@@ -112,7 +114,8 @@ export async function GET(request: Request) {
               array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
               t.progress,
               c.display_name AS created_by_name,
-              t.blocked, t.blocked_reason
+              t.blocked, t.blocked_reason,
+              t.completed_at::text, t.created_at::text
        FROM task t
        LEFT JOIN project p ON p.id = t.project_id
        JOIN area ar ON ar.id = t.area_id
@@ -173,6 +176,8 @@ export async function GET(request: Request) {
       blocked: r.blocked ?? false,
       blockedReason: r.blocked_reason,
       createdByName: r.created_by_name,
+      completedAt: r.completed_at,
+      createdAt: r.created_at,
     }));
     return NextResponse.json({
       tasks,

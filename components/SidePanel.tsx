@@ -53,10 +53,12 @@ export default function SidePanel({ user }: { user: SessionUser }) {
   const active = ref && ref.kind !== "task" ? ref : null;
 
   // 열려 있는 동안 본문 폭을 줄여 좌측 목록이 가려지지 않게 한다(배경 차단 없음).
+  // 업무(task)는 여기서 그리지 않으므로 폭도 줄이지 않는다 — 줄이면 빈 칸만 생긴다
+  // (MD-P-2026-018 §A). TaskDetailPanel은 자체 오버레이로 뜬다.
   useEffect(() => {
-    document.body.classList.toggle("gpanel-open", !!ref);
+    document.body.classList.toggle("gpanel-open", !!active);
     return () => document.body.classList.remove("gpanel-open");
-  }, [ref]);
+  }, [active]);
 
   const close = useCallback(() => closePanel(), []);
 

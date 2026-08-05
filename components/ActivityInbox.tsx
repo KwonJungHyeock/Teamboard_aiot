@@ -14,7 +14,7 @@ import { READ_LIST_EVENT } from "@/lib/shortcuts";
 import { toast } from "@/lib/quick";
 import { pgDate } from "@/lib/pgtime";
 import {
-  RAIL_KINDS, KIND_LABEL, KIND_ICON, CHANNEL_LABEL,
+  RAIL_KINDS, KIND_LABEL, KIND_ICON, CHANNEL_LABEL, KIND_CHANNEL,
   type ActivityKind, type Channel,
 } from "@/lib/activity-kinds";
 
@@ -317,7 +317,7 @@ export default function ActivityInbox() {
               <span>전체</span>
               <em className="num">{channel === "human" ? counts.human : counts.system}</em>
             </button>
-            {RAIL_KINDS.map((k) => (
+            {RAIL_KINDS.filter((k) => KIND_CHANNEL[k] === channel).map((k) => (
               <button key={k} className={`actv-r${!activeView && kind === k ? " on" : ""}`}
                 onClick={() => { setActiveView(null); setKind(k); }}>
                 <i className="actv-ic" aria-hidden="true"
@@ -381,7 +381,12 @@ export default function ActivityInbox() {
               <div className="seg" role="group" aria-label="채널">
                 {(["human", "system"] as Channel[]).map((c) => (
                   <button key={c} aria-pressed={channel === c && !activeView}
-                    onClick={() => { setActiveView(null); setChannel(c); }}>
+                    onClick={() => {
+                      setActiveView(null);
+                      setChannel(c);
+                      // 다른 채널의 종류 필터가 남아 있으면 빈 목록이 된다 — 전체로 되돌린다
+                      setKind((cur) => (cur !== "all" && KIND_CHANNEL[cur] !== c ? "all" : cur));
+                    }}>
                     {CHANNEL_LABEL[c]}
                     {c === "human" && counts.human > 0 && <span className="pws-tab-n num">{counts.human}</span>}
                     {/* 시스템은 숫자 없이 점으로만 (§B) */}
@@ -455,9 +460,15 @@ export default function ActivityInbox() {
                               </span>
                             )}
                           </span>
+                          {/* 시스템 알림에는 리액션·답글을 붙이지 않는다 — 마감 알림에 이모지를 달 이유가 없다.
+                              사람 알림: 리액션 · 스레드 · 저장 · ⋯ / 시스템 알림: 저장 · 원본 열기 · ⋯ (MD-P-2026-018 §C) */}
                           <HoverActions
-                            reactionTarget={linked ? (n.refType === "signal" ? { type: "signal", id: n.refId! } : { type: "task", id: n.refId! }) : undefined}
-                            threadLabel={n.refType === "signal" ? "스레드 열기" : "업무 열기"}
+                            reactionTarget={
+                              linked && n.channel === "human"
+                                ? (n.refType === "signal" ? { type: "signal", id: n.refId! } : { type: "task", id: n.refId! })
+                                : undefined
+                            }
+                            threadLabel={n.channel === "system" ? "원본 열기" : n.refType === "signal" ? "스레드 열기" : "업무 열기"}
                             onThread={linked ? () => open(n) : undefined}
                             saveType={linked ? (n.refType === "signal" ? "signal" : "task") : undefined}
                             saveId={linked ? n.refId! : undefined}

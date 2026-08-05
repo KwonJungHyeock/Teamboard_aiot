@@ -11,6 +11,23 @@ export const ACTIVITY_KINDS: ActivityKind[] = [
 /** 필터 레일에 노출되는 순서 (share는 "전체"에서만 보인다 — 전용 행 없음). */
 export const RAIL_KINDS: ActivityKind[] = ["mention", "assign", "reply", "approval", "deadline", "decision"];
 
+/**
+ * 종류 → 채널. classify() 와 같은 규칙을 상수로 굳혀둔 것이다.
+ * 레일은 이걸로 현재 채널의 종류만 그린다 — 예전엔 두 탭이 같은 목록을 보여줘서
+ * 사람 탭에 "마감 9", 시스템 탭에 "멘션 1·승인 3" 처럼 그 탭에 있을 수 없는 숫자가 떴다
+ * (MD-P-2026-018 §B).
+ */
+export const KIND_CHANNEL: Record<ActivityKind, Channel> = {
+  mention: "human",
+  assign: "human",
+  reply: "human",
+  approval: "human",
+  decision: "human",
+  share: "human",
+  deadline: "system",
+  system: "system",
+};
+
 export const KIND_LABEL: Record<ActivityKind, string> = {
   mention: "멘션",
   assign: "배정",

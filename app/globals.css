@@ -2147,3 +2147,8 @@ body.gpanel-open .agf-fab { display: none; }
 .frn-dot.on { background: var(--coral-d); }
 @media (prefers-reduced-motion: reduce) { .frn-dot { transition: none; } }
 .scut-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* 정렬·완료 포함 컨트롤 (MD-P-2026-018 §D) — 기존 lens-bar 규격을 따른다 */
+.lens-done { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-soft); cursor: pointer; white-space: nowrap; }
+.lens-sort { display: inline-flex; align-items: center; gap: 6px; }
+.lens-sort select { height: var(--btn-h-sm); font-size: 12.5px; width: auto; }
