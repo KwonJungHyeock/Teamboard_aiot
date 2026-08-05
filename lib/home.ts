@@ -219,11 +219,22 @@ function dday(due: string, today: string): string {
 
 const OPEN_TASK = `t.is_active = true AND t.status IN ('todo','doing','review')`; // proposed·done·dropped 제외
 
-async function sparkSeries(sqlPerDay: (day: string) => Promise<number>, today: string): Promise<number[]> {
-  const out: number[] = [];
-  for (let i = 6; i >= 0; i--) out.push(await sqlPerDay(addDays(today, -i)));
-  return out;
+/**
+ * 7일치 스파크를 **쿼리 한 번**으로 뽑는다 (MD-P-2026-022 §B).
+ * 예전에는 날짜마다 count(*) 를 한 번씩 돌려 스파크 3종에 21회가 나갔다.
+ * generate_series 로 날짜 축을 만들고 각 날짜에 스칼라 서브쿼리를 붙인다 —
+ * "그 시점 기준" 집계라 단순 GROUP BY 로는 표현되지 않기 때문이다(§B [기준과 다르게] 참조).
+ * countSql 안에서 그날은 d.day 로 참조한다. KST 자정은 (X::timestamp AT TIME ZONE 'Asia/Seoul').
+ */
+async function sparkSeries(countSql: string, today: string): Promise<number[]> {
+  const rows = await query<{ n: string }>(
+    `WITH d AS (SELECT generate_series($1::date, $2::date, interval '1 day')::date AS day)
+     SELECT (${countSql})::text AS n FROM d ORDER BY d.day`,
+    [addDays(today, -6), today]
+  );
+  return rows.map((r) => Number(r.n));
 }
+const KST_START = (expr: string) => `((${expr})::timestamp AT TIME ZONE 'Asia/Seoul')`;
 
 export async function buildHomeSummary(viewerId: number, isLead = false): Promise<HomeSummary> {
   const today = kstToday();
@@ -237,16 +248,10 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   ))!.n;
   // 스파크: 일별 열린 업무 근사치 (생성됨 & 그 시점 미완료)
   const openSpark = await sparkSeries(
-    async (day) =>
-      Number(
-        (await queryOne<{ n: string }>(
-          `SELECT count(*) AS n FROM task t
-           WHERE t.is_active = true AND t.status <> 'proposed'
-             AND t.created_at < $1::timestamptz
-             AND (t.completed_at IS NULL OR t.completed_at >= $1::timestamptz)`,
-          [kstDayStart(addDays(day, 1))]
-        ))!.n
-      ),
+    `SELECT count(*) FROM task t
+      WHERE t.is_active = true AND t.status <> 'proposed'
+        AND t.created_at < ${KST_START("d.day + 1")}
+        AND (t.completed_at IS NULL OR t.completed_at >= ${KST_START("d.day + 1")})`,
     today
   );
   const createdThisWeek = Number(
@@ -275,15 +280,9 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       ))!.n
     );
   const doneSpark = await sparkSeries(
-    async (day) =>
-      Number(
-        (await queryOne<{ n: string }>(
-          `SELECT count(*) AS n FROM task t
-           WHERE t.is_active = true AND t.status = 'done'
-             AND t.completed_at >= $1::timestamptz AND t.completed_at < $2::timestamptz`,
-          [kstDayStart(day), kstDayStart(addDays(day, 1))]
-        ))!.n
-      ),
+    `SELECT count(*) FROM task t
+      WHERE t.is_active = true AND t.status = 'done'
+        AND t.completed_at >= ${KST_START("d.day")} AND t.completed_at < ${KST_START("d.day + 1")}`,
     today
   );
 
@@ -329,16 +328,10 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     return Number(s.days) >= limit;
   });
   const overdueSpark = await sparkSeries(
-    async (day) =>
-      Number(
-        (await queryOne<{ n: string }>(
-          `SELECT count(*) AS n FROM task t
-           WHERE t.is_active = true AND t.status <> 'proposed' AND t.status <> 'dropped'
-             AND t.due_date < $1::date
-             AND (t.completed_at IS NULL OR t.completed_at >= $2::timestamptz)`,
-          [day, kstDayStart(day)]
-        ))!.n
-      ),
+    `SELECT count(*) FROM task t
+      WHERE t.is_active = true AND t.status <> 'proposed' AND t.status <> 'dropped'
+        AND t.due_date < d.day
+        AND (t.completed_at IS NULL OR t.completed_at >= ${KST_START("d.day")})`,
     today
   );
 
@@ -523,19 +516,18 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
 
   // ── 현황 분석 (파트 2) — 서버 집계만. LLM 수치생성 금지. ──
   // 주간 완료 추이: 최근 8주 완료 건수 (오래된→최신, 마지막이 이번 주)
-  const weeklyDone: { weekStart: string; count: number }[] = [];
-  for (let i = 7; i >= 0; i--) {
-    const ws = addDays(weekStart, -7 * i);
-    const count = Number(
-      (await queryOne<{ n: string }>(
-        `SELECT count(*) AS n FROM task t
-         WHERE t.is_active = true AND t.status = 'done'
-           AND t.completed_at >= $1::timestamptz AND t.completed_at < $2::timestamptz`,
-        [kstDayStart(ws), kstDayStart(addDays(ws, 7))]
-      ))!.n
-    );
-    weeklyDone.push({ weekStart: ws, count });
-  }
+  // 최근 8주 완료 건수 — 스파크와 같은 방식으로 한 번에 뽑는다 (MD-P-2026-022 §B).
+  const weeklyDoneRows = await query<{ ws: string; n: string }>(
+    `WITH w AS (SELECT generate_series($1::date, $2::date, interval '7 day')::date AS ws)
+     SELECT w.ws::text AS ws,
+            (SELECT count(*) FROM task t
+              WHERE t.is_active = true AND t.status = 'done'
+                AND t.completed_at >= ${KST_START("w.ws")}
+                AND t.completed_at <  ${KST_START("w.ws + 7")})::text AS n
+       FROM w ORDER BY w.ws`,
+    [addDays(weekStart, -49), weekStart]
+  );
+  const weeklyDone = weeklyDoneRows.map((r) => ({ weekStart: r.ws, count: Number(r.n) }));
   // 담당자별 부하: 오픈 업무(todo/doing/review)를 상태별로 (진행 / 대기·리뷰). 부하순 정렬.
   const assigneeLoadRows = await query<{ name: string; doing: string; waiting: string }>(
     `SELECT ac.display_name AS name,
