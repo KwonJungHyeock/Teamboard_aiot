@@ -40,30 +40,31 @@ function buildDays(from: string, n: number, today: string): DayMeta[] {
   });
 }
 
-function areaColor(ck: string | null): string {
+/**
+ * 바 색과 글자색 (MD-P-2026-019 §D "바 내부 글자는 대비 확보한 색").
+ * 중성 팔레트로 바뀌면서 파랑·초록은 흰 글씨도 잉크 글씨도 4.5:1 을 못 넘는다
+ * (파랑 흰 4.49/잉크 3.93, 초록 흰 4.27/잉크 4.13).
+ * 그 둘만 같은 색조의 접근성 변형을 면으로 쓴다 — 색상 정체성은 유지된다.
+ *   파랑 --blue-d  #1F5FE0 + 흰 글씨 5.57
+ *   초록 --green-text #0F7A4C + 흰 글씨 5.37
+ *   보라 --purple  #7C5CE0 + 흰 글씨 4.70
+ *   틸·앰버·슬레이트는 잉크 글씨가 5.3~6.3 으로 통과 → 그대로
+ */
+function areaFill(ck: string | null): string {
   switch (ck) {
     case "play": case "purple": return "var(--purple)";
     case "train": case "teal": return "var(--teal)";
-    case "green": return "var(--green)";
+    case "green": return "var(--green-text)";
     case "amber": return "var(--amber)";
     case "team": return "var(--slate)";
-    case "edu": case "blue": default: return "var(--blue)";
+    case "edu": case "blue": default: return "var(--blue-d)";
   }
 }
-
-/**
- * 바 위 글자색 — 배경(영역색)은 그대로 두고 글자를 대비가 높은 쪽으로 고른다 (MD-P-2026-016 ③).
- * 실측 대비(흰색 / 차콜 --ink):
- *   purple #7C5CE0  4.70 / 3.36 → 흰색
- *   blue   #4B8DF8  3.25 / 4.86 → 차콜
- *   teal   #0FA79A  2.99 / 5.28 → 차콜
- *   green  #4C9A6E  3.41 / 4.63 → 차콜
- *   amber  #D8A22E  2.30 / 6.87 → 차콜
- *   slate  #98A1B0  2.61 / 6.06 → 차콜
- * 보라만 배경이 충분히 어두워 흰 글씨가 이긴다.
- */
 function areaOnColor(ck: string | null): string {
-  return ck === "play" || ck === "purple" ? "#fff" : "var(--ink)";
+  switch (ck) {
+    case "train": case "teal": case "amber": case "team": return "var(--ink)";
+    default: return "#fff";   // 파랑·초록·보라는 흰 글씨가 이긴다
+  }
 }
 
 function NowClock() {
@@ -134,7 +135,7 @@ export default function HeroTimeline({
   const gridLanes: GLane[] = useMemo(() => {
     if (mode === "summary") {
       return groups.map(([area, tasks]) => {
-        const col = areaColor(tasks[0]?.areaColorKey ?? null);
+        const col = areaFill(tasks[0]?.areaColorKey ?? null);
         const on = areaOnColor(tasks[0]?.areaColorKey ?? null);
         const anyLate = tasks.some((t) => t.late);
         const minS = tasks.reduce((a, t) => (t.start < a ? t.start : a), tasks[0].start);
@@ -147,7 +148,7 @@ export default function HeroTimeline({
       }).filter((g) => g.bars.length > 0);
     }
     return groups.map(([area, tasks]) => {
-      const col = areaColor(tasks[0]?.areaColorKey ?? null);
+      const col = areaFill(tasks[0]?.areaColorKey ?? null);
       const on = areaOnColor(tasks[0]?.areaColorKey ?? null);
       const bars: Bar[] = [];
       for (const t of tasks) {

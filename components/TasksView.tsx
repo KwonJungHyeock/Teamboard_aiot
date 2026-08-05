@@ -5,12 +5,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
+import PageShell from "./PageShell";
 import TaskBoard from "./TaskBoard";
 import TaskCalendar from "./TaskCalendar";
 import TaskGantt from "./TaskGantt";
 import { toast, openQuickCreate } from "@/lib/quick";
 import {
-  type TaskItem, type TaskLens, type BoardGroup, LENS_LABEL, GROUP_LABEL, dday,
+  type TaskItem, type TaskLens, type BoardGroup, LENS_LABEL, GROUP_LABEL, dueLabel,
 } from "@/lib/task-view";
 import { openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
 
@@ -67,6 +68,16 @@ const DUE_OPTIONS = [
   ["none", "기한 없음"],
 ] as const;
 
+/** 정렬 기준 (MD-P-2026-018 §D) — 기본은 기한순. 선택은 사용자별로 기억한다. */
+type SortKey = "due" | "priority" | "recent" | "progress";
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "due", label: "기한순" },
+  { key: "priority", label: "우선순위순" },
+  { key: "recent", label: "최신 작성순" },
+  { key: "progress", label: "진척순" },
+];
+const PRIORITY_RANK: Record<string, number> = { high: 0, mid: 1, medium: 1, normal: 1, low: 2 };
+
 export default function TasksView({ user }: { user: SessionUser }) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [inbox, setInbox] = useState<InboxItem[]>([]);
@@ -75,6 +86,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [areas, setAreas] = useState<AreaOption[]>([]);
   const [myAreaIds, setMyAreaIds] = useState<number[]>([]);
   const [monthGoals, setMonthGoals] = useState<MonthGoalOption[]>([]);
+  const [linkGoals, setLinkGoals] = useState<{ id: number; title: string }[]>([]);
   const [today, setToday] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -87,6 +99,9 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [fStatus, setFStatus] = useState("");
   const [fDue, setFDue] = useState("");
   const [fBlocked, setFBlocked] = useState(false); // 홈 5칸 진입(?blocked=1)
+  // 완료 표시 여부 · 정렬 기준 (MD-P-2026-018 §D). 기본은 "완료 제외 + 기한순".
+  const [showDone, setShowDone] = useState(false);
+  const [sortBy, setSortBy] = useState<SortKey>("due");
   const [areaDefaulted, setAreaDefaulted] = useState(false);
   const isMine = fAssignee === String(user.id);
 
@@ -107,7 +122,20 @@ export default function TasksView({ user }: { user: SessionUser }) {
     if (v && ["sheet", "board", "calendar", "timeline"].includes(v)) setLens(v);
     const g = localStorage.getItem("tb:tasks-group") as BoardGroup | null;
     if (g && ["status", "area", "assignee"].includes(g)) setBoardGroup(g);
+    // URL 이 있으면 URL 우선(공유 링크), 없으면 지난 선택을 되살린다
+    const sp = new URLSearchParams(window.location.search);
+    const urlSort = sp.get("sort") as SortKey | null;
+    const urlDone = sp.get("done");
+    const savedSort = localStorage.getItem("tb:tasks-sort") as SortKey | null;
+    const savedDone = localStorage.getItem("tb:tasks-done");
+    const sortPick = urlSort ?? savedSort;
+    if (sortPick && SORT_OPTIONS.some((o) => o.key === sortPick)) setSortBy(sortPick);
+    if (urlDone === "1") setShowDone(true);
+    else if (urlDone === null && savedDone === "1") setShowDone(true);
   }, []);
+
+  function pickSort(v: SortKey) { setSortBy(v); localStorage.setItem("tb:tasks-sort", v); }
+  function toggleDone(v: boolean) { setShowDone(v); localStorage.setItem("tb:tasks-done", v ? "1" : "0"); }
   function pickLens(v: TaskLens) { setLens(v); localStorage.setItem("tb:tasks-lens", v); }
   function pickGroup(g: BoardGroup) { setBoardGroup(g); localStorage.setItem("tb:tasks-group", g); }
 
@@ -144,6 +172,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
       setAreas(data.areas ?? []);
       setMyAreaIds(data.myAreaIds ?? []);
       setMonthGoals(data.monthGoals ?? []);
+      setLinkGoals(data.linkGoals ?? []);
     }
   }, []);
 
@@ -219,9 +248,12 @@ export default function TasksView({ user }: { user: SessionUser }) {
     load();
   }
 
+  // 목표 이름 조회 — 월 목표만 보면 분기·연간 목표에 연결된 업무가 링크가 있는데도
+  // "—" 로 보인다. 전 레벨 목록(linkGoals)을 먼저 보고 없으면 월 목표로 떨어진다
+  // (MD-P-2026-018 §F).
   const goalTitleOf = useCallback(
-    (id: number) => monthGoals.find((g) => g.id === id)?.title,
-    [monthGoals]
+    (id: number) => linkGoals.find((g) => g.id === id)?.title ?? monthGoals.find((g) => g.id === id)?.title,
+    [linkGoals, monthGoals]
   );
 
   // 보드 드래그 → 기준값 변경 (낙관적 반영 + 실패 시 롤백, 토스트)
@@ -247,22 +279,57 @@ export default function TasksView({ user }: { user: SessionUser }) {
     }
   }
 
-  // 검색 적용된 업무 목록 — 모든 렌즈가 공유
+  // 검색·완료필터·정렬이 적용된 업무 목록 — 모든 렌즈가 공유 (MD-P-2026-018 §D)
   const filteredTasks = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return tasks.filter(
+    const out = tasks.filter(
       (t) =>
-        !q ||
-        t.title.toLowerCase().includes(q) ||
-        (t.projectName ?? "").toLowerCase().includes(q) ||
-        (t.assigneeName ?? "").toLowerCase().includes(q)
+        (showDone || (t.status !== "done" && t.status !== "dropped")) &&
+        (!q ||
+          t.title.toLowerCase().includes(q) ||
+          (t.projectName ?? "").toLowerCase().includes(q) ||
+          (t.assigneeName ?? "").toLowerCase().includes(q))
     );
-  }, [tasks, search]);
+
+    const prio = (t: TaskItem) => PRIORITY_RANK[t.priority] ?? 1;
+    // 기한 없는 항목은 항상 맨 뒤 — 날짜 비교에 끌어들이면 순서가 뒤죽박죽이 된다
+    const dueKey = (t: TaskItem) => t.dueDate ?? "9999-12-31";
+    const recent = (t: TaskItem) => t.createdAt ?? "";
+
+    const cmp: Record<SortKey, (a: TaskItem, b: TaskItem) => number> = {
+      // 지연 → 임박 → 여유 → 기한없음. 동률이면 우선순위, 그다음 최신 작성순.
+      due: (a, b) =>
+        dueKey(a).localeCompare(dueKey(b)) || prio(a) - prio(b) || recent(b).localeCompare(recent(a)),
+      priority: (a, b) =>
+        prio(a) - prio(b) || dueKey(a).localeCompare(dueKey(b)) || recent(b).localeCompare(recent(a)),
+      recent: (a, b) => recent(b).localeCompare(recent(a)) || b.id - a.id,
+      progress: (a, b) => (b.progress ?? 0) - (a.progress ?? 0) || dueKey(a).localeCompare(dueKey(b)),
+    };
+    return out.slice().sort(cmp[sortBy]);
+  }, [tasks, search, showDone, sortBy]);
+
+  // 필터·정렬을 URL 에 반영해 링크로 공유할 수 있게 한다 (MD-P-2026-018 §D).
+  // history 를 쌓지 않는다 — 뒤로가기가 필터 변경 이력으로 채워지면 화면을 벗어날 수 없다.
+  useEffect(() => {
+    if (loading) return;
+    const sp = new URLSearchParams(window.location.search);
+    const set = (k: string, v: string | null) => (v ? sp.set(k, v) : sp.delete(k));
+    set("area", fArea || null);
+    set("project", fProject || null);
+    set("assignee", fAssignee || null);
+    set("status", fStatus || null);
+    set("due", fDue || null);
+    set("blocked", fBlocked ? "1" : null);
+    set("sort", sortBy === "due" ? null : sortBy);
+    set("done", showDone ? "1" : null);
+    const qs = sp.toString();
+    window.history.replaceState({}, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+  }, [loading, fArea, fProject, fAssignee, fStatus, fDue, fBlocked, sortBy, showDone]);
 
   const rows: TaskTableRow[] = useMemo(() => {
     return filteredTasks
       .map((t) => {
-        const d = dday(t.dueDate, today);
+        const d = dueLabel(t, today);   // 완료면 "완료 YYYY-MM-DD" (§E)
         return {
           id: t.id,
           title: t.title,
@@ -282,30 +349,45 @@ export default function TasksView({ user }: { user: SessionUser }) {
       });
   }, [filteredTasks, today, goalTitleOf]);
 
+  const hiddenDone = tasks.filter((t) => t.status === "done" || t.status === "dropped").length;
+
   return (
-    <div className="hv">
-      <div className="top">
-        <div className="crumb">
-          워크스페이스 / <b>업무</b>
-        </div>
-        <span className="sp" />
-      </div>
-      <div className="wrap">
-        <div className="head">
-          <div>
-            <div className="eb">TASKS</div>
-            <h1>{isMine ? "내 업무" : "업무"}</h1>
-            <p>
-              {isMine
-                ? "담당이 나인 업무만 보고 있습니다. 담당을 ‘전체 담당’으로 바꾸면 전체를 조회합니다."
-                : "에이전트 제안은 인박스에서 승인해야 목록·홈·캘린더에 반영됩니다."}
-            </p>
-          </div>
-          {/* 홈 "+ 새로 만들기"와 동일 규칙 — 제목 줄 우측 상단 고정 (필터 줄바꿈과 무관) */}
-          <button className="newbtn" onClick={quickNew}>
-            ＋ 새 업무
+    /* 페이지 뼈대는 공통 컴포넌트가 그린다 (MD-P-2026-019 §B) —
+       브레드크럼 → 제목+액션 → 탭 → 필터바 → 본문 순서를 화면마다 다시 짜지 않는다. */
+    <PageShell
+      crumb={["워크스페이스", "업무"]}
+      title={isMine ? "내 업무" : "업무"}
+      subtitle={isMine
+        ? "담당이 나인 업무만 보고 있습니다. 담당을 ‘전체 담당’으로 바꾸면 전체를 조회합니다."
+        : "에이전트 제안은 인박스에서 승인해야 목록·홈·캘린더에 반영됩니다."}
+      actions={<button className="btn-primary" onClick={quickNew}>＋ 새 업무</button>}
+      tabs={(["sheet", "board", "calendar", "timeline"] as TaskLens[]).map((v) => ({ key: v, label: LENS_LABEL[v] }))}
+      activeTab={lens}
+      onTab={(k) => pickLens(k as TaskLens)}
+      filters={
+        <>
+          <input className="tsearch" placeholder="업무·프로젝트·담당 검색"
+            value={search} onChange={(e) => setSearch(e.target.value)} />
+          <select value={fArea} onChange={(e) => { setFArea(e.target.value); setAreaDefaulted(true); }}>
+            <option value="">전체 영역</option>
+            {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <select value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
+            <option value="">전체 담당</option>
+            {actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <select value={sortBy} onChange={(e) => pickSort(e.target.value as SortKey)} aria-label="정렬 기준">
+            {SORT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}{o.key === "due" ? " (기본)" : ""}</option>)}
+          </select>
+          <button className={`pg-chip${showDone ? " on" : ""}`} onClick={() => toggleDone(!showDone)}>
+            완료 포함
           </button>
-        </div>
+        </>
+      }
+      filterSummary={`${filteredTasks.length}건${!showDone && hiddenDone > 0 ? ` · 완료 ${hiddenDone}건 숨김` : ""}`}
+    >
+      <div className="hv tv-legacy">
+      <div className="wrap">
 
         {/* 인박스 — status='proposed' 전용 노출 위치 (홈·캘린더·타임라인 제외) */}
         {inbox.length > 0 && (
@@ -337,64 +419,9 @@ export default function TasksView({ user }: { user: SessionUser }) {
           </section>
         )}
 
-        {/* 필터 — 한 줄 인라인: 검색 + 셀렉트 + 우측 새 업무 버튼 */}
-        <div className="tfilters">
-          <input
-            className="tsearch"
-            placeholder="업무·프로젝트·담당 검색"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select value={fArea} onChange={(e) => { setFArea(e.target.value); setAreaDefaulted(true); }}>
-            <option value="">전체 영역</option>
-            {areas.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-          <select value={fProject} onChange={(e) => setFProject(e.target.value)}>
-            <option value="">전체 프로젝트</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <select value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
-            <option value="">전체 담당</option>
-            {actors.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-          <select value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
-            {STATUS_OPTIONS.map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
-              </option>
-            ))}
-          </select>
-          <select value={fDue} onChange={(e) => setFDue(e.target.value)}>
-            {DUE_OPTIONS.map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* 뷰 전환 — 같은 데이터, 다른 렌즈. 보드는 그룹 기준(상태/영역/담당) 선택. */}
-        <div className="lens-bar">
-          <div className="lens-tabs" role="tablist" aria-label="업무 뷰">
-            {(["sheet", "board", "calendar", "timeline"] as TaskLens[]).map((v) => (
-              <button key={v} role="tab" aria-selected={lens === v} className="lens-tab" onClick={() => pickLens(v)}>
-                {LENS_LABEL[v]}
-              </button>
-            ))}
-          </div>
-          {lens === "board" && (
+        {/* 보드 그룹 기준만 남긴다 — 뷰 탭·정렬·완료 포함은 페이지 뼈대(PageShell)로 올렸다 */}
+        {lens === "board" && (
+          <div className="lens-bar">
             <div className="lens-group" role="group" aria-label="그룹 기준">
               <span className="lens-group-l">그룹</span>
               {(["status", "area", "assignee"] as BoardGroup[]).map((g) => (
@@ -403,8 +430,8 @@ export default function TasksView({ user }: { user: SessionUser }) {
                 </button>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {loading && <p className="gempty">불러오는 중...</p>}
         {error && <p className="gerr">{error}</p>}
@@ -438,7 +465,16 @@ export default function TasksView({ user }: { user: SessionUser }) {
         )}
         {!loading && lens === "calendar" && <TaskCalendar tasks={filteredTasks} today={today} />}
         {!loading && lens === "timeline" && <TaskGantt tasks={filteredTasks} today={today} actors={actors} />}
+
+        {/* 완료를 감춘 이유와 되돌리는 길을 목록 아래에 남긴다 (§E) */}
+        {!showDone && hiddenDone > 0 && (
+          <p className="tv-hidden">
+            완료 {hiddenDone}건 숨김 ·{" "}
+            <button className="lk" onClick={() => toggleDone(true)}>완료 포함해서 보기</button>
+          </p>
+        )}
       </div>
-    </div>
+      </div>
+    </PageShell>
   );
 }

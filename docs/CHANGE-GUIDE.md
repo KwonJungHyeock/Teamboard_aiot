@@ -1,7 +1,8 @@
 # 팀보드 변경 지침서 v1.0 — Claude Code 핸드오프
 
 > 기준 문서: `docs/SPEC.md` (통합 기준 문서 v1.0)
-> 디자인 기준: `docs/prototype/index.html` (v0.3 프로토타입)
+> 디자인 기준: MD-P-2026-019/020 규격 (중성 톤 토큰 — `lib/theme.css`, `app/design.css`)
+> `docs/archive/prototype-v0.3/index.html` 은 **구버전 참고용(v0.3, 다크 토큰. 현행 기준 아님)**
 > 대상 저장소: `KwonJungHyeock/Teamboard_aiot`
 
 ---
@@ -106,7 +107,8 @@ public/assets/
 ### Phase 0 — 준비
 
 1. 작업 브랜치 생성
-2. `docs/SPEC.md`, `docs/CHANGE-GUIDE.md`, `docs/prototype/index.html` 커밋
+2. `docs/SPEC.md`, `docs/CHANGE-GUIDE.md`, `docs/archive/prototype-v0.3/index.html` 커밋
+   (당시 경로는 `docs/prototype/index.html`. MD-P-2026-021에서 archive로 이동)
 3. `public/assets/` 하위 5개 폴더 생성, `texture/grain.png` `texture/mesh.webp` 배치
 4. `lib/theme.css` 생성 — 프로토타입 `:root` 블록의 CSS 변수를 그대로 추출. **값을 임의로 바꾸지 않는다**
 

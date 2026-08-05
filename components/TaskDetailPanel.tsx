@@ -9,6 +9,7 @@ import { decTime, type Decision } from "./decision-ui";
 import { uploadImage } from "@/lib/upload";
 import { openPanel } from "@/lib/side-panel";
 import ResourceLinks from "./ResourceLinks";
+import DocEditor from "./DocEditor";
 import {
   TASK_PANEL_EVENT,
   currentTaskRef,
@@ -518,9 +519,16 @@ export default function TaskDetailPanel() {
               )}
             </div>
 
-            {/* 설명 (마크다운 · 이미지 붙여넣기/드롭) — 파트 3 */}
-            <div className="tdp-sec">
-              <div className="tdp-sec-h">설명 <em>(마크다운 · 이미지 붙여넣기/드롭)</em></div>
+            {/* 본문 = 문서 (MD-P-2026-019 §F). 폼이 아니라 기록 공간이다.
+                슬래시 명령 · URL 붙여넣기 임베드 · 체크리스트 · 자동 저장은 DocEditor 가 담당한다. */}
+            <div className="tdp-sec tdp-doc">
+              <div className="tdp-sec-h">본문</div>
+              <DocEditor taskId={t.id} />
+            </div>
+
+            {/* 기존 평문 설명 — 문서로 옮기기 전 자료가 남아 있어서 접어서 보존한다 */}
+            <details className="tdp-sec tdp-legacy" open={!!descText.trim()}>
+              <summary className="tdp-sec-h">설명 (기존 평문) <em>마크다운</em></summary>
               <textarea
                 ref={descRef}
                 className="tdp-desc" rows={4} value={descText}
@@ -538,7 +546,7 @@ export default function TaskDetailPanel() {
                   <Markdown text={descText} />
                 </div>
               )}
-            </div>
+            </details>
 
             {/* 연결된 리소스 (MD-P-2026-012 §E) — Notion·Figma·GitHub */}
             <div className="tdp-sec">

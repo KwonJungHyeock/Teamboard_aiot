@@ -1,0 +1,221 @@
+/* ============================================================
+   디자인 개편 Phase 1 (MD-P-2026-019) — 공통 규격.
+   §G 를 CSS 로 굳힌 것이다. 여기 없는 크기·라운드·그림자는 쓰지 않는다.
+     간격  4px 배수 · 블록 12px · 섹션 16px · 본문 패딩 16/22px
+     폰트  25 / 19 / 14 / 12.5 / 11.5 / 10.5
+     라운드 4(칩) / 7(버튼·입력) / 9(블록)
+     그림자 --e1(표면) / --e2(떠 있는 것) / --e3(모달만)
+     선    1px — --line(구획) / --hair(행)
+   ============================================================ */
+
+/* ── §B 페이지 뼈대 ── */
+.pg { display: flex; flex-direction: column; min-height: 100%; background: var(--bg); }
+.pg-head { background: var(--surface); border-bottom: 1px solid var(--line); padding: 12px 22px 0; }
+.pg-crumb { font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.pg-crumb b { color: var(--ink2); font-weight: 600; }
+.pg-crumb-sep { font-style: normal; color: var(--line-hi); margin: 0 2px; }
+.pg-title { display: flex; align-items: flex-end; gap: 12px; margin-top: 4px; }
+.pg-title-l { min-width: 0; }
+.pg-title h1 { font-size: 19px; font-weight: 800; letter-spacing: -.015em; color: var(--ink); margin: 0; }
+.pg-sub { font-size: 12.5px; color: var(--muted); margin: 4px 0 0; }
+/* 액션은 항상 우측. 주 액션 1개만 코랄 */
+.pg-act { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.pg-tabs { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
+.pg-tab { background: 0; border: 0; padding: 0 0 8px; cursor: pointer; font-family: inherit;
+  font-size: 12.5px; font-weight: 700; color: var(--muted); position: relative; display: flex; align-items: center; gap: 4px; }
+.pg-tab:hover { color: var(--ink2); }
+.pg-tab.on { color: var(--ink); }
+.pg-tab.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--coral); }
+.pg-tab-n { font-size: 10.5px; font-weight: 700; color: var(--muted); }
+.pg-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--surface-2); border-bottom: 1px solid var(--line); padding: 8px 22px; }
+.pg-filter-sum { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+.pg-body { flex: 1; padding: 16px 22px; }
+
+/* 필터 칩 26px */
+.pg-chip { height: 26px; padding: 0 10px; border-radius: 4px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink2); font-family: inherit; font-size: 11.5px; font-weight: 600;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: background .12s ease, border-color .12s ease; }
+.pg-chip:hover { background: var(--surface-2); }
+.pg-chip.on { border-color: var(--coral); color: var(--coral-text); background: var(--coral-bg); }
+.pg-filters select, .pg-filters input { height: 26px; border-radius: 4px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink2); font-size: 11.5px; padding: 0 8px; width: auto; }
+
+/* ── 버튼 (§B: 주 액션 1개만 코랄) ── */
+.btn-primary { height: 30px; padding: 0 13px; border: 0; border-radius: 7px; background: var(--coral-d);
+  color: #fff; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.btn-primary:hover { background: var(--coral); }
+.btn-ghost { height: 30px; padding: 0 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface);
+  color: var(--ink2); font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: background .12s ease; }
+.btn-ghost:hover { background: var(--surface-2); }
+
+/* ── §C 목록 = 행 ── */
+.dl { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; box-shadow: var(--e1); }
+.dl-head { display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 13px;
+  background: var(--surface-2); border-bottom: 1px solid var(--line);
+  font-size: 10.5px; font-weight: 800; color: var(--muted); letter-spacing: .02em; }
+.dl-row { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 13px;
+  border-bottom: 1px solid var(--hair); font-size: 12.5px; color: var(--ink);
+  transition: background .12s ease; position: relative; }
+.dl-row:last-child { border-bottom: 0; }
+.dl-row.click { cursor: pointer; }
+.dl-row.click:hover { background: var(--surface-2); }
+.dl-row.on { background: var(--coral-bg); }
+.dl-row.risk::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--coral); }
+.dl-c { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-c.num { font-family: var(--f-d); font-variant-numeric: tabular-nums; text-align: right; }
+.dl-head .dl-c.num { text-align: right; }
+
+.dl-led { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.dl-led i { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
+
+.dl-bar { display: inline-flex; align-items: center; gap: 7px; justify-content: flex-end; width: 100%; }
+.dl-bar i { display: block; width: 52px; height: 4px; border-radius: 999px; background: var(--track-bg); flex: 0 0 52px; overflow: hidden; }
+.dl-bar i b { display: block; height: 100%; border-radius: 999px; background: var(--blue); }
+.dl-bar em { font-family: var(--f-d); font-variant-numeric: tabular-nums; font-size: 11.5px; font-style: normal; color: var(--ink2); min-width: 30px; text-align: right; }
+.dl-bar-na { color: var(--muted); }
+
+.dl-empty { padding: 32px 16px; text-align: center; }
+.dl-empty p { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
+
+.dl-skel { padding: 0; }
+.dl-skel span { display: block; height: 38px; border-bottom: 1px solid var(--hair);
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--hair) 37%, var(--surface-2) 63%);
+  background-size: 400% 100%; animation: dlskel 1.2s ease infinite; }
+@keyframes dlskel { from { background-position: 100% 50%; } to { background-position: 0 50%; } }
+
+/* ── §G 공통 ── */
+/* 포커스 링 — 모든 인터랙티브 요소 */
+.pg :is(button, a, input, select, textarea, [tabindex]):focus-visible,
+.dl :is(button, a, input, select, textarea, [tabindex]):focus-visible,
+.doc :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--coral); outline-offset: 2px; border-radius: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-chip, .btn-ghost, .dl-row { transition: none; }
+  .dl-skel span { animation: none; background: var(--surface-2); }
+}
+
+/* ── §F 업무 상세 = 문서형 ── */
+.doc { display: flex; flex-direction: column; gap: 12px; }
+.doc-bar { display: flex; align-items: center; gap: 12px; font-size: 11.5px; }
+.doc-save { font-family: var(--f-d); color: var(--muted); }
+.doc-save.saving { color: var(--ink2); }
+.doc-save.saved { color: var(--green-text); }
+.doc-save.err { color: var(--coral-text); }
+.doc-hint { margin-left: auto; color: var(--muted); }
+.doc-hint kbd, .doc-add-k kbd { font-family: var(--f-d); font-size: 10.5px; background: var(--surface-2);
+  border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; color: var(--ink2); }
+
+.doc-blocks { display: flex; flex-direction: column; gap: 4px; }
+.doc-b { position: relative; padding-right: 20px; }
+.doc-bx { position: absolute; right: 0; top: 4px; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 4px;
+  background: 0; color: var(--muted); cursor: pointer; opacity: 0; font-size: 10.5px; transition: opacity .12s ease; }
+.doc-b:hover .doc-bx, .doc-b:focus-within .doc-bx { opacity: 1; }
+.doc-bx:hover { background: var(--surface-2); color: var(--ink2); }
+
+.doc-tw { position: relative; }
+.doc-t { width: 100%; border: 0; background: 0; resize: none; font-family: inherit; color: var(--ink);
+  padding: 4px 0; line-height: 1.65; overflow: hidden; }
+.doc-t::placeholder { color: var(--muted); }
+.doc-t-text { font-size: 14px; }
+.doc-t-heading { font-size: 19px; font-weight: 800; letter-spacing: -.015em; padding-top: 8px; }
+.doc-t-quote { font-size: 14px; color: var(--ink2); border-left: 2px solid var(--line); padding-left: 12px; }
+.doc-t-code { font-family: var(--f-d); font-size: 12.5px; background: var(--surface-2);
+  border: 1px solid var(--hair); border-radius: 7px; padding: 8px 12px; }
+.doc-hr { border: 0; border-top: 1px solid var(--line); margin: 8px 0; }
+
+.doc-slash { position: absolute; left: 0; top: 100%; z-index: 40; margin-top: 4px; min-width: 210px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 9px; box-shadow: var(--e2);
+  padding: 4px; display: flex; flex-direction: column; max-height: 260px; overflow: auto; }
+.doc-slash button { display: flex; align-items: baseline; gap: 8px; width: 100%; text-align: left;
+  background: 0; border: 0; border-radius: 4px; padding: 6px 8px; cursor: pointer; font-family: inherit; }
+.doc-slash button:hover { background: var(--surface-2); }
+.doc-slash b { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.doc-slash em { font-size: 10.5px; font-style: normal; color: var(--muted); margin-left: auto; }
+
+.doc-check { display: flex; flex-direction: column; gap: 2px; }
+.doc-ci { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.doc-ci input[type="checkbox"] { width: 13px; height: 13px; flex: 0 0 13px; accent-color: var(--coral-d); }
+.doc-cit { flex: 1; border: 0; background: 0; font-family: inherit; font-size: 14px; color: var(--ink); padding: 2px 0; }
+.doc-ci.done .doc-cit { text-decoration: line-through; color: var(--muted); }
+.doc-cix { width: 18px; height: 18px; border: 0; border-radius: 4px; background: 0; color: var(--muted);
+  cursor: pointer; opacity: 0; font-size: 10.5px; }
+.doc-ci:hover .doc-cix { opacity: 1; }
+.doc-ciadd { align-self: flex-start; background: 0; border: 0; padding: 4px 0; cursor: pointer;
+  font-family: inherit; font-size: 11.5px; color: var(--muted); }
+.doc-ciadd:hover { color: var(--ink2); }
+
+.doc-link { display: flex; flex-direction: column; gap: 2px; text-decoration: none;
+  border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; background: var(--surface); }
+.doc-link:hover { background: var(--surface-2); }
+.doc-link-t { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.doc-link-d { font-size: 10.5px; color: var(--muted); }
+.doc-url { width: 100%; height: 30px; border: 1px solid var(--line); border-radius: 7px;
+  background: var(--surface); font-size: 12.5px; padding: 0 10px; color: var(--ink); }
+.doc-img-ph { border: 1px dashed var(--line); border-radius: 9px; padding: 16px; text-align: center;
+  font-size: 11.5px; color: var(--muted); background: var(--surface-2); }
+
+.doc-add { align-self: flex-start; background: 0; border: 0; padding: 6px 0; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.doc-add:hover { color: var(--ink2); }
+.doc-add-k { font-size: 10.5px; }
+.doc-empty { padding: 28px 16px; text-align: center; border: 1px dashed var(--line); border-radius: 9px; background: var(--surface-2); }
+.doc-empty p { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
+.doc-skel { display: flex; flex-direction: column; gap: 8px; }
+.doc-skel span { height: 16px; border-radius: 4px; background: var(--surface-2); }
+.doc-skel span:nth-child(2) { width: 80%; }
+.doc-skel span:nth-child(3) { width: 55%; }
+
+/* ── §F1 속성 블록 ── */
+.prop { display: flex; flex-direction: column; }
+.prop-row { display: flex; align-items: center; gap: 8px; min-height: 30px; position: relative;
+  border-radius: 4px; padding: 0 6px; margin: 0 -6px; transition: background .12s ease; }
+.prop-row:hover, .prop-row.open { background: var(--surface-2); }
+.prop-l { width: 88px; flex: 0 0 88px; font-size: 11.5px; color: var(--muted); }
+.prop-v { flex: 1; min-width: 0; text-align: left; background: 0; border: 0; padding: 4px 0; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+.prop-v.ro { cursor: default; }
+.prop-v.empty { color: var(--muted); }
+.prop-v.empty:hover { color: var(--coral-text); }
+.prop-pop { position: absolute; left: 88px; top: 100%; z-index: 40; margin-top: 2px; min-width: 220px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 9px; box-shadow: var(--e2); padding: 8px; }
+.prop-more { align-self: flex-start; background: 0; border: 0; padding: 6px 0; cursor: pointer;
+  font-family: inherit; font-size: 11.5px; color: var(--muted); }
+.prop-more:hover { color: var(--ink2); }
+@media (prefers-reduced-motion: reduce) { .prop-row, .doc-bx { transition: none; } }
+
+/* 업무 상세 안에서의 문서 영역 — 패널 폭에 맞춘 최소 보정만 (레이아웃은 기존 유지) */
+.tdp-doc .doc { gap: 12px; }
+.tdp-legacy summary { cursor: pointer; list-style: none; }
+.tdp-legacy summary::-webkit-details-marker { display: none; }
+.tdp-legacy summary::before { content: "▸ "; color: var(--muted); }
+.tdp-legacy[open] summary::before { content: "▾ "; }
+
+/* 내 업무 — 페이지 뼈대 안에 들어간 기존 본문 (레이아웃 유지, 여백만 뼈대에 맞춤) */
+.pg-body .tv-legacy { background: 0; }
+.pg-body .tv-legacy .wrap { padding: 0; max-width: none; }
+.pg-filters .tsearch { height: 26px; min-width: 200px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface); font-size: 11.5px; padding: 0 8px; color: var(--ink); }
+.tv-hidden { margin-top: 12px; font-size: 11.5px; color: var(--muted); }
+
+/* §C 행 규격을 기존 표에도 적용 — 마크업(<table>)은 접근성 때문에 유지한다 */
+.pg-body table { width: 100%; border-collapse: collapse; }
+.pg-body table thead th { height: 30px; padding: 0 13px; background: var(--surface-2);
+  border-bottom: 1px solid var(--line); font-size: 10.5px; font-weight: 800; color: var(--muted); text-align: left; }
+.pg-body table tbody td { height: 38px; padding: 0 13px; border-bottom: 1px solid var(--hair);
+  font-size: 12.5px; color: var(--ink); }
+.pg-body table tbody tr { transition: background .12s ease; }
+.pg-body table tbody tr:hover { background: var(--surface-2); }
+.pg-body table .num, .pg-body table .tt-dday, .pg-body table .tt-prog-n {
+  font-family: var(--f-d); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .pg-body table tbody tr { transition: none; } }
+
+/* §G 스케일 정합 — 뼈대 안에 들어온 기존 요소를 6단 폰트·3종 라운드로 맞춘다.
+   마크업은 건드리지 않고 여기서 규격만 강제한다. */
+.pg-body :is(.areatag, .stsel, .tt-dday, .due, .prio, .st, .tt-prog-n, .tinbox-row em) { font-size: 11.5px; }
+.pg-body .sub, .pg-body .ch .sub { font-size: 11.5px; }
+.pg-body .tt-prog-n { font-size: 11.5px; }
+.pg-body :is(h2, .ch h2, .tinbox h2) { font-size: 14px; }
+.pg-body :is(.areatag, .prio, .st, .stsel) { border-radius: 4px; }

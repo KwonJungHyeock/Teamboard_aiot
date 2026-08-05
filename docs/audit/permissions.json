@@ -1,0 +1,246 @@
+[
+ {
+  "group": "관리 화면",
+  "path": "/members",
+  "desc": "구성원 관리 — 팀장 전용",
+  "expect": "차단",
+  "member": 307,
+  "memberLoc": "/assistant",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "관리 화면",
+  "path": "/settings",
+  "desc": "설정 — 팀장 전용",
+  "expect": "차단",
+  "member": 307,
+  "memberLoc": "/assistant",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "관리 화면",
+  "path": "/status",
+  "desc": "업무 현황 — 팀장 전용",
+  "expect": "차단",
+  "member": 307,
+  "memberLoc": "/assistant",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "관리 API",
+  "path": "/api/members",
+  "desc": "구성원 목록",
+  "expect": "차단",
+  "member": 403,
+  "memberLoc": "",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "관리 API",
+  "path": "/api/admin/clear-demo",
+  "desc": "데모 데이터 삭제",
+  "expect": "차단",
+  "member": 403,
+  "memberLoc": "",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "관리 API",
+  "path": "/api/admin/verify-notion-schema",
+  "desc": "Notion 스키마 검증",
+  "expect": "차단",
+  "member": 403,
+  "memberLoc": "",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "관리 API",
+  "path": "/api/assistant/settings",
+  "desc": "에이전트 설정",
+  "expect": "확인",
+  "member": 404,
+  "memberLoc": "",
+  "lead": 200,
+  "ok": false
+ },
+ {
+  "group": "월간 보고",
+  "path": "/api/reports",
+  "desc": "승인 보고서 목록 — 팀장 전용",
+  "expect": "차단",
+  "member": 403,
+  "memberLoc": "",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "월간 보고",
+  "path": "/api/reports/1",
+  "desc": "승인 보고서 상세 — 팀장 전용",
+  "expect": "차단",
+  "member": 403,
+  "memberLoc": "",
+  "lead": 404,
+  "ok": true
+ },
+ {
+  "group": "월간 보고",
+  "path": "/reports",
+  "desc": "월간 성과 리포트 화면 — 전원",
+  "expect": "허용",
+  "member": 200,
+  "memberLoc": "",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "월간 보고",
+  "path": "/api/reports/monthly?ym=2026-08&scope=team",
+  "desc": "팀 리포트 — 전원",
+  "expect": "허용",
+  "member": 200,
+  "memberLoc": "",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "개인 목표",
+  "path": "/api/reports/monthly?ym=2026-08&scope=personal&actorId=1",
+  "desc": "타인 개인 리포트",
+  "expect": "차단",
+  "member": 403,
+  "memberLoc": "",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "개인 목표",
+  "path": "/api/reports/monthly?ym=2026-08&scope=personal&actorId=13",
+  "desc": "본인 개인 리포트",
+  "expect": "허용",
+  "member": 200,
+  "memberLoc": "",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "개인 목표",
+  "path": "/api/goals?scope=personal",
+  "desc": "본인 개인 목표 목록",
+  "expect": "허용",
+  "member": 200,
+  "memberLoc": "",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "개인 목표",
+  "path": "/api/goals/10",
+  "desc": "타인 개인 목표 상세 #10 (소유 actor 1)",
+  "expect": "차단",
+  "member": 403,
+  "memberLoc": "",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "개인 목표",
+  "path": "/api/goals/10/projects",
+  "desc": "타인 개인 목표의 연결 프로젝트 (§C 수정분)",
+  "expect": "차단",
+  "member": 403,
+  "memberLoc": "",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "스냅샷",
+  "path": "/api/cron/goal-snapshot",
+  "desc": "스냅샷 크론 — 인증 필요",
+  "expect": "차단",
+  "member": 401,
+  "memberLoc": "",
+  "lead": 401,
+  "ok": true
+ },
+ {
+  "group": "Notion",
+  "path": "/api/notion/resource",
+  "desc": "연동 상태 조회",
+  "expect": "허용",
+  "member": 200,
+  "memberLoc": "",
+  "lead": 200,
+  "ok": true
+ },
+ {
+  "group": "비로그인",
+  "path": "/",
+  "expect": "차단",
+  "member": 307,
+  "memberLoc": "/login",
+  "ok": true
+ },
+ {
+  "group": "비로그인",
+  "path": "/tasks",
+  "expect": "차단",
+  "member": 307,
+  "memberLoc": "/login",
+  "ok": true
+ },
+ {
+  "group": "비로그인",
+  "path": "/goals",
+  "expect": "차단",
+  "member": 307,
+  "memberLoc": "/login",
+  "ok": true
+ },
+ {
+  "group": "비로그인",
+  "path": "/reports",
+  "expect": "차단",
+  "member": 307,
+  "memberLoc": "/login",
+  "ok": true
+ },
+ {
+  "group": "비로그인",
+  "path": "/members",
+  "expect": "차단",
+  "member": 307,
+  "memberLoc": "/login",
+  "ok": true
+ },
+ {
+  "group": "비로그인",
+  "path": "/settings",
+  "expect": "차단",
+  "member": 307,
+  "memberLoc": "/login",
+  "ok": true
+ },
+ {
+  "group": "비로그인",
+  "path": "/api/tasks",
+  "expect": "차단",
+  "member": 401,
+  "memberLoc": "",
+  "ok": true
+ },
+ {
+  "group": "비로그인",
+  "path": "/api/members",
+  "expect": "차단",
+  "member": 401,
+  "memberLoc": "",
+  "ok": true
+ }
+]

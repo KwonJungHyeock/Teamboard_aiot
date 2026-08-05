@@ -7,8 +7,14 @@ AIoT 교육플랫폼 사업팀(ROBODYNE SYSTEMS)의 메인 업무 관리 도구.
 초안·중간상태는 자체 DB에만 저장하고, 승인된 확정본만 Notion에 씁니다.
 
 > 📄 **기준 문서**: [`docs/SPEC.md`](docs/SPEC.md) (v1.1) 가 유일한 기준이며, Phase 지침은
-> [`docs/CHANGE-GUIDE.md`](docs/CHANGE-GUIDE.md), 디자인 참조는 `docs/prototype/index.html` 입니다.
+> [`docs/CHANGE-GUIDE.md`](docs/CHANGE-GUIDE.md) 입니다.
+> 디자인 기준은 **MD-P-2026-019/020 규격**(중성 톤 토큰 — `lib/theme.css`, `app/design.css`)이며,
+> [`docs/archive/prototype-v0.3/index.html`](docs/archive/prototype-v0.3/index.html) 은
+> **구버전 참고용(v0.3, 다크 토큰. 현행 기준 아님)** 입니다.
 > 초기 3화면 구조 문서는 `docs/archive/` 로 보관되었습니다.
+>
+> 📁 **문서 폴더 규칙·문서번호 체계**는 [`docs/README.md`](docs/README.md) 를 따릅니다.
+> 지시서는 `docs/orders/`, 보고서는 `docs/reports/`, 캡처는 `docs/shots/{문서번호}/` 입니다.
 
 ## 화면
 
