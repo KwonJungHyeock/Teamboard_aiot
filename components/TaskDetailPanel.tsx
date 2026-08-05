@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "./Markdown";
 import { decTime, type Decision } from "./decision-ui";
-import { uploadImage } from "@/lib/upload";
+import { uploadImage, blobSrc } from "@/lib/upload";
 import { openPanel } from "@/lib/side-panel";
 import DocEditor, { type DocBlock } from "./DocEditor";
 import PropertyBlock, { type PropRow } from "./PropertyBlock";
@@ -256,12 +256,14 @@ export default function TaskDetailPanel() {
     else setErr((await res.json()).error ?? "공유 실패");
   }
 
-  // 이미지 업로드(붙여넣기/드롭/파일) → Blob URL → 마크다운 ![](url) 삽입 (파트 3)
+  // 이미지 업로드(붙여넣기/드롭/파일) → Private Blob → 마크다운 삽입 (MD-P-2026-014a).
+  // 마크다운에는 공개 URL이 아니라 /api/blob 라우트 경로를 넣는다.
   async function insertUpload(file: File, into: "desc" | "comment") {
+    if (typeof openId !== "number") return;
     setUploading(true); setErr("");
     try {
-      const url = await uploadImage(file);
-      const md = `![](${url})`;
+      const up = await uploadImage(file, { kind: "task", id: openId });
+      const md = `![${up.name}](${blobSrc(up.pathname)})`;
       if (into === "desc") {
         const next = descText ? `${descText}\n${md}` : md;
         setDescText(next);

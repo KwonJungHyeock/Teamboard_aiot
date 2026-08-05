@@ -167,7 +167,8 @@ export async function POST(request: Request) {
     if (type !== "memo" && scope === "private") scope = "team"; // 비공개는 메모만
     const huddleAt = scope === "huddle"; // 생성 시점부터 허들이면 huddle_at 기록
 
-    // 이미지 URL (파트 D 허들룸) — http(s)만
+    // 이미지 URL (파트 D 허들룸) — 생성 시점에는 시그널 id 가 없어 Private Blob 경로를 검증할 수 없다.
+    // 그래서 여기서는 예전 방식(http URL)만 받는다. 파일 첨부는 생성 후 코멘트로 올린다 (MD-P-2026-014a).
     const rawImg = typeof payload.imageUrl === "string" ? payload.imageUrl.trim() : "";
     const imageUrl = /^https?:\/\//.test(rawImg) ? rawImg.slice(0, 1000) : null;
     const signal = await queryOne<{ id: number }>(

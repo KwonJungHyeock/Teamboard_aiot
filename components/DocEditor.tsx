@@ -11,6 +11,8 @@ import InternalUnfurl, { type InternalCard } from "./InternalUnfurl";
 import { useAutocomplete } from "./autocomplete";
 import { toast } from "@/lib/quick";
 import { pgDate } from "@/lib/pgtime";
+import { uploadImage } from "@/lib/upload";
+import BlobImage from "./BlobImage";
 
 export type DocBlockType = "text" | "heading" | "checklist" | "quote" | "code" | "divider" | "link" | "image";
 
@@ -22,6 +24,11 @@ export interface DocBlock {
   url?: string;
   meta?: { title?: string; provider?: string; domain?: string; thumbnail?: string | null } | null;
   internal?: InternalCard | null;
+  /** 이미지 블록 (MD-P-2026-014a) — Private Blob 의 pathname. 공개 URL이 아니다. */
+  pathname?: string;
+  name?: string;
+  size?: number;
+  contentType?: string;
 }
 
 const uid = () => `b${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -34,7 +41,7 @@ const SLASH: { key: string; label: string; hint: string; make: () => DocBlock }[
   { key: "divider", label: "구분선", hint: "가로선", make: () => ({ id: uid(), type: "divider" }) },
   { key: "quote", label: "인용", hint: "인용문", make: () => ({ id: uid(), type: "quote", text: "" }) },
   { key: "code", label: "코드", hint: "코드 블록", make: () => ({ id: uid(), type: "code", text: "" }) },
-  { key: "image", label: "이미지", hint: "붙여넣기·드래그", make: () => ({ id: uid(), type: "image", url: "" }) },
+  { key: "image", label: "이미지", hint: "붙여넣기·드래그", make: () => ({ id: uid(), type: "image" }) },
   { key: "link", label: "링크 임베드", hint: "URL 카드", make: () => ({ id: uid(), type: "link", url: "" }) },
 ];
 
@@ -152,15 +159,29 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
     patch(id, { url: url.trim(), meta: d?.meta ?? null, internal: d?.internal ?? null });
   }, [patch]);
 
+  // ── 이미지 업로드 (MD-P-2026-014 §A + 014a) — 서버 라우트 경유, pathname 만 저장 ──
+  const insertImage = useCallback(async (afterId: string | null, file: File) => {
+    const ph: DocBlock = { id: uid(), type: "image", name: file.name };
+    addAfter(afterId, ph);
+    try {
+      const up = await uploadImage(file, { kind: "task", id: taskId });
+      patch(ph.id, { pathname: up.pathname, name: up.name, size: up.size, contentType: up.contentType });
+    } catch (err) {
+      remove(ph.id);
+      toast(err instanceof Error ? err.message : "이미지 업로드 실패", "err");
+    }
+  }, [addAfter, patch, remove, taskId]);
+
   // ── 붙여넣기 자동 인식 (§F2) ──
   const onPaste = useCallback((blockId: string, e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const text = e.clipboardData.getData("text/plain");
     const files = Array.from(e.clipboardData.files ?? []);
 
-    if (files.some((f) => f.type.startsWith("image/"))) {
+    const img = files.find((f) => f.type.startsWith("image/"));
+    if (img) {
       e.preventDefault();
-      if (!blobReady) { toast("이미지 업로드는 스토리지 연결 후 사용할 수 있어요", "err"); return; }
-      toast("이미지 업로드는 스토리지 연결 후 사용할 수 있어요", "err");
+      if (!blobReady) { toast("이미지 저장소가 연결되지 않았어요", "err"); return; }
+      void insertImage(blockId, img);
       return;
     }
     if (!text) return;
@@ -186,7 +207,7 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
         return next;
       });
     }
-  }, [addAfter, unfurl, blobReady, schedule]);
+  }, [addAfter, unfurl, blobReady, schedule, insertImage]);
 
   // ── 슬래시 명령 ──
   const slashHits = useMemo(() => {
@@ -315,7 +336,11 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
               )}
 
               {b.type === "image" && (
-                <div className="doc-img-ph">이미지 — 스토리지 연결 후 표시됩니다</div>
+                b.pathname
+                  ? <BlobImage value={b.pathname} name={b.name} alt={b.name ?? "첨부 이미지"} className="doc-img" />
+                  : <div className="doc-img-ph">
+                      {blobReady ? "이미지 올리는 중…" : "이미지 저장소가 연결되지 않았습니다"}
+                    </div>
               )}
 
               {!readOnly && (

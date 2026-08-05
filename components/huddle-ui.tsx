@@ -2,6 +2,7 @@
 
 // 허들룸 공용 UI (파트 D) — ==하이라이트== 렌더, 투표 버튼, 이미지 썸네일.
 import { useState, type ReactNode } from "react";
+import BlobImage from "./BlobImage";
 
 /** ==문법== 을 형광펜(mark)으로 렌더. 그리기 아님 — 순수 텍스트 마크업. */
 export function renderHighlight(text: string): ReactNode[] {
@@ -56,10 +57,11 @@ export function VoteButtons({
 }
 
 export function ImageThumb({ url }: { url: string }) {
+  // MD-P-2026-014a — blob 원본 URL을 링크로 열지 않는다. 라우트 경유 + 라이트박스는 BlobImage 가 담당.
+  // 예전에 저장된 http URL 도 BlobImage 가 그대로 처리한다.
   return (
-    <a className="hthumb" href={url} target="_blank" rel="noreferrer" title="원본 열기">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="첨부 이미지" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = "none"; }} />
-    </a>
+    <span className="hthumb">
+      <BlobImage value={url} alt="첨부 이미지" />
+    </span>
   );
 }

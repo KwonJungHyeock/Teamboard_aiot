@@ -1,7 +1,7 @@
 "use client";
 
 // 프로젝트 캔버스 (MD-P-2026-005 §C) — 과정 기록의 본체.
-// 블록: 텍스트(마크다운) · 체크리스트 · 링크(언퍼 카드). 이미지 블록은 스토리지 연결 전까지 비활성.
+// 블록: 텍스트(마크다운) · 체크리스트 · 링크(언퍼 카드) · 이미지(Private Blob, MD-P-2026-014a).
 // 인라인 편집 + 자동저장(디바운스 800ms) + "○○님이 방금 수정" 표시. 실패 시 롤백 + 토스트.
 import { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "./Markdown";
@@ -11,6 +11,8 @@ import { toast } from "@/lib/quick";
 import { openPanel } from "@/lib/side-panel";
 import { openTaskPanel } from "@/lib/task-panel";
 import { useRouter } from "next/navigation";
+import { uploadImage } from "@/lib/upload";
+import BlobImage from "./BlobImage";
 
 type BlockType = "text" | "checklist" | "link" | "image";
 interface CheckItem { id: string; text: string; done: boolean }
@@ -23,6 +25,11 @@ interface Block {
   meta?: { title?: string; domain?: string; thumbnail?: string; provider?: string };
   /** 내부 링크 언퍼 (MD-P-2026-006 §E) — 업무·결정·프로젝트는 상태 칩·담당·진척%까지 보여준다. */
   internal?: InternalCard;
+  /** 이미지 블록 (MD-P-2026-014a) — Private Blob 의 pathname. 공개 URL이 아니다. */
+  pathname?: string;
+  name?: string;
+  size?: number;
+  contentType?: string;
 }
 const uid = () => `b${Math.random().toString(36).slice(2, 9)}`;
 
@@ -46,6 +53,7 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState<{ updatedAt: string | null; updatedByName: string | null }>({ updatedAt: null, updatedByName: null });
   const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
+  const [blobReady, setBlobReady] = useState(false);
   const lastSaved = useRef<Block[]>([]);
   const baseUpdatedAt = useRef<string | null>(null);   // 동시 편집 감지 기준 시각
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -58,6 +66,7 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
         const b = d.blocks ?? [];
         setBlocks(b); lastSaved.current = b;
         baseUpdatedAt.current = d.updatedAt ?? null;
+        setBlobReady(!!d.blobReady);
         setMeta({ updatedAt: d.updatedAt ?? null, updatedByName: d.updatedByName ?? null });
       })
       .catch(() => {})
@@ -122,6 +131,34 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
     update(blocks.filter((b) => b.id !== id));
   }
 
+  // 이미지 업로드 (MD-P-2026-014 §A + 014a) — 서버 라우트 경유, pathname 만 저장한다.
+  async function insertImage(file: File) {
+    if (readOnly) return;
+    if (!blobReady) { toast("이미지 저장소가 연결되지 않았어요", "err"); return; }
+    const ph: Block = { id: uid(), type: "image", name: file.name };
+    setBlocks((cur) => [...cur, ph]);
+    try {
+      const up = await uploadImage(file, { kind: "project", id: projectId });
+      setBlocks((cur) => {
+        const next = cur.map((b) => (b.id === ph.id
+          ? { ...b, pathname: up.pathname, name: up.name, size: up.size, contentType: up.contentType }
+          : b));
+        scheduleSave(next);
+        return next;
+      });
+    } catch (e) {
+      setBlocks((cur) => cur.filter((b) => b.id !== ph.id));
+      toast(e instanceof Error ? e.message : "이미지 업로드 실패", "err");
+    }
+  }
+  function pickImage() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/png,image/jpeg,image/webp,image/gif";
+    input.onchange = () => { const f = input.files?.[0]; if (f) void insertImage(f); };
+    input.click();
+  }
+
   // 링크 블록 — URL 확정 시 언퍼 조회
   async function unfurl(id: string, url: string) {
     if (!url.trim()) return;
@@ -151,7 +188,19 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
   if (loading) return <p className="gempty">불러오는 중...</p>;
 
   return (
-    <section className="card pcanvas" aria-label="프로젝트 캔버스">
+    <section
+      className="card pcanvas"
+      aria-label="프로젝트 캔버스"
+      onPaste={(e) => {
+        const f = Array.from(e.clipboardData.files ?? []).find((x) => x.type.startsWith("image/"));
+        if (f) { e.preventDefault(); void insertImage(f); }
+      }}
+      onDragOver={(e) => { if (!readOnly && blobReady) e.preventDefault(); }}
+      onDrop={(e) => {
+        const f = Array.from(e.dataTransfer.files ?? []).find((x) => x.type.startsWith("image/"));
+        if (f) { e.preventDefault(); void insertImage(f); }
+      }}
+    >
       <div className="pcv-bar">
         <span className="pcv-status">
           {saving === "saving" ? "저장 중…" : saving === "saved" ? "저장됨" :
@@ -162,7 +211,12 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
             <button onClick={() => addBlock("text")}>＋ 텍스트</button>
             <button onClick={() => addBlock("checklist")}>＋ 체크리스트</button>
             <button onClick={() => addBlock("link")}>＋ 링크</button>
-            <button className="off" disabled title="스토리지 연결 후 사용 가능">＋ 이미지</button>
+            <button
+              className={blobReady ? "" : "off"}
+              disabled={!blobReady}
+              title={blobReady ? "png · jpg · webp · gif · 10MB 이하" : "이미지 저장소가 연결되지 않았습니다"}
+              onClick={pickImage}
+            >＋ 이미지</button>
           </div>
         )}
       </div>
@@ -205,6 +259,12 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
                     </button>
                   )}
                 </div>
+              )}
+
+              {b.type === "image" && (
+                b.pathname
+                  ? <BlobImage value={b.pathname} name={b.name} alt={b.name ?? "첨부 이미지"} className="pcv-img" />
+                  : <div className="pcv-img-ph">이미지 올리는 중…</div>
               )}
 
               {b.type === "link" && b.internal && (
