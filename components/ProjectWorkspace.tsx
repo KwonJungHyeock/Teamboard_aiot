@@ -9,6 +9,7 @@ import type { SessionUser } from "@/lib/types";
 import type { TaskItem } from "@/lib/task-view";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
 import TaskBoard from "./TaskBoard";
+import PageShell from "./PageShell";
 import ProjectCanvas from "./ProjectCanvas";
 import DecisionLog from "./DecisionLog";
 import EmptyState from "./EmptyState";
@@ -165,112 +166,89 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
   const p = data.project;
 
   return (
-    <div className="hv pws">
-      <div className="top">
-        <div className="crumb">워크스페이스 / <Link href="/projects">프로젝트</Link> / <b>{p.name}</b></div>
-        <span className="sp" />
-      </div>
-
-      <div className="wrap">
-        {archived && (
-          <div className="pws-arch" role="status">
-            보관된 프로젝트입니다 · 읽기 전용
-            {data.canEdit && (
-              <button className="lk" onClick={() => patchProject({ status: "active" }, "보관을 해제했어요")}>보관 해제</button>
-            )}
-          </div>
-        )}
-
-        {/* ── 헤더 (고정) ── */}
-        <header className="pws-head">
-          <div className="pws-head-l">
-            <div className="pws-title-row">
-              {renaming && !readOnly ? (
-                <input className="pws-title-in" defaultValue={p.name} autoFocus
-                  onBlur={async (e) => { const v = e.target.value.trim(); setRenaming(false); if (v && v !== p.name) await patchProject({ name: v }, "이름을 바꿨어요"); }}
-                  onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") setRenaming(false); }} />
-              ) : (
-                <h1 className="pws-title" onClick={() => !readOnly && setRenaming(true)} title={readOnly ? undefined : "클릭해 이름 편집"}>{p.name}</h1>
-              )}
-              {p.areaName && (
-                <span className="pws-chip" style={{ color: p.areaColor ? undefined : "var(--ink-soft)", background: "color-mix(in srgb, var(--muted) 12%, var(--card))" }}>
-                  <i className={`pjdot ${p.areaColor ?? "team"}`} />{p.areaName}
+    <PageShell
+      crumb={["워크스페이스", "프로젝트", p.name]}
+      title={
+        renaming && !readOnly ? (
+          <input className="pws-title-in" defaultValue={p.name} autoFocus
+            onBlur={async (e) => { const v = e.target.value.trim(); setRenaming(false); if (v && v !== p.name) await patchProject({ name: v }, "이름을 바꿨어요"); }}
+            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") setRenaming(false); }} />
+        ) : (
+          <span className="pws-title" onClick={() => !readOnly && setRenaming(true)} title={readOnly ? undefined : "클릭해 이름 편집"}>{p.name}</span>
+        )
+      }
+      subtitle={
+        <span className="pws-sub">
+          {p.areaName && <span className="pws-chip"><i className={`pjdot ${p.areaColor ?? "team"}`} />{p.areaName}</span>}
+          <span className="pws-chip" style={{ color: STATUS_TONE[p.status] }}>{STATUS_LABEL[p.status] ?? p.status}</span>
+          {p.goal ? (
+            <>
+              <Link className="lk pws-goal-l" href={`/goals?goal=${p.goal.id}`}>→ {goalLabel(p.goal)}</Link>
+              <span className={`pws-goal-p num${p.goal.progress === null ? " none" : ""}`}>
+                {p.goal.progress === null ? "–" : `${p.goal.progress}%`}
+              </span>
+              {p.goal.manual && <span className="pws-manual">수동</span>}
+            </>
+          ) : !readOnly ? (
+            <span className="pws-goal-pick">
+              <button className="lk" onClick={() => setGoalPick((v) => !v)}>＋ 목표 연결</button>
+              {goalPick && (
+                <span className="pws-goal-menu" role="menu">
+                  {goals.length === 0 && <span className="pws-goal-none">연결할 목표가 없어요.</span>}
+                  {goals.map((g) => (
+                    <button key={g.id} onClick={async () => { setGoalPick(false); await patchProject({ goalId: g.id }, "목표를 연결했어요"); }}>
+                      <span className="pws-goal-lv">{g.level}</span>{g.title}
+                      <em>{g.period}{g.scope === "personal" ? " · 개인" : ""}</em>
+                    </button>
+                  ))}
                 </span>
               )}
-              <span className="pws-chip" style={{ color: STATUS_TONE[p.status], background: `color-mix(in srgb, ${STATUS_TONE[p.status]} 13%, var(--card))` }}>
-                {STATUS_LABEL[p.status] ?? p.status}
+            </span>
+          ) : <span className="pws-goal-none">연결된 목표 없음</span>}
+        </span>
+      }
+      actions={
+        <>
+          <span className="pws-members">
+            {data.members.slice(0, 5).map((m) => (
+              <button key={m.id} className="pws-av" title={m.name} onClick={() => openPanel("member", m.id)}>{m.name.slice(0, 1)}</button>
+            ))}
+            {data.members.length > 5 && <span className="pws-av more">+{data.members.length - 5}</span>}
+            {data.members.length === 0 && <span className="pws-goal-none">멤버 없음</span>}
+          </span>
+          <span className="pws-more-wrap">
+            <button className="btn-ghost" aria-label="더보기" aria-expanded={more} onClick={() => setMore((v) => !v)}>⋯</button>
+            {more && (
+              <span className="pws-more-menu" role="menu">
+                {p.notionUrl && <a href={p.notionUrl} target="_blank" rel="noreferrer">Notion에서 열기 ↗</a>}
+                {data.canEdit && !archived && <button onClick={() => { setMore(false); setArchiving(true); }}>보관…</button>}
+                {!data.canEdit && <span className="pws-goal-none">권한 없음</span>}
               </span>
-            </div>
-
-            {/* 연결 목표 */}
-            <div className="pws-goal">
-              {p.goal ? (
-                <>
-                  <Link className="pws-goal-l" href={`/goals?goal=${p.goal.id}`}>→ {goalLabel(p.goal)}</Link>
-                  <span className={`pws-goal-p num${p.goal.progress === null ? " none" : ""}`}>
-                    {p.goal.progress === null ? "–" : `${p.goal.progress}%`}
-                  </span>
-                  {p.goal.manual && <span className="pws-manual">수동</span>}
-                  {!readOnly && <button className="pws-goal-x" onClick={() => patchProject({ goalId: null }, "목표 연결을 해제했어요")}>연결 해제</button>}
-                </>
-              ) : !readOnly ? (
-                <div className="pws-goal-pick">
-                  <button className="btn small" onClick={() => setGoalPick((v) => !v)}>목표 연결</button>
-                  {goalPick && (
-                    <div className="pws-goal-menu" role="menu">
-                      {goals.length === 0 && <p className="pws-goal-none">연결할 목표가 없어요.</p>}
-                      {goals.map((g) => (
-                        <button key={g.id} onClick={async () => { setGoalPick(false); await patchProject({ goalId: g.id }, "목표를 연결했어요"); }}>
-                          <span className="pws-goal-lv">{g.level}</span>
-                          {g.title}
-                          <em>{g.period}{g.scope === "personal" ? " · 개인" : ""}</em>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : <span className="pws-goal-none">연결된 목표 없음</span>}
-            </div>
-          </div>
-
-          <div className="pws-head-r">
-            {/* 멤버 아바타 스택 (최대 5 + N) — 클릭 시 우측 패널 */}
-            <div className="pws-members">
-              {data.members.slice(0, 5).map((m) => (
-                <button key={m.id} className="pws-av" title={m.name} onClick={() => openPanel("member", m.id)}>
-                  {m.name.slice(0, 1)}
-                </button>
-              ))}
-              {data.members.length > 5 && <span className="pws-av more">+{data.members.length - 5}</span>}
-              {data.members.length === 0 && <span className="pws-goal-none">멤버 없음</span>}
-            </div>
-            {!readOnly && (
-              <button className="btn-brand pws-new" onClick={(e) => openQuickCreate({ x: e.clientX - 300, y: e.clientY + 10 }, { areaId: p.areaId ?? undefined })}>
-                ＋ 업무
-              </button>
             )}
-            <div className="pws-more-wrap">
-              <button className="pws-more" aria-label="더보기" aria-expanded={more} onClick={() => setMore((v) => !v)}>⋯</button>
-              {more && (
-                <div className="pws-more-menu" role="menu">
-                  {p.notionUrl && <a href={p.notionUrl} target="_blank" rel="noreferrer">Notion에서 열기 ↗</a>}
-                  {data.canEdit && !archived && <button onClick={() => { setMore(false); setArchiving(true); }}>보관…</button>}
-                  {!data.canEdit && <span className="pws-goal-none">권한 없음</span>}
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
-
-        {/* ── 탭 ── */}
-        <div className="seg pws-tabs" role="group" aria-label="탭">
-          {TABS.map(([v, label]) => (
-            <button key={v} aria-pressed={tab === v} onClick={() => pickTab(v)}>
-              {label}
-              {v === "discussions" && data.openDiscussions > 0 && <span className="pws-tab-n num">{data.openDiscussions}</span>}
+          </span>
+          {!readOnly && (
+            <button className="btn-primary" onClick={(e) => openQuickCreate({ x: e.clientX - 300, y: e.clientY + 10 }, { areaId: p.areaId ?? undefined })}>
+              ＋ 업무
             </button>
-          ))}
+          )}
+        </>
+      }
+      tabs={TABS.map(([v, label]) => ({
+        key: v,
+        label,
+        count: v === "discussions" ? data.openDiscussions : undefined,
+      }))}
+      activeTab={tab}
+      onTab={(k) => pickTab(k as Tab)}
+    >
+      {archived && (
+        <div className="pws-arch" role="status">
+          보관된 프로젝트입니다 · 읽기 전용
+          {data.canEdit && (
+            <button className="lk" onClick={() => patchProject({ status: "active" }, "보관을 해제했어요")}>보관 해제</button>
+          )}
         </div>
+      )}
 
         {/* ── 개요 ── */}
         {tab === "overview" && (
@@ -390,7 +368,6 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
 
         {/* ── 결정 로그 ── */}
         {tab === "decisions" && <DecisionLog projectId={projectId} />}
-      </div>
 
       {/* 보관 확인 */}
       {archiving && (
@@ -409,6 +386,6 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

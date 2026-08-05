@@ -6,6 +6,7 @@
 // 익사시킴"이므로 기본 탭을 [사람]으로 두고, 사이드바 배지도 사람 안읽음만 센다.
 // 시스템(마감 자동 알림 등)은 숫자 없이 점으로만 알린다.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import PageShell from "./PageShell";
 import Link from "next/link";
 import { relTime } from "./collab-ui";
 import HoverActions from "./HoverActions";
@@ -275,40 +276,36 @@ export default function ActivityInbox() {
     : null;
 
   return (
-    <div className="hv actv">
-      <div className="top"><div className="crumb">워크스페이스 / <b>활동</b></div><span className="sp" /></div>
-      <div className="wrap">
-        <div className="head">
-          <div>
-            <div className="eb">ACTIVITY</div>
-            <h1>활동</h1>
-            <p>사람이 부른 것과 시스템이 알린 것을 나눠 봅니다. 항목을 누르면 화면을 옮기지 않고 우측 패널이 열립니다.</p>
-          </div>
-          <div className="head-r">
-            {muteUntilLabel && <span className="actv-muted" role="status">🔕 {muteUntilLabel}까지 음소거</span>}
-            <div className="actv-mute-wrap">
-              <button className="btn-outline" aria-expanded={muteMenu} onClick={() => setMuteMenu((v) => !v)}>
-                {mute.allUntil ? "음소거 중" : "임시 음소거"}
-              </button>
-              {muteMenu && (
-                <div className="actv-mute-menu" role="menu">
-                  <button onClick={() => setMutePreset("1h")}>1시간</button>
-                  <button onClick={() => setMutePreset("tomorrow")}>내일 오전 9시까지</button>
-                  <button onClick={() => setMutePreset("off")}>해제</button>
-                </div>
-              )}
-            </div>
-            <button className="btn-outline"
-              onClick={() => bulk(shown.filter((i) => !i.read).map((i) => i.id), "read", "읽음 처리했어요")}>
-              이 필터 모두 읽음
+    <PageShell
+      crumb={["워크스페이스", "활동"]}
+      title="활동"
+      subtitle="사람이 부른 것과 시스템이 알린 것을 나눠 봅니다. 항목을 누르면 화면을 옮기지 않고 우측 패널이 열립니다."
+      actions={
+        <>
+          {muteUntilLabel && <span className="actv-muted" role="status">🔕 {muteUntilLabel}까지 음소거</span>}
+          <span className="actv-mute-wrap">
+            <button className="btn-ghost" aria-expanded={muteMenu} onClick={() => setMuteMenu((v) => !v)}>
+              {mute.allUntil ? "음소거 중" : "임시 음소거"}
             </button>
-            <button className="btn-outline"
-              onClick={() => bulk(items.filter((i) => !i.read).map((i) => i.id), "read", "읽음 처리했어요")}>
-              모두 읽음
-            </button>
-          </div>
-        </div>
-
+            {muteMenu && (
+              <span className="actv-mute-menu" role="menu">
+                <button onClick={() => setMutePreset("1h")}>1시간</button>
+                <button onClick={() => setMutePreset("tomorrow")}>내일 오전 9시까지</button>
+                <button onClick={() => setMutePreset("off")}>해제</button>
+              </span>
+            )}
+          </span>
+          <button className="btn-ghost"
+            onClick={() => bulk(shown.filter((i) => !i.read).map((i) => i.id), "read", "읽음 처리했어요")}>
+            이 필터 모두 읽음
+          </button>
+          <button className="btn-primary"
+            onClick={() => bulk(items.filter((i) => !i.read).map((i) => i.id), "read", "읽음 처리했어요")}>
+            모두 읽음
+          </button>
+        </>
+      }
+    >
         <div className="actv-body">
           {/* ── 필터 레일 (200px) ── */}
           <nav className="actv-rail" aria-label="활동 필터">
@@ -494,7 +491,6 @@ export default function ActivityInbox() {
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </PageShell>
   );
 }

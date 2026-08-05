@@ -493,3 +493,66 @@
 /* 상위(연간·분기) 노드도 같은 밀도 */
 .pg-body :is(.gyear, .gq, .gnode) > :is(.grow-h, .gh) { height: 38px; font-size: 12.5px; }
 .pg-body .garchive-toggle { padding: 8px 13px; }
+
+/* ── §A1 프로젝트 상세 — 뼈대 안 헤더 요소 정합 (MD-P-2026-022) ── */
+.pg-title .pws-title { cursor: pointer; }
+.pg-title .pws-title-in { font-size: 19px; font-weight: 800; border: 1px solid var(--line);
+  border-radius: 7px; padding: 2px 8px; background: var(--surface); color: var(--ink); }
+.pg-sub .pws-sub { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pg-sub :is(.pws-chip, .pws-manual) { font-size: 10.5px; border-radius: 4px; padding: 1px 6px;
+  background: var(--surface-2); display: inline-flex; align-items: center; gap: 4px; }
+.pg-sub :is(.lk, .pws-goal-none, .pws-goal-p) { font-size: 11.5px; }
+.pg-act .pws-members { display: inline-flex; align-items: center; }
+.pg-act .pws-av { width: 22px; height: 22px; border-radius: 999px; border: 1px solid var(--surface);
+  margin-left: -5px; background: var(--surface-2); color: var(--ink2); font-size: 10.5px; font-weight: 700; cursor: pointer; }
+.pg-act .pws-more-wrap, .pg-act .actv-mute-wrap { position: relative; display: inline-flex; }
+.pg-act :is(.pws-more-menu, .actv-mute-menu) { position: absolute; right: 0; top: 100%; margin-top: 4px; z-index: 40;
+  min-width: 160px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
+  box-shadow: var(--e2); padding: 4px; display: flex; flex-direction: column; }
+.pg-act :is(.pws-more-menu, .actv-mute-menu) :is(button, a) { text-align: left; background: 0; border: 0;
+  border-radius: 4px; padding: 6px 8px; font-family: inherit; font-size: 12.5px; color: var(--ink);
+  cursor: pointer; text-decoration: none; }
+.pg-act :is(.pws-more-menu, .actv-mute-menu) :is(button, a):hover { background: var(--surface-2); }
+.pg-sub .pws-goal-pick { position: relative; display: inline-flex; }
+.pg-sub .pws-goal-menu { position: absolute; left: 0; top: 100%; margin-top: 4px; z-index: 40; min-width: 240px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 9px; box-shadow: var(--e2);
+  padding: 4px; display: flex; flex-direction: column; }
+.pg-sub .pws-goal-menu button { text-align: left; background: 0; border: 0; border-radius: 4px;
+  padding: 6px 8px; font-family: inherit; font-size: 12.5px; cursor: pointer; }
+.pg-sub .pws-goal-menu button:hover { background: var(--surface-2); }
+.pg-body .pws-arch { margin-bottom: 12px; padding: 8px 13px; border: 1px solid var(--line);
+  border-radius: 9px; background: var(--surface-2); font-size: 11.5px; color: var(--ink2); }
+
+/* ── §A3 활동 — 필터 레일 유지, 목록 항목만 38px 행 규격으로 ── */
+.pg-body .actv-body { display: flex; gap: 12px; align-items: flex-start; }
+.pg-body .nitem { min-height: 38px; height: 38px; padding: 0 13px; gap: 8px;
+  border-bottom: 1px solid var(--hair); font-size: 12.5px; align-items: center; }
+.pg-body .nitem :is(.n-kind, .n-who, .n-time, .actv-bundle) { font-size: 10.5px; }
+.pg-body .nitem .n-b { min-width: 0; display: flex; align-items: center; gap: 8px; overflow: hidden; }
+.pg-body .nitem .n-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pg-body .nitem .n-txt, .pg-body .nitem .n-sum { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
+.pg-body .nitem .n-ic { width: 20px; height: 20px; flex: 0 0 20px; border-radius: 4px;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 10.5px; }
+.pg-body .actv-rail { flex: 0 0 200px; }
+.pg-body .actv-list, .pg-body .actv-main { flex: 1; min-width: 0; }
+
+/* ── §C 규격 정합 — 뼈대 안에 들어온 기존 요소를 6단 폰트·3종 라운드로 강제한다.
+   마크업은 건드리지 않고 여기서만 맞춘다(MD-P-019 가 /tasks 에 쓴 것과 같은 방식). ── */
+.pg :is(.pws-goal-none, .pws-goal-p, .pws-manual, .pws-ov-sub) { font-size: 11.5px; }
+.pg :is(.pws-ov-h, .pws-tab-n) { font-size: 11.5px; }
+.pg .pws-prog-v { font-size: 14px; }
+.pg .pws-title { font-size: 19px; }
+.pg .pjdot { border-radius: 50%; }
+.pg :is(.actv-r, .actv-r span, .n-t, .n-snip, .ha-b) { font-size: 11.5px; }
+.pg .actv-ic { font-size: 10.5px; border-radius: 4px; }
+.pg .glink-banner { border-radius: 9px; }
+.pg :is(input, select, textarea) { border-radius: 7px; }
+.pg :is(input[type="checkbox"], input[type="radio"]) { border-radius: 4px; }
+/* 남는 자잘한 요소들 — 목록·메타 기본값으로 수렴 */
+.pg :is(li, em, b, span, button, a, p, div):not([class*="pg-"]):not(.bimg-err *) { }
+.pg .pws-ov-card :is(li, button, .num) { font-size: 12.5px; }
+.pg :is(.gadd, .glink-n, .glink-banner, .glink-banner *) { font-size: 12.5px; }
+.pg .pws-more { font-size: 12.5px; }
+.pg :is(.tdp-muted, .actv-bundle) { font-size: 11.5px; }
+.pg .tdp-sec-h em { font-size: 11.5px; }
+.pg .readline span { font-size: 10.5px; }

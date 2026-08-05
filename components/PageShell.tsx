@@ -26,8 +26,9 @@ export default function PageShell({
 }: {
   /** 브레드크럼 조각 — 마지막이 현재 화면 */
   crumb: string[];
-  title: string;
-  subtitle?: string;
+  /** 문자열이 기본. 인라인 편집처럼 노드가 필요한 화면(프로젝트 상세)만 노드를 넘긴다 */
+  title: ReactNode;
+  subtitle?: ReactNode;
   /** 우측 정렬 액션. 주 액션 1개만 코랄(btn-primary), 나머지는 btn-ghost */
   actions?: ReactNode;
   tabs?: ShellTab[];
