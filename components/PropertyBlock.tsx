@@ -20,14 +20,17 @@ export interface PropRow {
 
 export default function PropertyBlock({
   rows,
-  /** 이 개수를 넘으면 "속성 더보기"로 접는다 (§F1) */
-  collapseAfter = 4,
+  /** 이 개수를 넘는 분은 접을 수 있다 (MD-P-2026-020 §F1: 5개 초과분) */
+  collapseAfter = 5,
+  /** 기본 펼침 (§F1). false 면 처음부터 접힌 채로 시작한다 */
+  defaultExpanded = true,
 }: {
   rows: PropRow[];
   collapseAfter?: number;
+  defaultExpanded?: boolean;
 }) {
   const [openKey, setOpenKey] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
   const shown = expanded ? rows : rows.slice(0, collapseAfter);
   const hidden = rows.length - shown.length;

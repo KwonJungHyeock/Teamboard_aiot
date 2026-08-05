@@ -146,6 +146,10 @@ export interface HomeSummary {
     status: "ontrack" | "risk" | "wait" | "done" | null;
     colorKey: string | null;
     projectCount: number;
+    /** 레벨 태그 표기 (Q1~Q4) — §D4 1열 */
+    periodLabel: string;
+    /** 오늘이 이 분기 안인가 — 필터칩 "이번 분기" 판별 (§D1) */
+    current: boolean;
   }[];
   quarterLabel: string; // 예: 2026 Q3
   /** 내 개인 목표 수 — 홈은 팀 목표만 보여주고 한 줄 링크로 안내 (§E) */
@@ -170,10 +174,20 @@ export interface HomeSummary {
   decisionsThisWeek: number;
   myFocus: {
     key: string;
-    kind: "mention" | "approval" | "task";
+    kind: "mention" | "approval" | "task" | "reply";
     summary: string;
-    time: string | null; // 멘션만 mono 시각
+    time: string | null; // 멘션·답글만 mono 시각
     href: string;
+    /** 안읽음 — 굵게 + 좌측 코랄 점 (MD-P-2026-018 §B 규격 재사용, MD-P-2026-020 §D4) */
+    unread: boolean;
+  }[];
+  /** 팀 현황 탭 (MD-P-2026-020 §D5) — 기존 담당자별 집계를 재사용해 한 번에 뽑는다 */
+  teamStatus: {
+    actorId: number;
+    name: string;
+    doing: number;      // 진행 중 (todo/doing/review)
+    late: number;       // 지연 (기한 경과)
+    avgProgress: number | null; // 평균 진척. 오픈 업무 0건이면 null → "—"
   }[];
   agent: {
     status: "working" | "pending" | "idle";
@@ -536,6 +550,30 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     name: a.name, doing: Number(a.doing), waiting: Number(a.waiting),
   }));
 
+  // 팀 현황 탭 (§D5) — 같은 오픈 업무 모집단을 한 번 더 훑어 지연·평균 진척까지 뽑는다.
+  // 신규 데이터를 만들지 않는다. avg 는 오픈 업무 0건이면 null(= "—", 0% 아님).
+  const teamStatusRows = await query<{
+    id: number; name: string; doing: string; late: string; avg: string | null;
+  }>(
+    `SELECT ac.id, ac.display_name AS name,
+            count(*) AS doing,
+            count(*) FILTER (WHERE t.due_date IS NOT NULL AND t.due_date < $1::date) AS late,
+            round(avg(t.progress)) AS avg
+     FROM actor ac
+     JOIN task t ON t.assignee_id = ac.id AND ${OPEN_TASK}
+     WHERE ac.type = 'human' AND ac.is_active = true
+     GROUP BY ac.id, ac.display_name
+     ORDER BY count(*) FILTER (WHERE t.due_date IS NOT NULL AND t.due_date < $1::date) DESC, count(*) DESC`,
+    [today]
+  );
+  const teamStatus = teamStatusRows.map((r) => ({
+    actorId: r.id,
+    name: r.name,
+    doing: Number(r.doing),
+    late: Number(r.late),
+    avgProgress: r.avg === null ? null : Number(r.avg),
+  }));
+
   // 뷰어 호칭 (short_name 우선)
   const viewer = await queryOne<{ display_name: string; short_name: string | null }>(
     `SELECT display_name, short_name FROM actor WHERE id = $1`,
@@ -710,9 +748,9 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
               WHERE pj.goal_id = g.id AND pj.is_active = true AND pj.status <> 'archived') AS project_count
      FROM goal g LEFT JOIN project p ON p.id = g.project_id
      WHERE g.is_active = true AND g.period_type = 'quarter' AND g.scope = 'team'
-       AND g.period_start <= $1::date AND g.period_end >= $1::date
-     ORDER BY g.id`,
-    [today]
+       AND g.period_start <= $1::date AND g.period_end >= $2::date
+     ORDER BY g.period_start, g.id`,
+    [`${today.slice(0, 4)}-12-31`, `${today.slice(0, 4)}-01-01`]
   );
   // 상태 판정은 lib/goals.ts 단일 소스 (§D). 진척이 null이면 판정하지 않는다(0% 취급 금지).
   const quarterGoals = quarterRows.map((g) => {
@@ -722,6 +760,9 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       status: g.status_manual ?? judgeGoalStatus(prog, g.period_start_d, g.period_end_d, today),
       colorKey: g.color_key,
       projectCount: g.project_count,
+      // §D4 레벨 태그 + 필터칩(이번 분기 ⇄ 전체 기간) 판별용
+      periodLabel: `Q${Math.floor((Number(g.period_start_d.slice(5, 7)) - 1) / 3) + 1}`,
+      current: g.period_start_d <= today && g.period_end_d >= today,
     };
   });
   // 정렬: 리스크 > 온트랙 > 완료 > 판정 불가/대기
@@ -825,12 +866,23 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
      ORDER BY created_at DESC LIMIT 4`,
     [viewerId]
   );
+  const refHref = (refType: string, refId: number | null) =>
+    refType === "signal" ? `/signals?signal=${refId}` : refType === "task" ? `/tasks?task=${refId}` : "/notifications";
   for (const m of mentionRows) {
-    const href = m.ref_type === "signal" ? `/signals?signal=${m.ref_id}` : m.ref_type === "task" ? `/tasks?task=${m.ref_id}` : "/notifications";
-    myFocus.push({ key: `m${m.id}`, kind: "mention", summary: m.snippet, time: isoify(m.created_at), href });
+    myFocus.push({ key: `m${m.id}`, kind: "mention", summary: m.snippet, time: isoify(m.created_at), href: refHref(m.ref_type, m.ref_id), unread: true });
+  }
+  // 답글 (§D4) — 멘션과 같은 알림 테이블. 아이콘만 다르다.
+  const replyRows = await query<{ id: number; snippet: string; ref_type: string; ref_id: number | null; created_at: string; read: boolean }>(
+    `SELECT id, snippet, ref_type, ref_id, created_at::text, read FROM notification
+     WHERE user_id = $1 AND type = 'reply'
+     ORDER BY read ASC, created_at DESC LIMIT 3`,
+    [viewerId]
+  );
+  for (const r of replyRows) {
+    myFocus.push({ key: `r${r.id}`, kind: "reply", summary: r.snippet, time: isoify(r.created_at), href: refHref(r.ref_type, r.ref_id), unread: !r.read });
   }
   if (myTurn > 0) {
-    myFocus.push({ key: "approval", kind: "approval", summary: `승인 대기 ${myTurn}건 — 확정이 필요해요`, time: null, href: "/inbox" });
+    myFocus.push({ key: "approval", kind: "approval", summary: `승인 대기 ${myTurn}건 — 확정이 필요해요`, time: null, href: "/inbox", unread: true });
   }
   const myTaskRows = await query<{ id: number; title: string; due_date: string }>(
     `SELECT id, title, due_date::text FROM task t
@@ -840,7 +892,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   );
   for (const t of myTaskRows) {
     const over = t.due_date < today;
-    myFocus.push({ key: `t${t.id}`, kind: "task", summary: `${over ? "지연" : "오늘 마감"} · ${t.title}`, time: null, href: `/tasks?task=${t.id}` });
+    myFocus.push({ key: `t${t.id}`, kind: "task", summary: `${over ? "지연" : "오늘 마감"} · ${t.title}`, time: null, href: `/tasks?task=${t.id}`, unread: over });
   }
 
   // 에이전트 상태 + 실사용량 (나의 초점 하단 칩)
@@ -915,6 +967,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     upcoming,
     decisionsWaiting,
     myFocus,
+    teamStatus,
     decisionsThisWeek: await decisionsThisWeek(weekStart),
     agent: { status: myAgentStatus, spentTokens: credit.spent, won: agentWon },
   };

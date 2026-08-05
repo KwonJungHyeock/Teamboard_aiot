@@ -87,13 +87,15 @@ interface Bar { id: string; taskId: number | null; label: string; color: string;
 interface GLane { key: string; name: string; color: string; bars: Bar[] }
 
 export default function HeroTimeline({
-  lanes, today, anchor, onAnchorChange,
+  lanes, today, anchor, onAnchorChange, compact,
 }: {
   lanes: Lane[];
   initialEvents?: LaneEvent[];
   today: string;
   anchor: string;
   onAnchorChange?: (a: string) => void;
+  /** 홈 축소형 (MD-P-2026-020 §D2-1) — 트랙 17px·간격 5px. 규격은 .hm-hero CSS 가 강제한다 */
+  compact?: boolean;
 }) {
   const [mode, setMode] = useState<TimelineMode>("summary");
   const from = monthStartOf(anchor);
@@ -165,12 +167,16 @@ export default function HeroTimeline({
   const nowIdx = today >= from && today < to ? diffDays(today, from) + 0.5 : null;
 
   return (
-    <section className="tile hero gt2" aria-label="팀 타임라인">
+    <section className={`tile hero gt2${compact ? " hm-hero" : ""}`} aria-label="팀 타임라인">
+      {/* §D2-1: 헤더 한 줄 — 제목 · YYYY.MM · [요약|상세] · (기간 이동) · 우측 ● NOW */}
       <div className="hh2">
         <h2>팀 타임라인</h2>
         <span className="hh-mo num">{monthDot(anchor)}</span>
-        {nowIdx !== null && <NowClock />}
-        <span className="hh-sp" />
+        {!compact && nowIdx !== null && <NowClock />}
+        <span className="hh-toggle" role="group" aria-label="보기 전환">
+          <button className={mode === "summary" ? "on" : ""} aria-pressed={mode === "summary"} onClick={() => setMode("summary")}>요약</button>
+          <button className={mode === "detail" ? "on" : ""} aria-pressed={mode === "detail"} onClick={() => setMode("detail")}>상세</button>
+        </span>
         {onAnchorChange && (
           <span className="hh-nav" role="group" aria-label="기간 이동">
             <button className="nb" onClick={() => onAnchorChange(addMonths(anchor, -1))} aria-label="이전">‹</button>
@@ -178,10 +184,8 @@ export default function HeroTimeline({
             <button className="nb" onClick={() => onAnchorChange(addMonths(anchor, 1))} aria-label="다음">›</button>
           </span>
         )}
-        <span className="hh-toggle" role="group" aria-label="보기 전환">
-          <button className={mode === "summary" ? "on" : ""} aria-pressed={mode === "summary"} onClick={() => setMode("summary")}>요약</button>
-          <button className={mode === "detail" ? "on" : ""} aria-pressed={mode === "detail"} onClick={() => setMode("detail")}>상세</button>
-        </span>
+        <span className="hh-sp" />
+        {compact && nowIdx !== null && <NowClock />}
       </div>
 
       <div className="gt-wrap">

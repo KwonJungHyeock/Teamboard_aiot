@@ -40,7 +40,12 @@ const SLASH: { key: string; label: string; hint: string; make: () => DocBlock }[
 
 const URL_RE = /^https?:\/\/\S+$/i;
 
-export default function DocEditor({ taskId, readOnly }: { taskId: number; readOnly?: boolean }) {
+export default function DocEditor({ taskId, readOnly, onBlocks }: {
+  taskId: number;
+  readOnly?: boolean;
+  /** 현재 블록을 부모에 알린다 — §F3 연결된 리소스 자동 집계가 본문을 단일 소스로 쓰기 위함 */
+  onBlocks?: (blocks: DocBlock[]) => void;
+}) {
   const [blocks, setBlocks] = useState<DocBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [save, setSave] = useState<"idle" | "saving" | "saved" | "err">("idle");
@@ -70,6 +75,9 @@ export default function DocEditor({ taskId, readOnly }: { taskId: number; readOn
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
   }, [taskId]);
+
+  // 블록이 바뀔 때마다 부모에 통지 (§F3) — 삭제도 그대로 전달돼 리소스 섹션이 따라 줄어든다
+  useEffect(() => { onBlocks?.(blocks); }, [blocks, onBlocks]);
 
   // ── 자동 저장 800ms (§F2) ──
   const schedule = useCallback((next: DocBlock[]) => {

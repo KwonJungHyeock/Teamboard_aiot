@@ -1,265 +1,239 @@
 "use client";
 
-// 홈 대시보드 (Phase 3) — SPEC 4.1의 6요소를 프로토타입 레이아웃 그대로 조립.
-// ③ "이번 달 목표 진척"은 SPEC 우선 규칙에 따라 프로토타입의 "프로젝트 진행" 자리를 대체.
+// 홈 (MD-P-2026-020 §D) — MD-P-2026-019 §B 페이지 뼈대 위에 재구성.
+// 세로 순서 고정: 다크 히어로 타임라인 → 2열 그리드(좌 목표·결정 대기 / 우 일정·초점).
+// 블록 규격(§D3)은 한 벌(.hm-blk)만 두고 네 블록이 공유한다. 화면별 중복 구현 금지.
 import { useEffect, useMemo, useState } from "react";
-import { openPanel } from "@/lib/side-panel";
 import Link from "next/link";
+import { openPanel } from "@/lib/side-panel";
 import type { HomeSummary } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
-import EmptyState from "./EmptyState";
-import NewMenu from "./NewMenu";
+import PageShell from "./PageShell";
 import HeroTimeline from "./HeroTimeline";
+import { openNewTaskPanel } from "@/lib/task-panel";
 
-// 실시간 시계 (Mission Deck 헤더) — KST, 모노. 매초 갱신.
-function Clock() {
-  const [now, setNow] = useState<string>("");
+type TabKey = "overview" | "focus" | "team";
+type Range = "quarter" | "all";
+
+/** 필터바 우측 끝 NOW (§D1) — mono, 분 단위 갱신 */
+function NowStamp() {
+  const [t, setT] = useState("--:--");
   useEffect(() => {
     const fmt = new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+      timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false,
     });
-    const tick = () => setNow(fmt.format(new Date()));
+    const tick = () => setT(fmt.format(new Date()));
     tick();
-    const id = setInterval(tick, 1000);
+    const id = setInterval(tick, 30000);
     return () => clearInterval(id);
   }, []);
-  return (
-    <span className="clock" aria-label="현재 시각 (KST)">
-      <span className="clock-t">{now || "--:--:--"}</span>
-      <span className="clock-z">KST</span>
-    </span>
-  );
+  return <span className="hm-now">NOW {t} KST</span>;
 }
 
-function greeting(): string {
-  const hour = Number(
-    new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Seoul", hour: "2-digit", hour12: false })
-      .format(new Date())
-  );
-  if (hour < 6) return "늦은 밤이에요";
-  if (hour < 12) return "좋은 아침이에요";
-  if (hour < 18) return "좋은 오후예요";
-  return "좋은 저녁이에요";
-}
+const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 
-export default function HomeView({
-  summary,
-  user,
-}: {
-  summary: HomeSummary;
-  user: SessionUser;
-}) {
+export default function HomeView({ summary, user }: { summary: HomeSummary; user: SessionUser }) {
   const [anchor, setAnchor] = useState<string>(summary.today);
+  const [tab, setTab] = useState<TabKey>("overview");
+  const [range, setRange] = useState<Range>("quarter");
 
-  const dateLabel = useMemo(() => {
-    const d = new Date(`${summary.today}T00:00:00+09:00`);
-    const dow = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][d.getUTCDay() === undefined ? 0 : new Date(`${summary.today}T12:00:00+09:00`).getDay()];
-    return `${summary.today.replace(/-/g, ".")} ${dow}`;
+  const subtitle = useMemo(() => {
+    const d = new Date(`${summary.today}T12:00:00+09:00`);
+    return `${summary.today.replace(/-/g, ".")} ${DOW[d.getDay()]} · 플랫폼팀`;
   }, [summary.today]);
 
-  function openPalette() {
-    window.dispatchEvent(new CustomEvent("tb:open-palette"));
-  }
+  const quarters = range === "quarter" ? summary.quarterGoals.filter((g) => g.current) : summary.quarterGoals;
 
   return (
-    <div className="hv">
-      <div className="top">
-        <div className="crumb">
-          워크스페이스 / <b>홈</b>
-        </div>
-        <span className="sp" />
-        <button className="iconbtn" onClick={openPalette} aria-label="검색">
-          <svg viewBox="0 0 24 24">
-            <circle cx="11" cy="11" r="7" />
-            <path d="M20 20l-3.5-3.5" />
-          </svg>
-        </button>
-        <NewMenu />
-      </div>
-
-      <div className="wrap">
-        <div className="head">
-          <div>
-            <div className="eb">{dateLabel} · 플랫폼팀</div>
-            <h1>
-              {greeting()}, {summary.greetingName || user.name}님
-            </h1>
-            <p>{summary.greetingSub}</p>
-          </div>
-          <div className="head-r">
-            <Clock />
-          </div>
-        </div>
-
-        <div className="home3">
-          {/* Row1 — Q3 목표 / 다가오는 일정 */}
-          <div className="hrow r13">
-            <GoalsModule annual={summary.annualGoals} quarter={summary.quarterGoals} annualLabel={summary.annualLabel} quarterLabel={summary.quarterLabel} myGoalCount={summary.myGoalCount} />
-            <Upcoming items={summary.upcoming} />
-          </div>
-
-          {/* Row2 — 히어로 타임라인 (요약 ⇄ 상세) */}
+    <PageShell
+      crumb={["워크스페이스", "홈"]}
+      title="홈"
+      subtitle={subtitle}
+      actions={
+        <>
+          {/* §B: 주 액션 1개만 코랄 */}
+          <Link className="btn-ghost" href="/settings">가져오기</Link>
+          <button className="btn-primary" onClick={() => openNewTaskPanel()}>＋ 새 업무</button>
+        </>
+      }
+      tabs={[
+        { key: "overview", label: "개요" },
+        { key: "focus", label: "내 초점", count: summary.myFocus.length },
+        { key: "team", label: "팀 현황", count: summary.teamStatus.length },
+      ]}
+      activeTab={tab}
+      onTab={(k) => setTab(k as TabKey)}
+      filters={
+        <>
+          <button className={`pg-chip${range === "quarter" ? " on" : ""}`} onClick={() => setRange("quarter")}>이번 분기</button>
+          <button className={`pg-chip${range === "all" ? " on" : ""}`} onClick={() => setRange("all")}>전체 기간</button>
+        </>
+      }
+      filterSummary={<NowStamp />}
+    >
+      {tab === "overview" && (
+        <>
           <HeroTimeline
             lanes={summary.lanes}
             today={summary.today}
             anchor={anchor}
             onAnchorChange={setAnchor}
+            compact
           />
-
-          {/* Row3 — 결정 대기 / 나의 초점 */}
-          <div className="hrow r13">
-            <DecisionsWaiting items={summary.decisionsWaiting} decidedThisWeek={summary.decisionsThisWeek} />
-            <MyFocus items={summary.myFocus} agent={summary.agent} />
+          <div className="hm-g2">
+            <div className="hm-col">
+              <GoalsBlock annual={summary.annualGoals} annualLabel={summary.annualLabel} quarters={quarters} myGoalCount={summary.myGoalCount} />
+              <DecisionsBlock items={summary.decisionsWaiting} decidedThisWeek={summary.decisionsThisWeek} />
+            </div>
+            <div className="hm-col">
+              <UpcomingBlock items={summary.upcoming} today={summary.today} />
+              <FocusBlock items={summary.myFocus} agent={summary.agent} />
+            </div>
           </div>
-        </div>
+        </>
+      )}
+
+      {tab === "focus" && <FocusTab items={summary.myFocus} />}
+      {tab === "team" && <TeamTab rows={summary.teamStatus} />}
+    </PageShell>
+  );
+}
+
+/* ══════════ §D3 블록 공통 ══════════ */
+function Block({
+  title, count, more, moreHref, children, foot,
+}: {
+  title: string; count?: number; more?: string; moreHref?: string;
+  children: React.ReactNode; foot?: React.ReactNode;
+}) {
+  return (
+    <section className="hm-blk" aria-label={title}>
+      <div className="hm-blk-h">
+        <h2>{title}</h2>
+        {count ? <em className="hm-badge num">{count}</em> : null}
+        {more && moreHref && <Link className="hm-more" href={moreHref}>{more}</Link>}
       </div>
+      {children}
+      {foot}
+    </section>
+  );
+}
+
+function BlockEmpty({ text, cta, href }: { text: string; cta?: string; href?: string }) {
+  return (
+    <div className="hm-empty">
+      <p>{text}</p>
+      {cta && href && <Link className="btn-primary" href={href}>{cta}</Link>}
     </div>
   );
 }
 
-
-// ── 홈 재편 모듈 (테마 재편 §3) ──
-// 상태 색·라벨. 판정 불가(null)는 "집계 없음"으로 따로 표기한다 — 0%나 대기와 구분 (§C 제약).
-const GOAL_STATUS: Record<string, { color: string; label: string }> = {
-  risk: { color: "var(--coral)", label: "리스크" },
-  ontrack: { color: "var(--green)", label: "온트랙" },
-  wait: { color: "var(--slate)", label: "대기" },
+/* ══════════ §D4 목표 ══════════ */
+const GOAL_STATUS: Record<string, { cls: string; label: string }> = {
+  risk: { cls: "risk", label: "리스크" },
+  ontrack: { cls: "ok", label: "온트랙" },
+  done: { cls: "ok", label: "완료" },
+  wait: { cls: "wait", label: "대기" },
 };
 
-function GoalsModule({ annual, quarter, annualLabel, quarterLabel, myGoalCount }: {
-  annual: HomeSummary["annualGoals"]; quarter: HomeSummary["quarterGoals"];
-  annualLabel: string; quarterLabel: string; myGoalCount: number;
+function GoalsBlock({ annual, annualLabel, quarters, myGoalCount }: {
+  annual: HomeSummary["annualGoals"];
+  annualLabel: string;
+  quarters: HomeSummary["quarterGoals"];
+  myGoalCount: number;
 }) {
-  const empty = annual.length === 0 && quarter.length === 0;
+  const rows = [
+    ...annual.map((g) => ({ id: g.id, tag: "연간", title: g.title, status: null as string | null, progress: g.progress })),
+    ...quarters.map((g) => ({ id: g.id, tag: g.periodLabel, title: g.title, status: g.status, progress: g.progress })),
+  ];
   return (
-    <section className="tile mod" aria-label="목표 달성 현황">
-      <div className="th"><h3>목표</h3><Link className="m gmore" href="/goals">전체 관리 →</Link></div>
-      {empty ? (
-        <EmptyState compact title="등록된 목표가 없어요" hint="연간·분기 목표를 추가하면 달성 현황이 모입니다." action={<Link className="btn small primary" href="/goals">목표 추가</Link>} />
-      ) : (
-        <>
-          {/* 연간 — 큰 게이지 */}
-          <div className="gm-sec-l">연간 · {annualLabel}</div>
-          {annual.length === 0 ? (
-            <Link className="gm-empty" href="/goals">＋ 올해 연간 목표를 추가하세요</Link>
-          ) : annual.map((g) => (
-            <Link className="ann-row" key={g.id} href={`/goals?goal=${g.id}`}>
-              <div className="ann-top">
-                <span className="ann-t">{g.title}</span>
-                <span className={`ann-pct num${g.progress === null ? " none" : ""}`}>{g.progress === null ? "-" : `${g.progress}%`}</span>
-              </div>
-              <div className={`ann-track${g.progress === null ? " empty" : ""}`}>
-                {g.progress !== null && <i style={{ width: `${Math.max(g.progress, 2)}%`, background: "var(--blue)" }} />}
-              </div>
-              {g.progress === null && (
-                <span className="gm-cta">{g.projectCount === 0 ? "프로젝트 연결하기 →" : "연결된 프로젝트에 업무가 없어요 →"}</span>
-              )}
-            </Link>
-          ))}
-          {/* 분기 — 리스트 */}
-          <div className="gm-sec-l">분기 · {quarterLabel.split(" ")[1] ?? quarterLabel}</div>
-          {quarter.length === 0 ? (
-            <Link className="gm-empty" href="/goals">＋ 이번 분기 목표를 추가하세요</Link>
-          ) : (
-            <div className="qg">
-              {quarter.map((g) => {
-                const st = g.status ? GOAL_STATUS[g.status] : null;
-                return (
-                  <Link className="qg-row" key={g.id} href={`/goals?goal=${g.id}`}>
-                    <div className="qg-top">
-                      <span className="qg-t">{g.title}</span>
-                      {st
-                        ? <span className="qg-chip" style={{ color: st.color, background: `color-mix(in srgb, ${st.color} 14%, var(--card))` }}>{st.label}</span>
-                        : <span className="qg-chip none">집계 없음</span>}
-                    </div>
-                    <div className="qg-bar">
-                      <div className={`qg-track${g.progress === null ? " empty" : ""}`}>
-                        {g.progress !== null && <i style={{ width: `${Math.max(g.progress, 2)}%`, background: st?.color ?? "var(--slate)" }} />}
-                      </div>
-                      <span className={`qg-pct num${g.progress === null ? " none" : ""}`}>{g.progress === null ? "-" : `${g.progress}%`}</span>
-                    </div>
-                    {g.progress === null && (
-                      <span className="gm-cta">{g.projectCount === 0 ? "프로젝트 연결하기 →" : "연결된 프로젝트에 업무가 없어요 →"}</span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-          {myGoalCount > 0 && (
-            <Link className="gm-mine" href="/goals?scope=personal">내 목표 <b className="num">{myGoalCount}</b>건 →</Link>
-          )}
-        </>
-      )}
-    </section>
+    <Block title="목표" more="전체 관리 →" moreHref="/goals"
+      foot={myGoalCount > 0 ? <Link className="hm-foot" href="/goals?scope=personal">내 목표 <b className="num">{myGoalCount}</b>건 →</Link> : null}>
+      {rows.length === 0 ? (
+        <BlockEmpty text="등록된 목표가 없어요. 연간·분기 목표를 추가하면 달성 현황이 모입니다." cta="목표 추가" href="/goals" />
+      ) : rows.map((r) => {
+        const st = r.status ? GOAL_STATUS[r.status] : null;
+        return (
+          <Link className="hm-row hm-row-goal" key={`${r.tag}-${r.id}`} href={`/goals?goal=${r.id}`}>
+            <span className="hm-c1">
+              <span className="hm-tag num">{r.tag}</span>
+              <span className="hm-t">{r.title}</span>
+            </span>
+            <span className="hm-c2">
+              {st ? <span className={`hm-chip ${st.cls}`}>{st.label}</span> : <span className="hm-chip wait">집계 없음</span>}
+            </span>
+            {/* 데이터 없음은 "—". 0% 로 적지 않는다 */}
+            <span className={`hm-c3 num${r.progress === null ? " na" : ""}`}>{r.progress === null ? "—" : `${r.progress}%`}</span>
+          </Link>
+        );
+      })}
+    </Block>
   );
 }
 
-const UP_KIND: Record<string, { label: string; color: string }> = {
-  meeting: { label: "회의", color: "var(--blue)" },
-  review: { label: "리뷰", color: "var(--amber)" },
-  deadline: { label: "마감", color: "var(--coral)" },
+/* ══════════ §D4 결정 대기 ══════════ */
+function DecisionsBlock({ items, decidedThisWeek }: {
+  items: HomeSummary["decisionsWaiting"]; decidedThisWeek: number;
+}) {
+  return (
+    <Block title="결정 대기" count={items.length} more="전체 관리 →" moreHref="/signals"
+      foot={<Link className="hm-foot" href="/signals?tab=decision">이번 주 확정된 결정 <b className="num">{decidedThisWeek}</b>건 →</Link>}>
+      {items.length === 0 ? (
+        <BlockEmpty text="대기 중인 결정이 없어요. 논의중인 결정이 오래된 순으로 쌓입니다." cta="논의·결정으로" href="/signals" />
+      ) : items.map((d) => (
+        <button className="hm-row hm-row-dec" key={d.id} onClick={() => openPanel("signal", d.id)}>
+          <span className="hm-c1">
+            {/* 14일 초과 = coral, 그 외 amber */}
+            <i className={`hm-led ${d.alert ? "coral" : "amber"}`} aria-hidden="true" />
+            <span className="hm-t">{d.title}</span>
+          </span>
+          <span className="hm-c2 hm-sub">답글 {d.commentCount}</span>
+          <span className={`hm-c3 num${d.alert ? " over" : ""}`}>{d.ageDays}일</span>
+        </button>
+      ))}
+    </Block>
+  );
+}
+
+/* ══════════ §D4 다가오는 일정 ══════════ */
+const UP_KIND: Record<string, { label: string; cls: string }> = {
+  meeting: { label: "회의", cls: "blue" },
+  review: { label: "리뷰", cls: "amber" },
+  deadline: { label: "마감", cls: "coral" },
 };
-function Upcoming({ items }: { items: HomeSummary["upcoming"] }) {
+function UpcomingBlock({ items, today }: { items: HomeSummary["upcoming"]; today: string }) {
+  // 미래만 — 과거 마감은 이 블록에 오지 않는다 (기존 규칙 유지)
+  const future = items.filter((it) => it.date >= today);
   return (
-    <section className="tile mod" aria-label="다가오는 일정">
-      <div className="th"><h3>다가오는 일정</h3></div>
-      {items.length === 0 ? (
-        <EmptyState compact title="예정된 일정이 없어요" hint="회의·마감이 14일 안에 잡히면 여기에 모입니다." />
-      ) : (
-        <div className="up">
-          {items.map((it) => {
-            const k = UP_KIND[it.kind];
-            const [, mm, dd] = it.date.split("-");
-            return (
-              <Link className="up-row" key={it.key} href={it.kind === "meeting" ? "/calendar" : `/tasks`}>
-                <span className="up-date"><b className="num">{Number(mm)}-{Number(dd)}</b></span>
-                <span className="up-b">
-                  <span className="up-t">{it.title}</span>
-                  <span className="up-chip" style={{ color: k.color, background: `color-mix(in srgb, ${k.color} 14%, var(--card))` }}>{k.label}</span>
-                </span>
-                {it.dday && <span className={`up-dd num${it.overdue ? " over" : ""}`}>{it.dday}</span>}
-              </Link>
-            );
-          })}
-        </div>
-      )}
-    </section>
+    <Block title="다가오는 일정" more="전체 관리 →" moreHref="/calendar">
+      {future.length === 0 ? (
+        <BlockEmpty text="예정된 일정이 없어요. 회의·마감이 14일 안에 잡히면 여기 모입니다." />
+      ) : future.map((it) => {
+        const k = UP_KIND[it.kind];
+        const [, mm, dd] = it.date.split("-");
+        const near = !!it.dday && /^D-[0-2]$|^D-DAY$/.test(it.dday);
+        return (
+          <Link className="hm-row hm-row-up" key={it.key} href={it.kind === "meeting" ? "/calendar" : "/tasks"}>
+            <span className="hm-c1 hm-date num">{it.date === today ? "오늘" : `${Number(mm)}/${Number(dd)}`}</span>
+            <span className="hm-c2 hm-t">{it.title}</span>
+            <span className="hm-c3">
+              {it.dday
+                ? <em className={`hm-dd num${near ? " over" : ""}`}>{it.dday}</em>
+                : <span className={`hm-chip ${k.cls}`}>{k.label}</span>}
+            </span>
+          </Link>
+        );
+      })}
+    </Block>
   );
 }
 
-function DecisionsWaiting({ items, decidedThisWeek }: { items: HomeSummary["decisionsWaiting"]; decidedThisWeek: number }) {
-  return (
-    <section className="tile mod" aria-label="결정 대기">
-      <div className="th"><h3>결정 대기</h3><span className="m">논의중 {items.length}</span></div>
-      {items.length === 0 ? (
-        <EmptyState compact title="대기 중인 결정이 없어요" hint="논의중인 결정이 여기에 오래된 순으로 쌓입니다." action={<Link className="btn small" href="/signals">논의·결정으로</Link>} />
-      ) : (
-        <div className="dw">
-          {items.map((d) => (
-            <button className={`dw-row${d.alert ? " alert" : ""}`} key={d.id} onClick={() => openPanel("signal", d.id)}>
-              <span className="dw-dot" style={{ background: d.alert ? "var(--coral)" : "var(--slate)" }} />
-              <span className="dw-b">
-                <span className="dw-t">{d.title}</span>
-                <span className="dw-meta">{d.authorName} · 답글 {d.commentCount}</span>
-              </span>
-              <span className={`dw-age num${d.alert ? " over" : ""}`}>{d.ageDays}일</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {/* 이번 주 확정된 결정 — 카운터 아님, 한 줄 링크 (MD-P-2026-004 §D) */}
-      <Link className="dw-week" href="/signals?tab=decision">
-        이번 주 확정된 결정 <b className="num">{decidedThisWeek}</b>건 →
-      </Link>
-    </section>
-  );
-}
-
-const FOCUS_IC: Record<string, { color: string; glyph: string }> = {
-  mention: { color: "var(--purple)", glyph: "@" },
-  approval: { color: "var(--coral)", glyph: "!" },
-  task: { color: "var(--teal)", glyph: "◱" },
+/* ══════════ §D4 나의 초점 ══════════ */
+const FOCUS_IC: Record<string, { cls: string; glyph: string }> = {
+  mention: { cls: "purple", glyph: "@" },
+  approval: { cls: "coral", glyph: "!" },
+  task: { cls: "teal", glyph: "◱" },
+  reply: { cls: "blue", glyph: "↩" },
 };
 function focusTime(iso: string | null): string {
   if (!iso) return "";
@@ -273,38 +247,97 @@ function focusTime(iso: string | null): string {
   return `${Math.floor(h / 24)}일 전`;
 }
 
-function MyFocus({ items, agent }: { items: HomeSummary["myFocus"]; agent: HomeSummary["agent"] }) {
+function FocusRow({ f }: { f: HomeSummary["myFocus"][number] }) {
+  const ic = FOCUS_IC[f.kind] ?? FOCUS_IC.task;
+  return (
+    <Link className={`hm-row hm-row-focus${f.unread ? " unread" : ""}`} href={f.href}>
+      <span className={`hm-ic ${ic.cls}`} aria-hidden="true">{ic.glyph}</span>
+      <span className="hm-t">{f.summary}</span>
+      {f.time && <span className="hm-time num">{focusTime(f.time)}</span>}
+    </Link>
+  );
+}
+
+function FocusBlock({ items, agent }: { items: HomeSummary["myFocus"]; agent: HomeSummary["agent"] }) {
   const AS: Record<string, { label: string; cls: string }> = {
     working: { label: "작업 중", cls: "working" },
     pending: { label: "보고 대기", cls: "pending" },
     idle: { label: "대기", cls: "idle" },
   };
   const a = AS[agent.status];
+  const unread = items.filter((i) => i.unread).length;
   return (
-    <section className="tile mod focus" aria-label="나의 초점">
-      <div className="th"><h3>나의 초점</h3></div>
-      {items.length === 0 ? (
-        <EmptyState compact title="지금 처리할 것이 없어요" hint="멘션·승인·오늘 마감이 생기면 여기에 모입니다." />
-      ) : (
-        <div className="mf">
-          {items.map((f) => {
-            const ic = FOCUS_IC[f.kind];
-            return (
-              <Link className="mf-row" key={f.key} href={f.href}>
-                <span className="mf-ic" style={{ color: ic.color, background: `color-mix(in srgb, ${ic.color} 15%, var(--card))` }}>{ic.glyph}</span>
-                <span className="mf-t">{f.summary}</span>
-                {f.time && <span className="mf-time num">{focusTime(f.time)}</span>}
-              </Link>
-            );
-          })}
-        </div>
-      )}
-      {/* 에이전트 상태 칩 — 실사용량 연동 */}
-      <Link className={`agchip s-${a.cls}`} href="/assistant" aria-label={`에이전트 ${a.label}`}>
-        <span className={`agchip-led ${a.cls}`} aria-hidden="true" />
-        <span className="agchip-l">에이전트 {a.label}</span>
-        <span className="agchip-tok num">{agent.spentTokens.toLocaleString()} tok · ₩{agent.won.toLocaleString()}</span>
-      </Link>
-    </section>
+    <Block title="나의 초점" count={unread} more="전체 관리 →" moreHref="/inbox"
+      foot={
+        <Link className={`hm-agent s-${a.cls}`} href="/assistant">
+          <i className={`hm-led ${a.cls}`} aria-hidden="true" />
+          에이전트 {a.label}
+          <span className="hm-agent-n num">{agent.spentTokens.toLocaleString()} tok · ₩{agent.won.toLocaleString()}</span>
+        </Link>
+      }>
+      {items.length === 0
+        ? <BlockEmpty text="지금 처리할 것이 없어요. 멘션·답글·승인·오늘 마감이 생기면 여기 모입니다." />
+        : items.slice(0, 5).map((f) => <FocusRow key={f.key} f={f} />)}
+    </Block>
+  );
+}
+
+/* ══════════ §D5 내 초점 탭 — 목록 행(38px) ══════════ */
+function FocusTab({ items }: { items: HomeSummary["myFocus"] }) {
+  if (items.length === 0) {
+    return <div className="dl"><div className="dl-empty"><p>지금 처리할 것이 없어요.</p></div></div>;
+  }
+  return (
+    <div className="dl">
+      <div className="dl-head">
+        <span className="dl-c" style={{ flex: "0 0 60px" }}>종류</span>
+        <span className="dl-c">내용</span>
+        <span className="dl-c num" style={{ flex: "0 0 84px" }}>시각</span>
+      </div>
+      {items.map((f) => {
+        const ic = FOCUS_IC[f.kind] ?? FOCUS_IC.task;
+        const label = { mention: "멘션", approval: "승인", task: "업무", reply: "답글" }[f.kind];
+        return (
+          <Link className={`dl-row click hm-dlrow${f.unread ? " unread" : ""}`} key={f.key} href={f.href}>
+            <span className="dl-c" style={{ flex: "0 0 60px" }}>
+              <span className={`hm-ic sm ${ic.cls}`} aria-hidden="true">{ic.glyph}</span>
+              <span className="hm-sub">{label}</span>
+            </span>
+            <span className="dl-c">{f.summary}</span>
+            <span className="dl-c num" style={{ flex: "0 0 84px" }}>{focusTime(f.time)}</span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ══════════ §D5 팀 현황 탭 — 목록 행(38px) ══════════ */
+function TeamTab({ rows }: { rows: HomeSummary["teamStatus"] }) {
+  if (rows.length === 0) {
+    return <div className="dl"><div className="dl-empty"><p>진행 중인 업무가 있는 팀원이 없어요.</p></div></div>;
+  }
+  return (
+    <div className="dl">
+      <div className="dl-head">
+        <span className="dl-c">담당자</span>
+        <span className="dl-c num" style={{ flex: "0 0 80px" }}>진행 중</span>
+        <span className="dl-c num" style={{ flex: "0 0 80px" }}>지연</span>
+        <span className="dl-c num" style={{ flex: "0 0 110px" }}>평균 진척</span>
+      </div>
+      {rows.map((r) => (
+        <Link className={`dl-row click${r.late > 0 ? " risk" : ""}`} key={r.actorId} href={`/tasks?assignee=${r.actorId}`}>
+          <span className="dl-c">{r.name}</span>
+          <span className="dl-c num" style={{ flex: "0 0 80px" }}>{r.doing}</span>
+          <span className={`dl-c num${r.late > 0 ? " hm-over" : ""}`} style={{ flex: "0 0 80px" }}>{r.late > 0 ? r.late : "—"}</span>
+          <span className="dl-c num" style={{ flex: "0 0 110px" }}>
+            <span className="dl-bar">
+              <i><b style={{ width: `${r.avgProgress ?? 0}%` }} /></i>
+              <em className={r.avgProgress === null ? "dl-bar-na" : ""}>{r.avgProgress === null ? "—" : `${r.avgProgress}%`}</em>
+            </span>
+          </span>
+        </Link>
+      ))}
+    </div>
   );
 }
