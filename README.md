@@ -9,6 +9,9 @@ AIoT 교육플랫폼 사업팀(ROBODYNE SYSTEMS)의 메인 업무 관리 도구.
 > 📄 **기준 문서**: [`docs/SPEC.md`](docs/SPEC.md) (v1.1) 가 유일한 기준이며, Phase 지침은
 > [`docs/CHANGE-GUIDE.md`](docs/CHANGE-GUIDE.md), 디자인 참조는 `docs/prototype/index.html` 입니다.
 > 초기 3화면 구조 문서는 `docs/archive/` 로 보관되었습니다.
+>
+> 📁 **문서 폴더 규칙·문서번호 체계**는 [`docs/README.md`](docs/README.md) 를 따릅니다.
+> 지시서는 `docs/orders/`, 보고서는 `docs/reports/`, 캡처는 `docs/shots/{문서번호}/` 입니다.
 
 ## 화면
 
