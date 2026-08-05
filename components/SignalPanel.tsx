@@ -1,12 +1,12 @@
 "use client";
 
-// 시그널 패널 (Phase 6 → 홈 Bento 톤 확산) — /signals가 쓰는 목록 컴포넌트.
-// 구성: ①상단 요약 카드(=필터, 전체/결정/확인/메모/리스크 칩) ②항목 = 통일 카드.
+// 시그널 패널 (Phase 6 → MD-P-2026-022 §A2) — /signals가 쓰는 목록 컴포넌트.
+// 구성: ①필터 칩(전체/결정/확인/메모/리스크) ②항목 = **38px 목록 행**(카드 아님).
+// 행 규격은 app/design.css 의 .dl / .dl-row 한 벌을 그대로 쓴다 — 새 컴포넌트를 만들지 않는다.
 // 정렬(리스크 고정 → 정체 → 최신)은 서버가 결정하고 여기서는 타입 필터만 건다.
 // 에이전트 작성물은 좌측 바이올렛 보더(.sig-card.ag) + 봇 태그(.atag)로 구분.
 import { useMemo, useState } from "react";
 import type { SignalType } from "@/lib/types";
-import EmptyState from "./EmptyState";
 
 export interface SignalPanelItem {
   id: number;
@@ -91,78 +91,61 @@ export default function SignalPanel({
         )}
       </div>
 
-      {/* ② 항목 = 통일 카드 */}
+      {/* ② 항목 = 목록 행 (§C 38px). 카드 금지 */}
       {visible.length === 0 ? (
-        <section className="tile sig-empty" aria-label="논의·결정 없음">
-          <EmptyState
-            compact
-            title={tab === "all" ? "아직 논의·결정이 없어요" : "이 유형의 논의·결정이 없어요"}
-            hint="결정이 필요한 논의·확인 요청·리스크·메모를 남기면 팀 전체가 흐름을 추적할 수 있어요."
-          />
-        </section>
+        <div className="dl">
+          <div className="dl-empty">
+            <p>{tab === "all" ? "아직 논의·결정이 없어요" : "이 유형의 논의·결정이 없어요"}</p>
+            <p className="dl-empty-sub">결정이 필요한 논의·확인 요청·리스크·메모를 남기면 팀 전체가 흐름을 추적할 수 있어요.</p>
+          </div>
+        </div>
       ) : (
-        <div className="sig-cards">
+        <div className="dl">
+          <div className="dl-head">
+            <span className="dl-c" style={{ flex: "0 0 46px" }}>유형</span>
+            <span className="dl-c">제목</span>
+            <span className="dl-c" style={{ flex: "0 0 190px" }}>정보</span>
+            <span className="dl-c" style={{ flex: "0 0 128px" }}>상태 · 처리</span>
+          </div>
           {visible.map((s) => {
             const clickable = onSelect && s.kind === "signal";
             const open = clickable ? () => onSelect!(s.id) : undefined;
             const busy = busyId === s.id;
             return (
-              <article
+              <div
                 className={[
-                  "tile sig-card",
-                  s.emphasis ? "em" : "",
-                  s.agent ? "ag" : "",
-                  clickable ? "clickable" : "",
-                  selectedId === s.id && s.kind === "signal" ? "selected" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
+                  "dl-row",
+                  clickable ? "click" : "",
+                  s.emphasis ? "risk" : "",                                  // 좌측 코랄 액센트
+                  selectedId === s.id && s.kind === "signal" ? "on" : "",
+                ].filter(Boolean).join(" ")}
                 key={`${s.kind}-${s.id}`}
                 onClick={open}
                 role={clickable ? "button" : undefined}
+                tabIndex={clickable ? 0 : undefined}
+                onKeyDown={clickable ? (e) => { if (e.key === "Enter") open!(); } : undefined}
               >
-                <span className={`sig-ty ${s.type}`}>{TYPE_LABEL[s.type] ?? s.type}</span>
-                <div className="sig-card-main">
-                  <div className="sig-card-h">
-                    {s.agent && (
-                      <span className="atag">
-                        <span className="mo" />
-                        에이전트
-                      </span>
-                    )}
-                    <span className="sig-card-title">{s.title}</span>
-                  </div>
-                  <div className="sig-card-meta">{s.meta}</div>
-                </div>
-                <div className="sig-card-right">
+                <span className="dl-c" style={{ flex: "0 0 46px" }}>
+                  <span className={`sig-ty ${s.type}`}>{TYPE_LABEL[s.type] ?? s.type}</span>
+                </span>
+                <span className="dl-c">
+                  {s.agent && <span className="atag"><span className="mo" />에이전트</span>}
+                  {s.title}
+                </span>
+                <span className="dl-c sig-meta" style={{ flex: "0 0 190px" }}>{s.meta}</span>
+                <span className="dl-c sig-right" style={{ flex: "0 0 128px" }}>
                   {s.badge && <span className={`sig-tag ${s.badge}`}>{s.badgeLabel}</span>}
-                  <div className="sig-card-acts">
-                    {s.quick && onQuickAct && (
-                      <button
-                        className="sig-act primary"
-                        disabled={busy}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onQuickAct(s.id, s.quick!.kind);
-                        }}
-                      >
-                        {s.quick.label}
-                      </button>
-                    )}
-                    {clickable && (
-                      <button
-                        className="sig-act"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelect!(s.id);
-                        }}
-                      >
-                        열기 <span aria-hidden="true">↗</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </article>
+                  {s.quick && onQuickAct && (
+                    <button
+                      className="sig-act primary"
+                      disabled={busy}
+                      onClick={(e) => { e.stopPropagation(); onQuickAct(s.id, s.quick!.kind); }}
+                    >
+                      {s.quick.label}
+                    </button>
+                  )}
+                </span>
+              </div>
             );
           })}
         </div>

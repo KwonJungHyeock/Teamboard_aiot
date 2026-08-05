@@ -445,3 +445,31 @@
   color: var(--muted); cursor: pointer; font-size: 11.5px; }
 .cmt-attach-x:hover { background: var(--hair); color: var(--ink2); }
 .cmt-tools { display: flex; gap: 8px; margin-bottom: 8px; }
+
+/* ── §A2 논의·결정 — 목록 행 규격에 맞춘 최소 보정 (MD-P-2026-022) ── */
+.dl-empty-sub { font-size: 11.5px; color: var(--muted); margin: 0; }
+.dl-row .sig-ty { font-size: 10.5px; font-weight: 800; border-radius: 4px; padding: 1px 5px; }
+.dl-row .atag { font-size: 10.5px; margin-right: 5px; }
+.dl-c.sig-meta { font-size: 11.5px; color: var(--muted); }
+.dl-c.sig-right { display: flex; align-items: center; justify-content: flex-end; gap: 6px; overflow: visible; }
+.dl-row .sig-tag { font-size: 10.5px; font-weight: 700; border-radius: 4px; padding: 1px 5px; white-space: nowrap; }
+.dl-row .sig-act { height: 22px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface); color: var(--ink2); font-family: inherit; font-size: 10.5px; font-weight: 700;
+  cursor: pointer; white-space: nowrap; }
+/* 행 안의 빠른 액션은 코랄을 쓰지 않는다 — 코랄 주 액션은 화면당 1개(헤더)뿐이다 (§A 공통규칙) */
+.dl-row .sig-act.primary { border-color: var(--ink2); background: var(--surface); color: var(--ink); }
+.dl-row .sig-act:hover { background: var(--surface-2); }
+.dl-row .sig-act.primary:hover { background: var(--surface-2); }
+.dl-row .sig-act:disabled { opacity: .5; cursor: default; }
+/* 필터 칩 옆 요약 */
+.pg-filters .sig-wrap { display: contents; }
+/* 논의 화면의 요약칩 묶음은 필터바로 옮겼으므로 본문 상단 여백만 정리 */
+.pg-body .sig-wrap { display: flex; flex-direction: column; gap: 12px; }
+.pg-body .sig-sum { display: flex; align-items: center; gap: 6px; background: 0; border: 0; box-shadow: none; padding: 0; }
+.pg-body .sig-sum .sig-chip { height: 26px; padding: 0 10px; border-radius: 4px; border: 1px solid var(--line);
+  background: var(--surface); font-family: inherit; font-size: 11.5px; font-weight: 600; color: var(--ink2);
+  cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+.pg-body .sig-sum .sig-chip[aria-pressed="true"] { border-color: var(--coral); color: var(--coral-text); background: var(--coral-bg); }
+.pg-body .sig-sum .sig-chip-n { font-family: var(--f-d); font-size: 10.5px; color: var(--muted); }
+.pg-body .sig-stall { margin-left: auto; font-size: 11.5px; color: var(--coral-text); display: inline-flex; align-items: center; gap: 5px; }
+.pg-body .sig-stall i { width: 6px; height: 6px; border-radius: 50%; background: var(--coral); }
