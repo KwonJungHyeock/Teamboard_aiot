@@ -8,8 +8,9 @@ import Markdown from "./Markdown";
 import { decTime, type Decision } from "./decision-ui";
 import { uploadImage } from "@/lib/upload";
 import { openPanel } from "@/lib/side-panel";
-import ResourceLinks from "./ResourceLinks";
-import DocEditor from "./DocEditor";
+import DocEditor, { type DocBlock } from "./DocEditor";
+import PropertyBlock, { type PropRow } from "./PropertyBlock";
+import LinkedResources from "./LinkedResources";
 import {
   TASK_PANEL_EVENT,
   currentTaskRef,
@@ -76,6 +77,7 @@ export default function TaskDetailPanel() {
   const [shareNote, setShareNote] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
   const [shareDone, setShareDone] = useState(false);
+  const [docBlocks, setDocBlocks] = useState<DocBlock[]>([]); // §F3 연결된 리소스 자동 집계용
   const descRef = useRef<HTMLTextAreaElement>(null);
 
   // ── 열림 상태 소스: URL ?task + 이벤트 + 뒤로가기 ──
@@ -202,6 +204,31 @@ export default function TaskDetailPanel() {
     return true;
   }
 
+  /**
+   * 낙관적 저장 (§F1) — 화면을 먼저 바꾸고 서버에 보낸다. 실패하면 이전 값으로 되돌린다.
+   * 성공 시 loadDetail 로 서버 확정값을 다시 덮어써 집계(진척·목표)가 즉시 반영된다.
+   */
+  async function patchOpt(fields: Record<string, unknown>, local: Partial<TaskDetail>) {
+    if (typeof openId !== "number" || !t) return false;
+    const prev = t;
+    setT({ ...t, ...local });
+    setSave("saving"); setErr("");
+    const res = await fetch(`/api/tasks/${openId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fields),
+    });
+    if (!res.ok) {
+      setT(prev);                                  // 롤백
+      setErr((await res.json()).error ?? "저장 실패");
+      setSave("idle");
+      return false;
+    }
+    setSave("saved");
+    setTimeout(() => setSave("idle"), 1200);
+    await loadDetail(openId);
+    notifyTaskUpdated();
+    return true;
+  }
+
   async function addComment() {
     if (typeof openId !== "number" || !newComment.trim()) return;
     const res = await fetch(`/api/tasks/${openId}/comments`, {
@@ -274,6 +301,153 @@ export default function TaskDetailPanel() {
 
   if (openId == null) return null;
   const areaProjects = sel?.projects.filter((p) => p.areaId === (t?.areaId ?? -1)) ?? [];
+
+  // ── §F1 속성 블록 — 순서 고정: 상태 / 담당 / 기간 / 우선순위 / 진행률 / 프로젝트 / 목표.
+  //    영역·업무유형은 기존 기능을 잃지 않도록 그 뒤에 붙인다(5개 초과 → "속성 접기"로 접힘).
+  const labelOf = (pairs: readonly (readonly [string, string])[], v: string) =>
+    pairs.find(([k]) => k === v)?.[1] ?? v;
+  const period = t
+    ? t.startDate && t.dueDate ? `${t.startDate} → ${t.dueDate}`
+      : t.dueDate ? `~ ${t.dueDate}` : t.startDate ? `${t.startDate} ~` : ""
+    : "";
+  const linkedGoals = t ? (sel?.monthGoals ?? []).filter((g) => t.goalIds.includes(g.id)) : [];
+
+  const propRows: PropRow[] = !t ? [] : [
+    {
+      key: "status", label: "상태",
+      value: <span className={`prop-st st-${t.status}`}>{labelOf(STATUS, t.status)}</span>,
+      editor: (close) => (
+        <select autoFocus value={STATUS.some(([v]) => v === t.status) ? t.status : ""}
+          onChange={(e) => { patchOpt({ status: e.target.value }, { status: e.target.value }); close(); }}>
+          {!STATUS.some(([v]) => v === t.status) && <option value="">{t.status}</option>}
+          {STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      ),
+    },
+    {
+      key: "assignee", label: "담당",
+      value: t.assigneeName, empty: !t.assigneeId, action: "＋ 담당 지정",
+      editor: (close) => (
+        <select autoFocus value={t.assigneeId ?? 0}
+          onChange={(e) => {
+            const id = Number(e.target.value) || null;
+            patchOpt({ assigneeId: id }, { assigneeId: id, assigneeName: sel?.actors.find((a) => a.id === id)?.name ?? null });
+            close();
+          }}>
+          <option value={0}>미지정</option>
+          {sel?.actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+      ),
+    },
+    {
+      key: "period", label: "기간",
+      value: <span className="num">{period}</span>, empty: !period, action: "기간 미정",
+      editor: () => (
+        <div className="prop-dates">
+          <label>시작
+            <input type="date" defaultValue={t.startDate ?? ""}
+              onChange={(e) => patchOpt({ startDate: e.target.value || null }, { startDate: e.target.value || null })} />
+          </label>
+          <label>마감
+            <input type="date" defaultValue={t.dueDate ?? ""}
+              onChange={(e) => patchOpt({ dueDate: e.target.value || null }, { dueDate: e.target.value || null })} />
+          </label>
+        </div>
+      ),
+    },
+    {
+      key: "priority", label: "우선순위",
+      value: labelOf(PRIORITY, t.priority),
+      editor: (close) => (
+        <select autoFocus value={t.priority}
+          onChange={(e) => { patchOpt({ priority: e.target.value }, { priority: e.target.value }); close(); }}>
+          {PRIORITY.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      ),
+    },
+    {
+      key: "progress", label: "진행률",
+      value: (
+        <span className="prop-prog">
+          <i><b style={{ width: `${t.progress}%` }} /></i>
+          <em className="num">{t.progress}%</em>
+        </span>
+      ),
+      editor: () => (
+        <div className="prop-prog-edit">
+          <input type="range" min={0} max={100} step={5} value={prog} autoFocus
+            onChange={(e) => setProg(Number(e.target.value))}
+            onMouseUp={() => prog !== t.progress && patchOpt({ progress: prog }, { progress: prog })}
+            onKeyUp={() => prog !== t.progress && patchOpt({ progress: prog }, { progress: prog })}
+            onTouchEnd={() => prog !== t.progress && patchOpt({ progress: prog }, { progress: prog })}
+            aria-label="진행률" />
+          <input type="number" min={0} max={100} value={prog} className="prop-prog-n"
+            onChange={(e) => setProg(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+            onBlur={() => prog !== t.progress && patchOpt({ progress: prog }, { progress: prog })}
+            aria-label="진행률 입력" />
+        </div>
+      ),
+    },
+    {
+      key: "project", label: "프로젝트",
+      value: t.projectName, empty: !t.projectId, action: "＋ 프로젝트 연결",
+      editor: (close) => (
+        <select autoFocus value={t.projectId ?? 0}
+          onChange={(e) => {
+            const id = Number(e.target.value) || null;
+            patchOpt({ projectId: id }, { projectId: id, projectName: areaProjects.find((p) => p.id === id)?.name ?? null });
+            close();
+          }}>
+          <option value={0}>없음</option>
+          {areaProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+      ),
+    },
+    {
+      key: "goals", label: "목표",
+      value: linkedGoals.map((g) => g.title).join(", "),
+      empty: linkedGoals.length === 0, action: "＋ 목표 연결",
+      editor: () => (
+        <div className="prop-goals">
+          {(sel?.monthGoals.length ?? 0) === 0 && <p className="prop-none">연결 가능한 월 목표가 없습니다.</p>}
+          {sel?.monthGoals.map((g) => (
+            <label key={g.id}>
+              <input type="checkbox" checked={t.goalIds.includes(g.id)}
+                onChange={(e) => {
+                  const next = e.target.checked ? [...t.goalIds, g.id] : t.goalIds.filter((x) => x !== g.id);
+                  patchOpt({ goalIds: next }, { goalIds: next });
+                }} />
+              {g.title} <em>{g.month}</em>
+            </label>
+          ))}
+        </div>
+      ),
+    },
+    {
+      key: "area", label: "영역",
+      value: t.areaName,
+      editor: (close) => (
+        <select autoFocus value={t.areaId}
+          onChange={(e) => {
+            const id = Number(e.target.value);
+            patchOpt({ areaId: id }, { areaId: id, areaName: sel?.areas.find((a) => a.id === id)?.name ?? t.areaName });
+            close();
+          }}>
+          {sel?.areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+      ),
+    },
+    {
+      key: "worktype", label: "업무유형",
+      value: labelOf(WORKTYPE, t.workType),
+      editor: (close) => (
+        <select autoFocus value={t.workType}
+          onChange={(e) => { patchOpt({ workType: e.target.value }, { workType: e.target.value }); close(); }}>
+          {WORKTYPE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      ),
+    },
+  ];
 
   return (
     <>
@@ -361,77 +535,8 @@ export default function TaskDetailPanel() {
             />
             {t.origin === "agent" && <span className="tdp-tag agent">에이전트 제안</span>}
 
-            {/* 속성 그리드 */}
-            <div className="tdp-grid">
-              <label>영역
-                <select value={t.areaId} onChange={(e) => patch({ areaId: Number(e.target.value) })}>
-                  {sel?.areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-              </label>
-              <label>업무유형
-                <select value={t.workType} onChange={(e) => patch({ workType: e.target.value })}>
-                  {WORKTYPE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              </label>
-              <label>프로젝트
-                <select value={t.projectId ?? 0} onChange={(e) => patch({ projectId: Number(e.target.value) || null })}>
-                  <option value={0}>없음</option>
-                  {areaProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </label>
-              <label>담당
-                <select value={t.assigneeId ?? 0} onChange={(e) => patch({ assigneeId: Number(e.target.value) || null })}>
-                  <option value={0}>미지정</option>
-                  {sel?.actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-              </label>
-              <label>우선순위
-                <select value={t.priority} onChange={(e) => patch({ priority: e.target.value })}>
-                  {PRIORITY.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              </label>
-              <label>상태
-                <select
-                  value={STATUS.some(([v]) => v === t.status) ? t.status : ""}
-                  onChange={(e) => patch({ status: e.target.value })}
-                >
-                  {!STATUS.some(([v]) => v === t.status) && <option value="">{t.status}</option>}
-                  {STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              </label>
-              <label>시작일
-                <input type="date" defaultValue={t.startDate ?? ""} key={`sd-${t.id}-${t.startDate}`}
-                  onChange={(e) => patch({ startDate: e.target.value || null })} />
-              </label>
-              <label>마감일
-                <input type="date" defaultValue={t.dueDate ?? ""} key={`dd-${t.id}-${t.dueDate}`}
-                  onChange={(e) => patch({ dueDate: e.target.value || null })} />
-              </label>
-            </div>
-
-            {/* 진행률 (수동, 0~100) — 파트 4 */}
-            <div className="tdp-sec">
-              <div className="tdp-sec-h">진행률 <em>{prog}%</em></div>
-              <div className="tdp-prog">
-                <input
-                  type="range" min={0} max={100} step={5} value={prog}
-                  className="tdp-range"
-                  onChange={(e) => setProg(Number(e.target.value))}
-                  onMouseUp={() => prog !== t.progress && patch({ progress: prog })}
-                  onKeyUp={() => prog !== t.progress && patch({ progress: prog })}
-                  onTouchEnd={() => prog !== t.progress && patch({ progress: prog })}
-                  aria-label="진행률"
-                />
-                <input
-                  type="number" min={0} max={100} value={prog}
-                  className="tdp-prog-n"
-                  onChange={(e) => setProg(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                  onBlur={() => prog !== t.progress && patch({ progress: prog })}
-                  aria-label="진행률 입력"
-                />
-              </div>
-              <div className="tdp-prog-bar"><i style={{ width: `${prog}%` }} className={`pf-${t.status === "done" ? "green" : "blue"}`} /></div>
-            </div>
+            {/* 속성 블록 (MD-P-2026-020 §F1) — 폼이 아니라 문서 속성. 값 클릭 → 그 자리 편집 */}
+            <PropertyBlock rows={propRows} collapseAfter={5} />
 
             {/* 막힘 표시 — 상태와 별개인 진행 불가 신호. 표시 시 사유 필수. */}
             <div className={`tdp-sec tdp-block${t.blocked ? " on" : ""}`}>
@@ -476,24 +581,6 @@ export default function TaskDetailPanel() {
               )}
             </div>
 
-            {/* 연결 목표 (다중) */}
-            <div className="tdp-sec">
-              <div className="tdp-sec-h">연결 목표</div>
-              <div className="tdp-goals">
-                {(sel?.monthGoals.length ?? 0) === 0 && <p className="tdp-muted">연결 가능한 월 목표가 없습니다.</p>}
-                {sel?.monthGoals.map((g) => (
-                  <label key={g.id} className="tdp-goal">
-                    <input type="checkbox" checked={t.goalIds.includes(g.id)}
-                      onChange={(e) => {
-                        const next = e.target.checked ? [...t.goalIds, g.id] : t.goalIds.filter((x) => x !== g.id);
-                        patch({ goalIds: next });
-                      }} />
-                    {g.title} <em>{g.month}</em>
-                  </label>
-                ))}
-              </div>
-            </div>
-
             {/* 팀 타임라인 공유 (협업 A) */}
             <div className="tdp-sec">
               <div className="tdp-sec-h">팀 타임라인 공유</div>
@@ -523,7 +610,7 @@ export default function TaskDetailPanel() {
                 슬래시 명령 · URL 붙여넣기 임베드 · 체크리스트 · 자동 저장은 DocEditor 가 담당한다. */}
             <div className="tdp-sec tdp-doc">
               <div className="tdp-sec-h">본문</div>
-              <DocEditor taskId={t.id} />
+              <DocEditor taskId={t.id} onBlocks={setDocBlocks} />
             </div>
 
             {/* 기존 평문 설명 — 문서로 옮기기 전 자료가 남아 있어서 접어서 보존한다 */}
@@ -548,10 +635,14 @@ export default function TaskDetailPanel() {
               )}
             </details>
 
-            {/* 연결된 리소스 (MD-P-2026-012 §E) — Notion·Figma·GitHub */}
-            <div className="tdp-sec">
-              <ResourceLinks entityType="task" entityId={t.id} canCreateDoc />
-            </div>
+            {/* 연결된 리소스 — 자동 집계 (MD-P-2026-020 §F3). 등록 UI 없음, 본문이 단일 소스 */}
+            <LinkedResources
+              taskId={t.id}
+              blocks={docBlocks}
+              projectId={t.projectId}
+              projectName={t.projectName}
+              goals={(sel?.monthGoals ?? []).filter((g) => t.goalIds.includes(g.id))}
+            />
 
             {/* 관련 결정 — 이 업무에 연결된 결정 (MD-P-2026-004 §E) */}
             {decisions.length > 0 && (

@@ -219,3 +219,202 @@
 .pg-body .tt-prog-n { font-size: 11.5px; }
 .pg-body :is(h2, .ch h2, .tinbox h2) { font-size: 14px; }
 .pg-body :is(.areatag, .prio, .st, .stsel) { border-radius: 4px; }
+
+/* ============================================================
+   §D 홈 재구성 (MD-P-2026-020)
+   블록 규격(§D3)은 .hm-blk 한 벌뿐이다. 네 블록이 이걸 공유한다.
+   §G 스케일 밖 값(9.5·10·11·12px)은 쓰지 않는다 — 6단으로 스냅했다.
+   ============================================================ */
+
+/* ── §D2-1 다크 히어로 (축소형) ── */
+.hm-hero { position: relative; overflow: hidden; margin-bottom: 12px;
+  background: linear-gradient(150deg, #1A1F27, #0E1116); border: 0; border-radius: 9px; padding: 13px 16px; box-shadow: var(--e2); }
+.hm-hero::before { content: ""; position: absolute; right: -60px; top: -80px; width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(234, 74, 79, .22), transparent 68%); pointer-events: none; }
+.hm-hero > * { position: relative; }
+.hm-hero .hh2 { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 0; border: 0; }
+.hm-hero .hh2 h2, .pg-body .hm-hero .hh2 h2 { font-size: 12.5px; font-weight: 800; color: #fff; margin: 0; letter-spacing: -.01em; }
+.hm-hero .hh-mo { font-size: 14px; font-weight: 800; color: rgba(255, 255, 255, .78); }
+.hm-hero .hh-sp { flex: 1; }
+.hm-hero .hh-now { font-size: 11.5px; font-weight: 700; color: var(--coral-l); display: inline-flex; align-items: center; gap: 5px; }
+.hm-hero .hh-now-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--coral-l); }
+.hm-hero .hh-toggle, .hm-hero .hh-nav { display: inline-flex; gap: 2px; background: rgba(255, 255, 255, .07); border-radius: 4px; padding: 2px; }
+.hm-hero .hh-toggle button, .hm-hero .hh-nav button { background: 0; border: 0; border-radius: 4px; cursor: pointer;
+  font-family: inherit; font-size: 10.5px; font-weight: 700; color: rgba(255, 255, 255, .62); padding: 3px 8px; }
+.hm-hero .hh-toggle button.on { background: rgba(255, 255, 255, .16); color: #fff; }
+.hm-hero .hh-nav button:hover, .hm-hero .hh-toggle button:hover { color: #fff; }
+
+/* 바 트랙 17px · 바 간격 5px (기존 대비 약 40% 축소) */
+.hm-hero .gt-wrap { overflow: visible; }
+.hm-hero .gt-grid { display: grid; grid-template-columns: 76px 1fr; column-gap: 8px; row-gap: 5px; align-items: center; }
+.hm-hero .gt-corner { height: 0; }
+.hm-hero .gt-axis { position: relative; height: 12px; }
+.hm-hero .gt-alabel { font-size: 10.5px; color: rgba(255, 255, 255, .45); }
+.hm-hero .gt-lane-l { display: flex; align-items: center; justify-content: flex-end; gap: 5px; min-width: 0; }
+.hm-hero .gt-lane-n { font-size: 10.5px; color: rgba(255, 255, 255, .62);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-hero .gt-swatch { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
+.hm-hero .gt-track { position: relative; min-height: 17px; background: rgba(255, 255, 255, .05); border-radius: 4px; }
+.hm-hero .gt-line { position: relative; height: 17px; }
+.hm-hero .gt2-bar { position: absolute; top: 1px; height: 15px; border: 0; border-radius: 4px; padding: 0 6px;
+  display: flex; align-items: center; cursor: pointer; font-family: inherit; overflow: hidden; }
+.hm-hero .gt2-bar-in { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.hm-hero :is(.gt2-bar-t, .gt2-bar-s, .gt2-warn) { font-size: 10.5px; font-weight: 800;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-hero .gt2-bar-s { font-weight: 700; opacity: .8; }
+.hm-hero .gt-bgcol.wknd { background: rgba(255, 255, 255, .03); }
+.hm-hero :is(.gt-nowline) { width: 1.5px; background: var(--coral-l); }
+.hm-hero .gt2-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.hm-hero :is(.gt2-hint, .gt2-c) { font-size: 10.5px; color: rgba(255, 255, 255, .45); }
+.hm-hero .gt2-c { margin-left: auto; }
+.hm-hero .gt2-empty { grid-column: 1 / -1; font-size: 11.5px; color: rgba(255, 255, 255, .45); padding: 12px 0; }
+
+/* ── §D2-2 2열 그리드 ── */
+.hm-g2 { display: grid; grid-template-columns: 1fr 300px; gap: 12px; align-items: start; }
+.hm-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+@media (max-width: 1100px) { .hm-g2 { grid-template-columns: 1fr; } }
+
+/* ── §D3 블록 공통 ── */
+.hm-blk { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; box-shadow: var(--e1); }
+.hm-blk-h { display: flex; align-items: center; gap: 6px; padding: 9px 13px; border-bottom: 1px solid var(--hair); }
+.hm-blk-h h2, .pg-body .hm-blk-h h2 { font-size: 12.5px; font-weight: 800; color: var(--ink); margin: 0; letter-spacing: -.01em; }
+.hm-badge { font-size: 10.5px; font-weight: 800; color: #fff; background: var(--coral-d);
+  border-radius: 999px; padding: 1px 6px; font-style: normal; }
+.hm-more { margin-left: auto; font-size: 11.5px; color: var(--muted); text-decoration: none; }
+.hm-more:hover { color: var(--ink2); }
+
+/* 행 — 패딩 8/13, 구분선 --hair, 마지막 없음, 12.5px */
+.hm-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 8px 13px; border: 0; border-bottom: 1px solid var(--hair); background: 0;
+  font-family: inherit; font-size: 12.5px; color: var(--ink); text-decoration: none;
+  cursor: pointer; transition: background .12s ease; }
+.hm-row:last-child { border-bottom: 0; }
+.hm-row:hover { background: var(--surface-2); }
+.hm-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.hm-sub { font-size: 10.5px; color: var(--muted); }
+.hm-c1 { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
+.hm-c2 { flex: 0 0 74px; display: flex; align-items: center; }
+.hm-c3 { flex: 0 0 46px; text-align: right; font-size: 11.5px; font-weight: 800; color: var(--ink2); }
+.hm-c3.na { color: var(--muted); font-weight: 600; }
+.hm-c3.over, .hm-over { color: var(--coral-text); }
+
+.hm-tag { font-size: 10.5px; font-weight: 700; color: var(--muted); flex: 0 0 auto; }
+.hm-led { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
+.hm-led.coral { background: var(--coral); }
+.hm-led.amber { background: var(--amber); }
+.hm-led.working { background: var(--green); }
+.hm-led.pending { background: var(--amber); }
+.hm-led.idle { background: var(--slate); }
+
+.hm-chip { font-size: 10.5px; font-weight: 800; border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+.hm-chip.ok { color: var(--green-text); background: var(--green-bg); }
+.hm-chip.risk { color: var(--coral-text); background: var(--coral-bg); }
+.hm-chip.wait { color: var(--muted); background: var(--surface-2); }
+.hm-chip.blue { color: var(--edu-text); background: var(--blue-bg); }
+.hm-chip.amber { color: var(--amber-text); background: var(--amber-bg); }
+.hm-chip.coral { color: var(--coral-text); background: var(--coral-bg); }
+
+/* 다가오는 일정 — 52 / 1fr / 60 */
+.hm-row-up .hm-c1 { flex: 0 0 52px; }
+.hm-row-up .hm-c2 { flex: 1; min-width: 0; }
+.hm-row-up .hm-c3 { flex: 0 0 60px; display: flex; justify-content: flex-end; }
+.hm-date { font-size: 11.5px; font-weight: 800; color: var(--ink2); }
+.hm-dd { font-size: 11.5px; font-weight: 800; font-style: normal; color: var(--ink2); }
+.hm-dd.over { color: var(--coral-text); }
+
+/* 나의 초점 — 아이콘 20px / 안읽음 굵게 + 좌측 코랄 점 (MD-P-2026-018 §B 규격) */
+/* 지시서는 radius 5px 지만 §G 라운드 3종(4/7/9) 밖이라 4px 로 스냅했다 */
+.hm-ic { width: 20px; height: 20px; flex: 0 0 20px; border-radius: 4px; display: inline-flex;
+  align-items: center; justify-content: center; font-size: 10.5px; font-weight: 800; }
+.hm-ic.sm { width: 16px; height: 16px; flex: 0 0 16px; border-radius: 4px; }
+.hm-ic.purple { color: var(--play-text); background: var(--purple-bg); }
+.hm-ic.coral { color: var(--coral-text); background: var(--coral-bg); }
+.hm-ic.teal { color: var(--train-text); background: var(--teal-bg); }
+.hm-ic.blue { color: var(--edu-text); background: var(--blue-bg); }
+.hm-row-focus { position: relative; }
+.hm-row-focus .hm-t { flex: 1; }
+.hm-row-focus.unread .hm-t { font-weight: 800; }
+.hm-row-focus.unread::before, .hm-dlrow.unread::before {
+  content: ""; position: absolute; left: 5px; top: 50%; transform: translateY(-50%);
+  width: 5px; height: 5px; border-radius: 50%; background: var(--coral); }
+.hm-dlrow { position: relative; text-decoration: none; }
+.hm-dlrow.unread .dl-c:nth-child(2) { font-weight: 800; }
+.hm-time { margin-left: auto; font-size: 10.5px; color: var(--muted); flex: 0 0 auto; }
+
+/* 블록 하단 한 줄 링크 */
+.hm-foot, .hm-agent { display: flex; align-items: center; gap: 6px; padding: 8px 13px;
+  border-top: 1px solid var(--hair); background: var(--surface-2);
+  font-size: 11.5px; color: var(--muted); text-decoration: none; }
+.hm-foot:hover, .hm-agent:hover { color: var(--ink2); }
+.hm-foot b { color: var(--ink); }
+.hm-agent-n { margin-left: auto; font-size: 10.5px; }
+
+.hm-empty { padding: 20px 13px; text-align: center; }
+.hm-empty p { font-size: 11.5px; color: var(--muted); margin: 0 0 8px; }
+
+/* 필터바 NOW */
+.hm-now { font-family: var(--f-d); font-variant-numeric: tabular-nums; font-size: 11.5px; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) { .hm-row { transition: none; } }
+
+/* .hv 스코프 밖(페이지 뼈대 안)에서도 히어로 그리드가 서도록 구조 규칙을 여기 둔다.
+   기존 .hv .gt2 규칙과 중복 구현이 아니라, 뼈대용 단일 정의다. */
+.hm-hero .gt-axis .gt-acol,
+.hm-hero .gt-bg .gt-bgcol { position: absolute; top: 0; bottom: 0; }
+.hm-hero .gt-alabel { position: absolute; left: 3px; top: 0; font-family: var(--f-d);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hm-hero .gt-bg { position: absolute; inset: 0; border-radius: 4px; overflow: hidden; }
+.hm-hero .gt-nowline { position: absolute; top: 0; bottom: 0; z-index: 3; }
+/* §G 그림자 2단(--e1/--e2)만 쓴다. 바에는 그림자를 두지 않고 지연은 코랄 캡으로만 표시 */
+.hm-hero .gt2-bar { container-type: inline-size; }
+.hm-hero .gt2-bar:disabled { cursor: default; }
+@container (max-width: 84px) { .hm-hero .gt2-bar-in { display: none; } }
+.hm-hero .gt2-cap { position: absolute; right: 0; top: 0; bottom: 0; width: 3px; background: var(--coral); }
+
+/* ── §F1 속성 편집기 (MD-P-2026-020) ── */
+.prop-st { font-weight: 700; }
+.prop-st.st-done { color: var(--green-text); }
+.prop-st.st-doing { color: var(--edu-text); }
+.prop-st.st-review { color: var(--amber-text); }
+.prop-st.st-dropped { color: var(--muted); }
+.prop-v { font-weight: 600; }
+.prop-pop select, .prop-pop input[type="date"], .prop-pop input[type="number"] {
+  height: 30px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface);
+  color: var(--ink); font-family: inherit; font-size: 12.5px; padding: 0 8px; width: 100%; }
+.prop-dates { display: flex; flex-direction: column; gap: 8px; }
+.prop-dates label { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); }
+.prop-dates label input { flex: 1; }
+.prop-prog { display: inline-flex; align-items: center; gap: 7px; }
+.prop-prog i { display: block; width: 60px; height: 4px; border-radius: 999px; background: var(--track-bg); flex: 0 0 60px; overflow: hidden; }
+.prop-prog i b { display: block; height: 100%; border-radius: 999px; background: var(--blue); }
+.prop-prog em { font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--ink2); }
+.prop-prog-edit { display: flex; align-items: center; gap: 8px; }
+.prop-prog-edit input[type="range"] { flex: 1; accent-color: var(--coral-d); }
+.prop-prog-n { width: 58px; flex: 0 0 58px; }
+.prop-goals { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow: auto; }
+.prop-goals label { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink); cursor: pointer; }
+.prop-goals label em { font-style: normal; font-size: 10.5px; color: var(--muted); margin-left: auto; }
+.prop-goals input[type="checkbox"] { width: 13px; height: 13px; flex: 0 0 13px; accent-color: var(--coral-d); }
+.prop-none { font-size: 11.5px; color: var(--muted); margin: 0; }
+
+/* ── §F3 연결된 리소스 (자동 집계) ── */
+.lr-list { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.lr-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 8px 10px;
+  border: 0; border-bottom: 1px solid var(--hair); background: var(--surface); cursor: pointer;
+  font-family: inherit; text-decoration: none; transition: background .12s ease; }
+.lr-row:last-child { border-bottom: 0; }
+.lr-row:hover { background: var(--surface-2); }
+.lr-mark { width: 20px; height: 20px; flex: 0 0 20px; border-radius: 4px; display: inline-flex;
+  align-items: center; justify-content: center; font-size: 10.5px; font-weight: 800; }
+.lr-mark.notion { color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); }
+.lr-mark.figma { color: var(--play-text); background: var(--purple-bg); }
+.lr-mark.github { color: var(--ink2); background: var(--surface-2); border: 1px solid var(--line); }
+.lr-mark.internal { color: var(--train-text); background: var(--teal-bg); }
+.lr-mark.other { color: var(--edu-text); background: var(--blue-bg); }
+.lr-b { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.lr-t { font-size: 12.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lr-m { font-size: 10.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lr-from { font-size: 10.5px; color: var(--muted); flex: 0 0 auto; }
+.lr-note { font-size: 10.5px; color: var(--muted); margin: 8px 0 0; }
+@media (prefers-reduced-motion: reduce) { .lr-row { transition: none; } }
+.lr .tdp-sec-h, .lr .tdp-sec-h em { font-size: 12.5px; }
