@@ -10,6 +10,7 @@
     "db:init": "node scripts/init-db.mjs",
     "db:seed-demo": "node scripts/seed-demo.mjs",
     "e2e": "playwright test",
+    "verify:blob": "node scripts/verify-blob-access.mjs",
     "e2e:ui": "playwright test --ui"
   },
   "dependencies": {

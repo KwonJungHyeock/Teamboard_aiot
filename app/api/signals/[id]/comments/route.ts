@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { jsonError } from "@/lib/api";
+import { parseScope } from "@/lib/blob";
 import { notify, notifyMentions } from "@/lib/notify";
 
 export const runtime = "nodejs";
@@ -73,9 +74,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (guarded.error) return guarded.error;
     const payload = await request.json();
     const body = String(payload.body ?? "").trim().slice(0, 2000);
-    // 이미지 URL (파트 D) — http(s)만 허용. 본문 없이 이미지만도 가능.
+    // 첨부 이미지 — 예전 http URL 또는 이 시그널의 Private Blob pathname (MD-P-2026-014a).
+    // 남의 경로를 심을 수 없도록 scope 가 이 시그널과 일치하는지 확인한다.
     const raw = typeof payload.imageUrl === "string" ? payload.imageUrl.trim() : "";
-    const imageUrl = /^https?:\/\//.test(raw) ? raw.slice(0, 1000) : null;
+    const sc = raw ? parseScope(raw) : null;
+    const imageUrl = /^https?:\/\//.test(raw)
+      ? raw.slice(0, 1000)
+      : (sc && sc.kind === "signal" && sc.id === Number(params.id) ? raw.slice(0, 500) : null);
     if (!body && !imageUrl) return NextResponse.json({ error: "내용 또는 이미지를 입력하세요." }, { status: 400 });
     const signalId = Number(params.id);
     const comment = await queryOne<{ id: number }>(

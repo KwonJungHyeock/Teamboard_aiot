@@ -107,6 +107,11 @@ export interface CanvasBlock {
   items?: { id: string; text: string; done: boolean }[];
   url?: string;
   meta?: { title?: string; domain?: string; thumbnail?: string; provider?: string };
+  /** 이미지 블록 (MD-P-2026-014a) — 공개 URL이 아니라 Private Blob 의 pathname 을 저장한다 */
+  pathname?: string;
+  name?: string;
+  size?: number;
+  contentType?: string;
 }
 
 export interface CanvasDoc {

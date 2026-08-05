@@ -11,6 +11,8 @@ import InternalUnfurl, { type InternalCard } from "./InternalUnfurl";
 import { useAutocomplete } from "./autocomplete";
 import { toast } from "@/lib/quick";
 import { pgDate } from "@/lib/pgtime";
+import { uploadImage } from "@/lib/upload";
+import BlobImage from "./BlobImage";
 
 export type DocBlockType = "text" | "heading" | "checklist" | "quote" | "code" | "divider" | "link" | "image";
 
@@ -22,6 +24,11 @@ export interface DocBlock {
   url?: string;
   meta?: { title?: string; provider?: string; domain?: string; thumbnail?: string | null } | null;
   internal?: InternalCard | null;
+  /** 이미지 블록 (MD-P-2026-014a) — Private Blob 의 pathname. 공개 URL이 아니다. */
+  pathname?: string;
+  name?: string;
+  size?: number;
+  contentType?: string;
 }
 
 const uid = () => `b${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -34,7 +41,7 @@ const SLASH: { key: string; label: string; hint: string; make: () => DocBlock }[
   { key: "divider", label: "구분선", hint: "가로선", make: () => ({ id: uid(), type: "divider" }) },
   { key: "quote", label: "인용", hint: "인용문", make: () => ({ id: uid(), type: "quote", text: "" }) },
   { key: "code", label: "코드", hint: "코드 블록", make: () => ({ id: uid(), type: "code", text: "" }) },
-  { key: "image", label: "이미지", hint: "붙여넣기·드래그", make: () => ({ id: uid(), type: "image", url: "" }) },
+  { key: "image", label: "이미지", hint: "붙여넣기·드래그", make: () => ({ id: uid(), type: "image" }) },
   { key: "link", label: "링크 임베드", hint: "URL 카드", make: () => ({ id: uid(), type: "link", url: "" }) },
 ];
 
@@ -54,6 +61,7 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
   const [slash, setSlash] = useState<{ blockId: string; q: string } | null>(null);
   const base = useRef<string | null>(null);
   const lastOk = useRef<DocBlock[]>([]);
+  const blocksRef = useRef<DocBlock[]>([]);   // flushSave 가 최신 blocks 를 읽기 위한 참조
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── 적재 ──
@@ -75,6 +83,8 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
   }, [taskId]);
+
+  useEffect(() => { blocksRef.current = blocks; }, [blocks]);
 
   // 블록이 바뀔 때마다 부모에 통지 (§F3) — 삭제도 그대로 전달돼 리소스 섹션이 따라 줄어든다
   useEffect(() => { onBlocks?.(blocks); }, [blocks, onBlocks]);
@@ -121,6 +131,28 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
 
   const update = useCallback((next: DocBlock[]) => { setBlocks(next); schedule(next); }, [schedule]);
 
+  /**
+   * 즉시 저장 (디바운스 건너뜀) — 이미지 참조는 화면에 뜨기 전에 DB에 있어야 한다.
+   * 읽기 권한이 "그 pathname 이 문서에 저장돼 있는가"로 판정되기 때문이다 (MD-P-2026-014a P1).
+   */
+  const flushSave = useCallback(async (next: DocBlock[]): Promise<boolean> => {
+    if (readOnly) return false;
+    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+    setSave("saving");
+    const res = await fetch(`/api/tasks/${taskId}/doc`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ blocks: next, baseUpdatedAt: base.current }),
+    }).catch(() => null);
+    if (!res || !res.ok) { setSave("err"); return false; }
+    const d = await res.json();
+    lastOk.current = d.blocks ?? next;
+    base.current = d.updatedAt ?? null;
+    setSavedAt(d.updatedAt ?? null);
+    setSave("saved");
+    setTimeout(() => setSave("idle"), 1600);
+    return true;
+  }, [taskId, readOnly]);
+
   const patch = useCallback((id: string, p: Partial<DocBlock>) => {
     setBlocks((cur) => {
       const next = cur.map((b) => (b.id === id ? { ...b, ...p } : b));
@@ -152,15 +184,39 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
     patch(id, { url: url.trim(), meta: d?.meta ?? null, internal: d?.internal ?? null });
   }, [patch]);
 
+  // ── 이미지 업로드 (MD-P-2026-014 §A + 014a) — 서버 라우트 경유, pathname 만 저장 ──
+  // 순서가 중요하다: 업로드 → **저장 완료** → 그 다음에 이미지를 그린다.
+  const insertImage = useCallback(async (afterId: string | null, file: File) => {
+    const ph: DocBlock = { id: uid(), type: "image", name: file.name };
+    addAfter(afterId, ph);
+    try {
+      const up = await uploadImage(file, { kind: "task", id: taskId });
+      const withPath = (cur: DocBlock[]) => cur.map((b) => (b.id === ph.id
+        ? { ...b, pathname: up.pathname, name: up.name, size: up.size, contentType: up.contentType }
+        : b));
+      const saved = await flushSave(withPath(blocksRef.current));
+      if (!saved) {
+        remove(ph.id);
+        toast("이미지를 저장하지 못했어요. 다시 시도해 주세요", "err");
+        return;
+      }
+      setBlocks(withPath);
+    } catch (err) {
+      remove(ph.id);
+      toast(err instanceof Error ? err.message : "이미지 업로드 실패", "err");
+    }
+  }, [addAfter, remove, taskId, flushSave]);
+
   // ── 붙여넣기 자동 인식 (§F2) ──
   const onPaste = useCallback((blockId: string, e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const text = e.clipboardData.getData("text/plain");
     const files = Array.from(e.clipboardData.files ?? []);
 
-    if (files.some((f) => f.type.startsWith("image/"))) {
+    const img = files.find((f) => f.type.startsWith("image/"));
+    if (img) {
       e.preventDefault();
-      if (!blobReady) { toast("이미지 업로드는 스토리지 연결 후 사용할 수 있어요", "err"); return; }
-      toast("이미지 업로드는 스토리지 연결 후 사용할 수 있어요", "err");
+      if (!blobReady) { toast("이미지 저장소가 연결되지 않았어요", "err"); return; }
+      void insertImage(blockId, img);
       return;
     }
     if (!text) return;
@@ -186,7 +242,7 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
         return next;
       });
     }
-  }, [addAfter, unfurl, blobReady, schedule]);
+  }, [addAfter, unfurl, blobReady, schedule, insertImage]);
 
   // ── 슬래시 명령 ──
   const slashHits = useMemo(() => {
@@ -315,7 +371,11 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
               )}
 
               {b.type === "image" && (
-                <div className="doc-img-ph">이미지 — 스토리지 연결 후 표시됩니다</div>
+                b.pathname
+                  ? <BlobImage value={b.pathname} name={b.name} alt={b.name ?? "첨부 이미지"} className="doc-img" />
+                  : <div className="doc-img-ph">
+                      {blobReady ? "이미지 올리는 중…" : "이미지 저장소가 연결되지 않았습니다"}
+                    </div>
               )}
 
               {!readOnly && (

@@ -8,6 +8,8 @@ import type { SessionUser } from "@/lib/types";
 import { VoteButtons, ImageThumb } from "./huddle-ui";
 import { Avatar, ReactionChips, MentionComposer, renderRich, relTime, type ReactionSummary, type Person } from "./collab-ui";
 import HoverActions from "./HoverActions";
+import BlobImage from "./BlobImage";
+import { uploadImage, type UploadedImage } from "@/lib/upload";
 import { DecisionConfirm, DecisionCard, draftRationale, type Decision } from "./decision-ui";
 
 interface Votes { up: number; down: number; mine: string | null }
@@ -71,6 +73,10 @@ export default function SignalThread({
   const [comments, setComments] = useState<ThreadComment[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
   const [draft, setDraft] = useState("");
+  const [attach, setAttach] = useState<UploadedImage | null>(null);   // 코멘트 첨부 이미지 (§E)
+  // 미리보기는 로컬 파일로 그린다. 아직 코멘트가 없어 서버 읽기 권한이 성립하지 않기 때문 (014a P1).
+  const [attachPreview, setAttachPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [taskForm, setTaskForm] = useState(false);
@@ -123,18 +129,43 @@ export default function SignalThread({
 
   async function send() {
     const body = draft.trim();
-    if (!body || busy) return;
+    if ((!body && !attach) || busy) return;
     setBusy(true);
     const res = editing
       ? await fetch(`/api/signals/${signalId}/comments`, {
           method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editing, body }),
         })
       : await fetch(`/api/signals/${signalId}/comments`, {
-          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }),
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ body, imageUrl: attach?.pathname }),
         });
     setBusy(false);
     if (!res.ok) { setError((await res.json()).error ?? "전송 실패"); return; }
-    setDraft(""); setEditing(null); await load(); onChanged();
+    setDraft("");
+    if (attachPreview) URL.revokeObjectURL(attachPreview);
+    setAttachPreview(null); setAttach(null);
+    setEditing(null); await load(); onChanged();
+  }
+
+  // 코멘트 이미지 첨부 (MD-P-2026-014 §E + 014a) — 업로드는 서버 라우트 경유, pathname 만 들고 있는다.
+  async function attachImage(file: File) {
+    setError(""); setUploading(true);
+    try {
+      const up = await uploadImage(file, { kind: "signal", id: signalId });
+      setAttach(up);
+      setAttachPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file); });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "이미지 업로드 실패");
+    } finally {
+      setUploading(false);
+    }
+  }
+  function pickAttach() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/png,image/jpeg,image/webp,image/gif";
+    input.onchange = () => { const f = input.files?.[0]; if (f) void attachImage(f); };
+    input.click();
   }
 
   /** 입력창이 빈 상태에서 ↑ — 내 마지막 코멘트를 편집 버퍼로 올린다. */
@@ -265,6 +296,24 @@ export default function SignalThread({
               </div>
             </div>
           ))}
+        </div>
+        {/* 첨부 미리보기 + 컴포저 */}
+        {attach && (
+          <div className="cmt-attach">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="bimg" src={attachPreview ?? ""} alt={attach.name} />
+            <span className="cmt-attach-n">{attach.name}</span>
+            <button className="cmt-attach-x" aria-label="첨부 제거"
+              onClick={() => {
+                if (attachPreview) URL.revokeObjectURL(attachPreview);
+                setAttachPreview(null); setAttach(null);
+              }}>✕</button>
+          </div>
+        )}
+        <div className="cmt-tools">
+          <button className="btn-ghost" onClick={pickAttach} disabled={uploading || editing !== null}>
+            {uploading ? "올리는 중…" : "🖼 이미지 첨부"}
+          </button>
         </div>
         {/* 상시 하단 컴포저 */}
         <MentionComposer value={draft} onChange={setDraft} onSubmit={send} busy={busy}
