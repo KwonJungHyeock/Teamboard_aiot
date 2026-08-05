@@ -105,12 +105,19 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const orphans = before.blocks
       .filter((b) => b.type === "image" && b.pathname && !kept.has(b.pathname))
       .map((b) => b.pathname as string);
+    let blobDeleteError: string | null = null;
     if (orphans.length && blobEnabled()) {
-      await delPrivate(orphans).catch(() => {});
+      // 삭제가 실패해도 저장은 진행하되, 조용히 묻지 않는다 — 검증에서 원인을 볼 수 있어야 한다.
+      await delPrivate(orphans).catch((e) => { blobDeleteError = e instanceof Error ? e.message : String(e); });
     }
 
     const saved = await saveCanvas(projectId, blocks, session.id);
-    return NextResponse.json({ ...saved, blobReady: blobEnabled(), removedBlobs: orphans.length });
+    return NextResponse.json({
+      ...saved,
+      blobReady: blobEnabled(),
+      removedBlobs: blobDeleteError ? 0 : orphans.length,
+      ...(blobDeleteError ? { blobDeleteError } : {}),
+    });
   } catch (error) {
     return jsonError(error);
   }

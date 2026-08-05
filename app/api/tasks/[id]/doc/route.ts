@@ -127,7 +127,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const orphans = (Array.isArray(prev?.doc) ? prev!.doc : [])
       .filter((b) => b.type === "image" && b.pathname && !kept.has(b.pathname))
       .map((b) => b.pathname as string);
-    if (orphans.length && blobReady()) await delPrivate(orphans).catch(() => {});
+    let blobDeleteError: string | null = null;
+    if (orphans.length && blobReady()) {
+      await delPrivate(orphans).catch((e) => { blobDeleteError = e instanceof Error ? e.message : String(e); });
+    }
 
     const saved = await query<{ doc_updated_at: string }>(
       `UPDATE task SET doc = $1::jsonb, doc_updated_at = now(), doc_updated_by = $2
@@ -141,7 +144,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       updatedAt: saved[0].doc_updated_at,
       updatedByName: session.name,
       blobReady: blobReady(),
-      removedBlobs: orphans.length,
+      removedBlobs: blobDeleteError ? 0 : orphans.length,
+      ...(blobDeleteError ? { blobDeleteError } : {}),
     });
   } catch (error) {
     return jsonError(error);
