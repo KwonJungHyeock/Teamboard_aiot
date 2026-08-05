@@ -1,17 +1,17 @@
-/* Mission Deck — 라이트 웜페이퍼 + 로고 코랄(#EE4C51), Pretendard / JetBrains Mono.
-   레거시 별칭 토큰(구 다크 베이스)은 라이트 값으로 remap. 색 기준은 lib/theme.css. */
+/* Mission Deck — 중성 톤 (MD-P-2026-019 §A). 색 기준은 lib/theme.css.
+   여기 있는 것은 구 다크 베이스에서 넘어온 레거시 별칭이며, 값은 theme.css 와 같게 맞춘다. */
 :root {
-  --bg: #F5F3ED;
+  --bg: #F7F8F9;
   --bg-elev: #FFFFFF;
   --bg-card: #FFFFFF;
-  --border: #EEEAE0;
-  --text: #37434F;
-  --text-dim: #4E5964;
-  --accent: #EE4C51;
-  --accent-soft: rgba(238, 76, 81, 0.10);
-  --green: #4C9A6E;
-  --yellow: #D8A22E;
-  --blue: #4B8DF8;
+  --border: #E5E8EB;
+  --text: #16191D;
+  --text-dim: #525A66;
+  --accent: #EA4A4F;
+  --accent-soft: rgba(234, 74, 79, 0.10);
+  --green: #128C58;
+  --yellow: #D68910;
+  --blue: #3072E6;
   --mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
@@ -1005,7 +1005,7 @@ body.meeting-on .side { display: none !important; }
 .tdp-prog-bar i.pf-green { background: var(--green); }
 
 /* 설명 미리보기 (파트 3) */
-.tdp-preview { margin-top: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: #FBFAF6; }
+.tdp-preview { margin-top: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
 .tdp-preview-h { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
 .tdp-cmt-body { margin-top: 4px; }
 
@@ -1270,7 +1270,7 @@ mark.hl { background: color-mix(in srgb, var(--amber) 26%, var(--card)); color: 
    ============================================================ */
 /* E: 체크/그리드 패턴 제거 → 미세 세로 그라데이션(상단 약간 밝게). 깊이는 카드 그림자로만. */
 body {
-  background-color: #F6F4EF;
+  background-color: var(--bg);
   background-image: linear-gradient(180deg, #F8F6F1 0%, #F3F0E8 100%);
   background-size: auto;
   background-position: 0 0;
@@ -1478,7 +1478,7 @@ body.rail .side .mk-logo { margin: 0 auto; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pws-list li button:hover { color: var(--edu-text); }
 .pws-list li .num { color: var(--muted); font-size: 11.5px; flex: 0 0 auto; }
-.pws-list li .num.over { color: var(--coral); font-weight: 700; }
+.pws-list li .num.over { color: var(--coral-text); font-weight: 700; }
 .pws-act { list-style: none; margin: 0; padding: 0; }
 .pws-act li { display: flex; gap: 10px; padding: 6px 0; font-size: 12.5px; color: var(--ink-soft); border-bottom: 1px solid var(--hair); }
 .pws-act li:last-child { border-bottom: 0; }
@@ -1501,7 +1501,7 @@ body.rail .side .mk-logo { margin: 0 auto; }
 .pws-dt { display: block; font-size: 14px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pws-dm { font-size: 11.5px; color: var(--muted); }
 .pws-dage { font-size: 12px; color: var(--muted); flex: 0 0 auto; }
-.pws-dage.over { color: var(--coral); font-weight: 700; }
+.pws-dage.over { color: var(--coral-text); font-weight: 700; }
 
 /* 우측 슬라이드인 패널 (§B3) */
 .pws-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 420px; max-width: 94vw; z-index: 55;

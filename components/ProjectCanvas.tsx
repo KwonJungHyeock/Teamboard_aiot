@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "./Markdown";
 import { useAutocomplete } from "./autocomplete";
+import InternalUnfurl, { type InternalCard } from "./InternalUnfurl";
 import { toast } from "@/lib/quick";
 import { openPanel } from "@/lib/side-panel";
 import { openTaskPanel } from "@/lib/task-panel";
@@ -23,17 +24,6 @@ interface Block {
   /** 내부 링크 언퍼 (MD-P-2026-006 §E) — 업무·결정·프로젝트는 상태 칩·담당·진척%까지 보여준다. */
   internal?: InternalCard;
 }
-interface InternalCard {
-  kind: "task" | "decision" | "project";
-  id: number;
-  title: string;
-  statusLabel: string;
-  statusTone: string;
-  assigneeName: string | null;
-  progress: number | null;
-  href: string;
-}
-
 const uid = () => `b${Math.random().toString(36).slice(2, 9)}`;
 
 function relTime(iso: string | null): string {
@@ -273,29 +263,3 @@ function CanvasText({ value, onChange }: { value: string; onChange: (v: string) 
   );
 }
 
-/** 내부 링크 언퍼 카드 — 제목 + 상태 칩 + 담당 아바타 + 진척% (§E). */
-function InternalUnfurl({ card }: { card: InternalCard }) {
-  const router = useRouter();
-  const open = () => {
-    if (card.kind === "task") openTaskPanel(card.id);
-    else if (card.kind === "decision") openPanel("decision", card.id);
-    else router.push(`/projects/${card.id}`);
-  };
-  const KIND: Record<InternalCard["kind"], string> = { task: "업무", decision: "결정", project: "프로젝트" };
-  return (
-    <button className="iunf" onClick={open}>
-      <span className="iunf-k">{KIND[card.kind]}</span>
-      <span className="iunf-b">
-        <span className="iunf-t">{card.title}</span>
-        <span className="iunf-m">
-          <span className="iunf-chip" style={{ color: `var(${card.statusTone})`, background: `color-mix(in srgb, var(${card.statusTone}) 13%, var(--card))` }}>
-            {card.statusLabel}
-          </span>
-          {card.assigneeName && <span className="iunf-av" aria-hidden="true">{card.assigneeName.slice(0, 1)}</span>}
-          {card.assigneeName && <span className="iunf-by">{card.assigneeName}</span>}
-          {card.progress !== null && <span className="iunf-p num">{card.progress}%</span>}
-        </span>
-      </span>
-    </button>
-  );
-}

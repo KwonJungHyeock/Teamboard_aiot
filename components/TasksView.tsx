@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
+import PageShell from "./PageShell";
 import TaskBoard from "./TaskBoard";
 import TaskCalendar from "./TaskCalendar";
 import TaskGantt from "./TaskGantt";
@@ -348,30 +349,45 @@ export default function TasksView({ user }: { user: SessionUser }) {
       });
   }, [filteredTasks, today, goalTitleOf]);
 
+  const hiddenDone = tasks.filter((t) => t.status === "done" || t.status === "dropped").length;
+
   return (
-    <div className="hv">
-      <div className="top">
-        <div className="crumb">
-          워크스페이스 / <b>업무</b>
-        </div>
-        <span className="sp" />
-      </div>
-      <div className="wrap">
-        <div className="head">
-          <div>
-            <div className="eb">TASKS</div>
-            <h1>{isMine ? "내 업무" : "업무"}</h1>
-            <p>
-              {isMine
-                ? "담당이 나인 업무만 보고 있습니다. 담당을 ‘전체 담당’으로 바꾸면 전체를 조회합니다."
-                : "에이전트 제안은 인박스에서 승인해야 목록·홈·캘린더에 반영됩니다."}
-            </p>
-          </div>
-          {/* 홈 "+ 새로 만들기"와 동일 규칙 — 제목 줄 우측 상단 고정 (필터 줄바꿈과 무관) */}
-          <button className="newbtn" onClick={quickNew}>
-            ＋ 새 업무
+    /* 페이지 뼈대는 공통 컴포넌트가 그린다 (MD-P-2026-019 §B) —
+       브레드크럼 → 제목+액션 → 탭 → 필터바 → 본문 순서를 화면마다 다시 짜지 않는다. */
+    <PageShell
+      crumb={["워크스페이스", "업무"]}
+      title={isMine ? "내 업무" : "업무"}
+      subtitle={isMine
+        ? "담당이 나인 업무만 보고 있습니다. 담당을 ‘전체 담당’으로 바꾸면 전체를 조회합니다."
+        : "에이전트 제안은 인박스에서 승인해야 목록·홈·캘린더에 반영됩니다."}
+      actions={<button className="btn-primary" onClick={quickNew}>＋ 새 업무</button>}
+      tabs={(["sheet", "board", "calendar", "timeline"] as TaskLens[]).map((v) => ({ key: v, label: LENS_LABEL[v] }))}
+      activeTab={lens}
+      onTab={(k) => pickLens(k as TaskLens)}
+      filters={
+        <>
+          <input className="tsearch" placeholder="업무·프로젝트·담당 검색"
+            value={search} onChange={(e) => setSearch(e.target.value)} />
+          <select value={fArea} onChange={(e) => { setFArea(e.target.value); setAreaDefaulted(true); }}>
+            <option value="">전체 영역</option>
+            {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <select value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
+            <option value="">전체 담당</option>
+            {actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <select value={sortBy} onChange={(e) => pickSort(e.target.value as SortKey)} aria-label="정렬 기준">
+            {SORT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}{o.key === "due" ? " (기본)" : ""}</option>)}
+          </select>
+          <button className={`pg-chip${showDone ? " on" : ""}`} onClick={() => toggleDone(!showDone)}>
+            완료 포함
           </button>
-        </div>
+        </>
+      }
+      filterSummary={`${filteredTasks.length}건${!showDone && hiddenDone > 0 ? ` · 완료 ${hiddenDone}건 숨김` : ""}`}
+    >
+      <div className="hv tv-legacy">
+      <div className="wrap">
 
         {/* 인박스 — status='proposed' 전용 노출 위치 (홈·캘린더·타임라인 제외) */}
         {inbox.length > 0 && (
@@ -403,64 +419,9 @@ export default function TasksView({ user }: { user: SessionUser }) {
           </section>
         )}
 
-        {/* 필터 — 한 줄 인라인: 검색 + 셀렉트 + 우측 새 업무 버튼 */}
-        <div className="tfilters">
-          <input
-            className="tsearch"
-            placeholder="업무·프로젝트·담당 검색"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select value={fArea} onChange={(e) => { setFArea(e.target.value); setAreaDefaulted(true); }}>
-            <option value="">전체 영역</option>
-            {areas.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-          <select value={fProject} onChange={(e) => setFProject(e.target.value)}>
-            <option value="">전체 프로젝트</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <select value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
-            <option value="">전체 담당</option>
-            {actors.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-          <select value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
-            {STATUS_OPTIONS.map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
-              </option>
-            ))}
-          </select>
-          <select value={fDue} onChange={(e) => setFDue(e.target.value)}>
-            {DUE_OPTIONS.map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* 뷰 전환 — 같은 데이터, 다른 렌즈. 보드는 그룹 기준(상태/영역/담당) 선택. */}
-        <div className="lens-bar">
-          <div className="lens-tabs" role="tablist" aria-label="업무 뷰">
-            {(["sheet", "board", "calendar", "timeline"] as TaskLens[]).map((v) => (
-              <button key={v} role="tab" aria-selected={lens === v} className="lens-tab" onClick={() => pickLens(v)}>
-                {LENS_LABEL[v]}
-              </button>
-            ))}
-          </div>
-          {lens === "board" && (
+        {/* 보드 그룹 기준만 남긴다 — 뷰 탭·정렬·완료 포함은 페이지 뼈대(PageShell)로 올렸다 */}
+        {lens === "board" && (
+          <div className="lens-bar">
             <div className="lens-group" role="group" aria-label="그룹 기준">
               <span className="lens-group-l">그룹</span>
               {(["status", "area", "assignee"] as BoardGroup[]).map((g) => (
@@ -469,22 +430,8 @@ export default function TasksView({ user }: { user: SessionUser }) {
                 </button>
               ))}
             </div>
-          )}
-          {/* 정렬 · 완료 포함 (MD-P-2026-018 §D) — 선택은 기억하고 URL에도 남긴다 */}
-          <span className="sp" style={{ flex: 1 }} />
-          <label className="lens-done">
-            <input type="checkbox" checked={showDone} onChange={(e) => toggleDone(e.target.checked)} />
-            <span>완료 포함</span>
-          </label>
-          <label className="lens-sort">
-            <span className="lens-group-l">정렬</span>
-            <select value={sortBy} onChange={(e) => pickSort(e.target.value as SortKey)} aria-label="정렬 기준">
-              {SORT_OPTIONS.map((o) => (
-                <option key={o.key} value={o.key}>{o.label}{o.key === "due" ? " (기본)" : ""}</option>
-              ))}
-            </select>
-          </label>
-        </div>
+          </div>
+        )}
 
         {loading && <p className="gempty">불러오는 중...</p>}
         {error && <p className="gerr">{error}</p>}
@@ -518,7 +465,16 @@ export default function TasksView({ user }: { user: SessionUser }) {
         )}
         {!loading && lens === "calendar" && <TaskCalendar tasks={filteredTasks} today={today} />}
         {!loading && lens === "timeline" && <TaskGantt tasks={filteredTasks} today={today} actors={actors} />}
+
+        {/* 완료를 감춘 이유와 되돌리는 길을 목록 아래에 남긴다 (§E) */}
+        {!showDone && hiddenDone > 0 && (
+          <p className="tv-hidden">
+            완료 {hiddenDone}건 숨김 ·{" "}
+            <button className="lk" onClick={() => toggleDone(true)}>완료 포함해서 보기</button>
+          </p>
+        )}
       </div>
-    </div>
+      </div>
+    </PageShell>
   );
 }

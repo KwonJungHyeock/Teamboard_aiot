@@ -6,12 +6,12 @@
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <html lang="ko">
-      <body style={{ margin: 0, background: "#F6F4EF", color: "#1C232E", fontFamily: "system-ui, sans-serif" }}>
+      <body style={{ margin: 0, background: "#F7F8F9", color: "#16191D", fontFamily: "system-ui, sans-serif" }}>
         <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}>
           <div style={{ maxWidth: 460, textAlign: "center" }}>
-            <p style={{ fontSize: 13, letterSpacing: ".08em", color: "#756B5A", margin: "0 0 10px" }}>MISSION DECK</p>
+            <p style={{ fontSize: 13, letterSpacing: ".08em", color: "#8A929C", margin: "0 0 10px" }}>MISSION DECK</p>
             <h1 style={{ fontSize: 20, margin: "0 0 10px" }}>앱을 불러오지 못했어요</h1>
-            <p style={{ fontSize: 14, lineHeight: 1.6, color: "#4E5964", margin: "0 0 18px" }}>
+            <p style={{ fontSize: 14, lineHeight: 1.6, color: "#525A66", margin: "0 0 18px" }}>
               새로고침해도 같은 화면이 나오면 팀장에게 알려주세요.
               {error.digest ? ` (오류 번호 ${error.digest})` : ""}
             </p>

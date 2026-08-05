@@ -607,13 +607,13 @@
 .hv .mc.mc-stalled { border-left-color: var(--coral); }
 .hv .mc.mc-blocked { border-left-color: var(--muted); }
 /* 막힌 업무 — 자리만(placeholder). 저강조 + 점선 */
-.hv .mc.ph { background: repeating-linear-gradient(45deg, #FBFAF6 0 8px, #F6F4EE 8px 16px); box-shadow: none; border: 1px dashed var(--line-hi); }
+.hv .mc.ph { background: repeating-linear-gradient(45deg, var(--surface-2) 0 8px, #F6F4EE 8px 16px); box-shadow: none; border: 1px dashed var(--line-hi); }
 .hv .mc.ph .v { color: var(--muted); font-size: 20px; }
 .hv .ph-tag { font-family: var(--f-d); font-size: var(--fs-badge); color: var(--muted); border: 1px dashed var(--line-hi); border-radius: var(--r-s); padding: 3px 9px; white-space: nowrap; }
 
 /* ── 패널 카드 — 그림자만, 테두리 최소 ── */
 .hv .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-card); }
-.hv .ch { background: #FBFAF6; border-bottom: 1px solid var(--line); }
+.hv .ch { background: var(--surface-2); border-bottom: 1px solid var(--line); }
 .hv .ch h2 { color: var(--ink); }
 .hv .ch .sub { color: var(--muted); }
 
@@ -640,7 +640,7 @@
 .hv .ring-t { fill: var(--ink); }
 
 /* ── 허들 카드 (다크 흰배경 → 페이퍼) ── */
-.hv .hud { background: #FBFAF6; border: 1px solid var(--line); }
+.hv .hud { background: var(--surface-2); border: 1px solid var(--line); }
 .hv .hud.clickable:hover { border-color: var(--line-hi); }
 .hv .hud.selected { border-color: var(--coral); background: var(--coral-soft); }
 .hv .hud .b { color: var(--ink-soft); }
@@ -927,7 +927,7 @@
 
 /* 표면 3층: paper < 기본 카드(흰색·약 그림자, 기존 --shadow-card) < 히어로(강 그림자) */
 /* 타임라인 = 히어로 — 미세 그라데이션 틴트 + 강한 그림자 + 패딩↑ + 상단 코랄 액센트 1줄(시그니처) */
-.hv .gt.card { position: relative; overflow: hidden; padding: 20px 24px 18px; box-shadow: var(--shadow-pop); background: linear-gradient(180deg, #FBFAF6 0%, var(--card) 46%); }
+.hv .gt.card { position: relative; overflow: hidden; padding: 20px 24px 18px; box-shadow: var(--shadow-pop); background: linear-gradient(180deg, var(--surface-2) 0%, var(--card) 46%); }
 .hv .gt.card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--coral); }
 
 /* 타임라인 헤더 — 큰 월 라벨 + 월 이동 + 오늘 + 일/주/월 토글 */
@@ -1202,7 +1202,7 @@
 .hv .cal-cell { min-height: 104px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 6px 7px 8px; cursor: pointer; position: relative; transition: background .12s; }
 .hv .cal-cell:nth-child(7n) { border-right: 0; }
 .hv .cal-cell:hover { background: var(--paper); }
-.hv .cal-cell.out { background: #FBFAF6; }
+.hv .cal-cell.out { background: var(--surface-2); }
 .hv .cal-cell.out .cal-dnum { color: var(--muted); opacity: .6; }
 .hv .cal-cell.wknd .cal-dnum { color: var(--ink-soft); }
 .hv .cal-cell.today { background: color-mix(in srgb, var(--coral) 6%, transparent); }
@@ -1521,7 +1521,7 @@
 .hv .up-t { font-size: 13.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hv .up-chip { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; flex: 0 0 auto; }
 .hv .up-dd { font-size: 12.5px; color: var(--ink2); flex: 0 0 auto; }
-.hv .up-dd.over { color: var(--coral); font-weight: 700; }
+.hv .up-dd.over { color: var(--coral-text); font-weight: 700; }
 
 /* §3-3 결정 대기 */
 .hv .dw { display: flex; flex-direction: column; gap: 2px; }
@@ -1532,7 +1532,7 @@
 .hv .dw-t { display: block; font-size: 14px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hv .dw-meta { font-size: 12px; color: var(--muted); }
 .hv .dw-age { font-size: 12.5px; color: var(--ink2); flex: 0 0 auto; }
-.hv .dw-age.over { color: var(--coral); font-weight: 700; }
+.hv .dw-age.over { color: var(--coral-text); font-weight: 700; }
 .hv .dw-row.alert { background: color-mix(in srgb, var(--coral) 5%, var(--card)); border-radius: 8px; }
 
 /* §3-3 나의 초점 */

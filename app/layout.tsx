@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "@/lib/theme.css";
 import "./globals.css";
 import "./home.css";
+import "./design.css";   // MD-P-2026-019 공통 규격 (마지막에 실려 우선한다)
 
 // Pretendard Variable — self-host woff2 (CDN 런타임 의존 제거, 오프라인·CLS 0).
 // next/font/local 이 @font-face + preload 자동 생성. 폰트 점프 없음.
