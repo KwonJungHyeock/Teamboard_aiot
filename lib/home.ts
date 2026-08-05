@@ -133,6 +133,8 @@ export interface HomeSummary {
     id: number;
     title: string;
     progress: number | null;
+    /** 자동 판정(수동 지정 우선). 판정 불가 시 null — 분기 목표와 같은 규칙 */
+    status: "ontrack" | "risk" | "wait" | "done" | null;
     colorKey: string | null;
     /** 연결 프로젝트 수 — 0이면 "-" + [프로젝트 연결] CTA (MD-P-2026-009 §F) */
     projectCount: number;
@@ -772,8 +774,13 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   const quarterLabel = `${today.slice(0, 4)} Q${qNum}`;
 
   // §C: 연간 목표 (level=annual, 올해 커버) — 상단 큰 게이지
-  const annualRows = await query<{ id: number; title: string; progress: string | null; color_key: string | null; project_count: number }>(
-    `SELECT g.id, g.title, g.progress::text, p.color_key,
+  const annualRows = await query<{
+    id: number; title: string; progress: string | null; color_key: string | null; project_count: number;
+    status_manual: "ontrack" | "risk" | "wait" | "done" | null;
+    period_start_d: string; period_end_d: string;
+  }>(
+    `SELECT g.id, g.title, g.progress::text, p.color_key, g.status_manual,
+            g.period_start::text AS period_start_d, g.period_end::text AS period_end_d,
             (SELECT count(*)::int FROM project pj
               WHERE pj.goal_id = g.id AND pj.is_active = true AND pj.status <> 'archived') AS project_count
      FROM goal g LEFT JOIN project p ON p.id = g.project_id
@@ -783,12 +790,18 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
      ORDER BY g.id LIMIT 2`,
     [today]
   );
-  const annualGoals = annualRows.map((g) => ({
-    id: g.id, title: g.title,
-    progress: g.progress === null ? null : Math.round(Number(g.progress)),
-    colorKey: g.color_key,
-    projectCount: g.project_count,
-  }));
+  // 상태 판정은 분기 목표와 같은 단일 소스(judgeGoalStatus)를 쓴다.
+  // 진척이 있는데 "집계 없음"으로 나오던 문제(MD-P-2026-020 실데이터 확인)를 여기서 막는다.
+  const annualGoals = annualRows.map((g) => {
+    const prog = g.progress === null ? null : Math.round(Number(g.progress));
+    return {
+      id: g.id, title: g.title,
+      progress: prog,
+      status: g.status_manual ?? judgeGoalStatus(prog, g.period_start_d, g.period_end_d, today),
+      colorKey: g.color_key,
+      projectCount: g.project_count,
+    };
+  });
 
   // §E — 홈은 팀 목표만. 내 개인 목표는 건수만 한 줄로 안내한다.
   const myGoalRow = await queryOne<{ n: string }>(

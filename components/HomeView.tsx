@@ -143,7 +143,7 @@ function GoalsBlock({ annual, annualLabel, quarters, myGoalCount }: {
   myGoalCount: number;
 }) {
   const rows = [
-    ...annual.map((g) => ({ id: g.id, tag: "연간", title: g.title, status: null as string | null, progress: g.progress })),
+    ...annual.map((g) => ({ id: g.id, tag: "연간", title: g.title, status: g.status as string | null, progress: g.progress })),
     ...quarters.map((g) => ({ id: g.id, tag: g.periodLabel, title: g.title, status: g.status, progress: g.progress })),
   ];
   return (
