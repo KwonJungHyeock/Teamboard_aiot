@@ -2,6 +2,7 @@
 // 프로젝트는 목표 하나에 속한다(project.goal_id). 목표 쪽에서는 다중 선택으로 붙인다.
 // 이미 다른 목표에 연결된 프로젝트도 고를 수 있고, 그 경우 연결이 이 목표로 옮겨간다.
 import { NextResponse } from "next/server";
+import { applyInheritanceForProject } from "@/lib/goal-inherit";
 import { requireSession } from "@/lib/auth";
 import type { SessionUser } from "@/lib/types";
 import { query, queryOne } from "@/lib/db";
@@ -111,6 +112,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     const affected = new Set<number>([goalId]);
     for (const r of prev) if (r.goal_id) affected.add(r.goal_id);
+    // 프로젝트가 다른 목표로 옮겨가면 inherited 업무도 따라가야 한다 (MD-P-2026-024 §4).
+    // 이 경로는 project.goal_id 를 직접 바꾸므로 여기서도 상속을 다시 맞춘다.
+    for (const m of moved) {
+      for (const g of await applyInheritanceForProject(m.id)) affected.add(g);
+    }
     for (const gid of Array.from(affected)) await recomputeGoalChain(gid);
 
     await logActivity({
@@ -140,7 +146,10 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       [projectId, goalId]
     );
     if (rows.length === 0) return NextResponse.json({ error: "연결된 프로젝트가 아닙니다." }, { status: 404 });
-    await recomputeGoalChain(goalId);
+    // 연결이 끊기면 inherited 업무의 목표 연결도 함께 풀린다 (MD-P-2026-024 §4).
+    const affected = new Set<number>([goalId]);
+    for (const g of await applyInheritanceForProject(projectId)) affected.add(g);
+    for (const gid of Array.from(affected)) await recomputeGoalChain(gid);
     await logActivity({
       userId: session.id,
       message: `${session.name}이(가) 목표-프로젝트 연결 해제 — ${rows[0].name}`,

@@ -1,6 +1,7 @@
 // 프로젝트 워크스페이스 데이터 (MD-P-2026-005) — 헤더 + 5개 탭을 한 번에.
 // 개요 롤업·업무·논의·결정·멤버·연결 목표. 탭 전환은 클라이언트에서(리로드 없음).
 import { NextResponse } from "next/server";
+import { countTasks } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { jsonError } from "@/lib/api";
@@ -46,6 +47,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 
     const today = kstToday();
     const tasks = await projectTasks(projectId);
+    // 진척과 분모는 같은 정의에서 나와야 한다 — 최상위·집계 대상만 (MD-P-2026-024 §3 규칙 3)
+    const countedTasks = countTasks(tasks.filter((t) => t.parentTaskId === null)).counted;
     const progress = rollupProgress(tasks);
 
     // 멤버 — member_ids + owner (중복 제거)
@@ -109,6 +112,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         areaId: project.area_id, areaName: project.area_name, areaColor: project.area_color,
         archivedAt: project.archived_at, ownerId: project.owner_id, ownerName: project.owner_name,
         progress,
+        countedTasks,
         goal: project.goal_id ? {
           id: project.goal_id, title: project.goal_title,
           periodType: project.goal_period_type, periodStart: project.goal_period_start,

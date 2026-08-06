@@ -4,6 +4,7 @@
 // 탭: 업무/프로젝트/목표/자료. 업무 탭은 TaskTable 재사용, "+ 이 영역에 업무 추가"는
 // 영역·기본 업무유형을 고정한 새 업무 패널을 연다.
 import { useCallback, useEffect, useState } from "react";
+import { countedLabel } from "@/lib/progress";
 import Link from "next/link";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
 import { openNewTaskPanel, openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
@@ -145,7 +146,10 @@ export default function AreaView({ areaKey }: { areaKey: string }) {
                         <div className="bar">
                           <i className={p.colorKey ?? "edu"} style={{ width: `${Math.min(p.percent ?? 0, 100)}%` }} />
                         </div>
-                        <span className="gpv">{p.percent === null ? "-" : `${p.percent}%`}</span>
+                        <span className="gpv">
+                          {p.percent === null ? "집계 없음" : `${p.percent}%`}
+                          {p.percent !== null && <em>{countedLabel(p.total)}</em>}
+                        </span>
                       </div>
                       <div className="pcard-m"><span>완료 {p.done}/{p.total}</span></div>
                     </Link>

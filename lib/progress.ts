@@ -11,7 +11,12 @@
 //     상위에 수동 진척값이 남아 있어도 무시한다.
 //  3. 이중 계산 금지 — 프로젝트 진척은 최상위 업무만 대상으로 한다.
 //     하위 업무는 상위를 통해 이미 반영됐다.
-//  4. 목표 진척 — 연결된 프로젝트 + 목표에 직접 연결된 업무를 함께 본다.
+//  4. 목표 진척 (MD-P-2026-024 회신 확정 문장 — 이 문장이 정의다):
+//
+//       "목표 진척은 그 목표에 속한 업무 전체의 평균이다.
+//        프로젝트는 그룹핑 단위이며 계산 단위가 아니다.
+//        프로젝트를 통해 이미 세어진 업무는 직접 연결에서 제외한다."
+//
 //  5. 집계 대상 0건이면 null 이다. 0% 도 100% 도 아니다 → 화면은 "집계 없음".
 //     (실제로 났던 결함이다. null 을 0 으로 접지 말 것.)
 
@@ -214,3 +219,28 @@ export const projectProgressSql = (projectIdExpr: string) => `
 export const projectCountedSql = (projectIdExpr: string) => `
   (SELECT count(*) FROM task t
     WHERE t.project_id = ${projectIdExpr} AND t.parent_task_id IS NULL AND ${countableSql("t")})`;
+
+/**
+ * 목표에 **속한 업무 수** — 화면의 "업무 N건 기준" 보조 텍스트가 쓰는 분모.
+ *
+ * 확정 정의 그대로다: 목표에 속한 업무 = (그 목표에 연결된 프로젝트의 업무) ∪ (직접 연결된 업무).
+ * 같은 업무가 양쪽에 걸쳐도 `count(DISTINCT)` 로 한 번만 센다 — 진척 계산의 이중 계산 배제와 같은 규칙.
+ * 하위 목표가 있는 상위 목표(분기·연간)는 서브트리 전체를 훑는다.
+ */
+export const goalCountedSql = (goalIdExpr: string) => `
+  (WITH RECURSIVE sub AS (
+     SELECT id FROM goal WHERE id = ${goalIdExpr} AND is_active = true
+     UNION ALL
+     SELECT g.id FROM goal g JOIN sub ON g.parent_id = sub.id WHERE g.is_active = true
+   )
+   SELECT count(DISTINCT t.id) FROM task t
+     LEFT JOIN project p ON p.id = t.project_id AND p.is_active = true AND p.status <> 'archived'
+    WHERE t.parent_task_id IS NULL AND ${countableSql("t")}
+      AND ( p.goal_id IN (SELECT id FROM sub)
+         OR EXISTS (SELECT 1 FROM goal_task gt
+                     WHERE gt.task_id = t.id AND gt.goal_id IN (SELECT id FROM sub)) ))`;
+
+/** "업무 14건 기준" / 집계 대상 0건이면 "집계 없음" (규칙 5). 문구를 여기 하나로 둔다. */
+export function countedLabel(counted: number): string {
+  return counted > 0 ? `업무 ${counted}건 기준` : "집계 없음";
+}

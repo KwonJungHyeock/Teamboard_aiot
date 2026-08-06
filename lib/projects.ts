@@ -108,6 +108,40 @@ export async function goalDirectTaskInput(goalId: number): Promise<ProgressTask[
   );
 }
 
+/**
+ * 목표 **서브트리**에 속한 집계 대상 업무 — 확정 정의가 말하는 "그 목표에 속한 업무 전체".
+ *
+ *   "목표 진척은 그 목표에 속한 업무 전체의 평균이다.
+ *    프로젝트는 그룹핑 단위이며 계산 단위가 아니다.
+ *    프로젝트를 통해 이미 세어진 업무는 직접 연결에서 제외한다."
+ *
+ * 프로젝트도 하위 목표도 계산 단위가 아니다 — 업무만 센다.
+ * 같은 업무가 프로젝트로도 직접 연결로도 걸리면 `DISTINCT` 로 한 번만 센다.
+ * 이 함수의 결과 건수는 `goalCountedSql()` 이 세는 수와 반드시 같아야 한다
+ * (화면에 "업무 N건 기준"으로 나가는 그 분모다).
+ */
+export async function goalSubtreeTaskInput(goalId: number): Promise<ProgressTask[]> {
+  return query<ProgressTask>(
+    `WITH RECURSIVE sub AS (
+       SELECT id FROM goal WHERE id = $1 AND is_active = true
+       UNION ALL
+       SELECT g.id FROM goal g JOIN sub ON g.parent_id = sub.id WHERE g.is_active = true
+     )
+     SELECT DISTINCT t.id, t.status, t.progress, t.resolution,
+            (SELECT count(*)::int FROM task c WHERE c.parent_task_id = t.id AND ${countableSql("c")}) AS "childCounted",
+            (SELECT count(*)::int FROM task c WHERE c.parent_task_id = t.id AND ${countableSql("c")}
+                                                AND c.status = 'done'
+                                                AND (c.resolution IS NULL OR c.resolution <> 'deferred')) AS "childDone"
+       FROM task t
+       LEFT JOIN project p ON p.id = t.project_id AND p.is_active = true AND p.status <> 'archived'
+      WHERE t.parent_task_id IS NULL AND ${countableSql("t")}
+        AND ( p.goal_id IN (SELECT id FROM sub)
+           OR EXISTS (SELECT 1 FROM goal_task gt
+                       WHERE gt.task_id = t.id AND gt.goal_id IN (SELECT id FROM sub)) )`,
+    [goalId]
+  );
+}
+
 /** 목표 상세 역방향 링크 — 이 목표에 연결된 프로젝트 목록. 쿼리 1개. */
 export async function projectsForGoal(goalId: number): Promise<{ id: number; name: string; colorKey: string | null; status: string; progress: number | null }[]> {
   const rows = await query<{ id: number; name: string; color_key: string | null; status: string; progress: string | null }>(

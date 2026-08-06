@@ -6,7 +6,7 @@ import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution, countableSql, doneSql, 
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
-import { recomputeGoalChain } from "@/lib/goals";
+import { recomputeGoalChain, recomputeGoalsForTask } from "@/lib/goals";
 import { jsonError } from "@/lib/api";
 import { decisionsForTask } from "@/lib/decisions";
 import { notify } from "@/lib/notify";
@@ -23,14 +23,30 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const taskId = Number(params.id);
     const payload = await request.json();
 
+    // 복구(isActive=true)를 처리하려면 비활성 행도 읽어야 한다 — is_active 는 아래에서 따로 본다.
     const task = await queryOne<{
       id: number; title: string; status: string; assignee_id: number | null;
       start_date: string | null; due_date: string | null; progress: number; blocked: boolean;
+      is_active: boolean;
     }>(
-      "SELECT id, title, status, assignee_id, start_date::text, due_date::text, progress, blocked FROM task WHERE id = $1 AND is_active = true",
+      "SELECT id, title, status, assignee_id, start_date::text, due_date::text, progress, blocked, is_active FROM task WHERE id = $1",
       [taskId]
     );
     if (!task) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
+
+    // 복구 — 삭제의 역방향. 진척 재계산도 같이 되돌아가야 한다 (MD-P-2026-024 지시 2).
+    if (payload.isActive === true) {
+      if (task.is_active) return NextResponse.json({ ok: true });
+      await query("UPDATE task SET is_active = true, updated_at = now() WHERE id = $1", [taskId]);
+      await recomputeGoalsForTask(taskId);
+      await logActivity({
+        userId: session.id,
+        message: `${session.name}이(가) 업무 복구 — "${task.title}"`,
+        taskId,
+      });
+      return NextResponse.json({ ok: true });
+    }
+    if (!task.is_active) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
 
     // 소프트 삭제
     if (payload.isActive === false) {
@@ -47,6 +63,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         );
       }
       await query("UPDATE task SET is_active = false, updated_at = now() WHERE id = $1", [taskId]);
+      // 삭제하면 분모가 줄어든다 — 연결 목표를 다시 계산해야 한다.
+      // (예전에는 여기서 그냥 반환해서 목표 진척이 옛값에 머물렀다. MD-P-2026-024 지시 2)
+      await recomputeGoalsForTask(taskId);
       await logActivity({
         userId: session.id,
         message: `${session.name}이(가) 업무 삭제 — "${task.title}"`,

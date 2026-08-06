@@ -183,6 +183,18 @@
 .prop-link:hover { text-decoration: underline; }
 /* "하위 업무로 계산 중" (§3 규칙 2) */
 .prop-note { font-style: normal; font-size: 10.5px; font-weight: 600; color: var(--muted); }
+
+/* 진척 근거 "업무 14건 기준" (MD-P-2026-024 지시 1) — 신규 스타일을 만들지 않고
+   기존 보조 텍스트 규격(10.5px · var(--muted))에 맞춘다. */
+/* 뼈대(.pg-body) 밖 화면에도 같은 규격이 적용돼야 한다 — 셸에 의존하지 않는 선택자로 둔다.
+   (프로젝트 목록은 아직 PageShell 밖이라 .pg-body 로 걸면 11px 로 새어 나간다) */
+.gpv em, .gdp-basis {
+  font-style: normal; font-size: 10.5px; font-weight: 600; color: var(--muted); margin-left: 5px;
+  white-space: nowrap;
+}
+/* 프로젝트 상세 개요의 진척 근거도 같은 규격으로 — 이 자리에는 근거 문구만 들어간다.
+   (.pg :is(… .pws-ov-sub) 가 11.5px 로 잡고 있어 뒤에서 다시 못박는다) */
+.pg .pws-prog + .pws-ov-sub { font-size: 10.5px; color: var(--muted); }
 .prop-v.empty { color: var(--muted); }
 .prop-v.empty:hover { color: var(--coral-text); }
 .prop-pop { position: absolute; left: 88px; top: 100%; z-index: 40; margin-top: 2px; min-width: 220px;
