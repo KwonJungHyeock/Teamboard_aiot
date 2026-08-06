@@ -177,6 +177,12 @@
 .prop-v { flex: 1; min-width: 0; text-align: left; background: 0; border: 0; padding: 4px 0; cursor: pointer;
   font-family: inherit; font-size: 12.5px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
 .prop-v.ro { cursor: default; }
+/* 상위 업무·차단 줄의 링크 (MD-P-2026-024 §6-1) — 새 규격을 만들지 않고 값 자리에 그대로 넣는다 */
+.prop-link { background: 0; border: 0; padding: 0; cursor: pointer; font: inherit; color: var(--blue);
+  text-align: left; }
+.prop-link:hover { text-decoration: underline; }
+/* "하위 업무로 계산 중" (§3 규칙 2) */
+.prop-note { font-style: normal; font-size: 10.5px; font-weight: 600; color: var(--muted); }
 .prop-v.empty { color: var(--muted); }
 .prop-v.empty:hover { color: var(--coral-text); }
 .prop-pop { position: absolute; left: 88px; top: 100%; z-index: 40; margin-top: 2px; min-width: 220px;

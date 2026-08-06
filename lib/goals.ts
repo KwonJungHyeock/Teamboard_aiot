@@ -7,7 +7,11 @@
 //   재계산 트리거: 업무 done/dropped 전환, 목표-업무 연결 추가·해제 → recomputeGoalChain.
 import { query, queryOne } from "./db";
 import type { GoalPeriodType } from "./types";
-import { projectProgressForGoal } from "./projects";
+import { projectProgressForGoal, goalDirectTaskInput } from "./projects";
+import {
+  aggregateTasks, aggregateGoal, rollupGoals, judgeGoalStatus, isCountable,
+  type GoalStatus,
+} from "./progress";
 
 /** KST 기준 오늘(YYYY-MM-DD). lib/home.ts와 같은 규칙이지만
  *  home.ts가 이 파일을 import하므로 순환을 피해 여기에 둔다. */
@@ -57,62 +61,25 @@ export interface GoalTaskRef {
   id: number;
   title: string;
   status: string;
+  /** 집계 제외 판정용 — lib/progress.ts isCountable() 이 읽는다 */
+  resolution: string | null;
   assigneeName: string | null;
   dueDate: string | null;
 }
 
-/** 월 목표 1건의 진척 — auto: 연결 Task 완료율, manual: 저장값. 산출 불가 시 null.
- *  진척률 = done / (연결 Task 수 - dropped 수). 중단은 더 이상 "할 일"이 아니므로 분모 제외.
- *  전부 dropped(분모 0)면 null → "-" (SPEC v1.1 예정) */
+/** @deprecated 진척 계산은 lib/progress.ts 하나로 모았다 (MD-P-2026-024 §3).
+ *  호환용 얇은 어댑터 — 새 코드에서는 aggregateTasks() 를 직접 쓴다. */
 export function monthProgress(
   progressMode: "auto" | "manual",
   storedProgress: number,
-  linkedTasks: { status: string; progress?: number }[]
+  linkedTasks: { status: string; progress?: number; resolution?: string | null; workType?: string | null }[]
 ): number | null {
   if (progressMode === "manual") return Math.round(storedProgress);
-  const counted = linkedTasks.filter((t) => t.status !== "dropped");
-  if (counted.length === 0) return null;
-  // 진척률 = 연결 Task 진행률의 평균 (수동 progress 반영). 완료는 저장값과 무관하게 100으로 간주.
-  const sum = counted.reduce(
-    (a, t) => a + (t.status === "done" ? 100 : typeof t.progress === "number" ? t.progress : 0),
-    0
-  );
-  return Math.round(sum / counted.length);
+  return aggregateTasks(linkedTasks.map((t) => ({ ...t, progress: t.progress ?? 0 })));
 }
 
-/** 하위 진척들의 단순 평균 — null(산출 불가) 하위는 제외, 전부 null이면 null (구 산식·호환용) */
-export function rollup(childProgress: (number | null)[]): number | null {
-  const valid = childProgress.filter((p): p is number => p !== null);
-  if (valid.length === 0) return null;
-  return Math.round(valid.reduce((a, b) => a + b, 0) / valid.length);
-}
-
-/** 하위 가중평균 (파트 B) — weight=연결 업무 수. null 하위는 제외, 유효 가중합 0이면 null.
- *  단순평균과 달리, 업무가 많은 하위 목표가 상위 진척에 더 크게 반영된다. */
-export function weightedRollup(children: { progress: number | null; weight: number }[]): number | null {
-  const valid = children.filter((c) => c.progress !== null && c.weight > 0);
-  const totalW = valid.reduce((a, c) => a + c.weight, 0);
-  if (totalW === 0) return null;
-  const sum = valid.reduce((a, c) => a + (c.progress as number) * c.weight, 0);
-  return Math.round(sum / totalW);
-}
-
-/** 목표 서브트리에 연결된 업무 수 (가중치). routine·proposed·비활성 제외. */
-async function subtreeTaskWeight(goalId: number): Promise<number> {
-  const row = await queryOne<{ n: number }>(
-    `WITH RECURSIVE sub AS (
-       SELECT id FROM goal WHERE id = $1 AND is_active = true
-       UNION ALL
-       SELECT g.id FROM goal g JOIN sub ON g.parent_id = sub.id WHERE g.is_active = true
-     )
-     SELECT count(*)::int AS n
-     FROM goal_task gt
-     JOIN task t ON t.id = gt.task_id AND t.is_active = true AND t.status <> 'proposed' AND t.work_type <> 'routine'
-     WHERE gt.goal_id IN (SELECT id FROM sub)`,
-    [goalId]
-  );
-  return row?.n ?? 0;
-}
+/** @deprecated lib/progress.ts 의 rollupGoals() 를 쓴다. */
+export const rollup = rollupGoals;
 
 // ─────────────────────────────────────────────────────────────
 // 진척 집계 (MD-P-2026-009 §C) — 규칙을 코드 한 곳에 명문화한다.
@@ -128,68 +95,35 @@ async function subtreeTaskWeight(goalId: number): Promise<number> {
 /** 상위 체인 최대 깊이 (월 → 분기 → 연간). */
 export const MAX_GOAL_DEPTH = 3;
 
-/** 목표 자체의 집계값 — 하위 목표 우선, 없으면 연결 프로젝트, 그것도 없으면 연결 업무. */
+/**
+ * 목표 자체의 집계값.
+ *  - 하위 목표가 있으면 하위 평균이 이긴다.
+ *  - 없으면 §3 규칙 4: **연결 프로젝트 + 목표에 직접 연결된 업무를 함께** 본다.
+ *    (예전에는 프로젝트가 하나라도 있으면 직접 연결 업무를 통째로 무시했다 —
+ *     개인 목표처럼 프로젝트 없이 업무만 붙는 경우를 위해 둘을 합산한다)
+ */
 async function computeAuto(goalId: number): Promise<number | null> {
-  // 4) 하위 목표가 있으면 하위 평균 (실효 진척 = 수동 우선)
   const children = await query<{ progress: string | null }>(
     `SELECT COALESCE(progress_manual, progress_auto)::text AS progress
        FROM goal WHERE parent_id = $1 AND is_active = true`,
     [goalId]
   );
   if (children.length > 0) {
-    return rollup(children.map((c) => (c.progress === null ? null : Math.round(Number(c.progress)))));
+    return rollupGoals(children.map((c) => (c.progress === null ? null : Math.round(Number(c.progress)))));
   }
-
-  // 3) 연결 프로젝트 진척의 평균 (null 프로젝트는 분모에서 제외)
-  const fromProjects = await projectProgressForGoal(goalId);
-  if (fromProjects !== null) return fromProjects;
-
-  // 프로젝트가 하나도 없을 때에 한해, 목표에 직접 연결된 업무로 집계한다.
-  // (프로젝트 연결 이전에 만들어진 월 목표가 갑자기 "-"로 떨어지지 않게 하는 하위호환 경로)
-  const tasks = await query<{ status: string; progress: number }>(
-    `SELECT t.status, t.progress FROM goal_task gt
-       JOIN task t ON t.id = gt.task_id AND t.is_active = true
-        AND t.status <> 'proposed' AND t.work_type <> 'routine'
-      WHERE gt.goal_id = $1`,
-    [goalId]
-  );
-  return monthProgress("auto", 0, tasks);
+  const [projects, directTasks] = await Promise.all([
+    projectProgressForGoal(goalId),
+    goalDirectTaskInput(goalId),
+  ]);
+  return aggregateGoal({ projects, directTasks });
 }
 
-// ─────────────────────────────────────────────────────────────
-// 상태 자동 판정 (MD-P-2026-009 §D)
-// 수동 지정(status_manual)이 있으면 그 값이 우선. 없으면 아래 규칙으로 매번 판정한다.
-// 진척이 null(집계 대상 없음)이면 "판정 불가"로 두고 null을 돌려준다 —
-// 0%로 가정해 리스크로 몰면 정직 원칙에 어긋난다.
-// ─────────────────────────────────────────────────────────────
-export type GoalStatus = "ontrack" | "risk" | "wait" | "done";
-export const GOAL_STATUS_LABEL: Record<GoalStatus, string> = {
-  ontrack: "온트랙", risk: "리스크", wait: "대기", done: "완료",
-};
-
-/** 기간 경과율 0~1. 시작 전이면 0, 종료 후면 1. */
-export function elapsedRatio(periodStart: string, periodEnd: string, today: string): number {
-  const s = Date.parse(`${periodStart}T00:00:00Z`);
-  const e = Date.parse(`${periodEnd}T00:00:00Z`) + 86400000; // 종료일 포함
-  const t = Date.parse(`${today}T00:00:00Z`);
-  if (!Number.isFinite(s) || !Number.isFinite(e) || e <= s) return 0;
-  return Math.max(0, Math.min(1, (t - s) / (e - s)));
-}
-
-/** 자동 판정. 판정할 수 없으면 null. */
-export function judgeGoalStatus(
-  progress: number | null,
-  periodStart: string,
-  periodEnd: string,
-  today: string
-): GoalStatus | null {
-  if (progress !== null && progress >= 100) return "done";
-  if (today < periodStart) return "wait";           // 아직 시작 전
-  if (progress === null) return null;               // 집계 대상 없음 → 판정 불가
-  if (progress === 0) return "risk";                // 시작일이 지났는데 0%
-  const elapsed = elapsedRatio(periodStart, periodEnd, today) * 100;
-  return progress - elapsed <= -15 ? "risk" : "ontrack";
-}
+// 상태 판정은 lib/progress.ts 로 옮겼다 (MD-P-2026-024 §3 — 계산기는 하나).
+// 기존 import 경로를 깨지 않도록 여기서 그대로 다시 내보낸다.
+export {
+  judgeGoalStatus, elapsedRatio, effectiveGoalStatus, GOAL_STATUS_LABEL,
+} from "./progress";
+export type { GoalStatus } from "./progress";
 
 /**
  * 목표 1건의 진척을 재계산해 저장한다.
@@ -394,8 +328,9 @@ export async function getGoalTree(opts: {
     status: string;
     assignee_name: string | null;
     due_date: string | null;
+    resolution: string | null;
   }>(
-    `SELECT gt.goal_id, t.id, t.title, t.status, a.display_name AS assignee_name, t.due_date::text
+    `SELECT gt.goal_id, t.id, t.title, t.status, t.resolution, a.display_name AS assignee_name, t.due_date::text
      FROM goal_task gt
      JOIN task t ON t.id = gt.task_id AND t.is_active = true AND t.status <> 'proposed' AND t.work_type <> 'routine'
      LEFT JOIN actor a ON a.id = t.assignee_id
@@ -408,6 +343,7 @@ export async function getGoalTree(opts: {
       id: link.id,
       title: link.title,
       status: link.status,
+      resolution: link.resolution,
       assigneeName: link.assignee_name,
       dueDate: link.due_date,
     });
@@ -513,7 +449,7 @@ export async function getCurrentMonthGoals(todayStr: string): Promise<
       progress: row.progress === null ? null : Math.round(Number(row.progress)),
       colorKey: row.color_key,
       projectName: row.project_name,
-      droppedCount: linked.filter((l) => l.status === "dropped").length,
+      droppedCount: linked.filter((l) => !isCountable(l)).length,
       progressMode: row.progress_mode,
     };
   });

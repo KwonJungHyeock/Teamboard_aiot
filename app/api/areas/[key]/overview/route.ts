@@ -1,6 +1,7 @@
 // 영역 작업 공간 데이터 (파트 6) — /areas/[key] 에서 사용.
 // key = area.id. is_active=false 또는 미존재 → 404. 탭(업무/프로젝트/목표/자료) 데이터를 한 번에 반환.
 import { NextResponse } from "next/server";
+import { countableSql, doneSql, projectProgressSql, projectCountedSql } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { jsonError } from "@/lib/api";
@@ -65,18 +66,19 @@ export async function GET(_req: Request, { params }: { params: { key: string } }
       overdue: r.due_date ? r.due_date < today && !["done", "dropped"].includes(r.status) : false,
     }));
 
-    // ── 프로젝트 (진행률 = done/total) ──
+    // ── 프로젝트 — 진척·분모는 lib/progress.ts 정의 (MD-P-2026-024 §3) ──
     const projRows = await query<{
       id: number; name: string; color_key: string | null; status: string;
-      total: number; done: number;
+      total: string; done: string; percent: string | null;
     }>(
       `SELECT p.id, p.name, p.color_key, p.status,
-              COUNT(t.id) FILTER (WHERE t.is_active AND t.status <> 'proposed') AS total,
-              COUNT(t.id) FILTER (WHERE t.is_active AND t.status = 'done') AS done
+              ${projectCountedSql("p.id")}::text AS total,
+              (SELECT count(*) FROM task t
+                WHERE t.project_id = p.id AND t.parent_task_id IS NULL
+                  AND ${countableSql("t")} AND ${doneSql("t")})::text AS done,
+              ${projectProgressSql("p.id")}::text AS percent
        FROM project p
-       LEFT JOIN task t ON t.project_id = p.id
        WHERE p.area_id = $1 AND p.is_active = true
-       GROUP BY p.id
        ORDER BY p.id DESC`,
       [areaId]
     );
@@ -87,7 +89,7 @@ export async function GET(_req: Request, { params }: { params: { key: string } }
       status: r.status,
       total: Number(r.total),
       done: Number(r.done),
-      percent: Number(r.total) > 0 ? Math.round((Number(r.done) / Number(r.total)) * 100) : null,
+      percent: r.percent === null ? null : Math.round(Number(r.percent)),
     }));
 
     // ── 목표 (해당 영역) ──

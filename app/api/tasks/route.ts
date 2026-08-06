@@ -2,6 +2,8 @@
 // status='proposed'는 에이전트 제안 상태 — 홈·캘린더·타임라인 집계에서 제외되고
 // /tasks 인박스에서만 노출된다 (CHANGE-GUIDE Phase 5-1).
 import { NextResponse } from "next/server";
+import { recomputeGoalChain } from "@/lib/goals";
+import { applyInheritance } from "@/lib/goal-inherit";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
@@ -255,6 +257,9 @@ export async function POST(request: Request) {
         session.id,
       ]
     );
+    // 프로젝트만 골라도 그 프로젝트의 목표를 자동으로 따라간다 (§4 — goal_source 기본값 inherited).
+    for (const gid of await applyInheritance(task!.id)) await recomputeGoalChain(gid);
+
     await logActivity({
       userId: session.id,
       message: `${session.name}이(가) 업무 생성 — "${title}"`,

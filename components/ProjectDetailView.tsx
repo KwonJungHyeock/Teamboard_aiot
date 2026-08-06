@@ -3,6 +3,8 @@
 // 프로젝트 상세 (Phase 5) — 개요 · 목표 · 업무 · 자료 4탭.
 // 자료는 {kind, title, url} 링크 카드만 — 본문을 가져오지 않는다 (검수 포인트 3).
 import { useCallback, useEffect, useState } from "react";
+import { countTasks } from "@/lib/progress";
+import { rollupProgress } from "@/lib/projects";
 import type { SessionUser } from "@/lib/types";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
 import GoalProgress from "./GoalProgress";
@@ -26,6 +28,11 @@ interface Detail {
     priority: string;
     assigneeName: string | null;
     dueDate: string | null;
+    progress: number;
+    resolution: string | null;
+    parentTaskId: number | null;
+    childCounted: number;
+    childDone: number;
   }[];
   artifacts: { id: number; kind: string; title: string; url: string; created_at: string }[];
   today: string;
@@ -172,10 +179,12 @@ export default function ProjectDetailView({
   }
 
   const { project, goals, tasks, artifacts, today } = detail;
-  const doneCount = tasks.filter((t) => t.status === "done").length;
-  const openCount = tasks.filter((t) => ["todo", "doing", "review"].includes(t.status)).length;
-  const totalForPercent = tasks.filter((t) => t.status !== "dropped").length;
-  const percent = totalForPercent > 0 ? Math.round((doneCount / totalForPercent) * 100) : null;
+  // 분모·완료·진척은 전부 lib/progress.ts 정의 (MD-P-2026-024 §3).
+  // 하위 업무는 상위를 통해 이미 반영되므로 분모에서 뺀다(규칙 3).
+  const topLevel = tasks.filter((t) => (t.parentTaskId ?? null) === null);
+  const { counted: totalForPercent, done: doneCount } = countTasks(topLevel);
+  const openCount = topLevel.filter((t) => ["todo", "doing", "review"].includes(t.status)).length;
+  const percent = rollupProgress(topLevel);
 
   const taskRows: TaskTableRow[] = tasks.map((t) => {
     const d = dday(t.dueDate, today);

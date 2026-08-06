@@ -31,3 +31,6 @@ next-env.d.ts
 # Playwright
 /playwright-report/
 /test-results/
+
+# DB 백업 덤프 — 저장소에 올리지 않는다 (용량·개인정보)
+backups/

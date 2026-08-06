@@ -2,6 +2,7 @@
 // 우선 대상: Figma · Notion · GitHub. 원격 조회는 짧은 타임아웃으로 시도하고,
 // 실패하면 URL에서 파생한 메타로 폴백한다(네트워크 없이도 카드가 깨지지 않게).
 import { NextResponse } from "next/server";
+import { projectProgressSql } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
 import { queryOne } from "@/lib/db";
 import { jsonError } from "@/lib/api";
@@ -81,10 +82,10 @@ async function loadInternal(ref: { kind: InternalKind; id: number }): Promise<{
       [ref.id]
     );
     if (r) {
-      // 진척은 업무 기간 가중 평균(프로젝트 롤업)과 같은 규칙
+      // 진척은 프로젝트 롤업과 같은 정의 — lib/progress.ts 하나만 쓴다 (MD-P-2026-024 §3).
+      // 예전에는 필터 없는 raw avg(progress) 라서 같은 프로젝트가 카드에서만 다른 %로 보였다.
       const agg = await queryOne<{ p: string | null }>(
-        `SELECT round(avg(progress))::text AS p FROM task
-         WHERE project_id = $1 AND is_active = true`,
+        `SELECT ${projectProgressSql("$1::int")}::text AS p`,
         [ref.id]
       );
       const [label, tone] = PROJ_STATUS[r.status] ?? [r.status, "--slate"];

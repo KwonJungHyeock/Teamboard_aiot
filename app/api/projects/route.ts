@@ -1,6 +1,7 @@
 // 프로젝트 API (Phase 5) — GET: 인덱스 카드용 집계 목록, POST: 생성(lead).
 // 진행률·목표 수·열린 업무 수는 전부 서버가 DB에서 산출한다 (금지 3 동일 원칙).
 import { NextResponse } from "next/server";
+import { countableSql, doneSql, projectProgressSql, projectCountedSql } from "@/lib/progress";
 import { requireLead, requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
@@ -27,16 +28,21 @@ export async function GET() {
       done: string;
       open_count: string;
       goal_count: string;
+      percent: string | null;
     }>(
+      // 진척·분모는 lib/progress.ts 정의를 그대로 쓴다 (MD-P-2026-024 §3).
       `SELECT p.id, p.name, p.status, p.color_key, p.start_date::text, p.end_date::text, p.notion_url,
-              count(t.id) FILTER (WHERE t.status <> 'proposed') AS total,
-              count(t.id) FILTER (WHERE t.status = 'done') AS done,
-              count(t.id) FILTER (WHERE t.status IN ('todo','doing','review')) AS open_count,
+              ${projectCountedSql("p.id")}::text AS total,
+              (SELECT count(*) FROM task t
+                WHERE t.project_id = p.id AND t.parent_task_id IS NULL
+                  AND ${countableSql("t")} AND ${doneSql("t")})::text AS done,
+              (SELECT count(*) FROM task t
+                WHERE t.project_id = p.id AND t.parent_task_id IS NULL
+                  AND ${countableSql("t")} AND t.status IN ('todo','doing','review'))::text AS open_count,
+              ${projectProgressSql("p.id")}::text AS percent,
               (SELECT count(*) FROM goal g WHERE g.project_id = p.id AND g.is_active = true) AS goal_count
        FROM project p
-       LEFT JOIN task t ON t.project_id = p.id AND t.is_active = true
        WHERE p.is_active = true
-       GROUP BY p.id
        ORDER BY p.id`
     );
     return NextResponse.json({
@@ -52,7 +58,7 @@ export async function GET() {
         done: Number(p.done),
         openCount: Number(p.open_count),
         goalCount: Number(p.goal_count),
-        percent: Number(p.total) > 0 ? Math.round((Number(p.done) / Number(p.total)) * 100) : null,
+        percent: p.percent === null ? null : Math.round(Number(p.percent)),
       })),
     });
   } catch (error) {
