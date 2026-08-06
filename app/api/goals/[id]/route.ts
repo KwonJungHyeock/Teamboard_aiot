@@ -1,6 +1,7 @@
 // 목표 수정 (Phase 4) — 수동 진척/속성/Task 연결(월 목표). lead 또는 목표 소유자.
 // 삭제는 소프트: isActive=false (lead만). 하드 삭제 없음.
 import { NextResponse } from "next/server";
+import { goalCountedSql, countedLabel } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
@@ -21,12 +22,14 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       id: number; title: string; description: string; period_type: string;
       period_start: string; period_end: string; progress_mode: "auto" | "manual";
       progress: string | null; progress_auto: string | null; progress_manual: string | null;
+      counted_tasks: number;
       status_manual: GoalStatus | null;
       scope: string; owner_actor_id: number | null; owner_name: string | null;
       area_id: number | null; area_name: string | null; project_id: number | null; project_name: string | null;
     }>(
       `SELECT g.id, g.title, g.description, g.period_type, g.period_start::text, g.period_end::text,
               g.progress_mode, g.progress::text, g.progress_auto::text, g.progress_manual::text,
+              ${goalCountedSql("g.id")}::int AS counted_tasks,
               g.status_manual,
               g.scope, g.owner_actor_id, o.display_name AS owner_name,
               g.area_id, ar.name AS area_name, g.project_id, p.name AS project_name
@@ -72,6 +75,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         id: g.id, title: g.title, description: g.description, periodType: g.period_type,
         periodStart: g.period_start, periodEnd: g.period_end, progressMode: g.progress_mode,
         progress: effective,
+        countedTasks: Number(g.counted_tasks ?? 0),
         progressAuto: g.progress_auto === null ? null : Math.round(Number(g.progress_auto)),
         progressManual: manual,
         status: g.status_manual ?? judgeGoalStatus(effective, g.period_start, g.period_end, kstToday()),

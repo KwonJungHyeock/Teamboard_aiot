@@ -2,6 +2,7 @@
 
 // 구성원 관리 (Phase 8) — lead 전용. 목록 + 계정 발급(임시 비밀번호 표시) + 역할/활성 제어.
 import { useCallback, useEffect, useState } from "react";
+import PageShell from "./PageShell";
 import type { SessionUser } from "@/lib/types";
 
 interface Member {
@@ -131,21 +132,13 @@ export default function MemberManager({ user }: { user: SessionUser }) {
   }
 
   return (
-    <div className="hv">
-      <div className="top">
-        <div className="crumb">
-          워크스페이스 / <b>구성원</b>
-        </div>
-        <span className="sp" />
-      </div>
+    <PageShell
+      crumb={["관리", "구성원"]}
+      title="구성원"
+      subtitle={<>계정 발급 시 에이전트가 자동 생성되고 캘린더 레인이 늘어납니다. 삭제 대신 비활성화만 가능합니다.</>}
+    >
+    <div className="hv pg-legacy">
       <div className="wrap">
-        <div className="head">
-          <div>
-            <div className="eb">MEMBERS</div>
-            <h1>구성원</h1>
-            <p>계정 발급 시 에이전트가 자동 생성되고 캘린더 레인이 늘어납니다. 삭제 대신 비활성화만 가능합니다.</p>
-          </div>
-        </div>
 
         {issued && (
           <section className="card mbr-issued">
@@ -245,5 +238,6 @@ export default function MemberManager({ user }: { user: SessionUser }) {
         <NewMemberForm onCreated={(tempPw, email) => { setIssued({ tempPw, email }); load(); }} />
       </div>
     </div>
+    </PageShell>
   );
 }

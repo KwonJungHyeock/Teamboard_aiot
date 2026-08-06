@@ -1,7 +1,10 @@
 // 홈 대시보드 집계 (Phase 3) — 모든 수치는 서버가 DB에서 산출한다 (금지 3: LLM 수치 생성 금지와 동일 원칙).
 // /api/home/summary 라우트와 홈 서버 페이지가 공유한다.
 import { query, queryOne, getInboxCount } from "./db";
-import { getCurrentMonthGoals, judgeGoalStatus } from "./goals";
+import { getCurrentMonthGoals } from "./goals";
+import {
+  judgeGoalStatus, countableSql, doneSql, projectProgressSql, projectCountedSql, taskProgressSql,
+} from "./progress";
 import { getDecidedStaleDays, signalVisibilityClause } from "./signals";
 import { creditState } from "./agent";
 import { decisionsThisWeek } from "./decisions";
@@ -493,8 +496,8 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   // ── 이번 달 목표 진척 — 계산은 lib/goals.ts 단일 소스 (Phase 4) ──
   const monthGoals = await getCurrentMonthGoals(today);
 
-  // ── 프로젝트 진행 (구 관제뷰 "프로젝트별 진행률" 흡수) — 활성 업무 완료율 ──
-  // 프로젝트 진척도 = 소속(비proposed) task 진행률 평균 (수동 progress 반영). done/total은 라벨용.
+  // ── 프로젝트 진행 ──
+  // 진척·분모는 lib/progress.ts 정의를 그대로 쓴다 (MD-P-2026-024 §3). 여기서 따로 세지 않는다.
   const projectProgress = await query<{
     id: number;
     name: string;
@@ -504,13 +507,13 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     avg_progress: string | null;
   }>(
     `SELECT p.id, p.name, p.color_key,
-            count(t.id) FILTER (WHERE t.status <> 'proposed') AS total,
-            count(t.id) FILTER (WHERE t.status = 'done') AS done,
-            avg(CASE WHEN t.status = 'done' THEN 100 ELSE t.progress END) FILTER (WHERE t.status <> 'proposed') AS avg_progress
+            ${projectCountedSql("p.id")}::text AS total,
+            (SELECT count(*) FROM task t
+              WHERE t.project_id = p.id AND t.parent_task_id IS NULL
+                AND ${countableSql("t")} AND ${doneSql("t")})::text AS done,
+            ${projectProgressSql("p.id")}::text AS avg_progress
      FROM project p
-     LEFT JOIN task t ON t.project_id = p.id AND t.is_active = true
      WHERE p.is_active = true
-     GROUP BY p.id
      ORDER BY p.id`
   );
 
@@ -552,7 +555,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     `SELECT ac.id, ac.display_name AS name,
             count(*) AS doing,
             count(*) FILTER (WHERE t.due_date IS NOT NULL AND t.due_date < $1::date) AS late,
-            round(avg(t.progress)) AS avg
+            round(avg(${taskProgressSql("t")})) AS avg
      FROM actor ac
      JOIN task t ON t.assignee_id = ac.id AND ${OPEN_TASK}
      WHERE ac.type = 'human' AND ac.is_active = true

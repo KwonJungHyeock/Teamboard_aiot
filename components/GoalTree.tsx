@@ -3,6 +3,7 @@
 // 목표 트리 (Phase 4) — 연간 > 분기 > 월 3단, <details> 접기.
 // 진척 수치는 서버(lib/goals.ts) 계산 결과만 표시한다.
 import { createContext, useContext, useState } from "react";
+import { countTasks, countedLabel } from "@/lib/progress";
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
 import GoalProgress from "./GoalProgress";
@@ -281,10 +282,8 @@ function MonthGoalRow({
     onChanged();
   }
 
-  // 진척 분모는 dropped 제외 (lib/goals.ts monthProgress와 동일 기준)
-  const countedTasks = goal.tasks.filter((t) => t.status !== "dropped");
-  const doneCount = countedTasks.filter((t) => t.status === "done").length;
-  const droppedCount = goal.tasks.length - countedTasks.length;
+  // 분모·완료 판정은 lib/progress.ts 하나만 쓴다 (MD-P-2026-024 §3). 화면에서 세지 않는다.
+  const { excluded: droppedCount } = countTasks(goal.tasks.map((t) => ({ ...t, progress: 0 })));
 
   return (
     <div className="grow">
@@ -298,11 +297,8 @@ function MonthGoalRow({
         <GoalProgress
           progress={goal.progress}
           colorKey={goal.colorKey}
-          detail={
-            goal.progressMode === "auto" && countedTasks.length > 0
-              ? `${doneCount}/${countedTasks.length}`
-              : undefined
-          }
+          // 진척 근거를 옆에 붙인다 — 정의가 바뀌었으니 분모가 보여야 한다 (지시 1)
+          detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
         />
         {canEdit && (
           <button className="lk mu" onClick={() => setEditing((v) => !v)}>
@@ -425,7 +421,8 @@ function BranchNode({
         )}
         <GoalTitle goal={goal} />
         <span className="gsp" />
-        <GoalProgress progress={goal.progress} colorKey={goal.colorKey} />
+        <GoalProgress progress={goal.progress} colorKey={goal.colorKey}
+          detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)} />
         {canEdit && (
           <button
             className="lk mu"

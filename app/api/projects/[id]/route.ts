@@ -1,6 +1,8 @@
 // 프로젝트 상세 API (Phase 5) — GET: 개요·목표·업무·자료, PUT: 수정(lead).
 // 목표 진척은 lib/goals.ts 계산 결과를 그대로 사용한다 (단일 소스).
 import { NextResponse } from "next/server";
+import { applyInheritanceForProject } from "@/lib/goal-inherit";
+import { countableSql, doneSql } from "@/lib/progress";
 import { requireLead, requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { getGoalTree, recomputeGoalChain, type GoalNode } from "@/lib/goals";
@@ -52,6 +54,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     walk(tree);
 
     // 업무 탭 — proposed 제외 (인박스 전용 상태)
+    // 진척 계산에 필요한 필드(resolution·상하위·하위 집계)를 함께 싣는다 (MD-P-2026-024 §3).
     const tasks = await query<{
       id: number;
       title: string;
@@ -59,11 +62,20 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       priority: string;
       assignee_name: string | null;
       due_date: string | null;
+      progress: number;
+      resolution: string | null;
+      parent_task_id: number | null;
+      child_counted: string;
+      child_done: string;
     }>(
-      `SELECT t.id, t.title, t.status, t.priority, a.display_name AS assignee_name, t.due_date::text
+      `SELECT t.id, t.title, t.status, t.priority, a.display_name AS assignee_name, t.due_date::text,
+              t.progress, t.resolution, t.parent_task_id,
+              (SELECT count(*) FROM task c WHERE c.parent_task_id = t.id AND ${countableSql("c")})::text AS child_counted,
+              (SELECT count(*) FROM task c WHERE c.parent_task_id = t.id AND ${countableSql("c")}
+                                             AND ${doneSql("c")})::text AS child_done
        FROM task t LEFT JOIN actor a ON a.id = t.assignee_id
        WHERE t.project_id = $1 AND t.is_active = true AND t.status <> 'proposed'
-       ORDER BY t.due_date ASC NULLS LAST, t.id DESC`,
+       ORDER BY t.sort_order ASC, t.due_date ASC NULLS LAST, t.id DESC`,
       [projectId]
     );
 
@@ -99,6 +111,11 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         priority: t.priority,
         assigneeName: t.assignee_name,
         dueDate: t.due_date,
+        progress: t.progress ?? 0,
+        resolution: t.resolution,
+        parentTaskId: t.parent_task_id,
+        childCounted: Number(t.child_counted),
+        childDone: Number(t.child_done),
       })),
       artifacts,
       today: kstToday(),
@@ -156,6 +173,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       const goalIds = new Set<number>();
       if (project.goal_id) goalIds.add(project.goal_id);
       if (payload.goalId) goalIds.add(Number(payload.goalId));
+      // MD-P-2026-024 §4 — 프로젝트 목표가 바뀌면 inherited 업무만 따라 움직인다.
+      // manual 로 직접 고른 업무는 건드리지 않는다.
+      if (payload.goalId !== undefined) {
+        for (const g of await applyInheritanceForProject(projectId)) goalIds.add(g);
+      }
       for (const gid of Array.from(goalIds)) await recomputeGoalChain(gid);
     }
     return NextResponse.json({ ok: true });

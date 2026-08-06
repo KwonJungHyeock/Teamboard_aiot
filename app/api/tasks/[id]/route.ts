@@ -1,10 +1,12 @@
 // 업무 수정 (Phase 5) — 속성 수정 · 상태 전이 · 인박스 승인/기각 · 목표 연결(다중, 선택).
 // 삭제는 소프트만: isActive=false. 하드 삭제 핸들러는 의도적으로 없다 (검수 포인트 4).
 import { NextResponse } from "next/server";
+import { applyInheritance, markGoalManual, goalLinkInfo } from "@/lib/goal-inherit";
+import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution, countableSql, doneSql, taskProgress } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
-import { recomputeGoalChain } from "@/lib/goals";
+import { recomputeGoalChain, recomputeGoalsForTask } from "@/lib/goals";
 import { jsonError } from "@/lib/api";
 import { decisionsForTask } from "@/lib/decisions";
 import { notify } from "@/lib/notify";
@@ -21,18 +23,49 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const taskId = Number(params.id);
     const payload = await request.json();
 
+    // 복구(isActive=true)를 처리하려면 비활성 행도 읽어야 한다 — is_active 는 아래에서 따로 본다.
     const task = await queryOne<{
       id: number; title: string; status: string; assignee_id: number | null;
       start_date: string | null; due_date: string | null; progress: number; blocked: boolean;
+      is_active: boolean;
     }>(
-      "SELECT id, title, status, assignee_id, start_date::text, due_date::text, progress, blocked FROM task WHERE id = $1 AND is_active = true",
+      "SELECT id, title, status, assignee_id, start_date::text, due_date::text, progress, blocked, is_active FROM task WHERE id = $1",
       [taskId]
     );
     if (!task) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
 
+    // 복구 — 삭제의 역방향. 진척 재계산도 같이 되돌아가야 한다 (MD-P-2026-024 지시 2).
+    if (payload.isActive === true) {
+      if (task.is_active) return NextResponse.json({ ok: true });
+      await query("UPDATE task SET is_active = true, updated_at = now() WHERE id = $1", [taskId]);
+      await recomputeGoalsForTask(taskId);
+      await logActivity({
+        userId: session.id,
+        message: `${session.name}이(가) 업무 복구 — "${task.title}"`,
+        taskId,
+      });
+      return NextResponse.json({ ok: true });
+    }
+    if (!task.is_active) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
+
     // 소프트 삭제
     if (payload.isActive === false) {
+      // 하위 업무가 있는 상위 업무는 삭제 금지 (§2) — 하위를 먼저 처리하게 한다.
+      // 하드 삭제는 DB 트리거가 막지만, 이 앱의 삭제는 소프트 삭제라 여기서도 막아야 한다.
+      const child = await queryOne<{ n: string }>(
+        `SELECT count(*)::text AS n FROM task WHERE parent_task_id = $1 AND is_active = true`,
+        [taskId]
+      );
+      if (Number(child?.n ?? 0) > 0) {
+        return NextResponse.json(
+          { error: `하위 업무 ${child!.n}건이 있어 삭제할 수 없습니다. 하위 업무를 먼저 처리하세요.` },
+          { status: 409 }
+        );
+      }
       await query("UPDATE task SET is_active = false, updated_at = now() WHERE id = $1", [taskId]);
+      // 삭제하면 분모가 줄어든다 — 연결 목표를 다시 계산해야 한다.
+      // (예전에는 여기서 그냥 반환해서 목표 진척이 옛값에 머물렀다. MD-P-2026-024 지시 2)
+      await recomputeGoalsForTask(taskId);
       await logActivity({
         userId: session.id,
         message: `${session.name}이(가) 업무 삭제 — "${task.title}"`,
@@ -124,8 +157,19 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       }
       set("status", payload.status);
       // 완료 시각은 상태 전이에서만 기록/해제
-      if (payload.status === "done") set("completed_at", new Date().toISOString());
-      else set("completed_at", null);
+      if (payload.status === "done") {
+        set("completed_at", new Date().toISOString());
+        // 완료 사유 4지 (§6-2). 기본값 done. 취소·중복은 진척 분모에서 빠진다(§3 규칙 1).
+        const r = String(payload.resolution ?? "done");
+        if (!(RESOLUTIONS as readonly string[]).includes(r)) {
+          return NextResponse.json({ error: "완료 사유가 올바르지 않습니다." }, { status: 400 });
+        }
+        set("resolution", r);
+        if (r !== "done") extraLogs.push(`${session.name}이(가) 완료 사유 ${RESOLUTION_LABEL[r as Resolution]} — "${task.title}"`);
+      } else {
+        set("completed_at", null);
+        set("resolution", null);   // 완료가 아니면 사유는 없다 (DB CHECK 와 같은 규칙)
+      }
       if (task.status === "proposed" && payload.status === "todo") {
         statusLog = `${session.name}이(가) 에이전트 제안 업무 승인 — "${task.title}"`;
       } else if (task.status === "proposed" && payload.status === "dropped") {
@@ -147,6 +191,36 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (nextProgress !== undefined && nextProgress !== task.progress) {
       set("progress", nextProgress);
       extraLogs.push(`${session.name}이(가) 진행률 변경 (${task.progress}% → ${nextProgress}%) — "${task.title}"`);
+    }
+
+    // 완료 사유만 바꾸는 경우 (상태는 그대로) — 완료 상태에서만 허용한다 (§6-2).
+    if (payload.resolution !== undefined && payload.status === undefined) {
+      const r = payload.resolution === null ? null : String(payload.resolution);
+      if (r !== null && !(RESOLUTIONS as readonly string[]).includes(r)) {
+        return NextResponse.json({ error: "완료 사유가 올바르지 않습니다." }, { status: 400 });
+      }
+      if (r !== null && task.status !== "done") {
+        return NextResponse.json({ error: "완료 사유는 완료된 업무에만 지정할 수 있습니다." }, { status: 400 });
+      }
+      set("resolution", r);
+      if (r) extraLogs.push(`${session.name}이(가) 완료 사유 변경 → ${RESOLUTION_LABEL[r as Resolution]} — "${task.title}"`);
+    }
+
+    // 상위 업무 (§2) — 깊이 2단·순환은 DB 트리거가 막는다. 여기서는 값만 넘긴다.
+    if (payload.parentTaskId !== undefined) {
+      const pid = payload.parentTaskId === null ? null : Number(payload.parentTaskId);
+      if (pid !== null && (!Number.isInteger(pid) || pid === taskId)) {
+        return NextResponse.json({ error: "상위 업무 지정이 올바르지 않습니다." }, { status: 400 });
+      }
+      set("parent_task_id", pid);
+    }
+    // 차단 업무 (§2) — 순환은 DB 트리거가 거부한다.
+    if (payload.blockedByTaskId !== undefined) {
+      const bid = payload.blockedByTaskId === null ? null : Number(payload.blockedByTaskId);
+      if (bid !== null && (!Number.isInteger(bid) || bid === taskId)) {
+        return NextResponse.json({ error: "차단 업무 지정이 올바르지 않습니다." }, { status: 400 });
+      }
+      set("blocked_by", bid);
     }
 
     // 막힘(blocked) 플래그 — 상태와 별개. 표시 시 사유 필수, 해제 시 상태 유지.
@@ -198,7 +272,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     // 진척 재계산 대상 목표 수집 (파트 B) — 변경 전 연결 목표부터.
     const affectedGoals = new Set<number>();
-    const statusChanged = (typeof payload.status === "string" && payload.status !== task.status) || autoCompleted;
+    // resolution 변경은 분모를 바꾸므로 상태 변경과 같은 취급을 한다 (§3 규칙 1).
+    const statusChanged = (typeof payload.status === "string" && payload.status !== task.status)
+      || autoCompleted || payload.resolution !== undefined;
 
     // 목표 연결 교체 — 다중 선택, 선택 사항. 월 목표만 허용 (SPEC 2.2)
     if (Array.isArray(payload.goalIds)) {
@@ -221,7 +297,16 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         );
       }
       const changed = goalIds.length !== priorSet.size || goalIds.some((g: number) => !priorSet.has(g));
-      if (changed) extraLogs.push(`${session.name}이(가) 연결 목표 변경 — "${task.title}"`);
+      if (changed) {
+        // 직접 고른 순간부터 프로젝트를 따라가지 않는다 (§4)
+        await markGoalManual(taskId);
+        extraLogs.push(`${session.name}이(가) 연결 목표 변경 — "${task.title}"`);
+      }
+    }
+
+    // 프로젝트가 바뀌었으면 상속 연결을 다시 맞춘다 (§4). manual 이면 applyInheritance 가 그냥 지나간다.
+    if (payload.projectId !== undefined) {
+      for (const g of await applyInheritance(taskId)) affectedGoals.add(g);
     }
 
     // 현재(변경 후) 연결 목표 — 상태 변경 시에도 재계산 대상
@@ -282,6 +367,9 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       start_date: string | null; due_date: string | null; drop_reason: string | null;
       progress: number; goal_ids: number[] | null;
       blocked: boolean; blocked_reason: string | null; blocked_since: string | null; blocked_by: number | null;
+      resolution: string | null; parent_task_id: number | null; goal_source: string;
+      parent_title: string | null; blocked_by_title: string | null; child_total: string;
+      child_counted: string; child_done: string;
     }>(
       `SELECT t.id, t.title, t.description, t.status, t.priority, t.origin, t.work_type,
               t.area_id, ar.name AS area_name, ar.color_key AS area_color,
@@ -289,15 +377,24 @@ export async function GET(_request: Request, { params }: { params: { id: string 
               t.assignee_id, a.display_name AS assignee_name, c.display_name AS created_by_name,
               t.start_date::text, t.due_date::text, t.drop_reason, t.progress,
               array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
-              t.blocked, t.blocked_reason, t.blocked_since::text, t.blocked_by
+              t.blocked, t.blocked_reason, t.blocked_since::text, t.blocked_by,
+              t.resolution, t.parent_task_id, t.goal_source,
+              pt.title AS parent_title, bt.title AS blocked_by_title,
+              (SELECT count(*) FROM task c WHERE c.parent_task_id = t.id AND c.is_active = true)::text AS child_total,
+              (SELECT count(*) FROM task c WHERE c.parent_task_id = t.id AND ${countableSql("c")})::text AS child_counted,
+              (SELECT count(*) FROM task c WHERE c.parent_task_id = t.id AND ${countableSql("c")}
+                                             AND ${doneSql("c")})::text AS child_done
        FROM task t
        JOIN area ar ON ar.id = t.area_id
        LEFT JOIN project p ON p.id = t.project_id
        LEFT JOIN actor a ON a.id = t.assignee_id
        LEFT JOIN actor c ON c.id = t.created_by
        LEFT JOIN goal_task gt ON gt.task_id = t.id
+       LEFT JOIN task pt ON pt.id = t.parent_task_id
+       LEFT JOIN task bt ON bt.id = t.blocked_by
        WHERE t.id = $1 AND t.is_active = true
-       GROUP BY t.id, ar.name, ar.color_key, p.name, p.color_key, a.display_name, c.display_name`,
+       GROUP BY t.id, ar.name, ar.color_key, p.name, p.color_key, a.display_name, c.display_name,
+                pt.title, bt.title`,
       [id]
     );
     if (!t) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
@@ -322,6 +419,20 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         blockedReason: t.blocked_reason,
         blockedSince: t.blocked_since,
         blockedBy: t.blocked_by,
+        // MD-P-2026-024 — 구조 필드
+        resolution: t.resolution,
+        parentTaskId: t.parent_task_id,
+        parentTitle: t.parent_title,
+        blockedByTitle: t.blocked_by_title,
+        childCount: Number(t.child_total),
+        // 실효 진척은 서버가 lib/progress.ts 로 계산한다 — 화면은 받아서 그리기만 한다 (§3).
+        effectiveProgress: taskProgress({
+          status: t.status, progress: t.progress ?? 0, resolution: t.resolution,
+          childCounted: Number(t.child_counted), childDone: Number(t.child_done),
+        }),
+        rolledUpFromChildren: Number(t.child_counted) > 0,
+        goalSource: t.goal_source,
+        goalLink: await goalLinkInfo(id),
       },
       activity,
       // 양방향 링크 — 이 업무에 연결된 결정 (MD-P-2026-004 §E)

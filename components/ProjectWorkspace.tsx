@@ -4,6 +4,7 @@
 // 논의·업무·캔버스·결정이 한 곳에서 끝난다. 탭은 리로드 없이 전환하고 URL ?tab=에 반영(공유 가능).
 // 우측 패널 규칙(§B3): 논의 스레드·멤버 프로필이 같은 자리에서 열리고, 좌측 목록은 계속 조작 가능.
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { countedLabel } from "@/lib/progress";
 import Link from "next/link";
 import type { SessionUser } from "@/lib/types";
 import type { TaskItem } from "@/lib/task-view";
@@ -41,6 +42,7 @@ interface WorkspaceData {
     areaId: number | null; areaName: string | null; areaColor: string | null;
     archivedAt: string | null; ownerId: number | null; ownerName: string | null;
     progress: number | null;
+    countedTasks: number;
     goal: { id: number; title: string; periodType: string; periodStart: string; progress: number | null; manual: boolean } | null;
   };
   members: Member[];
@@ -185,7 +187,7 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
             <>
               <Link className="lk pws-goal-l" href={`/goals?goal=${p.goal.id}`}>→ {goalLabel(p.goal)}</Link>
               <span className={`pws-goal-p num${p.goal.progress === null ? " none" : ""}`}>
-                {p.goal.progress === null ? "–" : `${p.goal.progress}%`}
+                {p.goal.progress === null ? "집계 없음" : `${p.goal.progress}%`}
               </span>
               {p.goal.manual && <span className="pws-manual">수동</span>}
             </>
@@ -257,9 +259,10 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
               <div className="pws-ov-h">진척 롤업</div>
               <div className="pws-prog">
                 <div className="pws-prog-track"><i style={{ width: `${Math.max(p.progress ?? 0, 2)}%` }} /></div>
-                <span className="pws-prog-v num">{p.progress === null ? "-" : `${p.progress}%`}</span>
+                <span className="pws-prog-v num">{p.progress === null ? "집계 없음" : `${p.progress}%`}</span>
               </div>
-              <p className="pws-ov-sub">업무 {fullTasks.length}건 · 기간 가중 평균</p>
+              {/* 진척 근거 — 분모를 그대로 보여준다. 기간 가중은 폐지됐다 (MD-P-2026-024 회신 ③) */}
+              <p className="pws-ov-sub">{countedLabel(p.countedTasks)}</p>
             </section>
 
             <section className="card pws-ov-card">

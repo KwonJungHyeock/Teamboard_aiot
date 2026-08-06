@@ -3,6 +3,7 @@
 // 인수인계 자료 (파트 Y) — 담당자별 문서. 좌: 목록(내 문서/공유받은 문서) + 새로 만들기,
 // 우: 편집(제목·마크다운·담당 업무 다중 선택) 또는 읽기. 선택 업무는 문서에 자동 삽입.
 // 마크다운 에디터·업무 다중 선택·PDF(@media print)는 기존 패턴 재사용.
+import PageShell from "./PageShell";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import EmptyState from "./EmptyState";
@@ -134,21 +135,16 @@ export default function HandoverView({ user }: { user: SessionUser }) {
   const canEdit = detail?.canEdit ?? false;
 
   return (
-    <div className="hv">
-      <div className="top no-print">
-        <div className="crumb">워크스페이스 / <b>인수인계</b></div>
-        <span className="sp" />
-        <button className="newbtn" onClick={create} disabled={busy}>＋ 새 인수인계</button>
-      </div>
-
+    <PageShell
+      crumb={["워크스페이스", "인수인계"]}
+      title="인수인계 자료"
+      subtitle={<>담당 업무를 넘길 때 필요한 문서를 만들고, 준비되면 공유하세요. PDF로 내보낼 수 있습니다.</>}
+      actions={
+        <button className="btn-primary no-print" onClick={create} disabled={busy}>＋ 새 인수인계</button>
+      }
+    >
+    <div className="hv pg-legacy">
       <div className="wrap">
-        <div className="head no-print">
-          <div>
-            <div className="eb">HANDOVER</div>
-            <h1>인수인계 자료</h1>
-            <p>담당 업무를 넘길 때 필요한 문서를 만들고, 준비되면 공유하세요. PDF로 내보낼 수 있습니다.</p>
-          </div>
-        </div>
 
         <div className="rp-cols">
           <aside className="rp-side no-print">
@@ -292,5 +288,6 @@ export default function HandoverView({ user }: { user: SessionUser }) {
         </div>
       </div>
     </div>
+    </PageShell>
   );
 }

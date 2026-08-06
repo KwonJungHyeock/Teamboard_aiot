@@ -11,6 +11,7 @@ import { openPanel } from "@/lib/side-panel";
 import DocEditor, { type DocBlock } from "./DocEditor";
 import PropertyBlock, { type PropRow } from "./PropertyBlock";
 import LinkedResources from "./LinkedResources";
+import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution } from "@/lib/progress";
 import {
   TASK_PANEL_EVENT,
   currentTaskRef,
@@ -28,6 +29,13 @@ interface TaskDetail {
   startDate: string | null; dueDate: string | null; dropReason: string | null; goalIds: number[];
   progress: number;
   blocked: boolean; blockedReason: string | null; blockedSince: string | null; blockedBy: number | null;
+  // MD-P-2026-024 — 업무 구조
+  resolution: string | null;
+  parentTaskId: number | null; parentTitle: string | null;
+  blockedByTitle: string | null; childCount: number;
+  goalSource: "inherited" | "manual";
+  effectiveProgress: number; rolledUpFromChildren: boolean;
+  goalLink: { projectHasNoGoal: boolean; projectId: number | null; projectName: string | null };
 }
 interface Selectors {
   actors: { id: number; name: string }[];
@@ -371,8 +379,9 @@ export default function TaskDetailPanel() {
       key: "progress", label: "진행률",
       value: (
         <span className="prop-prog">
-          <i><b style={{ width: `${t.progress}%` }} /></i>
-          <em className="num">{t.progress}%</em>
+          <i><b style={{ width: `${t.effectiveProgress}%` }} /></i>
+          <em className="num">{t.effectiveProgress}%</em>
+          {t.rolledUpFromChildren && <em className="prop-note">하위 업무로 계산 중</em>}
         </span>
       ),
       editor: () => (
@@ -411,6 +420,12 @@ export default function TaskDetailPanel() {
       empty: linkedGoals.length === 0, action: "＋ 목표 연결",
       editor: () => (
         <div className="prop-goals">
+          {t.goalLink.projectHasNoGoal && (
+            <p className="prop-none">
+              이 프로젝트는 목표에 연결되어 있지 않습니다.{" "}
+              <a href={`/projects/${t.goalLink.projectId}`}>{t.goalLink.projectName} 연결하기 →</a>
+            </p>
+          )}
           {(sel?.monthGoals.length ?? 0) === 0 && <p className="prop-none">연결 가능한 월 목표가 없습니다.</p>}
           {sel?.monthGoals.map((g) => (
             <label key={g.id}>
@@ -425,6 +440,34 @@ export default function TaskDetailPanel() {
         </div>
       ),
     },
+    // ── MD-P-2026-024 §6-1 — 읽기 전용 2줄. 값이 없으면 줄 자체를 만들지 않는다.
+    ...(t.parentTaskId !== null ? [{
+      key: "parent", label: "상위 업무",
+      value: (
+        <button className="prop-link" onClick={() => openTaskPanel(t.parentTaskId!)}>
+          #{t.parentTaskId} {t.parentTitle ?? ""}
+        </button>
+      ),
+    } as PropRow] : []),
+    ...(t.blockedBy !== null ? [{
+      key: "blockedBy", label: "차단",
+      value: (
+        <button className="prop-link" onClick={() => openTaskPanel(t.blockedBy!)}>
+          #{t.blockedBy} {t.blockedByTitle ?? ""}
+        </button>
+      ),
+    } as PropRow] : []),
+    // §6-2 — 완료 사유 4지. 완료 상태에서만 나타난다. 기본값 완료.
+    ...(t.status === "done" ? [{
+      key: "resolution", label: "완료 사유",
+      value: RESOLUTION_LABEL[(t.resolution ?? "done") as Resolution],
+      editor: (close: () => void) => (
+        <select autoFocus value={t.resolution ?? "done"}
+          onChange={(e) => { patchOpt({ resolution: e.target.value }, { resolution: e.target.value }); close(); }}>
+          {RESOLUTIONS.map((r) => <option key={r} value={r}>{RESOLUTION_LABEL[r]}</option>)}
+        </select>
+      ),
+    } as PropRow] : []),
     {
       key: "area", label: "영역",
       value: t.areaName,

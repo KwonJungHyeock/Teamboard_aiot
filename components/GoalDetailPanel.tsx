@@ -3,6 +3,7 @@
 // 목표 상세 슬라이드 패널 (파트 C) — 우측 480px. 업무 상세 패널과 동일 UX.
 // 제목·기간·영역·소유·진척모드·연결업무·기여현황·진척바. 편집 권한은 서버가 판단(canEdit).
 import { useCallback, useEffect, useState } from "react";
+import { countedLabel } from "@/lib/progress";
 import {
   GOAL_PANEL_EVENT,
   currentGoalParam,
@@ -20,7 +21,7 @@ interface GoalDetail {
   goal: {
     id: number; title: string; description: string; periodType: string; periodStart: string; periodEnd: string;
     progressMode: "auto" | "manual"; progress: number | null;
-    progressAuto: number | null; progressManual: number | null;
+    progressAuto: number | null; progressManual: number | null; countedTasks: number;
     status: GoalStatus | null; statusManual: boolean;
     scope: "team" | "personal";
     ownerName: string | null; areaId: number | null; areaName: string | null; projectName: string | null;
@@ -135,7 +136,9 @@ export default function GoalDetailPanel() {
                   </span>
                 )}
                 <span className="gsp" style={{ flex: 1 }} />
-                <b>{d.goal.progress == null ? "–" : `${d.goal.progress}%`}</b>
+                <b>{d.goal.progress == null ? "집계 없음" : `${d.goal.progress}%`}</b>
+                {/* 진척 근거 — 분모를 옆에 붙인다 (MD-P-2026-024 지시 1) */}
+                {d.goal.progress != null && <em className="gdp-basis">{countedLabel(d.goal.countedTasks)}</em>}
               </div>
               <div className={`bar${d.goal.progress == null ? " empty" : ""}`}>
                 <i className="edu" style={{ width: `${Math.min(d.goal.progress ?? 0, 100)}%` }} />

@@ -4,6 +4,7 @@
 // 에이전트 산출물 두 종류를 한곳에 모은다: (1) 승인 대기 초안(drafts.pending),
 // (2) 에이전트 제안 업무(task.status='proposed'). 승인해야 사람 공간에 들어온다.
 import { useCallback, useEffect, useState } from "react";
+import PageShell from "./PageShell";
 import { useRouter } from "next/navigation";
 import type { SessionUser, Draft } from "@/lib/types";
 import { toast } from "@/lib/quick";
@@ -114,21 +115,13 @@ export default function InboxView({ user }: { user: SessionUser }) {
   const excerpt = (s: string) => (s || "").replace(/[#*>`]/g, "").replace(/\s+/g, " ").trim().slice(0, 140);
 
   return (
-    <div className="hv">
-      <div className="top">
-        <div className="crumb">
-          워크스페이스 / <b>승인 대기</b>
-        </div>
-        <span className="sp" />
-      </div>
+    <PageShell
+      crumb={["워크스페이스", "승인 대기"]}
+      title="승인 대기"
+      subtitle={<>에이전트는 제안만 합니다. 사람이 여기서 확정해야 홈·업무·논의·결정에 반영됩니다.</>}
+    >
+    <div className="hv pg-legacy">
       <div className="wrap">
-        <div className="head">
-          <div>
-            <div className="eb">INBOX</div>
-            <h1>승인 대기</h1>
-            <p>에이전트는 제안만 합니다. 사람이 여기서 확정해야 홈·업무·논의·결정에 반영됩니다.</p>
-          </div>
-        </div>
 
         {error && <p className="gerr">{error}</p>}
 
@@ -248,5 +241,6 @@ export default function InboxView({ user }: { user: SessionUser }) {
         />
       )}
     </div>
+    </PageShell>
   );
 }

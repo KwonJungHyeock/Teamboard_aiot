@@ -3,6 +3,7 @@
 // 전체 프로젝트 인덱스 (Phase 5 — SPEC v1.1 개정 예정 화면).
 // 카드: 이름 · 진행률 바 · 상태 · 목표 수 · 열린 업무 수. 상태 필터 + lead 새 프로젝트.
 import { useCallback, useEffect, useState } from "react";
+import { countedLabel } from "@/lib/progress";
 import Link from "next/link";
 import type { SessionUser } from "@/lib/types";
 
@@ -143,7 +144,10 @@ export default function ProjectsIndexView({ user }: { user: SessionUser }) {
                       style={{ width: `${p.percent ?? 0}%` }}
                     />
                   </div>
-                  <span className="gpv">{p.percent === null ? "-" : `${p.percent}%`}</span>
+                  <span className="gpv">
+                    {p.percent === null ? "집계 없음" : `${p.percent}%`}
+                    {p.percent !== null && <em>{countedLabel(p.total)}</em>}
+                  </span>
                 </div>
                 <div className="pcard-m">
                   <span>목표 {p.goalCount}</span>

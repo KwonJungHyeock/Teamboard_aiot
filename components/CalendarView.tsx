@@ -4,6 +4,7 @@
 // 날짜는 공용 taskDays()(KST date-only, inclusive) 단일 소스 — 오프바이원 금지.
 // C1 드래그: 막대 본체=일정 이동(기간 유지), 양끝 핸들=시작/종료 조정. 낙관적 저장 + 토스트 + 실행취소.
 // C2 우선순위: 좌측 인디케이터 클릭 → 드롭다운 즉시 변경. C3 마감 임박: 우측 코랄 캡.
+import PageShell from "./PageShell";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { HomeSummary, LaneTask } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
@@ -130,29 +131,27 @@ export default function CalendarView({ summary, user }: { summary: HomeSummary; 
   }
 
   return (
-    <div className="hv" onClick={() => { setOverflow(null); setPrioMenu(null); }}>
-      <div className="top"><div className="crumb">워크스페이스 / <b>캘린더</b></div><span className="sp" /></div>
+    <PageShell
+      crumb={["워크스페이스", "캘린더"]}
+      title="캘린더"
+      subtitle="드래그로 일정을 옮기고, 양끝을 끌어 기간을 조정하세요 · 날짜를 클릭하면 바로 추가"
+      actions={
+        <button className="btn-primary" onClick={(e) => openQuickCreate({ x: e.clientX - 300, y: e.clientY + 10 }, { dueDate: today })}>＋ 새 업무</button>
+      }
+      tabs={[{ key: "month", label: "월" }, { key: "week", label: "주" }]}
+      activeTab={view}
+      onTab={(k) => setView(k as "month" | "week")}
+      filters={
+        <>
+          <button className="pg-chip" onClick={() => move(-1)} aria-label="이전 기간">‹</button>
+          <span className="pg-period num">{label}</span>
+          <button className="pg-chip" onClick={() => move(1)} aria-label="다음 기간">›</button>
+          <button className="pg-chip" onClick={() => setAnchor(today)}>오늘</button>
+        </>
+      }
+    >
+    <div className="hv pg-legacy" onClick={() => { setOverflow(null); setPrioMenu(null); }}>
       <div className="wrap">
-        <div className="head">
-          <div>
-            <div className="eb">CALENDAR</div>
-            <h1>캘린더</h1>
-            <p>드래그로 일정을 옮기고, 양끝을 끌어 기간을 조정하세요 · 날짜를 클릭하면 바로 추가</p>
-          </div>
-          <div className="head-r">
-            <div className="cal-nav">
-              <button className="nb" onClick={() => move(-1)} aria-label="이전">‹</button>
-              <span className="cal-mo num">{label}</span>
-              <button className="nb" onClick={() => move(1)} aria-label="다음">›</button>
-              <button className="tbtn" onClick={() => setAnchor(today)}>오늘</button>
-            </div>
-            <div className="seg" role="group" aria-label="기간 보기">
-              <button aria-pressed={view === "month"} onClick={() => setView("month")}>월</button>
-              <button aria-pressed={view === "week"} onClick={() => setView("week")}>주</button>
-            </div>
-            <button className="btn-brand cal-new" onClick={(e) => openQuickCreate({ x: e.clientX - 300, y: e.clientY + 10 }, { dueDate: today })}>＋ 새 업무</button>
-          </div>
-        </div>
 
         <section className={`tile cal2 ${view}`} aria-label={view === "month" ? "월 달력" : "주 달력"}>
           <div className="cal2-dow">
@@ -196,6 +195,7 @@ export default function CalendarView({ summary, user }: { summary: HomeSummary; 
         </div>
       )}
     </div>
+    </PageShell>
   );
 }
 

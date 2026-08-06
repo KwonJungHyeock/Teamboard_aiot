@@ -135,6 +135,9 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
         </>
       }
     >
+    {/* 본문 CSS 가 home.css 에 `.hv …` 로 스코프돼 있다 — 래퍼를 지우면 트리 스타일이 통째로 죽는다.
+        (MD-P-2026-022 §A 1~4 에서 이 래퍼가 빠져 목표 트리가 깨져 있었다) */}
+    <div className="hv pg-legacy">
       {/* §B3 — 목표에 안 붙은 프로젝트가 있으면 여기서 한 번에 연결한다 */}
       {tab === "team" && <GoalLinkBanner projects={unlinked} tree={tree} onLinked={load} />}
 
@@ -199,6 +202,7 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
           onCreated={load}
         />
       )}
+    </div>
     </PageShell>
   );
 }

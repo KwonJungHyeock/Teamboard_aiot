@@ -177,6 +177,31 @@
 .prop-v { flex: 1; min-width: 0; text-align: left; background: 0; border: 0; padding: 4px 0; cursor: pointer;
   font-family: inherit; font-size: 12.5px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
 .prop-v.ro { cursor: default; }
+/* 상위 업무·차단 줄의 링크 (MD-P-2026-024 §6-1) — 새 규격을 만들지 않고 값 자리에 그대로 넣는다 */
+.prop-link { background: 0; border: 0; padding: 0; cursor: pointer; font: inherit; color: var(--blue);
+  text-align: left; }
+.prop-link:hover { text-decoration: underline; }
+/* "하위 업무로 계산 중" (§3 규칙 2) */
+.prop-note { font-style: normal; font-size: 10.5px; font-weight: 600; color: var(--muted); }
+
+/* 진척 근거 "업무 14건 기준" (MD-P-2026-024 지시 1) — 신규 스타일을 만들지 않고
+   기존 보조 텍스트 규격(10.5px · var(--muted))에 맞춘다. */
+/* 목표 트리 §G 정합 — pg-legacy 래퍼를 되살리면서 다시 살아난 구 규격을 스냅한다.
+   (래퍼가 빠져 있던 동안에는 이 규칙들이 죽어 있어서 위반으로 잡히지도 않았다) */
+.pg-body :is(.gpv, .gtitle-btn) { font-size: 11.5px; }
+.pg-body .gnode > summary { border-radius: 7px; }
+/* 목표 추가 인라인 폼의 입력·셀렉트 (6px → 7px) */
+.pg-body .gtree :is(input, select) { border-radius: 7px; }
+
+/* 뼈대(.pg-body) 밖 화면에도 같은 규격이 적용돼야 한다 — 셸에 의존하지 않는 선택자로 둔다.
+   (프로젝트 목록은 아직 PageShell 밖이라 .pg-body 로 걸면 11px 로 새어 나간다) */
+.gpv em, .gdp-basis {
+  font-style: normal; font-size: 10.5px; font-weight: 600; color: var(--muted); margin-left: 5px;
+  white-space: nowrap;
+}
+/* 프로젝트 상세 개요의 진척 근거도 같은 규격으로 — 이 자리에는 근거 문구만 들어간다.
+   (.pg :is(… .pws-ov-sub) 가 11.5px 로 잡고 있어 뒤에서 다시 못박는다) */
+.pg .pws-prog + .pws-ov-sub { font-size: 10.5px; color: var(--muted); }
 .prop-v.empty { color: var(--muted); }
 .prop-v.empty:hover { color: var(--coral-text); }
 .prop-pop { position: absolute; left: 88px; top: 100%; z-index: 40; margin-top: 2px; min-width: 220px;
@@ -193,9 +218,17 @@
 .tdp-legacy summary::before { content: "▸ "; color: var(--muted); }
 .tdp-legacy[open] summary::before { content: "▾ "; }
 
-/* 내 업무 — 페이지 뼈대 안에 들어간 기존 본문 (레이아웃 유지, 여백만 뼈대에 맞춤) */
-.pg-body .tv-legacy { background: 0; }
-.pg-body .tv-legacy .wrap { padding: 0; max-width: none; }
+/* 페이지 뼈대 안에 들어간 기존 본문 (레이아웃 유지, 여백만 뼈대에 맞춤).
+   본문 CSS가 전부 `.hv …` 로 스코프돼 있어서 래퍼를 지울 수 없다 — 대신 여백만 중화한다.
+   (MD-P-2026-022 §A) */
+.pg-body .tv-legacy,
+.pg-body .pg-legacy { background: 0; }
+.pg-body .tv-legacy .wrap,
+.pg-body .pg-legacy .wrap { padding: 0; max-width: none; }
+
+/* 필터바 안의 기간 라벨 (캘린더 이전/다음 사이) */
+.pg-filters .pg-period { font-family: var(--f-d); font-variant-numeric: tabular-nums;
+  font-size: 12.5px; font-weight: 700; color: var(--ink); min-width: 104px; text-align: center; }
 .pg-filters .tsearch { height: 26px; min-width: 200px; border: 1px solid var(--line); border-radius: 4px;
   background: var(--surface); font-size: 11.5px; padding: 0 8px; color: var(--ink); }
 .tv-hidden { margin-top: 12px; font-size: 11.5px; color: var(--muted); }
@@ -219,6 +252,49 @@
 .pg-body .tt-prog-n { font-size: 11.5px; }
 .pg-body :is(h2, .ch h2, .tinbox h2) { font-size: 14px; }
 .pg-body :is(.areatag, .prio, .st, .stsel) { border-radius: 4px; }
+
+/* ── §A 5~8 확산분 (캘린더·월간 보고·승인 대기·저장됨·인수인계·멤버·관리·에이전트) ──
+   본문 마크업은 그대로 두고 폰트 6단·라운드 3종만 여기서 스냅한다. */
+
+/* 25 — 지표 큰 수 */
+.pg-body :is(.prep-kpi-v, .inbox-strip .v, .ma-credit .v) { font-size: 25px; }
+/* 19 — 화면 안 큰 제목 */
+.pg-body .prep h1 { font-size: 19px; }
+/* 14 — 카드 제목·소제목 */
+.pg-body :is(h3, .pcard-title, .ho-item-t) { font-size: 14px; }
+/* 12.5 — 본문·버튼 */
+.pg-body :is(.pcard-body, .btn-brand, .btn-outline, .gbtn, .btn.small, .prep em.num) { font-size: 12.5px; }
+/* 11.5 — 보조 텍스트 */
+.pg-body :is(.pcard-src, .pcard-more, .pcard-time, .pcard-cost, .ma-cost-n,
+  .inbox-strip .l, .ma-credit .l, .ho-sec-h, .es-hint, .mbr-date,
+  .an-name, .an-n, .agf-chip-live, .prep-rat, .prep-foot) { font-size: 11.5px; }
+/* 10.5 — 배지·식별자·마이크로 라벨 */
+.pg-body :is(.pty, .pcard-id, .ho-item-m, .ho-item-st, .rp-by,
+  .cal2-more, .agf-live-dot) { font-size: 10.5px; }
+.pg-body .cal2-dowc { font-size: 11.5px; }
+.pg-body .an-svg text { font-size: 10.5px; }
+.pg-body .an-svg .an-cur-v { font-size: 11.5px; }
+
+/* 라운드 3종 — 16/14/12/10 → 9, 8/6 → 7, 5/3 → 4 */
+.pg-body :is(.tile, .pcard, .prep, .inbox-strip, .inbox-demo, .prep-kpi,
+  .ma-seg, .ma-input, .ho-item) { border-radius: 9px; }
+.pg-body :is(.btn-brand, .btn-outline, .gbtn, .btn.small, .role-sel,
+  .cal2-bar, .cal2-more, .rp-gen select, .rp-gen input,
+  .tform-grid input, .tform-grid select) { border-radius: 7px; }
+.pg-body :is(.cal2-add, .lg-doing, .lg-wait, .an-legend i) { border-radius: 4px; }
+/* .hv .tile.cal2 (0,3,0) 를 이기려면 같은 무게가 필요하다 — design.css 가 뒤에 실려 우선한다 */
+.pg-body .tile.cal2 { border-radius: 9px; }
+/* 본문 안 세그먼트·페이저 (페이지 탭이 아니라 블록 안 컨트롤) */
+.pg-body :is(.seg button, .ma-seg button, .prep-cover-m span, .an-legend span) { font-size: 11.5px; }
+.pg-body :is(.seg button, .prep-month button) { border-radius: 7px; }
+/* §C 38px — 이름 아래 보조줄이 행을 47px 로 밀고 있었다.
+   .mbr-nm 이 flex-column 이라 자식 display 만 바꿔선 안 펴진다 — 컨테이너부터 편다 */
+.pg-body .mbr-nm { display: block; }
+.pg-body .mbr-sub { display: inline; margin: 0 0 0 4px; }
+
+/* 제목 슬롯의 상태 칩 — .pg-head 라서 위 .pg-body 규격이 닿지 않는다 */
+.pg-head .agf-chip-live { font-size: 11.5px; }
+.pg-head .agf-live-dot { font-size: 10.5px; }
 
 /* ============================================================
    §D 홈 재구성 (MD-P-2026-020)

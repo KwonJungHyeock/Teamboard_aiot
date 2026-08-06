@@ -3,6 +3,7 @@
 // 저장됨 (MD-P-2026-006 §C·G) — hover 액션 바의 [저장]으로 담은 항목들.
 // "저장 → 한 곳에 모임 → 다시 찾기" 경로가 Slack과 같아 전이가 일어난다.
 import { useCallback, useEffect, useState } from "react";
+import PageShell from "./PageShell";
 import HoverActions, { type SaveType } from "./HoverActions";
 import { openPanel } from "@/lib/side-panel";
 import { openTaskPanel } from "@/lib/task-panel";
@@ -50,24 +51,19 @@ export default function SavedView() {
   const shown = filter === "all" ? items : items.filter((i) => i.targetType === filter);
 
   return (
-    <div className="hv">
-      <div className="top"><div className="crumb">워크스페이스 / <b>저장됨</b></div><span className="sp" /></div>
+    <PageShell
+      crumb={["워크스페이스", "저장됨"]}
+      title="저장됨"
+      subtitle={<>목록·코멘트·업무 카드에 마우스를 올리면 뜨는 [저장]으로 담은 항목입니다.</>}
+      filters={TYPES.map((t) => (
+        <button key={t} className={`pg-chip${filter === t ? " on" : ""}`} onClick={() => setFilter(t)}>
+          {t === "all" ? "전체" : KIND[t]}
+        </button>
+      ))}
+      filterSummary={`${shown.length}건`}
+    >
+    <div className="hv pg-legacy">
       <div className="wrap">
-        <div className="head">
-          <div>
-            <div className="eb">SAVED</div>
-            <h1>저장됨</h1>
-            <p>목록·코멘트·업무 카드에 마우스를 올리면 뜨는 [저장]으로 담은 항목입니다.</p>
-          </div>
-        </div>
-
-        <div className="seg act-tabs" role="group" aria-label="종류">
-          {TYPES.map((t) => (
-            <button key={t} aria-pressed={filter === t} onClick={() => setFilter(t)}>
-              {t === "all" ? "전체" : KIND[t]}
-            </button>
-          ))}
-        </div>
 
         {loading ? (
           <p className="gempty">불러오는 중...</p>
@@ -98,5 +94,6 @@ export default function SavedView() {
         )}
       </div>
     </div>
+    </PageShell>
   );
 }

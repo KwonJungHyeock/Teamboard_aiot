@@ -5,6 +5,7 @@
 //  · 상세: 개별 업무 바(#ID 제목, start~end, 담당·%·T+nd).
 // 날짜는 공용 taskDays()(KST date-only, inclusive) 단일 소스 — 요약/상세/캘린더 동일. 오프바이원 금지.
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { aggregateTasks } from "@/lib/progress";
 import type { Lane, LaneEvent } from "@/lib/home";
 import { openTaskPanel } from "@/lib/task-panel";
 import { taskDays, dateDiffDays } from "@/lib/task-view";
@@ -143,9 +144,10 @@ export default function HeroTimeline({
         const minS = tasks.reduce((a, t) => (t.start < a ? t.start : a), tasks[0].start);
         const maxE = tasks.reduce((a, t) => (t.end > a ? t.end : a), tasks[0].end);
         const p = place(minS, maxE);
-        const avg = Math.round(tasks.reduce((a, t) => a + (t.status === "done" ? 100 : t.progress), 0) / tasks.length);
+        // 평균은 lib/progress.ts 정의를 쓴다 — 화면에서 따로 계산하지 않는다 (MD-P-2026-024 §3).
+        const avg = aggregateTasks(tasks);
         // A2: 롤업 바는 항상 영역색. 지연은 우측 코랄 캡으로만 표기(영역 정체성 유지).
-        const bars: Bar[] = p ? [{ id: `g${area}`, taskId: null, label: `${tasks.length}개 · 평균 ${avg}%`, color: col, on, late: anyLate, startIdx: p.startIdx, span: p.span, sub: "" }] : [];
+        const bars: Bar[] = p ? [{ id: `g${area}`, taskId: null, label: avg === null ? `${tasks.length}개` : `${tasks.length}개 · 평균 ${avg}%`, color: col, on, late: anyLate, startIdx: p.startIdx, span: p.span, sub: "" }] : [];
         return { key: area, name: area, color: col, bars };
       }).filter((g) => g.bars.length > 0);
     }
