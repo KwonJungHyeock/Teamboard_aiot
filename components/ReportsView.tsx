@@ -3,6 +3,7 @@
 // 월간 보고 화면 — 두 갈래를 한 메뉴에서 (MD-P-2026-010 §범위: 신규 메뉴 생성 금지)
 //   [성과 리포트] 월별 PDF (전원)  ·  [승인 보고서] 기존 서술·승인·Notion 흐름 (팀장)
 import { useCallback, useEffect, useState } from "react";
+import PageShell from "./PageShell";
 import ReportView, { type ReportData } from "./ReportView";
 import ReportEditor from "./ReportEditor";
 import PerfReport from "./PerfReport";
@@ -125,32 +126,16 @@ export default function ReportsView({ user, notionConnected = true }: { user: Se
   const canApprove = detail && detail.report.status !== "approved" && detail.report.draftStatus === "pending";
 
   return (
-    <div className="hv">
-      <div className="top">
-        <div className="crumb">
-          워크스페이스 / <b>월간 보고</b>
-        </div>
-        <span className="sp" />
-      </div>
+    <PageShell
+      crumb={["워크스페이스", "월간 보고"]}
+      title="월간 보고"
+      subtitle={<>{mainTab === "perf" ? "월별 성과를 그대로 인쇄해 PDF로 저장합니다. 화면에 보이는 그대로 출력됩니다." : "모든 수치는 DB 집계 값이며, 에이전트는 서술만 작성합니다. 승인 시 " + (notionConnected ? "Notion에 기록됩니다." : "확정됩니다.")}</>}
+      tabs={isLead ? [{ key: "perf", label: "성과 리포트" }, { key: "approval", label: "승인 보고서" }] : undefined}
+      activeTab={mainTab}
+      onTab={(k) => setMainTab(k as "perf" | "approval")}
+    >
+    <div className="hv pg-legacy">
       <div className="wrap">
-        <div className="head">
-          <div>
-            <div className="eb">REPORTS</div>
-            <h1>월간 보고</h1>
-            <p>
-              {mainTab === "perf"
-                ? "월별 성과를 그대로 인쇄해 PDF로 저장합니다. 화면에 보이는 그대로 출력됩니다."
-                : "모든 수치는 DB 집계 값이며, 에이전트는 서술만 작성합니다. 승인 시 " + (notionConnected ? "Notion에 기록됩니다." : "확정됩니다.")}
-            </p>
-          </div>
-        </div>
-
-        {isLead && (
-          <div className="seg no-print" role="group" aria-label="보고 종류" style={{ marginBottom: 12 }}>
-            <button aria-pressed={mainTab === "perf"} onClick={() => setMainTab("perf")}>성과 리포트</button>
-            <button aria-pressed={mainTab === "approval"} onClick={() => setMainTab("approval")}>승인 보고서</button>
-          </div>
-        )}
 
         {mainTab === "perf" && <PerfReport user={user} />}
 
@@ -253,5 +238,6 @@ export default function ReportsView({ user, notionConnected = true }: { user: Se
         )}
       </div>
     </div>
+    </PageShell>
   );
 }

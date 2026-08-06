@@ -3,6 +3,7 @@
 // My Agent — 내 에이전트 전체 관리 (홈 Bento 톤).
 // FAB는 요약 진입, 이 화면은 전체 관리: 지시 입력 + 작업 이력 + 비용/크레딧 + 설정.
 // 에이전트는 제안만 하며, 완료 결과는 승인 대기(초안)로 등록되어 사람이 확정한다.
+import PageShell from "./PageShell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { NOTION_WORK_AREAS } from "@/lib/types";
@@ -110,29 +111,25 @@ export default function AssistantView({ user }: { user: SessionUser; notionConne
   const insufficient = credit ? est > credit.remaining : false;
 
   return (
-    <div className="hv">
-      <div className="top">
-        <div className="crumb">워크스페이스 / <b>My Agent</b></div>
-        <span className="sp" />
-      </div>
+    <PageShell
+      crumb={["워크스페이스", "My Agent"]}
+      title={
+        <>
+          {assistant?.name ? `${assistant.name}` : "내 에이전트"}
+          {(() => { const s = computeLiveStatus(jobs, { submitting, unseen }); const c = STATUS_CHIP[s]; return (
+            <span className={`agf-chip-live ma-chip-live s-${s}`}><i className="agf-live-dot">{c.dot}</i>{c.label}</span>
+          ); })()}
+        </>
+      }
+      subtitle={<>{user.name}님의 AI 에이전트 — 제안만 합니다. 완료 결과는 승인 대기에서 사람이 확정합니다.</>}
+      actions={
+        <button className="btn-ghost" onClick={() => setShowSettings((v) => !v)}>
+          {showSettings ? "설정 닫기" : "에이전트 설정"}
+        </button>
+      }
+    >
+    <div className="hv pg-legacy">
       <div className="wrap">
-        <div className="head">
-          <div>
-            <div className="eb">MY AGENT</div>
-            <h1>
-              {assistant?.name ? `${assistant.name}` : "내 에이전트"}
-              {(() => { const s = computeLiveStatus(jobs, { submitting, unseen }); const c = STATUS_CHIP[s]; return (
-                <span className={`agf-chip-live ma-chip-live s-${s}`}><i className="agf-live-dot">{c.dot}</i>{c.label}</span>
-              ); })()}
-            </h1>
-            <p>{user.name}님의 AI 에이전트 — 제안만 합니다. 완료 결과는 승인 대기에서 사람이 확정합니다.</p>
-          </div>
-          <div className="head-r">
-            <button className="btn small" onClick={() => setShowSettings((v) => !v)}>
-              {showSettings ? "설정 닫기" : "에이전트 설정"}
-            </button>
-          </div>
-        </div>
 
         {showSettings && assistant && <SettingsCard assistant={assistant} onSaved={setAssistant} />}
 
@@ -209,6 +206,7 @@ export default function AssistantView({ user }: { user: SessionUser; notionConne
         )}
       </div>
     </div>
+    </PageShell>
   );
 }
 

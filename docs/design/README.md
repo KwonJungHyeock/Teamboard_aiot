@@ -60,3 +60,14 @@
 `title`/`subtitle` 이 `ReactNode` 인 것은 프로젝트 상세의 제목 인라인 편집 때문이다.
 조작 요소를 넣으면 슬롯 구분이 무너지므로 위 표를 벗어나는 노드는 넣지 않는다.
 페이지 레벨 필터가 없는 화면(예: 활동 — 필터를 좌측 레일로 둔다)은 `filters` 를 넘기지 않는다.
+
+### 본문 래퍼 (`pg-legacy`) — 지우지 말 것
+
+기존 화면의 본문 CSS는 거의 전부 `app/home.css` 에 **`.hv …` 로 스코프**돼 있다.
+뼈대를 씌우면서 `.hv` 래퍼를 지우면 그 화면의 스타일이 통째로 날아간다.
+그래서 뼈대 안에서는 본문을 `<div className="hv pg-legacy"><div className="wrap">…` 로 감싼 채 둔다
+(`내 업무` 는 같은 목적의 `tv-legacy` 를 쓴다). `app/design.css` 가 여백만 중화한다.
+
+마크업을 옮기지 않고 §G 규격을 맞추는 방법도 같다 — `app/design.css` 의
+`.pg-body :is(…) { font-size / border-radius }` 블록에서 **스냅만** 한다.
+본문 컴포넌트를 다시 짜지 않는다.
