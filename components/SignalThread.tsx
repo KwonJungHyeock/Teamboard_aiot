@@ -11,6 +11,7 @@ import HoverActions from "./HoverActions";
 import BlobImage from "./BlobImage";
 import { uploadImage, type UploadedImage } from "@/lib/upload";
 import { DecisionConfirm, DecisionCard, draftRationale, type Decision } from "./decision-ui";
+import { openTaskPanel } from "@/lib/task-panel";
 
 interface Votes { up: number; down: number; mine: string | null }
 interface ThreadSignal {
@@ -123,7 +124,14 @@ export default function SignalThread({
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     });
     setBusy(false);
-    if (!res.ok) { setError((await res.json()).error ?? "처리 실패"); return false; }
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      setError(j.error ?? "처리 실패");
+      // 이미 전환된 신호였다 (409, 지시 26-1) — 화면을 새로 읽어 "업무 #NN 보기"로 바꾼다.
+      // 다른 사람이 먼저 눌렀거나 두 번 눌린 경우이므로 사용자를 기존 업무로 보내야 한다.
+      if (res.status === 409 && j.taskId) await load();
+      return false;
+    }
     setError(""); await load(); onChanged(); return true;
   }
 
@@ -229,7 +237,15 @@ export default function SignalThread({
       {signal.scope === "huddle" && signal.votes && (
         <div style={{ margin: "8px 0" }}><VoteButtons targetType="huddle" targetId={signal.id} votes={signal.votes} /></div>
       )}
-      {signal.taskId && <p className="slinked">반영됨 → Task #{signal.taskId} {signal.taskTitle ? `“${signal.taskTitle}”` : ""}</p>}
+      {/* 지시 26-1 — 이미 전환된 신호는 기존 업무로 갈 수 있어야 한다. 문구만 두면 막다른 길이다. */}
+      {signal.taskId && (
+        <p className="slinked">
+          반영됨 →{" "}
+          <button className="prop-link" onClick={() => openTaskPanel(signal.taskId!)}>
+            업무 #{signal.taskId} 보기{signal.taskTitle ? ` — ${signal.taskTitle}` : ""}
+          </button>
+        </p>
+      )}
       {decided && <p className="sdecided">결정됨 · 아직 업무로 반영되지 않았습니다 (미실행 결정)</p>}
 
       {/* 액션 — 해결로 표시(1차) + 생명주기(2차) */}
@@ -251,6 +267,13 @@ export default function SignalThread({
         )}
         {signal.type === "decision" && openish && !signal.taskId && (isAuthor || isLead) && (
           <button className="gbtn" disabled={busy} onClick={() => setTaskForm((v) => !v)}>Task로 반영</button>
+        )}
+        {/* 지시 26-2 — 이미 전환됐으면 전환 버튼 자리를 "업무 #NN 보기"가 대신한다.
+            버튼이 그냥 사라지면 "왜 없지?" 가 되고, 남겨두면 두 번 눌린다. */}
+        {signal.type === "decision" && signal.taskId && (
+          <button className="gbtn" onClick={() => openTaskPanel(signal.taskId!)}>
+            업무 #{signal.taskId} 보기
+          </button>
         )}
         {openish && <button className="gbtn mu" disabled={busy} onClick={() => act({ status: "archived" })}>기각</button>}
       </div>

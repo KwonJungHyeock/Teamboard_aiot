@@ -5,7 +5,7 @@
 //       그 외 타입 전이는 member 전권. private·review 가시성은 API 레벨 차단.
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
-import { query, queryOne } from "@/lib/db";
+import { query, queryOne, withTx } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
 import { reactionsFor } from "@/lib/reactions";
@@ -213,35 +213,78 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       if (!isAuthor && !isLead) {
         return NextResponse.json({ error: "작성자 또는 팀장만 반영할 수 있습니다." }, { status: 403 });
       }
-      if (signal.task_id) {
-        return NextResponse.json({ error: "이미 연결된 Task가 있습니다." }, { status: 409 });
-      }
       const title = String(payload.title ?? "").trim().slice(0, 200) || signal.title;
-      const task = await queryOne<{ id: number }>(
-        `INSERT INTO task (project_id, title, description, status, assignee_id, due_date, origin, created_by)
-         VALUES ($1,$2,$3,'todo',$4,$5,'human',$6) RETURNING id`,
-        [
-          signal.project_id,
-          title,
-          `결정 시그널 #${signal.id} "${signal.title}"에서 생성`,
-          payload.assigneeId ? Number(payload.assigneeId) : session.id,
-          typeof payload.dueDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(payload.dueDate)
-            ? payload.dueDate
-            : null,
-          session.id,
-        ]
-      );
-      // createTask 성공 시에만 resolved 전환 (A-1)
-      await query(
-        `UPDATE signal SET task_id = $1, status = 'resolved', resolved_at = now() WHERE id = $2`,
-        [task!.id, signal.id]
-      );
+
+      // ── 중복 전환 차단 (MD-P-2026-024 회신 8 지시 26-3) ──────────────
+      //
+      // loadSignal() 이 읽은 task_id 로만 판단하면 동시 클릭 두 건이 모두
+      // "아직 null" 을 보고 각자 업무를 만든다. 나중 UPDATE 가 이겨서
+      // 한 건은 signal 에 연결되지 않은 채 조용히 남는다 — 실제 결함이다.
+      //
+      // 신호 행을 FOR UPDATE 로 잠근 뒤 **요청 시점에 다시 확인**한다.
+      // 두 번째 요청은 첫 번째가 커밋될 때까지 기다렸다가 task_id 를 보고 물러난다.
+      const claim = await withTx(async (q) => {
+        const [locked] = await q<{ task_id: number | null }>(
+          `SELECT task_id FROM signal WHERE id = $1 FOR UPDATE`,
+          [signal.id]
+        );
+        if (!locked) return { taskId: null as number | null, created: false };
+        if (locked.task_id !== null) return { taskId: locked.task_id, created: false };
+
+        // area_id 를 채운다. 안 채우면 trg_task_area_match 가 막아
+        // 프로젝트가 붙은 신호는 **전환 자체가 500 으로 실패한다** (지시 26 작업 중 발견).
+        //   ① 프로젝트가 있으면 그 프로젝트의 영역 (트리거가 요구하는 값)
+        //   ② 없으면 만든 사람의 기본 영역
+        //   ③ 그것도 없으면 첫 워크스페이스 영역 — area_id 는 NOT NULL 이다
+        const [task] = await q<{ id: number }>(
+          `INSERT INTO task (project_id, area_id, title, description, status, assignee_id, due_date, origin, created_by)
+           VALUES ($1,
+                   COALESCE(
+                     (SELECT area_id FROM project WHERE id = $1),
+                     (SELECT area_id FROM actor_area WHERE actor_id = $6 ORDER BY sort_order, area_id LIMIT 1),
+                     (SELECT id FROM area WHERE is_active = true AND kind = 'workspace' ORDER BY sort_order, id LIMIT 1)
+                   ),
+                   $2,$3,'todo',$4,$5,'human',$6) RETURNING id`,
+          [
+            signal.project_id,
+            title,
+            `결정 시그널 #${signal.id} "${signal.title}"에서 생성`,
+            payload.assigneeId ? Number(payload.assigneeId) : session.id,
+            typeof payload.dueDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(payload.dueDate)
+              ? payload.dueDate
+              : null,
+            session.id,
+          ]
+        );
+        // createTask 성공 시에만 resolved 전환 (A-1)
+        await q(
+          `UPDATE signal SET task_id = $1, status = 'resolved', resolved_at = now() WHERE id = $2`,
+          [task.id, signal.id]
+        );
+        return { taskId: task.id, created: true };
+      });
+
+      // 이미 전환돼 있었다 — 기존 업무로 갈 수 있게 id·제목을 함께 준다 (지시 26-1)
+      if (!claim.created) {
+        const existing = claim.taskId
+          ? await queryOne<{ title: string }>(`SELECT title FROM task WHERE id = $1`, [claim.taskId])
+          : null;
+        return NextResponse.json(
+          {
+            error: "이미 업무로 반영된 결정입니다.",
+            taskId: claim.taskId,
+            taskTitle: existing?.title ?? null,
+          },
+          { status: 409 }
+        );
+      }
+
       await logActivity({
         userId: session.id,
         message: `${session.name}이(가) 결정을 업무로 반영 — "${signal.title}" → Task "${title}"`,
         level: "success",
       });
-      return NextResponse.json({ ok: true, taskId: task!.id });
+      return NextResponse.json({ ok: true, taskId: claim.taskId });
     }
 
     // ── 상태 전이 ──

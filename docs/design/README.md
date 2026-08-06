@@ -253,6 +253,65 @@ TS 쪽(`isCountable` / `taskProgress`)과 SQL 조각(`countableSql` / `taskProgr
 
 ---
 
+## 한 번만 일어나야 하는 전환은 행을 잠그고 다시 확인한다 (회신 8 지시 26)
+
+신호(결정) → 업무 전환처럼 **결과가 한 건이어야 하는 동작**은
+"읽어서 없으면 만든다"로 짜면 안 된다. `query()` 는 호출마다 풀에서 다른 커넥션을
+빌려오므로 요청 A 와 B 가 둘 다 `task_id IS NULL` 을 읽고 각자 만든다.
+
+    ❌  const s = await loadSignal(id)      // 여기서 읽고
+        if (s.task_id) return 409           // 여기서 판단하면
+        await query(`INSERT INTO task …`)   // 그 사이에 남이 끼어든다
+
+    ✅  await withTx(async (q) => {
+          const [row] = await q(`SELECT task_id FROM signal WHERE id=$1 FOR UPDATE`, [id])
+          if (row.task_id !== null) return { created: false, taskId: row.task_id }
+          …INSERT + UPDATE…
+        })
+
+`withTx()` (`lib/db.ts`) 는 **같은 커넥션**에서 실행해 준다. 잠금이 다음 쿼리까지
+이어지지 않으면 `FOR UPDATE` 는 아무 의미가 없다.
+
+실측 (동시 4건 × 10라운드, 로컬):
+
+| | 결과 |
+| --- | --- |
+| 잠금 없음 | 10/10 라운드에서 중복 — 응답 `[200,200,200,200]`, 업무 **4건** |
+| 잠금 있음 | 0/10 — 응답 `[200,409,409,409]`, 업무 **1건** |
+
+**막았으면 갈 곳을 줘야 한다.** 409 응답에 기존 `taskId`·`taskTitle` 을 실어 보내고,
+화면은 전환 버튼 자리를 **"업무 #NN 보기"** 로 바꾼다. 버튼을 그냥 숨기면
+"왜 없지?" 가 되고, 남겨두면 두 번 눌린다.
+
+> 같은 작업 중 발견 — 이 전환 경로는 `area_id` 를 채우지 않아
+> `trg_task_area_match` / NOT NULL 에 걸려 **모든 전환이 500 으로 실패하고 있었다.**
+> 중복 이전에 기능 자체가 죽어 있었다. 함께 고쳤다.
+
+---
+
+## 안내 배너는 경고가 아니다 (회신 8 지시 17-1)
+
+배너에 코랄을 쓰면 페이지 주액션(`+ 새 목표`)과 경쟁해 어디를 눌러야 하는지가 흐려진다.
+
+| | 값 |
+| --- | --- |
+| 배경 | `--surface-2` |
+| 테두리 | 없음. **좌측 1px** `--line` 만 |
+| 라운드 | `0 4px 4px 0` |
+| 숫자 배지 | `--ink` 채움 — 배너에서 **유일하게** 채워지는 요소 |
+| 행동 | 버튼이 아니라 **밑줄 텍스트 링크** |
+
+`.ulbanner`(미연결 업무)와 `.glink-banner`(§B3 폴백) 둘 다 이 규격을 쓴다.
+
+**상시 노출 편집 버튼은 hover 노출로 바꾼다** (17-2).
+`opacity` 로만 감춘다 — `display:none` 이면 키보드로 닿을 수 없다.
+hover · `:focus-within` · `:focus-visible` 셋 다 걸고, `@media (hover:none)` 에서는 항상 보인다.
+
+**추가 폼은 접어 둔다** (17-3). 평소에는 `+ 월 목표` 텍스트 버튼만 두고,
+월 셀렉트 기본값은 하드코딩이 아니라 **오늘이 속한 칸**(`defaultSlot()`)으로 연다.
+
+---
+
 ## 파괴적 SQL 의 기본 가드 — 건수 일치 (MD-P-2026-024 회신 5)
 
 DELETE·UPDATE 를 담은 SQL 에는 **"승인 시점 건수 = 실행 시점 건수" 가드를 반드시 넣는다.**

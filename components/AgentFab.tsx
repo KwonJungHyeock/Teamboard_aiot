@@ -305,7 +305,7 @@ export default function AgentFab({ user }: { user: SessionUser }) {
           )}
 
           <Link className="agf-foot" href="/assistant" onClick={() => setOpen(false)}>
-            전체 보기 → My Agent
+            전체 보기 → 내 에이전트
           </Link>
         </div>
       )}

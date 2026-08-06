@@ -112,7 +112,7 @@ export default function AssistantView({ user }: { user: SessionUser; notionConne
 
   return (
     <PageShell
-      crumb={["워크스페이스", "My Agent"]}
+      crumb={["워크스페이스", "내 에이전트"]}
       title={
         <>
           {assistant?.name ? `${assistant.name}` : "내 에이전트"}

@@ -119,7 +119,7 @@ export async function dispatchJob(params: {
 
   const assistantRow = await getAssistantByOwner(userId);
   if (!assistantRow) {
-    throw new Error("에이전트가 설정되지 않았습니다. My Agent에서 먼저 설정하세요.");
+    throw new Error("에이전트가 설정되지 않았습니다. 내 에이전트에서 먼저 설정하세요.");
   }
   const assistant: AssistantSettings = {
     ...assistantRow,

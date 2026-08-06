@@ -277,8 +277,10 @@ export default function Sidebar({
           count={notif > 0 ? notif : undefined} dot={notif === 0 && sysNotif > 0} />
         {/* 저장됨 — hover 액션 바에서 담은 항목 */}
         <NavLink href="/saved" icon={IC.bookmark} label="저장됨" current={cur("/saved")} />
-        {/* My Agent — 전 구성원 각자의 에이전트 */}
-        <NavLink href="/assistant" icon={IC.bot} label="My Agent" current={cur("/assistant")} />
+        {/* 내 에이전트 — 전 구성원 각자의 에이전트.
+            메뉴가 전부 한글인데 여기만 영문이었다 (지시 17-4).
+            화면 자체가 "내 에이전트"라는 명칭을 쓰고 있으므로 그쪽에 맞춘다. */}
+        <NavLink href="/assistant" icon={IC.bot} label="내 에이전트" current={cur("/assistant")} />
       </nav>
 
       <details className="grp" open>

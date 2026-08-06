@@ -30,7 +30,7 @@ const NAV_ITEMS: PaletteItem[] = [
   { label: "홈", href: "/", keywords: "home dashboard 대시보드" },
   { label: "내 업무", href: "/tasks", keywords: "task 업무 할일 todo" },
   { label: "캘린더", href: "/calendar", keywords: "calendar 일정 스케줄" },
-  { label: "My Agent", href: "/assistant", keywords: "assistant agent ai 에이전트" },
+  { label: "내 에이전트", href: "/assistant", keywords: "assistant agent ai my 에이전트" },
   { label: "목표", href: "/goals", keywords: "goal okr 연간 분기 월" },
   { label: "월간 보고", href: "/reports", keywords: "report 보고서 월말", leadOnly: true },
   { label: "논의·결정", href: "/signals", keywords: "signal 시그널 결정 리뷰 메모 리스크" },

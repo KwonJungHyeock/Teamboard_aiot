@@ -46,6 +46,37 @@ export async function queryOne<T extends QueryResultRow = QueryResultRow>(
   return rows[0] ?? null;
 }
 
+/**
+ * 트랜잭션 (MD-P-2026-024 회신 8 지시 26-3).
+ *
+ * query() 는 매번 풀에서 아무 커넥션이나 빌려오므로 `SELECT … FOR UPDATE` 의
+ * 행 잠금이 다음 호출까지 이어지지 않는다. 잠금으로 동시 요청을 막아야 하는
+ * 곳에서는 이 헬퍼를 써서 **같은 커넥션** 위에서 실행한다.
+ *
+ * fn 은 이 트랜잭션 전용 q() 를 받는다. 예외가 나면 ROLLBACK 후 그대로 던진다.
+ */
+export async function withTx<T>(
+  fn: (
+    q: <R extends QueryResultRow = QueryResultRow>(text: string, params?: unknown[]) => Promise<R[]>
+  ) => Promise<T>
+): Promise<T> {
+  await ensureMigrated();
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    const q = async <R extends QueryResultRow = QueryResultRow>(text: string, params: unknown[] = []) =>
+      (await client.query<R>(text, params as any[])).rows;
+    const out = await fn(q);
+    await client.query("COMMIT");
+    return out;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 // ─── 신규 스키마 공통 헬퍼 (조회는 is_active=true 기본) ───
 
 import type { Actor, Area, AreaWithProjects, Project } from "./types";

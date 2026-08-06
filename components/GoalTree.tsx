@@ -149,6 +149,27 @@ function NodeEditPanel({
   );
 }
 
+/**
+ * 셀렉트 기본값 (지시 17-3) — 하드코딩된 첫 칸이 아니라 **오늘이 속한 칸**.
+ * 다른 해를 보고 있으면 현재 월이 의미 없으므로 첫 칸으로 둔다.
+ */
+function defaultSlot(
+  periodType: "year" | "quarter" | "month",
+  parent: GoalNode | null,
+  year: number
+): number {
+  const now = new Date();
+  if (now.getFullYear() !== year) return 1;
+  const month = now.getMonth() + 1;
+  if (periodType === "quarter") return Math.floor((month - 1) / 3) + 1;
+  if (periodType === "month") {
+    const quarterStart = parent ? Number(parent.periodStart.slice(5, 7)) : 1;
+    const idx = month - quarterStart + 1;       // 이 분기 안에서 몇 번째 달인가
+    return idx >= 1 && idx <= 3 ? idx : 1;      // 현재 월이 이 분기 밖이면 첫 달
+  }
+  return 1;
+}
+
 function AddGoalForm({
   periodType,
   parent,
@@ -163,9 +184,13 @@ function AddGoalForm({
   onDone: () => void;
 }) {
   const [title, setTitle] = useState("");
-  const [slot, setSlot] = useState(1); // 분기(1~4) 또는 월(해당 분기 내 1~3번째)
+  // 월 셀렉트 기본값은 **현재 월**이다 (지시 17-3). 상위 분기의 첫 달로 고정하면
+  // 8월에 목표를 만들려는 사람이 매번 7월을 고쳐 잡아야 한다.
+  const [slot, setSlot] = useState(() => defaultSlot(periodType, parent, year));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // 평소에는 "+ 목표" 버튼만 둔다. 폼이 상시 펼쳐져 있으면 트리보다 눈에 띈다 (지시 17-3).
+  const [open, setOpen] = useState(false);
 
   function periods(): { periodStart: string; periodEnd: string } {
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -214,10 +239,22 @@ function AddGoalForm({
       return;
     }
     setTitle("");
+    setOpen(false);   // 추가하면 다시 접는다 — 평소 상태는 버튼 하나다 (지시 17-3)
     onDone();
   }
 
   const quarterStart = parent ? Number(parent.periodStart.slice(5, 7)) : 1;
+
+  // 접힌 상태 — 텍스트 버튼 하나. 이게 기본이다.
+  if (!open) {
+    return (
+      <div className="gadd gadd-shut">
+        <button className="lk gadd-open" onClick={() => { setSlot(defaultSlot(periodType, parent, year)); setOpen(true); }}>
+          + {PERIOD_LABEL[periodType]} 목표
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="gadd">
@@ -247,6 +284,9 @@ function AddGoalForm({
       />
       <button className="lk" onClick={submit} disabled={busy || !title.trim()}>
         추가
+      </button>
+      <button className="lk mu" onClick={() => { setOpen(false); setTitle(""); setError(""); }}>
+        취소
       </button>
       {error && <span className="gerr">{error}</span>}
     </div>
@@ -303,7 +343,7 @@ function MonthGoalRow({
           counted={goal.countedTasks}
         />
         {canEdit && (
-          <button className="lk mu" onClick={() => setEditing((v) => !v)}>
+          <button className="lk mu gedit-b" onClick={() => setEditing((v) => !v)}>
             {editing ? "닫기" : "편집"}
           </button>
         )}
@@ -429,7 +469,7 @@ function BranchNode({
           counted={goal.countedTasks} />
         {canEdit && (
           <button
-            className="lk mu"
+            className="lk mu gedit-b"
             onClick={(e) => {
               e.preventDefault(); // summary 토글 방지
               setEditing((v) => !v);
