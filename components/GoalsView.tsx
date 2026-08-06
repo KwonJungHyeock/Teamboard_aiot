@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
+import PageShell from "./PageShell";
 import GoalTree, { type LinkableTask } from "./GoalTree";
 import EmptyState from "./EmptyState";
 import NewGoalModal from "./NewGoalModal";
@@ -104,100 +105,89 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
   }
 
   return (
-    <div className="hv">
-      <div className="top">
-        <div className="crumb">
-          워크스페이스 / <b>목표</b>
-        </div>
-        <span className="sp" />
-      </div>
-      <div className="wrap">
-        <div className="head">
-          <div>
-            <div className="eb">GOALS</div>
-            <h1>목표</h1>
-            <p>
+    <PageShell
+      crumb={["워크스페이스", "목표"]}
+      title="목표"
+      subtitle={tab === "team"
+        ? "팀 목표 — 연간 → 분기 → 월. 목표에 프로젝트를 연결하면 프로젝트 진척이 상위로 자동 집계됩니다."
+        : "내 목표 — 본인과 팀장만 봅니다. 같은 3계층·같은 집계 규칙으로 관리하세요."}
+      actions={
+        <>
+          {user.role === "lead" && <SnapshotMenu onSaved={load} />}
+          <button className="btn-primary" onClick={() => setShowNew(true)}>＋ 새 목표</button>
+        </>
+      }
+      tabs={[
+        { key: "team", label: "팀 목표" },
+        { key: "personal", label: "내 목표" },
+      ]}
+      activeTab={tab}
+      onTab={(k) => setTab(k as "team" | "personal")}
+      filters={
+        <>
+          {YEARS.map((y) => (
+            <button key={y} className={`pg-chip${year === y ? " on" : ""}`} onClick={() => setYear(y)}>{y}</button>
+          ))}
+          <button className={`pg-chip${year === null ? " on" : ""}`} onClick={() => setYear(null)}>전체</button>
+          <button className="pg-chip" onClick={() => setShowArchive((v) => !v)}>
+            {showArchive ? "보관함 닫기" : "보관함"}
+          </button>
+        </>
+      }
+    >
+      {/* §B3 — 목표에 안 붙은 프로젝트가 있으면 여기서 한 번에 연결한다 */}
+      {tab === "team" && <GoalLinkBanner projects={unlinked} tree={tree} onLinked={load} />}
+
+      {loading && <p className="gempty">불러오는 중...</p>}
+      {error && <p className="gerr">{error}</p>}
+      {!loading && !error && tree.length === 0 && (
+        <div className="dl">
+          <div className="dl-empty">
+            <p>{tab === "team" ? "팀 목표가 없어요" : "내 개인 목표가 없어요"}</p>
+            <p className="dl-empty-sub">
               {tab === "team"
-                ? "팀 목표 — 연간 → 분기 → 월. 목표에 프로젝트를 연결하면 프로젝트 진척이 상위로 자동 집계됩니다."
-                : "내 목표 — 본인과 팀장만 봅니다. 같은 3계층·같은 집계 규칙으로 관리하세요."}
-            </p>
-          </div>
-          <div className="head-r">
-            <div className="seg" role="group" aria-label="연도 필터">
-              {YEARS.map((y) => (
-                <button key={y} aria-pressed={year === y} onClick={() => setYear(y)}>{y}</button>
-              ))}
-              <button aria-pressed={year === null} onClick={() => setYear(null)}>전체</button>
-            </div>
-            <button className="btn-brand goal-new" onClick={() => setShowNew(true)}>+ 새 목표</button>
-            {/* 수동 스냅샷 · 적립 이력 (MD-P-2026-011 §D·F) — 팀장만 */}
-            {user.role === "lead" && <SnapshotMenu onSaved={load} />}
-          </div>
-        </div>
-
-        <div className="seg goal-seg" role="group" aria-label="목표 범위">
-          <button aria-pressed={tab === "team"} onClick={() => setTab("team")}>팀 목표</button>
-          <button aria-pressed={tab === "personal"} onClick={() => setTab("personal")}>내 목표</button>
-        </div>
-
-        {/* §B3 — 목표에 안 붙은 프로젝트가 있으면 여기서 한 번에 연결한다 */}
-        {tab === "team" && <GoalLinkBanner projects={unlinked} tree={tree} onLinked={load} />}
-
-        <section className="card">
-          {loading && <p className="gempty">불러오는 중...</p>}
-          {error && <p className="gerr">{error}</p>}
-          {!loading && !error && tree.length === 0 && (
-            <EmptyState
-              title={tab === "team" ? "팀 목표가 없어요" : "내 개인 목표가 없어요"}
-              hint={tab === "team"
                 ? "팀장이 연간 목표를 세우고 분기·월로 나누면, 연결된 업무 진척이 여기 모입니다."
                 : "개인 목표를 세우고 내 업무를 연결해 나만의 진척을 관리하세요. (나만 볼 수 있어요)"}
-              action={(tab === "personal" || user.role === "lead") ? (
-                <button className="btn small primary" onClick={() => setShowNew(true)}>목표 만들기</button>
-              ) : undefined}
-            />
-          )}
-          {!loading && !error && tree.length > 0 && (
-            <GoalTree
-              tree={tree}
-              linkableTasks={linkableTasks}
-              user={user}
-              year={year ?? new Date().getFullYear()}
-              onChanged={load}
-              onOpenGoal={openGoalPanel}
-              scope={tab}
-            />
-          )}
-          <div className="garchive-toggle">
-            <button className="lk mu" onClick={() => setShowArchive((v) => !v)}>
-              {showArchive ? "보관함 닫기" : "보관함 보기"}
-            </button>
-          </div>
-        </section>
-
-        {showArchive && (
-          <section className="card garchive">
-            <h2 className="garchive-h">보관함 — {year}년</h2>
-            {archiveError && <p className="gerr">{archiveError}</p>}
-            {archived.length === 0 && !archiveError && (
-              <p className="gempty">보관된 목표가 없습니다.</p>
+            </p>
+            {(tab === "personal" || user.role === "lead") && (
+              <button className="btn-primary" onClick={() => setShowNew(true)}>목표 만들기</button>
             )}
-            {archived.map((goal) => (
-              <div key={goal.id} className="garchive-row">
+          </div>
+        </div>
+      )}
+      {!loading && !error && tree.length > 0 && (
+        <GoalTree
+          tree={tree}
+          linkableTasks={linkableTasks}
+          user={user}
+          year={year ?? new Date().getFullYear()}
+          onChanged={load}
+          onOpenGoal={openGoalPanel}
+          scope={tab}
+        />
+      )}
+
+      {showArchive && (
+        <div className="dl garchive">
+          <div className="dl-head"><span className="dl-c">보관함 — {year ?? "전체"}년</span></div>
+          {archiveError && <p className="gerr">{archiveError}</p>}
+          {archived.length === 0 && !archiveError && (
+            <div className="dl-empty"><p>보관된 목표가 없습니다.</p></div>
+          )}
+          {archived.map((goal) => (
+            <div key={goal.id} className="dl-row">
+              <span className="dl-c" style={{ flex: "0 0 46px" }}>
                 <span className="gtag">{PERIOD_LABEL[goal.period_type] ?? goal.period_type}</span>
-                <span className="gtitle">{goal.title}</span>
-                <em className="garchive-p">{goal.period_start}</em>
-                <span className="gsp" />
-                {user.role === "lead" && (
-                  <button className="lk" onClick={() => restore(goal)}>
-                    복구
-                  </button>
-                )}
-              </div>
-            ))}
-          </section>
-        )}
-      </div>
+              </span>
+              <span className="dl-c">{goal.title}</span>
+              <span className="dl-c num" style={{ flex: "0 0 100px" }}>{goal.period_start}</span>
+              <span className="dl-c" style={{ flex: "0 0 60px", textAlign: "right" }}>
+                {user.role === "lead" && <button className="lk" onClick={() => restore(goal)}>복구</button>}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {showNew && (
         <NewGoalModal
@@ -209,6 +199,6 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
           onCreated={load}
         />
       )}
-    </div>
+    </PageShell>
   );
 }

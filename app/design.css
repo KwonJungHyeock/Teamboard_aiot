@@ -445,3 +445,114 @@
   color: var(--muted); cursor: pointer; font-size: 11.5px; }
 .cmt-attach-x:hover { background: var(--hair); color: var(--ink2); }
 .cmt-tools { display: flex; gap: 8px; margin-bottom: 8px; }
+
+/* ── §A2 논의·결정 — 목록 행 규격에 맞춘 최소 보정 (MD-P-2026-022) ── */
+.dl-empty-sub { font-size: 11.5px; color: var(--muted); margin: 0; }
+.dl-row .sig-ty { font-size: 10.5px; font-weight: 800; border-radius: 4px; padding: 1px 5px; }
+.dl-row .atag { font-size: 10.5px; margin-right: 5px; }
+.dl-c.sig-meta { font-size: 11.5px; color: var(--muted); }
+.dl-c.sig-right { display: flex; align-items: center; justify-content: flex-end; gap: 6px; overflow: visible; }
+.dl-row .sig-tag { font-size: 10.5px; font-weight: 700; border-radius: 4px; padding: 1px 5px; white-space: nowrap; }
+.dl-row .sig-act { height: 22px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface); color: var(--ink2); font-family: inherit; font-size: 10.5px; font-weight: 700;
+  cursor: pointer; white-space: nowrap; }
+/* 행 안의 빠른 액션은 코랄을 쓰지 않는다 — 코랄 주 액션은 화면당 1개(헤더)뿐이다 (§A 공통규칙) */
+.dl-row .sig-act.primary { border-color: var(--ink2); background: var(--surface); color: var(--ink); }
+.dl-row .sig-act:hover { background: var(--surface-2); }
+.dl-row .sig-act.primary:hover { background: var(--surface-2); }
+.dl-row .sig-act:disabled { opacity: .5; cursor: default; }
+/* 필터 칩 옆 요약 */
+.pg-filters .sig-wrap { display: contents; }
+/* 논의 화면의 요약칩 묶음은 필터바로 옮겼으므로 본문 상단 여백만 정리 */
+.pg-body .sig-wrap { display: flex; flex-direction: column; gap: 12px; }
+.pg-body .sig-sum { display: flex; align-items: center; gap: 6px; background: 0; border: 0; box-shadow: none; padding: 0; }
+.pg-body .sig-sum .sig-chip { height: 26px; padding: 0 10px; border-radius: 4px; border: 1px solid var(--line);
+  background: var(--surface); font-family: inherit; font-size: 11.5px; font-weight: 600; color: var(--ink2);
+  cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+.pg-body .sig-sum .sig-chip[aria-pressed="true"] { border-color: var(--coral); color: var(--coral-text); background: var(--coral-bg); }
+.pg-body .sig-sum .sig-chip-n { font-family: var(--f-d); font-size: 10.5px; color: var(--muted); }
+.pg-body .sig-stall { margin-left: auto; font-size: 11.5px; color: var(--coral-text); display: inline-flex; align-items: center; gap: 5px; }
+.pg-body .sig-stall i { width: 6px; height: 6px; border-radius: 50%; background: var(--coral); }
+
+/* ── §A4 목표 트리 — 계층은 유지하고 밀도만 §G 규격으로 (MD-P-2026-022 회신 ①) ──
+   트리를 평평하게 펴지 않는다. 연간→분기→월 계층이 이 제품의 구조적 차별점이다.
+   행(.grow-h) 을 38px / 12.5px 로 맞추고, 깊이는 들여쓰기(margin-left)로 표현한다. */
+.pg-body .grow { margin: 0 0 0 22px; padding: 0; border: 0; border-radius: 0; }
+.pg-body .grow-h { height: 38px; padding: 0 13px; gap: 8px; font-size: 12.5px;
+  border-bottom: 1px solid var(--hair); transition: background .12s ease; }
+.pg-body .grow-h:hover { background: var(--surface-2); }
+/* 제목이 들여쓰기로 좁아지면 말줄임 */
+.pg-body .grow-h .gtitle, .pg-body .grow-h a { min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
+.pg-body :is(.gtag, .gstatus, .gdrop) { font-size: 10.5px; border-radius: 4px; }
+.pg-body .grow-h .lk { font-size: 11.5px; }
+/* 연결 업무 칩 — 행이 아니라 행 아래 보조 줄. 행 높이 계산에 섞이지 않게 분리한다 */
+.pg-body .gtasks { padding: 6px 13px 8px 13px; border-bottom: 1px solid var(--hair);
+  display: flex; flex-wrap: wrap; gap: 4px; }
+.pg-body .gchip { font-size: 10.5px; border-radius: 4px; }
+/* 상위(연간·분기) 노드도 같은 밀도 */
+.pg-body :is(.gyear, .gq, .gnode) > :is(.grow-h, .gh) { height: 38px; font-size: 12.5px; }
+.pg-body .garchive-toggle { padding: 8px 13px; }
+
+/* ── §A1 프로젝트 상세 — 뼈대 안 헤더 요소 정합 (MD-P-2026-022) ── */
+.pg-title .pws-title { cursor: pointer; }
+.pg-title .pws-title-in { font-size: 19px; font-weight: 800; border: 1px solid var(--line);
+  border-radius: 7px; padding: 2px 8px; background: var(--surface); color: var(--ink); }
+.pg-sub .pws-sub { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pg-sub :is(.pws-chip, .pws-manual) { font-size: 10.5px; border-radius: 4px; padding: 1px 6px;
+  background: var(--surface-2); display: inline-flex; align-items: center; gap: 4px; }
+.pg-sub :is(.lk, .pws-goal-none, .pws-goal-p) { font-size: 11.5px; }
+.pg-act .pws-members { display: inline-flex; align-items: center; }
+.pg-act .pws-av { width: 22px; height: 22px; border-radius: 999px; border: 1px solid var(--surface);
+  margin-left: -5px; background: var(--surface-2); color: var(--ink2); font-size: 10.5px; font-weight: 700; cursor: pointer; }
+.pg-act .pws-more-wrap, .pg-act .actv-mute-wrap { position: relative; display: inline-flex; }
+.pg-act :is(.pws-more-menu, .actv-mute-menu) { position: absolute; right: 0; top: 100%; margin-top: 4px; z-index: 40;
+  min-width: 160px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
+  box-shadow: var(--e2); padding: 4px; display: flex; flex-direction: column; }
+.pg-act :is(.pws-more-menu, .actv-mute-menu) :is(button, a) { text-align: left; background: 0; border: 0;
+  border-radius: 4px; padding: 6px 8px; font-family: inherit; font-size: 12.5px; color: var(--ink);
+  cursor: pointer; text-decoration: none; }
+.pg-act :is(.pws-more-menu, .actv-mute-menu) :is(button, a):hover { background: var(--surface-2); }
+.pg-sub .pws-goal-pick { position: relative; display: inline-flex; }
+.pg-sub .pws-goal-menu { position: absolute; left: 0; top: 100%; margin-top: 4px; z-index: 40; min-width: 240px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 9px; box-shadow: var(--e2);
+  padding: 4px; display: flex; flex-direction: column; }
+.pg-sub .pws-goal-menu button { text-align: left; background: 0; border: 0; border-radius: 4px;
+  padding: 6px 8px; font-family: inherit; font-size: 12.5px; cursor: pointer; }
+.pg-sub .pws-goal-menu button:hover { background: var(--surface-2); }
+.pg-body .pws-arch { margin-bottom: 12px; padding: 8px 13px; border: 1px solid var(--line);
+  border-radius: 9px; background: var(--surface-2); font-size: 11.5px; color: var(--ink2); }
+
+/* ── §A3 활동 — 필터 레일 유지, 목록 항목만 38px 행 규격으로 ── */
+.pg-body .actv-body { display: flex; gap: 12px; align-items: flex-start; }
+.pg-body .nitem { min-height: 38px; height: 38px; padding: 0 13px; gap: 8px;
+  border-bottom: 1px solid var(--hair); font-size: 12.5px; align-items: center; }
+.pg-body .nitem :is(.n-kind, .n-who, .n-time, .actv-bundle) { font-size: 10.5px; }
+.pg-body .nitem .n-b { min-width: 0; display: flex; align-items: center; gap: 8px; overflow: hidden; }
+.pg-body .nitem .n-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pg-body .nitem .n-txt, .pg-body .nitem .n-sum { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
+.pg-body .nitem .n-ic { width: 20px; height: 20px; flex: 0 0 20px; border-radius: 4px;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 10.5px; }
+.pg-body .actv-rail { flex: 0 0 200px; }
+.pg-body .actv-list, .pg-body .actv-main { flex: 1; min-width: 0; }
+
+/* ── §C 규격 정합 — 뼈대 안에 들어온 기존 요소를 6단 폰트·3종 라운드로 강제한다.
+   마크업은 건드리지 않고 여기서만 맞춘다(MD-P-019 가 /tasks 에 쓴 것과 같은 방식). ── */
+.pg :is(.pws-goal-none, .pws-goal-p, .pws-manual, .pws-ov-sub) { font-size: 11.5px; }
+.pg :is(.pws-ov-h, .pws-tab-n) { font-size: 11.5px; }
+.pg .pws-prog-v { font-size: 14px; }
+.pg .pws-title { font-size: 19px; }
+.pg .pjdot { border-radius: 50%; }
+.pg :is(.actv-r, .actv-r span, .n-t, .n-snip, .ha-b) { font-size: 11.5px; }
+.pg .actv-ic { font-size: 10.5px; border-radius: 4px; }
+.pg .glink-banner { border-radius: 9px; }
+.pg :is(input, select, textarea) { border-radius: 7px; }
+.pg :is(input[type="checkbox"], input[type="radio"]) { border-radius: 4px; }
+/* 남는 자잘한 요소들 — 목록·메타 기본값으로 수렴 */
+.pg :is(li, em, b, span, button, a, p, div):not([class*="pg-"]):not(.bimg-err *) { }
+.pg .pws-ov-card :is(li, button, .num) { font-size: 12.5px; }
+.pg :is(.gadd, .glink-n, .glink-banner, .glink-banner *) { font-size: 12.5px; }
+.pg .pws-more { font-size: 12.5px; }
+.pg :is(.tdp-muted, .actv-bundle) { font-size: 11.5px; }
+.pg .tdp-sec-h em { font-size: 11.5px; }
+.pg .readline span { font-size: 10.5px; }

@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import { toast } from "@/lib/quick";
+import PageShell from "./PageShell";
 import SignalPanel, { type SignalPanelItem } from "./SignalPanel";
 import DecisionLog from "./DecisionLog";
 import { SIDE_PANEL_EVENT, currentPanel, openPanel, closePanel } from "@/lib/side-panel";
@@ -305,75 +306,61 @@ export default function SignalsView({ user }: { user: SessionUser }) {
   }
 
   return (
-    <div className="hv">
-      <div className="top">
-        <div className="crumb">
-          워크스페이스 / <b>논의·결정</b>
-        </div>
-        <span className="sp" />
-      </div>
-      <div className="wrap">
-        <div className="head">
-          <div>
-            <div className="eb">SIGNALS</div>
-            <h1>논의·결정</h1>
-            <p>결정 · 확인 요청 · 메모 · 리스크. 리스크는 상단 고정, 정체는 임계값 기준입니다.</p>
-          </div>
-          <div className="head-r">
-            {mainTab === "discussion" && (
-              <>
-                <div className="seg" role="group" aria-label="종결 보기">
-                  <button aria-pressed={!showClosed} onClick={() => setShowClosed(false)}>
-                    열림
-                  </button>
-                  <button aria-pressed={showClosed} onClick={() => setShowClosed(true)}>
-                    종결
-                  </button>
-                </div>
-                <button className="newbtn sig-newbtn" onClick={() => setComposing((v) => !v)} aria-expanded={composing}>
-                  ＋ 새 논의·결정
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* 상단 탭 — 논의 / 결정 로그 */}
-        <div className="seg sig-tabs" role="group" aria-label="보기">
-          <button aria-pressed={mainTab === "discussion"} onClick={() => setMainTab("discussion")}>논의</button>
-          <button aria-pressed={mainTab === "decision"} onClick={() => setMainTab("decision")}>결정</button>
-        </div>
-
-        {mainTab === "decision" ? (
-          <DecisionLog />
-        ) : (
+    <PageShell
+      crumb={["워크스페이스", "논의·결정"]}
+      title="논의·결정"
+      subtitle="결정 · 확인 요청 · 메모 · 리스크. 리스크는 상단 고정, 정체는 임계값 기준입니다."
+      actions={
+        mainTab === "discussion" ? (
+          <button className="btn-primary" onClick={() => setComposing((v) => !v)} aria-expanded={composing}>
+            ＋ 새 논의·결정
+          </button>
+        ) : undefined
+      }
+      tabs={[
+        { key: "discussion", label: "논의" },
+        { key: "decision", label: "결정" },
+      ]}
+      activeTab={mainTab}
+      onTab={(k) => setMainTab(k as "discussion" | "decision")}
+      filters={
+        mainTab === "discussion" ? (
           <>
-            {/* 새 논의·결정 — 상단 확대 폼(빠른 생성 톤). 버튼으로 열고 닫는다. */}
-            {composing && (
-              <NewSignalForm
-                actors={actors}
-                initialType={composerType}
-                onDone={() => { setComposing(false); load(); }}
-                onCancel={() => setComposing(false)}
-              />
-            )}
-
-            {loading && <p className="gempty">불러오는 중...</p>}
-            {error && <p className="gerr">{error}</p>}
-            {!loading && (
-              <SignalPanel
-                items={signals.map((s) => toPanelItem(s, user))}
-                stalledCount={stalledCount}
-                onSelect={(id) => { if (selectedId === id) closePanel(); else openPanel("signal", id); }}
-                selectedId={selectedId}
-                onQuickAct={quickAct}
-                busyId={busyId}
-              />
-            )}
-
+            <button className={`pg-chip${!showClosed ? " on" : ""}`} onClick={() => setShowClosed(false)}>열림</button>
+            <button className={`pg-chip${showClosed ? " on" : ""}`} onClick={() => setShowClosed(true)}>종결</button>
           </>
-        )}
-      </div>
-    </div>
+        ) : undefined
+      }
+      filterSummary={mainTab === "discussion" && stalledCount > 0 ? `정체 ${stalledCount}` : undefined}
+    >
+      {mainTab === "decision" ? (
+        <DecisionLog />
+      ) : (
+        <>
+          {/* 새 논의·결정 — 상단 확대 폼(빠른 생성 톤). 버튼으로 열고 닫는다. */}
+          {composing && (
+            <NewSignalForm
+              actors={actors}
+              initialType={composerType}
+              onDone={() => { setComposing(false); load(); }}
+              onCancel={() => setComposing(false)}
+            />
+          )}
+
+          {loading && <p className="gempty">불러오는 중...</p>}
+          {error && <p className="gerr">{error}</p>}
+          {!loading && (
+            <SignalPanel
+              items={signals.map((s) => toPanelItem(s, user))}
+              stalledCount={stalledCount}
+              onSelect={(id) => { if (selectedId === id) closePanel(); else openPanel("signal", id); }}
+              selectedId={selectedId}
+              onQuickAct={quickAct}
+              busyId={busyId}
+            />
+          )}
+        </>
+      )}
+    </PageShell>
   );
 }
