@@ -26,15 +26,20 @@ export default function PageShell({
 }: {
   /** 브레드크럼 조각 — 마지막이 현재 화면 */
   crumb: string[];
-  /** 문자열이 기본. 인라인 편집처럼 노드가 필요한 화면(프로젝트 상세)만 노드를 넘긴다 */
+  /**
+   * 문자열이 기본. 노드는 **인라인 편집 입력 · 상태 칩 · 목표 링크** 만 허용한다.
+   * 버튼 · 탭 · 필터 · 드롭다운은 넣지 않는다 — 각각 actions / tabs / filters 슬롯이 이미 있다.
+   * (MD-P-2026-022 §A 승인 조건)
+   */
   title: ReactNode;
+  /** 같은 제한이 적용된다 — 칩·링크까지. 조작 요소는 슬롯을 쓴다 */
   subtitle?: ReactNode;
   /** 우측 정렬 액션. 주 액션 1개만 코랄(btn-primary), 나머지는 btn-ghost */
   actions?: ReactNode;
   tabs?: ShellTab[];
   activeTab?: string;
   onTab?: (key: string) => void;
-  /** 필터 칩·셀렉트. 없으면 필터바 자체를 그리지 않는다 */
+  /** 필터 칩·셀렉트. **선택 슬롯** — 페이지 레벨 필터가 없는 화면은 넘기지 않는다(필터바가 그려지지 않는다) */
   filters?: ReactNode;
   /** 필터바 우측 끝 건수·요약 텍스트 */
   filterSummary?: ReactNode;
