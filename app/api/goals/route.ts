@@ -1,9 +1,10 @@
 // 목표 API (Phase 4 → 파트 A/B) — GET: 트리+진척(lib/goals.ts 단일 소스),
 // POST: 팀 목표(lead) / 개인 목표(본인) 생성.
 import { NextResponse } from "next/server";
+import { countableSql } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
-import { getGoalTree, recomputeGoalChain } from "@/lib/goals";
+import { getGoalTree, recomputeGoalChain, kstTodayForGoals } from "@/lib/goals";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
 
@@ -39,11 +40,39 @@ export async function GET(request: Request) {
       scope, viewerId: session.id, isLead: session.role === "lead",
     });
 
-    // §B3 일괄 연결 배너 — 아직 어떤 목표에도 붙지 않은 프로젝트
+    // 폴백 유지 — 프로젝트→목표 연결은 기본 경로가 아니다 (회신 6 [확정] 연결 모델)
     const unlinked = await query<{ id: number; name: string; color_key: string | null; status: string }>(
       `SELECT id, name, color_key, status FROM project
         WHERE is_active = true AND status <> 'archived' AND goal_id IS NULL
         ORDER BY name`
+    );
+
+    // 지시 21 — 목표에 안 붙은 업무. 이게 이 팀의 실제 문제다(프로젝트가 아니라).
+    // 집계 대상 기준은 진척 정의와 같다. 여기 있는 업무는 어떤 목표에도 집계되지 않는다.
+    const unlinkedTasks = await query<{
+      id: number; title: string; status: string; progress: number;
+      project_id: number | null; project_name: string | null;
+      assignee_name: string | null; due_date: string | null; area_id: number;
+    }>(
+      `SELECT t.id, t.title, t.status, t.progress,
+              t.project_id, p.name AS project_name,
+              a.display_name AS assignee_name, t.due_date::text, t.area_id
+         FROM task t
+         LEFT JOIN project p ON p.id = t.project_id AND p.is_active = true
+         LEFT JOIN actor   a ON a.id = t.assignee_id
+        WHERE t.parent_task_id IS NULL AND ${countableSql("t")}
+          AND t.goal_source <> 'none'   -- "목표 없음"은 미연결이 아니다 (지시 23-2)
+          AND NOT EXISTS (SELECT 1 FROM goal_task gt WHERE gt.task_id = t.id)
+        ORDER BY (t.project_id IS NULL), t.project_id, t.due_date NULLS LAST, t.id`
+    );
+
+    // 이번 달 월 목표 — 업무를 붙일 기본 후보 (지시 20-1)
+    const monthGoals = await query<{ id: number; title: string; period_start: string }>(
+      `SELECT id, title, period_start::text FROM goal
+        WHERE is_active = true AND period_type = 'month' AND scope = 'team'
+          AND period_start <= $1::date AND period_end >= $1::date
+        ORDER BY id`,
+      [kstTodayForGoals()]
     );
 
     // 월 목표의 Task 연결 편집용 — 활성 업무 목록 (Phase 5의 /api/tasks 전까지 최소 제공)
@@ -58,7 +87,15 @@ export async function GET(request: Request) {
        WHERE t.is_active = true AND t.status NOT IN ('dropped', 'proposed')
        ORDER BY t.created_at DESC LIMIT 200`
     );
-    return NextResponse.json({ tree, linkableTasks, unlinkedProjects: unlinked });
+    return NextResponse.json({
+      tree, linkableTasks, unlinkedProjects: unlinked,
+      unlinkedTasks: unlinkedTasks.map((t) => ({
+        id: t.id, title: t.title, status: t.status, progress: t.progress ?? 0,
+        projectId: t.project_id, projectName: t.project_name,
+        assigneeName: t.assignee_name, dueDate: t.due_date, areaId: t.area_id,
+      })),
+      monthGoals,
+    });
   } catch (error) {
     return jsonError(error);
   }

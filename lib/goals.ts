@@ -52,6 +52,8 @@ export interface GoalNode {
   countedTasks: number;
   /** 기간이 끝난 목표의 마감 기록 (회신 3 지시 7). 진행 중이면 ended=false */
   closing: GoalClosing;
+  /** 집계 대상이 0건인 하위 목표 수 — "미집계 하위 3개" 표기용 (지시 16) */
+  uncountedChildren: number;
   ownerActorId: number | null;
   ownerName: string | null;
   projectId: number | null;
@@ -285,6 +287,7 @@ export async function getGoalTree(opts: {
     status_manual: GoalStatus | null;
     project_count: number;
     counted_tasks: number;
+    uncounted_children: number;
     period_ended: boolean;
     closing: { progress: string | number | null; date: string | null } | null;
     owner_actor_id: number | null;
@@ -303,6 +306,9 @@ export async function getGoalTree(opts: {
             (SELECT count(*)::int FROM project pj
               WHERE pj.goal_id = g.id AND pj.is_active = true AND pj.status <> 'archived') AS project_count,
             ${goalCountedSql("g.id")}::int AS counted_tasks,
+            (SELECT count(*) FROM goal c
+              WHERE c.parent_id = g.id AND c.is_active = true
+                AND ${goalCountedSql("c.id")} = 0)::int AS uncounted_children,
             (g.period_end < $${pToday}::date) AS period_ended,
             ${goalClosingSql("g.id", "g.period_end")} AS closing,
             g.owner_actor_id,
@@ -367,9 +373,10 @@ export async function getGoalTree(opts: {
       progressAuto: row.progress_auto === null ? null : Math.round(Number(row.progress_auto)),
       progressManual: row.progress_manual === null ? null : Math.round(Number(row.progress_manual)),
       status: row.status_manual
+        // 표본 부족(1~2건)이면 판정하지 않는다 — "온트랙"이라 말할 근거가 없다 (지시 16)
         ?? judgeGoalStatus(
           row.progress === null ? null : Math.round(Number(row.progress)),
-          row.period_start, row.period_end, today
+          row.period_start, row.period_end, today, Number(row.counted_tasks ?? 0)
         ),
       statusManual: row.status_manual !== null,
       projectCount: row.project_count,
@@ -382,6 +389,7 @@ export async function getGoalTree(opts: {
       areaId: row.area_id,
       areaName: row.area_name,
       countedTasks: Number(row.counted_tasks ?? 0),
+      uncountedChildren: Number(row.uncounted_children ?? 0),
       closing: {
         ended: !!row.period_ended,
         progress: row.closing?.progress == null ? null : Math.round(Number(row.closing.progress)),

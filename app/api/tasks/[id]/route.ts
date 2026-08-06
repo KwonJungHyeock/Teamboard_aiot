@@ -1,7 +1,7 @@
 // 업무 수정 (Phase 5) — 속성 수정 · 상태 전이 · 인박스 승인/기각 · 목표 연결(다중, 선택).
 // 삭제는 소프트만: isActive=false. 하드 삭제 핸들러는 의도적으로 없다 (검수 포인트 4).
 import { NextResponse } from "next/server";
-import { applyInheritance, markGoalManual, goalLinkInfo } from "@/lib/goal-inherit";
+import { applyInheritance, markGoalManual, markGoalNone, markGoalInherited, goalLinkInfo } from "@/lib/goal-inherit";
 import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution, countableSql, doneSql, taskProgress } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
@@ -75,6 +75,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ ok: true });
     }
 
+    // goalSource 전환에서 끊긴 목표 — 아래 재계산 집합에 합류시킨다
+    const affectedGoalsPre = new Set<number>();
     const sets: string[] = [];
     const values: unknown[] = [];
     const set = (column: string, value: unknown) => {
@@ -271,13 +273,22 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     // 진척 재계산 대상 목표 수집 (파트 B) — 변경 전 연결 목표부터.
-    const affectedGoals = new Set<number>();
+    const affectedGoals = new Set<number>(affectedGoalsPre);
     // resolution 변경은 분모를 바꾸므로 상태 변경과 같은 취급을 한다 (§3 규칙 1).
     const statusChanged = (typeof payload.status === "string" && payload.status !== task.status)
       || autoCompleted || payload.resolution !== undefined;
 
-    // 목표 연결 교체 — 다중 선택, 선택 사항. 월 목표만 허용 (SPEC 2.2)
-    if (Array.isArray(payload.goalIds)) {
+    // "목표 없음" 명시 (지시 23-1) — 미지정(아직 안 정함)과 구분되는 정식 상태다.
+    // goalIds 보다 먼저 본다. 둘 다 오면 goalSource 가 이긴다.
+    if (payload.goalSource === "none" || payload.goalSource === "inherited") {
+      if (payload.goalSource === "none") {
+        for (const g of await markGoalNone(taskId)) affectedGoalsPre.add(g);
+        extraLogs.push(`${session.name}이(가) 목표 없음으로 지정 — "${task.title}"`);
+      } else {
+        for (const g of await markGoalInherited(taskId)) affectedGoalsPre.add(g);
+        extraLogs.push(`${session.name}이(가) 목표 연결을 프로젝트 상속으로 되돌림 — "${task.title}"`);
+      }
+    } else if (Array.isArray(payload.goalIds)) {
       const priorLinks = await query<{ goal_id: number }>(
         "SELECT goal_id FROM goal_task WHERE task_id = $1",
         [taskId]

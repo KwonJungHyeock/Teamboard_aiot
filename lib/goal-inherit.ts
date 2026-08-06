@@ -8,7 +8,13 @@
 // "이 업무의 목표 연결이 프로젝트를 따라가는가"를 나타내는 플래그다.
 import { query, queryOne } from "./db";
 
-export type GoalSource = "inherited" | "manual";
+export type GoalSource = "inherited" | "manual" | "none";
+
+// 세 값의 뜻 (MD-P-2026-024 회신 7 지시 20-3 · 23-1)
+//   inherited — 프로젝트에서 따라온 것. 링크가 없으면 "아직 안 정함(미지정)"이다.
+//   manual    — 사용자가 목표를 직접 고른 것. 프로젝트가 바뀌어도 안 움직인다.
+//   none      — 사용자가 "목표 없음"을 명시적으로 고른 것.
+//               성과 집계 대상이 아니지만 수행한 업무로는 남는다(월간 보고).
 
 /** 월 목표만 업무에 연결할 수 있다 (SPEC 2.2). 프로젝트 목표가 월이 아니면 상속하지 않는다. */
 const MONTH_GOAL = `is_active = true AND period_type = 'month'`;
@@ -33,6 +39,7 @@ export async function applyInheritance(taskId: number): Promise<number[]> {
   const t = await queryOne<{ goal_source: string }>(
     `SELECT goal_source FROM task WHERE id = $1`, [taskId]
   );
+  // manual·none 은 따라 움직이지 않는다. none 은 사용자가 "붙이지 않겠다"고 정한 것이다.
   if (!t || t.goal_source !== "inherited") return [];
 
   const prior = await query<{ goal_id: number }>(
@@ -78,6 +85,20 @@ export async function applyInheritanceForProject(projectId: number): Promise<num
 /** 사용자가 목표를 직접 골랐다 → 이후로는 프로젝트를 따라가지 않는다. */
 export async function markGoalManual(taskId: number): Promise<void> {
   await query(`UPDATE task SET goal_source = 'manual' WHERE id = $1`, [taskId]);
+}
+
+/**
+ * "목표 없음" — 성과 집계 대상이 아니라고 사용자가 정한 것 (지시 23-1).
+ * 미지정(아직 안 정함)과 구분된다. 기존 목표 연결이 있으면 끊는다.
+ * 되돌리려면 markGoalInherited() 를 쓴다.
+ */
+export async function markGoalNone(taskId: number): Promise<number[]> {
+  const prior = await query<{ goal_id: number }>(
+    `SELECT goal_id FROM goal_task WHERE task_id = $1`, [taskId]
+  );
+  await query(`DELETE FROM goal_task WHERE task_id = $1`, [taskId]);
+  await query(`UPDATE task SET goal_source = 'none' WHERE id = $1`, [taskId]);
+  return prior.map((r) => r.goal_id);
 }
 
 /** 상속으로 되돌린다 — 프로젝트 목표를 다시 따라가게 한다. */

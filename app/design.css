@@ -632,3 +632,45 @@
 .pg :is(.tdp-muted, .actv-bundle) { font-size: 11.5px; }
 .pg .tdp-sec-h em { font-size: 11.5px; }
 .pg .readline span { font-size: 10.5px; }
+
+/* 표본 가드 — "미집계 하위 3개" (MD-P-2026-024 지시 16).
+   기존 보조 텍스트 규격만 쓴다. 새 토큰 없음. */
+.guncounted { font-style: normal; font-size: 10.5px; font-weight: 600; color: var(--muted);
+  white-space: nowrap; margin-right: 8px; }
+
+/* ── 목표 미연결 업무 일괄 연결 (MD-P-2026-024 지시 21) ──
+   §C 목록 규격(.dl / .dl-row 38px · 12.5px)을 그대로 쓴다. 새 토큰 없음. */
+.utp { display: flex; flex-direction: column; gap: 12px; }
+.utp-bulk { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+.utp-bulk select { height: 26px; border-radius: 4px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink2); font-size: 11.5px; padding: 0 8px; }
+.utp-n { font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.utp-none { font-size: 11.5px; color: var(--muted); margin: 0; }
+.utp-g { display: flex; flex-direction: column; gap: 4px; }
+.utp-gh { display: flex; align-items: center; gap: 8px; }
+.utp-fold { background: 0; border: 0; padding: 0; cursor: pointer; font: inherit;
+  font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.utp-fold:hover { color: var(--coral-text); }
+
+/* 열 폭 — 라벨 88px 규격과 같은 계열로 고정폭을 준다 */
+.utp-chk { flex: 0 0 24px; }
+.utp-t   { flex: 1 1 auto; }
+.utp-a   { flex: 0 0 88px; }
+.utp-s   { flex: 0 0 56px; }
+.utp-d   { flex: 0 0 148px; display: inline-flex; align-items: center; gap: 6px; }
+.utp-g2  { flex: 0 0 200px; }
+.utp-d input, .utp-g2 select { height: 26px; border-radius: 4px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); font-size: 11.5px; padding: 0 6px; width: 100%; }
+.utp-d input.utp-nodue { color: var(--muted); }
+.utp-nodue-t { font-style: normal; font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+
+/* 미연결 업무 배너 (지시 22) — 코랄을 쓰지 않는다. 중립 톤 안내다. */
+.ulbanner { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 9px;
+  padding: 10px 13px; cursor: pointer; font-family: inherit; font-size: 12.5px; color: var(--ink2);
+  transition: background .12s ease; margin-bottom: 12px; }
+.ulbanner:hover { background: var(--surface); }
+.ulbanner b { font-size: 12.5px; font-weight: 800; color: var(--ink); }
+.ulbanner em { font-style: normal; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .ulbanner { transition: none; } }

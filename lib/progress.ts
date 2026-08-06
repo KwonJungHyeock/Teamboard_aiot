@@ -154,8 +154,12 @@ export function judgeGoalStatus(
   progress: number | null,
   periodStart: string,
   periodEnd: string,
-  today: string
+  today: string,
+  /** 집계 대상 업무 수. 넘기면 표본 부족일 때 판정하지 않는다 (지시 16) */
+  counted?: number
 ): GoalStatus | null {
+  // 표본이 1~2건이면 "온트랙"도 "리스크"도 말할 수 없다. 판정 불가로 둔다.
+  if (counted !== undefined && isUnderSampled(counted)) return null;
   if (progress !== null && progress >= 100) return "done";
   if (today < periodStart) return "wait";
   if (progress === null) return null;
@@ -240,9 +244,41 @@ export const goalCountedSql = (goalIdExpr: string) => `
          OR EXISTS (SELECT 1 FROM goal_task gt
                      WHERE gt.task_id = t.id AND gt.goal_id IN (SELECT id FROM sub)) ))`;
 
-/** "업무 14건 기준" / 집계 대상 0건이면 "집계 없음" (규칙 5). 문구를 여기 하나로 둔다. */
+// ── 표본 가드 (MD-P-2026-024 회신 6 지시 16) ──────────────────
+//
+// 업무 1건으로 연간 목표가 100% 초록 막대가 되는 일이 실제로 있었다.
+// 숫자가 틀린 게 아니라 **표본이 없는 값을 단정해서 보여준 것**이 문제다.
+// 집계 대상이 너무 적으면 %를 말하지 않는다 — 몇 건인지만 말한다.
+
+/** 이 수 미만이면 진척을 단정하지 않는다. */
+export const MIN_SAMPLE = 3;
+
+/** 표본이 부족한가 — 0건(집계 없음)은 별개다. 1~2건일 때가 표본 부족이다. */
+export function isUnderSampled(counted: number): boolean {
+  return counted > 0 && counted < MIN_SAMPLE;
+}
+
+/**
+ * 진척 막대를 그려도 되는가.
+ * 0건 → 그리지 않는다("집계 없음"). 1~2건 → 그리지 않는다(표본 부족).
+ */
+export function canShowBar(counted: number): boolean {
+  return counted >= MIN_SAMPLE;
+}
+
+/**
+ * "업무 14건 기준" / 1~2건이면 "업무 2건 — 표본 부족" / 0건이면 "집계 없음".
+ * 문구를 여기 하나로 둔다.
+ */
 export function countedLabel(counted: number): string {
-  return counted > 0 ? `업무 ${counted}건 기준` : "집계 없음";
+  if (counted === 0) return "집계 없음";
+  if (isUnderSampled(counted)) return `업무 ${counted}건 — 표본 부족`;
+  return `업무 ${counted}건 기준`;
+}
+
+/** "미집계 하위 3개" — 집계 대상이 0건인 하위 목표 수를 알린다(지시 16). */
+export function uncountedChildrenLabel(n: number): string | null {
+  return n > 0 ? `미집계 하위 ${n}개` : null;
 }
 
 // ── 기간이 끝난 목표의 마감값 (MD-P-2026-024 회신 3 지시 7) ────────────

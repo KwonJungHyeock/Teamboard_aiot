@@ -3,7 +3,7 @@
 // 목표 트리 (Phase 4) — 연간 > 분기 > 월 3단, <details> 접기.
 // 진척 수치는 서버(lib/goals.ts) 계산 결과만 표시한다.
 import { createContext, useContext, useState } from "react";
-import { countTasks, countedLabel } from "@/lib/progress";
+import { countTasks, countedLabel, uncountedChildrenLabel } from "@/lib/progress";
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
 import GoalProgress from "./GoalProgress";
@@ -300,6 +300,7 @@ function MonthGoalRow({
           // 진척 근거를 옆에 붙인다 — 정의가 바뀌었으니 분모가 보여야 한다 (지시 1)
           detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
           closing={goal.closing}
+          counted={goal.countedTasks}
         />
         {canEdit && (
           <button className="lk mu" onClick={() => setEditing((v) => !v)}>
@@ -424,7 +425,8 @@ function BranchNode({
         <span className="gsp" />
         <GoalProgress progress={goal.progress} colorKey={goal.colorKey}
           detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
-          closing={goal.closing} />
+          closing={goal.closing}
+          counted={goal.countedTasks} />
         {canEdit && (
           <button
             className="lk mu"

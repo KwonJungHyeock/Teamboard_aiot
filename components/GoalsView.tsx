@@ -10,6 +10,7 @@ import GoalTree, { type LinkableTask } from "./GoalTree";
 import EmptyState from "./EmptyState";
 import NewGoalModal from "./NewGoalModal";
 import GoalLinkBanner from "./GoalLinkBanner";
+import UnlinkedTaskPanel, { type UnlinkedTask, type MonthGoalOption } from "./UnlinkedTaskPanel";
 import SnapshotMenu from "./SnapshotMenu";
 import { GOAL_UPDATED_EVENT, openGoalPanel } from "@/lib/goal-panel";
 
@@ -33,6 +34,9 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
   const [tree, setTree] = useState<GoalNode[]>([]);
   const [linkableTasks, setLinkableTasks] = useState<LinkableTask[]>([]);
   const [unlinked, setUnlinked] = useState<UnlinkedProject[]>([]);
+  const [unlinkedTasks, setUnlinkedTasks] = useState<UnlinkedTask[]>([]);
+  const [monthGoals, setMonthGoals] = useState<MonthGoalOption[]>([]);
+  const [showUnlinked, setShowUnlinked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showArchive, setShowArchive] = useState(false);
@@ -54,6 +58,8 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
       setTree(data.tree ?? []);
       setLinkableTasks(data.linkableTasks ?? []);
       setUnlinked(data.unlinkedProjects ?? []);
+      setUnlinkedTasks(data.unlinkedTasks ?? []);
+      setMonthGoals(data.monthGoals ?? []);
       setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류");
@@ -139,7 +145,23 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
         (MD-P-2026-022 §A 1~4 에서 이 래퍼가 빠져 목표 트리가 깨져 있었다) */}
     <div className="hv pg-legacy">
       {/* §B3 — 목표에 안 붙은 프로젝트가 있으면 여기서 한 번에 연결한다 */}
-      {tab === "team" && <GoalLinkBanner projects={unlinked} tree={tree} onLinked={load} />}
+      {/* 지시 22 — 진짜 문제는 목표에 안 붙은 "업무"다. 프로젝트가 아니다.
+          0건이면 배너를 그리지 않는다. 코랄을 쓰지 않는다(중립 톤). */}
+      {tab === "team" && unlinkedTasks.length > 0 && (
+        <button className="ulbanner" onClick={() => setShowUnlinked((v) => !v)} aria-expanded={showUnlinked}>
+          <b className="num">{unlinkedTasks.length}건</b>
+          <span>목표에 연결되지 않은 업무 · 진척에 집계되지 않습니다</span>
+          <span className="gsp" />
+          <em>{showUnlinked ? "닫기" : "연결하기 →"}</em>
+        </button>
+      )}
+      {tab === "team" && showUnlinked && (
+        <UnlinkedTaskPanel tasks={unlinkedTasks} monthGoals={monthGoals} onChanged={load} />
+      )}
+      {/* 프로젝트→목표 연결은 폴백으로 남긴다 (회신 6 [확정] 연결 모델) */}
+      {tab === "team" && unlinkedTasks.length === 0 && (
+        <GoalLinkBanner projects={unlinked} tree={tree} onLinked={load} />
+      )}
 
       {loading && <p className="gempty">불러오는 중...</p>}
       {error && <p className="gerr">{error}</p>}
