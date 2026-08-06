@@ -9,6 +9,7 @@ import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
 import { kstToday } from "@/lib/home";
+import { visibleTaskSql, isVisibility } from "@/lib/visibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,11 +40,12 @@ export interface TaskListRow {
   createdByName: string | null;
   blocked: boolean;
   blockedReason: string | null;
+  visibility: "team" | "private";
 }
 
 export async function GET(request: Request) {
   try {
-    requireSession();
+    const session = requireSession();
     const url = new URL(request.url);
     const area = url.searchParams.get("area");
     const project = url.searchParams.get("project");
@@ -58,6 +60,11 @@ export async function GET(request: Request) {
       params.push(value);
       where.push(clause.replace("?", `$${params.length}`));
     };
+
+    // ① 업무 목록 — 남의 개인 업무는 목록에 오르지 않는다 (§A3).
+    //    화면에서 거르지 않는다. 쿼리에서 빠진다.
+    params.push(session.id);
+    where.push(visibleTaskSql(`$${params.length}`));
 
     if (status && (STATUSES as readonly string[]).includes(status)) {
       add("t.status = ?", status);
@@ -105,6 +112,7 @@ export async function GET(request: Request) {
       created_by_name: string | null;
       blocked: boolean;
       blocked_reason: string | null;
+      visibility: "team" | "private";
       completed_at: string | null;
       created_at: string;
     }>(
@@ -116,7 +124,7 @@ export async function GET(request: Request) {
               array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
               t.progress,
               c.display_name AS created_by_name,
-              t.blocked, t.blocked_reason,
+              t.blocked, t.blocked_reason, t.visibility,
               t.completed_at::text, t.created_at::text
        FROM task t
        LEFT JOIN project p ON p.id = t.project_id
@@ -152,7 +160,9 @@ export async function GET(request: Request) {
        LEFT JOIN actor a ON a.id = t.assignee_id
        LEFT JOIN actor c ON c.id = t.created_by
        WHERE t.is_active = true AND t.status = 'proposed'
-       ORDER BY t.created_at ASC`
+         AND ${visibleTaskSql("$1")}
+       ORDER BY t.created_at ASC`,
+      [session.id]
     );
 
     // 룩업 데이터(담당·프로젝트·목표)는 GET /api/meta/selectors로 분리됨 (Phase 8 D-3).
@@ -177,6 +187,7 @@ export async function GET(request: Request) {
       progress: r.progress ?? 0,
       blocked: r.blocked ?? false,
       blockedReason: r.blocked_reason,
+      visibility: r.visibility,
       createdByName: r.created_by_name,
       completedAt: r.completed_at,
       createdAt: r.created_at,
@@ -240,29 +251,59 @@ export async function POST(request: Request) {
     if (!areaId) return NextResponse.json({ error: "업무 영역을 선택하세요." }, { status: 400 });
     const workType = (WORK_TYPES as readonly string[]).includes(payload.workType) ? payload.workType : "team";
 
+    // 공개 범위 (§B1) — **기본값은 팀 공개.** 개인은 명시적으로 골라야 한다.
+    // 실수로 개인이 되면 팀이 못 보고, 실수로 팀이 되면 남이 본다.
+    // 후자가 되돌릴 수 없는 쪽이지만, 기본을 개인으로 두면 팀 업무가 조용히 사라진다.
+    // 지시서가 팀 공개를 기본으로 정했고 그게 맞다 — 대신 화면에서 선택을 분명히 보인다.
+    const visibility = isVisibility(payload.visibility) ? payload.visibility : "team";
+    const projectId = payload.projectId ? Number(payload.projectId) : null;
+
+    // 개인 업무는 프로젝트에 속할 수 없다 (§A2). DB CHECK 가 최종 방어선이지만
+    // 여기서 먼저 잡아 **사유를 사람 말로** 돌려준다 — 500 이 아니라 400 이어야 한다.
+    if (visibility === "private" && projectId !== null) {
+      return NextResponse.json(
+        { error: "개인 업무는 프로젝트에 넣을 수 없습니다. 프로젝트는 팀 단위입니다." },
+        { status: 400 }
+      );
+    }
+    // 개인 업무는 남에게 배정할 수 없다 — 받는 사람이 볼 수 없는 업무가 된다.
+    const assigneeId = payload.assigneeId ? Number(payload.assigneeId) : session.id;
+    if (visibility === "private" && assigneeId !== session.id) {
+      return NextResponse.json(
+        { error: "개인 업무는 다른 사람에게 배정할 수 없습니다." },
+        { status: 400 }
+      );
+    }
+
     const task = await queryOne<{ id: number }>(
-      `INSERT INTO task (project_id, area_id, work_type, title, description, status, assignee_id, start_date, due_date, priority, origin, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'human',$11) RETURNING id`,
+      `INSERT INTO task (project_id, area_id, work_type, title, description, status, assignee_id, start_date, due_date, priority, origin, created_by, visibility)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'human',$11,$12) RETURNING id`,
       [
-        payload.projectId ? Number(payload.projectId) : null,
+        projectId,
         areaId,
         workType,
         title,
         String(payload.description ?? "").slice(0, 4000),
         status,
-        payload.assigneeId ? Number(payload.assigneeId) : session.id,
+        assigneeId,
         startDate,
         dueDate,
         priority,
         session.id,
+        visibility,
       ]
     );
     // 프로젝트만 골라도 그 프로젝트의 목표를 자동으로 따라간다 (§4 — goal_source 기본값 inherited).
     for (const gid of await applyInheritance(task!.id)) await recomputeGoalChain(gid);
 
+    // 개인 업무는 **제목을 로그에 남기지 않는다** (§A3 ③).
+    // task_id 로 걸러내긴 하지만, 문구 자체에 제목이 없어야 예전 로그·다른 경로에서도 안 샌다.
     await logActivity({
       userId: session.id,
-      message: `${session.name}이(가) 업무 생성 — "${title}"`,
+      taskId: task!.id,
+      message: visibility === "private"
+        ? `${session.name}이(가) 개인 업무 생성`
+        : `${session.name}이(가) 업무 생성 — "${title}"`,
     });
     return NextResponse.json({ id: task!.id });
   } catch (error) {

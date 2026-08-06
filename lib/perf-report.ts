@@ -6,6 +6,7 @@
 //   · 전월 대비 증감은 전월 스냅샷이 실제로 있을 때만 낸다. 추정하지 않는다.
 //   · 항목이 없으면 빈 배열로 두고, 화면이 "이번 달 해당 항목이 없습니다"를 쓴다.
 import { query, queryOne } from "./db";
+import { visibleTaskSql } from "./visibility";
 import { judgeGoalStatus, kstTodayForGoals, type GoalStatus } from "./goals";
 import { ensureTodaySnapshot } from "./goal-snapshot";
 
@@ -106,6 +107,7 @@ export async function buildPerfReport(opts: {
   month: number;
   scope: ReportScope;
   actorId: number | null;      // personal일 때 대상자
+  viewerId: number;            // 보는 사람 — 개인 업무 노출 판단에 쓴다 (MD-P-2026-025 §A3 ⑥)
   teamLabel?: string;
 }): Promise<PerfReport> {
   const { year, month, scope } = opts;
@@ -202,6 +204,15 @@ export async function buildPerfReport(opts: {
     : null;
 
   // ── 업무 ──
+  //
+  // ⑥ 개인 업무는 **본인 보고서에만** 나온다 (§A3).
+  //    · 팀 보고서   → 개인 업무는 애초에 팀 성과가 아니다. 전부 제외.
+  //    · 개인 보고서 → 내가 나를 볼 때만 내 개인 업무가 보인다.
+  //                   남의 보고서에서는 visibleTaskSql 이 알아서 걸러낸다.
+  const visSql =
+    scope === "personal"
+      ? `AND ${visibleTaskSql(String(Number(opts.viewerId)))}`
+      : `AND t.visibility = 'team'`;
   const scopeSql = scope === "personal" ? `AND t.assignee_id = $3` : ``;
   const scopeArgs = scope === "personal" ? [opts.actorId] : [];
 
@@ -209,7 +220,7 @@ export async function buildPerfReport(opts: {
     `${TASK_SELECT}
       WHERE t.is_active = true AND t.status = 'done'
         AND t.completed_at >= $1::timestamptz AND t.completed_at < $2::timestamptz
-        ${scopeSql}
+        ${scopeSql} ${visSql}
       ORDER BY ar.sort_order NULLS LAST, ar.id, t.completed_at`,
     [b.startTs, b.nextTs, ...scopeArgs]
   );
@@ -223,7 +234,7 @@ export async function buildPerfReport(opts: {
         AND t.created_at < $2::timestamptz
         AND (t.completed_at IS NULL OR t.completed_at >= $2::timestamptz)
         AND COALESCE(t.start_date, t.due_date, t.created_at::date) <= $1::date
-        ${scope === "personal" ? `AND t.assignee_id = $3` : ``}
+        ${scope === "personal" ? `AND t.assignee_id = $3` : ``} ${visSql}
       ORDER BY t.due_date NULLS LAST, t.id`,
     [b.endDate, b.nextTs, ...scopeArgs]
   );
@@ -234,7 +245,7 @@ export async function buildPerfReport(opts: {
       WHERE t.is_active = true AND t.status <> 'dropped' AND t.status <> 'proposed'
         AND t.start_date >= $1::date AND t.start_date <= $2::date
         AND (t.completed_at IS NULL OR t.completed_at >= $3::timestamptz)
-        ${scope === "personal" ? `AND t.assignee_id = $4` : ``}
+        ${scope === "personal" ? `AND t.assignee_id = $4` : ``} ${visSql}
       ORDER BY t.start_date, t.id`,
     [b.nextStartDate, b.nextEndDate, b.nextTs, ...scopeArgs]
   );
@@ -294,11 +305,13 @@ interface TaskRaw {
   id: number; title: string; status: string; progress: number;
   due_date: string | null; completed_at: string | null;
   area_name: string | null; project_name: string | null; assignee_name: string | null;
+  visibility: string;   // "개인" 칩 표시용 (§B3)
 }
 
 const TASK_SELECT = `
   SELECT t.id, t.title, t.status, t.progress, t.due_date::text, t.completed_at::text,
-         ar.name AS area_name, p.name AS project_name, a.display_name AS assignee_name
+         ar.name AS area_name, p.name AS project_name, a.display_name AS assignee_name,
+         t.visibility
     FROM task t
     LEFT JOIN area ar ON ar.id = t.area_id
     LEFT JOIN project p ON p.id = t.project_id

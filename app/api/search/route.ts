@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { jsonError } from "@/lib/api";
+import { visibleTaskSql } from "@/lib/visibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export interface SearchHit {
 
 export async function GET(request: Request) {
   try {
-    requireSession();
+    const session = requireSession();
     const q = (new URL(request.url).searchParams.get("q") ?? "").trim();
     const like = `%${q}%`;
     const lim = q ? 6 : 4;
@@ -38,13 +39,16 @@ export async function GET(request: Request) {
       ),
       query<{ id: number; title: string; status: string; project_name: string | null; assignee: string | null }>(
         q
+          // ② 검색(⌘K) — 남의 개인 업무는 제목조차 잡히면 안 된다 (§A3).
           ? `SELECT t.id, t.title, t.status, p.name AS project_name, ac.display_name AS assignee
              FROM task t LEFT JOIN project p ON p.id = t.project_id LEFT JOIN actor ac ON ac.id = t.assignee_id
-             WHERE t.is_active = true AND t.title ILIKE $1 ORDER BY t.status <> 'done' DESC, t.id DESC LIMIT ${lim}`
+             WHERE t.is_active = true AND t.title ILIKE $1 AND ${visibleTaskSql("$2")}
+             ORDER BY t.status <> 'done' DESC, t.id DESC LIMIT ${lim}`
           : `SELECT t.id, t.title, t.status, p.name AS project_name, ac.display_name AS assignee
              FROM task t LEFT JOIN project p ON p.id = t.project_id LEFT JOIN actor ac ON ac.id = t.assignee_id
-             WHERE t.is_active = true AND t.status <> 'done' ORDER BY t.updated_at DESC LIMIT ${lim}`,
-        q ? [like] : []
+             WHERE t.is_active = true AND t.status <> 'done' AND ${visibleTaskSql("$1")}
+             ORDER BY t.updated_at DESC LIMIT ${lim}`,
+        q ? [like, session.id] : [session.id]
       ),
       query<{ id: number; display_name: string; type: string; role: string | null }>(
         q

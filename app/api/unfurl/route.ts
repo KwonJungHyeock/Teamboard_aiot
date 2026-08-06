@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { projectProgressSql } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
+import { visibleTaskSql } from "@/lib/visibility";
 import { queryOne } from "@/lib/db";
 import { jsonError } from "@/lib/api";
 
@@ -57,17 +58,19 @@ function internalRef(u: URL, origin: string): { kind: InternalKind; id: number }
   return null;
 }
 
-async function loadInternal(ref: { kind: InternalKind; id: number }): Promise<{
+async function loadInternal(ref: { kind: InternalKind; id: number }, viewerId: number): Promise<{
   meta: { title: string; domain: string; provider: string; thumbnail: string };
   card: InternalCard;
 } | null> {
   let card: InternalCard | null = null;
   if (ref.kind === "task") {
     const r = await queryOne<{ id: number; title: string; status: string; progress: number; assignee: string | null }>(
+      // ⑩ 링크 임베드 카드 — 남의 개인 업무 링크를 붙여넣어도 카드가 뜨면 안 된다 (§A3).
+      //    카드가 없으면 그냥 평범한 링크로 남는다. 존재를 알리지 않는다.
       `SELECT t.id, t.title, t.status, t.progress, a.display_name AS assignee
        FROM task t LEFT JOIN actor a ON a.id = t.assignee_id
-       WHERE t.id = $1 AND t.is_active = true`,
-      [ref.id]
+       WHERE t.id = $1 AND t.is_active = true AND ${visibleTaskSql("$2")}`,
+      [ref.id, viewerId]
     );
     if (r) {
       const [label, tone] = TASK_STATUS[r.status] ?? [r.status, "--slate"];
@@ -142,7 +145,7 @@ function pick(html: string, res: RegExp[]): string | null {
 
 export async function POST(request: Request) {
   try {
-    requireSession();
+    const session = requireSession();
     const { url } = await request.json();
     let u: URL;
     try {
@@ -159,7 +162,7 @@ export async function POST(request: Request) {
     // 업무·결정·프로젝트 URL은 외부 조회 없이 DB에서 카드를 만든다.
     const ref = internalRef(u, new URL(request.url).origin);
     if (ref) {
-      const internal = await loadInternal(ref);
+      const internal = await loadInternal(ref, session.id);
       if (internal) return NextResponse.json({ meta: internal.meta, internal: internal.card });
       // 대상이 없으면 언퍼하지 않는다 — 호출부는 원본 링크 텍스트를 유지한다.
       return NextResponse.json({ error: "대상을 찾을 수 없습니다." }, { status: 404 });

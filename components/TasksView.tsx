@@ -345,6 +345,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
           overdue: d.overdue && t.status !== "done" && t.status !== "dropped",
           blocked: t.blocked,
           blockedReason: t.blockedReason,
+          visibility: t.visibility,   // §B2 "개인" 칩
         };
       });
   }, [filteredTasks, today, goalTitleOf]);

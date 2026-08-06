@@ -9,6 +9,7 @@
 // 하나라도 어긋나면 호출부는 404 로 답한다. 403 을 쓰지 않는 이유는
 // "그 파일이 존재한다"는 사실 자체를 노출하지 않기 위해서다.
 import { queryOne } from "./db";
+import { visibleTaskSql } from "./visibility";
 import { signalVisibilityClause } from "./signals";
 import type { BlobScope } from "./blob";
 
@@ -32,13 +33,16 @@ export async function canReadBlob(scope: BlobScope, pathname: string, viewerId: 
       // 설명·코멘트는 마크다운 안에 /api/blob?pathname=… 형태로 들어가므로 문자열 포함으로 확인한다.
       // (doc 만 보면 설명·코멘트에 넣은 이미지가 영구히 404 가 된다 — MD-P-2026-014a P1 후속)
       const row = await queryOne<{ ok: number }>(
+        // 개인 업무에 붙은 이미지는 주인만 본다 (MD-P-2026-025 §A3).
+        // pathname 을 알아내도 소용없게 — 접근 판정 자체에 가시성을 넣는다.
         `SELECT 1 AS ok FROM task t
           WHERE t.id = $1 AND t.is_active = true
+            AND ${visibleTaskSql("$3")}
             AND (t.doc ${HAS_PATH}
                  OR position($2 in coalesce(t.description, '')) > 0
                  OR EXISTS (SELECT 1 FROM task_comment tc
                              WHERE tc.task_id = t.id AND position($2 in tc.body) > 0))`,
-        [scope.id, pathname]
+        [scope.id, pathname, viewerId]
       );
       return !!row;
     }
@@ -85,7 +89,8 @@ export async function canWriteBlob(scope: BlobScope, viewerId: number): Promise<
     }
     case "task": {
       const row = await queryOne<{ ok: number }>(
-        `SELECT 1 AS ok FROM task WHERE id = $1 AND is_active = true`, [scope.id]
+        `SELECT 1 AS ok FROM task t WHERE id = $1 AND is_active = true AND ${visibleTaskSql("$2")}`,
+        [scope.id, viewerId]
       );
       return !!row;
     }

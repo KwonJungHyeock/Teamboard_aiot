@@ -38,7 +38,9 @@ export async function GET() {
                 WHEN 'project'  THEN COALESCE(pa.name, '프로젝트')
               END AS meta
        FROM saved_item s
+       -- 저장됨 — 남의 개인 업무는 북마크 줄에서 제목이 뜨면 안 된다 (§A3 ①)
        LEFT JOIN task t      ON s.target_type = 'task'     AND t.id  = s.target_id
+                            AND (t.visibility = 'team' OR t.created_by = $1)
        LEFT JOIN project tp  ON tp.id = t.project_id
        LEFT JOIN area ta     ON ta.id = t.area_id
        LEFT JOIN signal sg   ON s.target_type = 'signal'   AND sg.id = s.target_id

@@ -2,6 +2,7 @@
 // 캔버스(project_canvas)와 같은 블록 모델·같은 낙관적 동시성을 쓴다. 규칙을 두 벌 만들지 않는다.
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
+import { visibleTaskSql } from "@/lib/visibility";
 import { query, queryOne } from "@/lib/db";
 import { jsonError } from "@/lib/api";
 import { blobEnabled, delPrivate, parseScope } from "@/lib/blob";
@@ -72,14 +73,15 @@ function normalize(raw: unknown[], taskId: number): DocBlock[] {
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   try {
-    requireSession();
+    const session = requireSession();
     const taskId = Number(params.id);
     if (!Number.isInteger(taskId)) return NextResponse.json({ error: "잘못된 업무입니다." }, { status: 400 });
     const row = await queryOne<{ doc: DocBlock[]; doc_updated_at: string | null; who: string | null }>(
+      // 문서 본문은 제목보다 민감하다. 안 보이는 업무의 본문은 404 (§A3 ⑨).
       `SELECT t.doc, t.doc_updated_at::text, a.display_name AS who
          FROM task t LEFT JOIN actor a ON a.id = t.doc_updated_by
-        WHERE t.id = $1`,
-      [taskId]
+        WHERE t.id = $1 AND ${visibleTaskSql("$2")}`,
+      [taskId, session.id]
     );
     if (!row) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
     return NextResponse.json({

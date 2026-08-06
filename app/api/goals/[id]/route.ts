@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { goalCountedSql, countedLabel } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
+import { visibleTaskSql } from "@/lib/visibility";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { recomputeGoalChain, judgeGoalStatus, kstTodayForGoals as kstToday, type GoalStatus } from "@/lib/goals";
@@ -47,13 +48,25 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     }
     const canEdit = g.scope === "personal" ? g.owner_actor_id === session.id : session.role === "lead";
 
-    const tasks = await query<{ id: number; title: string; status: string; assignee_name: string | null; due_date: string | null }>(
-      `SELECT t.id, t.title, t.status, a.display_name AS assignee_name, t.due_date::text
-       FROM goal_task gt JOIN task t ON t.id = gt.task_id AND t.is_active = true AND t.status <> 'proposed'
-       LEFT JOIN actor a ON a.id = t.assignee_id
-       WHERE gt.goal_id = $1 ORDER BY t.due_date ASC NULLS LAST, t.id`,
-      [goalId]
-    );
+    // ── §A4 팀장 열람 경계 ──────────────────────────────────────────
+    //
+    //   "팀장은 개인 목표의 진척은 보되 그 아래 업무의 제목·내용은 볼 수 없다.
+    //    숫자는 보이고 내용은 안 보인다 — 이 경계를 코드로 강제할 것."
+    //
+    // countedTasks(분모)는 위에서 그대로 세므로 "업무 7건 기준"은 유지된다.
+    // 목록만 주지 않는다. 빈 배열을 주는 것이지 오류가 아니다.
+    const tasksHidden = g.scope === "personal" && g.owner_actor_id !== session.id;
+    const tasks = tasksHidden
+      ? []
+      : await query<{ id: number; title: string; status: string; assignee_name: string | null; due_date: string | null }>(
+          `SELECT t.id, t.title, t.status, a.display_name AS assignee_name, t.due_date::text
+           FROM goal_task gt JOIN task t ON t.id = gt.task_id AND t.is_active = true AND t.status <> 'proposed'
+           LEFT JOIN actor a ON a.id = t.assignee_id
+           -- 개인 업무는 주인만 (§A3). 자기 개인 목표를 볼 때도 규칙은 같다.
+           WHERE gt.goal_id = $1 AND ${visibleTaskSql("$2")}
+           ORDER BY t.due_date ASC NULLS LAST, t.id`,
+          [goalId, session.id]
+        );
     const { getGoalContribution } = await import("@/lib/goals");
     const contribution = g.scope === "team" ? await getGoalContribution(goalId) : [];
     // 연결된 프로젝트 + 각 진척 (§B1)
@@ -82,6 +95,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         statusManual: g.status_manual !== null,
         scope: g.scope, ownerActorId: g.owner_actor_id, ownerName: g.owner_name,
         areaId: g.area_id, areaName: g.area_name, projectId: g.project_id, projectName: g.project_name,
+        // 화면이 "왜 비어 있지?"를 설명할 수 있게 사실을 함께 준다 (§A4)
+        tasksHidden,
       },
       linkedProjects,
       childCount,

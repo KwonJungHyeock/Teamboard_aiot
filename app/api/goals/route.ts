@@ -7,6 +7,7 @@ import { query, queryOne } from "@/lib/db";
 import { getGoalTree, recomputeGoalChain, kstTodayForGoals } from "@/lib/goals";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
+import { visibleTaskSql } from "@/lib/visibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,6 +64,11 @@ export async function GET(request: Request) {
         WHERE t.parent_task_id IS NULL AND ${countableSql("t")}
           AND t.goal_source <> 'none'   -- "목표 없음"은 미연결이 아니다 (지시 23-2)
           AND NOT EXISTS (SELECT 1 FROM goal_task gt WHERE gt.task_id = t.id)
+          -- ⑧ 일괄 연결 화면 — 남의 개인 업무는 여기에도 오르지 않는다 (§A3).
+          --    이 화면은 팀 월 목표에 붙이는 곳이라 **내 개인 업무도 뺀다**:
+          --    개인 업무는 팀 목표에 붙일 수 없다(§B1). 붙일 수 없는 것을 목록에 두면
+          --    누르는 순간 거부당한다.
+          AND t.visibility = 'team'
         ORDER BY (t.project_id IS NULL), t.project_id, t.due_date NULLS LAST, t.id`
     );
 
@@ -82,10 +88,13 @@ export async function GET(request: Request) {
       status: string;
       assignee_name: string | null;
     }>(
+      // 목표 편집 패널의 "연결 업무" 후보 — 남의 개인 업무는 후보에 없다 (§A3 ⑦).
       `SELECT t.id, t.title, t.status, a.display_name AS assignee_name
        FROM task t LEFT JOIN actor a ON a.id = t.assignee_id
        WHERE t.is_active = true AND t.status NOT IN ('dropped', 'proposed')
-       ORDER BY t.created_at DESC LIMIT 200`
+         AND ${visibleTaskSql("$1")}
+       ORDER BY t.created_at DESC LIMIT 200`,
+      [session.id]
     );
     return NextResponse.json({
       tree, linkableTasks, unlinkedProjects: unlinked,

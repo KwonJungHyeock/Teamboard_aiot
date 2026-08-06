@@ -727,6 +727,52 @@
 .gadd-open { font-size: 11.5px; color: var(--muted); }
 .gadd-open:hover { color: var(--ink); }
 
+/* ── 사이드바 두 묶음 (MD-P-2026-025 §A1) ───────────────────────────
+ *
+ * "내 공간"과 "팀"의 경계를 **화면으로** 보인다. 무언가 적을 때마다
+ * "이걸 올리면 남들이 보나?"를 판단하지 않아도 되게 하는 것이 이번 목표다.
+ *
+ * 그룹 라벨은 10.5px · --muted · **대문자 변형 금지**(한글이라 의미가 없다).
+ * 아래쪽 그룹(.grp)의 대문자 규칙은 건드리지 않는다 — 그건 영문 섹션 헤더다.
+ */
+.navgrp { display: flex; flex-direction: column; }
+.navgrp + .navgrp {
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-hi);
+}
+.navgrp-l {
+  font-size: 10.5px; font-weight: 700; color: var(--muted);
+  text-transform: none; letter-spacing: .02em;
+  padding: 4px 7px 2px;
+}
+/* 자리만 잡아둔 메뉴 (§C 메모 · §D 내 캘린더) — 링크가 아니므로 커서도 손가락이 아니다.
+   나머지 치수는 .side a 와 똑같이 맞춘다. 줄이 어긋나면 "고장난 항목"으로 읽힌다. */
+.side .navsoon {
+  display: flex; align-items: center; gap: 11px; min-height: 44px;
+  padding: 9px 10px; border-left: 3px solid transparent;
+  font-size: 14.5px; font-weight: 600; white-space: nowrap;
+  color: var(--muted); cursor: default; user-select: none;
+}
+.side .navsoon svg {
+  width: 18px; height: 18px; flex: 0 0 18px; fill: none; stroke: currentColor;
+  stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; opacity: .7;
+}
+.side .navsoon em {
+  margin-left: auto; font-style: normal; font-size: 10.5px; font-weight: 600;
+  color: var(--muted); opacity: .8;
+}
+
+/* ── 개인 업무 칩 (MD-P-2026-025 §B2) ───────────────────────────────
+ *
+ * 자물쇠 아이콘이 아니라 **"개인" 텍스트**다. 아이콘은 뜻을 배워야 하지만
+ * 글자는 그냥 읽힌다. 기존 상태 칩(.st) 규격을 그대로 쓰고 색만 중립으로 둔다 —
+ * 개인은 경고가 아니라 사실이므로 눈에 띄게 만들 이유가 없다.
+ * 새 컴포넌트·새 토큰을 만들지 않는다(§E).
+ */
+.st.priv, .hv .st.priv {
+  color: var(--ink2); border-color: var(--line-hi);
+  background: var(--surface-2); margin-left: 6px;
+}
+
 /* ── 에이전트 FAB (MD-P-2026-024 회신 8 지시 17-5) ───────────────────
  *
  * 우측 하단에 떠 있던 원형 버튼 + 배지는 **우리 컴포넌트** (components/AgentFab.tsx) 다.

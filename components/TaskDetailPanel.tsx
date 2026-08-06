@@ -34,6 +34,7 @@ interface TaskDetail {
   parentTaskId: number | null; parentTitle: string | null;
   blockedByTitle: string | null; childCount: number;
   goalSource: "inherited" | "manual" | "none";
+  visibility: "team" | "private";
   effectiveProgress: number; rolledUpFromChildren: boolean;
   goalLink: {
     projectHasNoGoal: boolean; projectId: number | null; projectName: string | null;
@@ -61,6 +62,7 @@ function fmt(iso: string): string {
 
 interface Draft {
   title: string; areaId: number; projectId: number; assigneeId: number;
+  visibility: "team" | "private";
   priority: string; workType: string; startDate: string; dueDate: string; description: string;
 }
 
@@ -146,6 +148,7 @@ export default function TaskDetailPanel() {
         d ?? {
           title: "", areaId: prefill.areaId ?? 0, projectId: prefill.projectId ?? 0,
           assigneeId: prefill.assigneeId ?? 0, priority: "mid",
+          visibility: "team",   // §B1 — 기본값은 팀 공개. 개인은 명시적으로 고른다.
           workType: prefill.workType ?? "team",
           startDate: prefill.startDate ?? "", dueDate: prefill.dueDate ?? "", description: "",
         }
@@ -173,6 +176,7 @@ export default function TaskDetailPanel() {
         projectId: draft.projectId || undefined,
         assigneeId: draft.assigneeId || undefined,
         workType: draft.workType,
+        visibility: draft.visibility,
         priority: draft.priority,
         startDate: draft.startDate || undefined,
         dueDate: draft.dueDate || undefined,
@@ -512,6 +516,21 @@ export default function TaskDetailPanel() {
         </select>
       ),
     },
+    {
+      // §B1 — 공개 범위. 개인으로 바꾸려면 프로젝트가 비어 있어야 한다(서버가 사유를 돌려준다).
+      key: "visibility", label: "공개 범위",
+      value: t.visibility === "private" ? "개인 (나만 봄)" : "팀 공개",
+      editor: (close) => (
+        <select autoFocus value={t.visibility}
+          onChange={(e) => {
+            patchOpt({ visibility: e.target.value }, { visibility: e.target.value as "team" | "private" });
+            close();
+          }}>
+          <option value="team">팀 공개</option>
+          <option value="private">개인 (나만 봄)</option>
+        </select>
+      ),
+    },
   ];
 
   return (
@@ -550,14 +569,30 @@ export default function TaskDetailPanel() {
                   {WORKTYPE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
               </label>
+              {/* §B1 공개 범위 — 기본값은 팀 공개. 개인은 명시적으로 고른다. */}
+              <label>공개 범위
+                <select value={draft.visibility}
+                  onChange={(e) => {
+                    const v = e.target.value as "team" | "private";
+                    // 개인으로 바꾸면 프로젝트를 비운다 — 개인 업무는 프로젝트에 못 들어간다(§A2).
+                    setDraft({ ...draft, visibility: v, projectId: v === "private" ? 0 : draft.projectId });
+                  }}>
+                  <option value="team">팀 공개</option>
+                  <option value="private">개인 (나만 봄)</option>
+                </select>
+              </label>
               <label>프로젝트
-                <select value={draft.projectId} onChange={(e) => setDraft({ ...draft, projectId: Number(e.target.value) })}>
+                <select value={draft.projectId} disabled={draft.visibility === "private"}
+                  title={draft.visibility === "private" ? "개인 업무는 프로젝트에 넣을 수 없습니다" : undefined}
+                  onChange={(e) => setDraft({ ...draft, projectId: Number(e.target.value) })}>
                   <option value={0}>없음</option>
                   {sel?.projects.filter((p) => p.areaId === draft.areaId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </label>
               <label>담당
-                <select value={draft.assigneeId} onChange={(e) => setDraft({ ...draft, assigneeId: Number(e.target.value) })}>
+                <select value={draft.assigneeId} disabled={draft.visibility === "private"}
+                  title={draft.visibility === "private" ? "개인 업무는 본인 담당입니다" : undefined}
+                  onChange={(e) => setDraft({ ...draft, assigneeId: Number(e.target.value) })}>
                   <option value={0}>미지정</option>
                   {sel?.actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>

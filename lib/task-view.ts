@@ -15,6 +15,8 @@ export interface TaskItem {
   areaId: number;
   areaName: string;
   workType: string;
+  /** MD-P-2026-025 §B2 — 개인 업무 칩 표시용 */
+  visibility?: "team" | "private";
   startDate: string | null;
   dueDate: string | null;
   goalIds: number[];

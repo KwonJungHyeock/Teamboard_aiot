@@ -115,6 +115,9 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
   }));
 
   // 공통: Task + 연결 목표 제목
+  // 팀 주간·월간 보고서 — **팀 문서**다. 개인 업무는 여기 들어가지 않는다 (MD-P-2026-025 §A3 ⑥).
+  // 개인 성과는 개인 월간 보고(lib/perf-report.ts)에서 본인에게만 보인다.
+  const TEAM_ONLY = `t.visibility = 'team'`;
   const taskSelect = `
     SELECT t.id, t.title, p.name AS project_name, a.display_name AS assignee_name,
            t.due_date::text, t.completed_at::text, t.drop_reason,
@@ -139,7 +142,7 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
   const completed = (
     await query(
       `${taskSelect}
-       WHERE t.is_active = true AND t.status = 'done'
+       WHERE t.is_active = true AND t.status = 'done' AND ${TEAM_ONLY}
          AND t.completed_at >= $1::timestamptz AND t.completed_at < $2::timestamptz
        GROUP BY t.id, p.name, a.display_name
        ORDER BY t.completed_at`,
@@ -151,7 +154,7 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
   const incomplete = (
     await query(
       `${taskSelect}
-       WHERE t.is_active = true AND t.status NOT IN ('done','dropped','proposed')
+       WHERE t.is_active = true AND t.status NOT IN ('done','dropped','proposed') AND ${TEAM_ONLY}
          AND t.due_date >= ($1::timestamptz)::date AND t.due_date < ($2::timestamptz)::date
        GROUP BY t.id, p.name, a.display_name
        ORDER BY t.due_date`,
@@ -163,7 +166,7 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
   const dropped = (
     await query(
       `${taskSelect}
-       WHERE t.is_active = true AND t.status = 'dropped'
+       WHERE t.is_active = true AND t.status = 'dropped' AND ${TEAM_ONLY}
          AND t.dropped_at >= $1::timestamptz AND t.dropped_at < $2::timestamptz
        GROUP BY t.id, p.name, a.display_name
        ORDER BY t.dropped_at`,
@@ -235,7 +238,7 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
   const nextTasks = (
     await query(
       `${taskSelect}
-       WHERE t.is_active = true AND t.status NOT IN ('done','dropped','proposed')
+       WHERE t.is_active = true AND t.status NOT IN ('done','dropped','proposed') AND ${TEAM_ONLY}
          AND t.due_date >= ($1::timestamptz)::date AND t.due_date < ($2::timestamptz)::date
        GROUP BY t.id, p.name, a.display_name
        ORDER BY t.due_date`,
@@ -249,17 +252,17 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
     Number((await query<{ n: string }>(sql, p))[0]?.n ?? 0);
   const [cCompleted, cIncomplete, cDropped, cDecisions, cPending, cRisks, cNextTasks] = await Promise.all([
     countOne(
-      `SELECT count(*) AS n FROM task WHERE is_active AND status='done'
+      `SELECT count(*) AS n FROM task t WHERE is_active AND status='done' AND ${TEAM_ONLY}
          AND completed_at >= $1::timestamptz AND completed_at < $2::timestamptz`,
       [start, nextStart]
     ),
     countOne(
-      `SELECT count(*) AS n FROM task WHERE is_active AND status NOT IN ('done','dropped','proposed')
+      `SELECT count(*) AS n FROM task t WHERE is_active AND status NOT IN ('done','dropped','proposed') AND ${TEAM_ONLY}
          AND due_date >= ($1::timestamptz)::date AND due_date < ($2::timestamptz)::date`,
       [start, nextStart]
     ),
     countOne(
-      `SELECT count(*) AS n FROM task WHERE is_active AND status='dropped'
+      `SELECT count(*) AS n FROM task t WHERE is_active AND status='dropped' AND ${TEAM_ONLY}
          AND dropped_at >= $1::timestamptz AND dropped_at < $2::timestamptz`,
       [start, nextStart]
     ),
@@ -281,7 +284,7 @@ export async function buildMonthlyReport(year: number, month: number): Promise<M
       [start, nextStart]
     ),
     countOne(
-      `SELECT count(*) AS n FROM task WHERE is_active AND status NOT IN ('done','dropped','proposed')
+      `SELECT count(*) AS n FROM task t WHERE is_active AND status NOT IN ('done','dropped','proposed') AND ${TEAM_ONLY}
          AND due_date >= ($1::timestamptz)::date AND due_date < ($2::timestamptz)::date`,
       [nextMonthStart, afterNext]
     ),

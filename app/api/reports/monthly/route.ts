@@ -38,7 +38,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "다른 구성원의 개인 리포트는 열람할 수 없습니다." }, { status: 403 });
     }
 
-    const report = await buildPerfReport({ year, month, scope, actorId });
+    const report = await buildPerfReport({ year, month, scope, actorId, viewerId: session.id });
 
     // 팀장에게만 대상자 선택지를 함께 내려준다
     const members = session.role === "lead"

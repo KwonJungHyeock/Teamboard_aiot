@@ -4,6 +4,7 @@
 //   ② 시스템에 활성 lead가 1명뿐이면 그 lead의 강등·비활성화 불가
 import { NextResponse } from "next/server";
 import { requireLiveLead, requireSession } from "@/lib/auth";
+import { visibleTaskSql } from "@/lib/visibility";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
@@ -16,7 +17,7 @@ const ROLES = ["lead", "member", "viewer"] as const;
 /** 멤버 프로필 (MD-P-2026-006 §B) — 전역 우측 패널이 읽는 공개 요약. 로그인만 요구한다. */
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {
-    requireSession();
+    const session = requireSession();
     const id = Number(params.id);
     if (!Number.isInteger(id) || id <= 0) {
       return NextResponse.json({ error: "잘못된 구성원입니다." }, { status: 400 });
@@ -39,15 +40,18 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       query<{ id: number; title: string; status: string; progress: number; due_date: string | null; project_name: string | null }>(
         `SELECT t.id, t.title, t.status, t.progress, t.due_date::text, p.name AS project_name
          FROM task t LEFT JOIN project p ON p.id = t.project_id
+         -- 구성원 상세 — 남의 개인 업무는 그 사람 프로필에서도 안 보인다 (§A3 ①)
          WHERE t.assignee_id = $1 AND t.is_active = true AND t.status <> 'done'
+           AND ${visibleTaskSql("$2")}
          ORDER BY t.due_date NULLS LAST, t.id LIMIT 8`,
-        [id]
+        [id, session.id]
       ),
       queryOne<{ open_n: string; done_week: string }>(
         `SELECT count(*) FILTER (WHERE status <> 'done') AS open_n,
                 count(*) FILTER (WHERE status = 'done' AND updated_at >= now() - interval '7 days') AS done_week
-         FROM task WHERE assignee_id = $1 AND is_active = true`,
-        [id]
+         FROM task t WHERE assignee_id = $1 AND is_active = true
+           AND ${visibleTaskSql("$2")}`,
+        [id, session.id]
       ),
       query<{ id: number; title: string; decided_at: string }>(
         `SELECT id, title, decided_at::text FROM decision

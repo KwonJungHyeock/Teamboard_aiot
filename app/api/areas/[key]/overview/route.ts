@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { countableSql, doneSql, projectProgressSql, projectCountedSql } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
+import { visibleTaskSql } from "@/lib/visibility";
 import { query, queryOne } from "@/lib/db";
 import { jsonError } from "@/lib/api";
 import { kstToday } from "@/lib/home";
@@ -20,7 +21,7 @@ function dday(due: string, today: string): string {
 
 export async function GET(_req: Request, { params }: { params: { key: string } }) {
   try {
-    requireSession();
+    const session = requireSession();
     const areaId = Number(params.key);
     if (!Number.isInteger(areaId) || areaId <= 0) {
       return NextResponse.json({ error: "영역을 찾을 수 없습니다." }, { status: 404 });
@@ -48,10 +49,12 @@ export async function GET(_req: Request, { params }: { params: { key: string } }
        FROM task t
        LEFT JOIN project p ON p.id = t.project_id
        LEFT JOIN actor a ON a.id = t.assignee_id
+       -- 영역 작업 공간 — 남의 개인 업무는 영역 목록에 오르지 않는다 (§A3 ①)
        WHERE t.area_id = $1 AND t.is_active = true AND t.status <> 'proposed'
+         AND ${visibleTaskSql("$2")}
        ORDER BY t.due_date ASC NULLS LAST, t.id DESC
        LIMIT 200`,
-      [areaId]
+      [areaId, session.id]
     );
     const tasks = taskRows.map((r) => ({
       id: r.id,

@@ -1,6 +1,7 @@
 // Notion 연동 관리·문서 생성 (MD-P-2026-012 §B·D) — 토큰은 이 서버 라우트 안에서만 쓰인다.
 import { NextResponse } from "next/server";
 import { requireSession, requireLead } from "@/lib/auth";
+import { visibleTaskSql } from "@/lib/visibility";
 import { queryOne } from "@/lib/db";
 import { jsonError } from "@/lib/api";
 import { logActivity } from "@/lib/activity";
@@ -16,7 +17,7 @@ export const dynamic = "force-dynamic";
 /** 연결 상태 카드용 (§B) — 토큰 자체는 절대 내려보내지 않는다. */
 export async function GET() {
   try {
-    requireSession();
+    const session = requireSession();
     return NextResponse.json({
       configured: notionConfigured(),
       parentPageId: await getParentPageId(),
@@ -83,9 +84,11 @@ export async function POST(request: Request) {
     // 제목·백링크 라벨 만들기
     const row = entityType === "task"
       ? await queryOne<{ title: string; project_name: string | null }>(
+          // 남의 개인 업무 제목은 Notion 리소스 라벨로도 새지 않는다 (§A3)
           `SELECT t.title, p.name AS project_name FROM task t
              LEFT JOIN project p ON p.id = t.project_id
-            WHERE t.id = $1 AND t.is_active = true`, [entityId])
+            WHERE t.id = $1 AND t.is_active = true AND ${visibleTaskSql("$2")}`,
+          [entityId, session.id])
       : await queryOne<{ title: string; project_name: string | null }>(
           `SELECT name AS title, NULL::text AS project_name FROM project
             WHERE id = $1 AND is_active = true`, [entityId]);

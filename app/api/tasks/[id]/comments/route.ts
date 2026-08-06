@@ -1,6 +1,7 @@
 // 업무 코멘트 (파트 1 상세 패널) — task_comment 신규 테이블. signal comment(signal_id 전용)와 분리.
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
+import { visibleTaskSql } from "@/lib/visibility";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
@@ -10,8 +11,15 @@ export const dynamic = "force-dynamic";
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {
-    requireSession();
+    const session = requireSession();
     const id = Number(params.id);
+    // 코멘트 본문은 제목보다 민감하다. 안 보이는 업무의 코멘트는 404 (§A3 ⑨).
+    // 목록을 빈 배열로 돌려주면 "그 id 는 있는데 댓글이 없다"를 알려주는 셈이다.
+    const visible = await queryOne<{ id: number }>(
+      `SELECT id FROM task t WHERE id = $1 AND is_active = true AND ${visibleTaskSql("$2")}`,
+      [id, session.id]
+    );
+    if (!visible) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
     const comments = await query<{ id: number; body: string; created_at: string; author_name: string }>(
       `SELECT c.id, c.body, c.created_at::text, a.display_name AS author_name
        FROM task_comment c JOIN actor a ON a.id = c.author_id
@@ -32,7 +40,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const text = String(payload.body ?? "").trim().slice(0, 2000);
     if (!text) return NextResponse.json({ error: "코멘트를 입력하세요." }, { status: 400 });
 
-    const task = await queryOne<{ id: number }>("SELECT id FROM task WHERE id = $1 AND is_active = true", [id]);
+    const task = await queryOne<{ id: number }>(
+      // 안 보이는 업무에는 댓글도 달 수 없다 (§A3 ⑨).
+      `SELECT id FROM task t WHERE id = $1 AND is_active = true AND ${visibleTaskSql("$2")}`,
+      [id, session.id]
+    );
     if (!task) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
 
     const row = await queryOne<{ id: number; created_at: string }>(

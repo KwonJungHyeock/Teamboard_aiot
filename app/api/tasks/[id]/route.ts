@@ -10,6 +10,7 @@ import { recomputeGoalChain, recomputeGoalsForTask } from "@/lib/goals";
 import { jsonError } from "@/lib/api";
 import { decisionsForTask } from "@/lib/decisions";
 import { notify } from "@/lib/notify";
+import { visibleTaskSql, isVisibility } from "@/lib/visibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,11 +28,14 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const task = await queryOne<{
       id: number; title: string; status: string; assignee_id: number | null;
       start_date: string | null; due_date: string | null; progress: number; blocked: boolean;
-      is_active: boolean;
+      is_active: boolean; project_id: number | null; created_by: number; visibility: string;
     }>(
-      "SELECT id, title, status, assignee_id, start_date::text, due_date::text, progress, blocked, is_active FROM task WHERE id = $1",
-      [taskId]
+      `SELECT id, title, status, assignee_id, start_date::text, due_date::text, progress, blocked, is_active,
+              project_id, created_by, visibility
+         FROM task t WHERE id = $1 AND ${visibleTaskSql("$2")}`,
+      [taskId, session.id]
     );
+    // 안 보이는 업무는 고칠 수도 없다. 여기서도 404 — 403 은 존재를 알린다 (§A3 ⑨).
     if (!task) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
 
     // 복구 — 삭제의 역방향. 진척 재계산도 같이 되돌아가야 한다 (MD-P-2026-024 지시 2).
@@ -128,6 +132,48 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (payload.dueDate !== undefined) set("due_date", isDate(payload.dueDate) ? payload.dueDate : null);
     if (payload.areaId !== undefined && payload.areaId) set("area_id", Number(payload.areaId));
     if (["team", "personal", "routine"].includes(payload.workType)) set("work_type", payload.workType);
+
+    // ── 공개 범위 (§A2·§B1) ────────────────────────────────────────
+    // 같은 요청에서 projectId·assigneeId 가 함께 올 수 있으므로 **병합된 값**으로 판단한다.
+    // 하나씩 보면 "프로젝트를 떼면서 개인으로 바꾸는" 정상 요청이 거부된다.
+    const nextVisibility = isVisibility(payload.visibility) ? payload.visibility : task.visibility;
+    const nextProjectId =
+      payload.projectId !== undefined
+        ? (payload.projectId ? Number(payload.projectId) : null)
+        : task.project_id;
+    const nextAssignee =
+      payload.assigneeId !== undefined
+        ? (payload.assigneeId ? Number(payload.assigneeId) : null)
+        : task.assignee_id;
+
+    if (nextVisibility === "private") {
+      // 주인만 개인으로 만들 수 있다. 남의 팀 업무를 숨겨버리면 안 된다.
+      if (task.created_by !== session.id) {
+        return NextResponse.json(
+          { error: "본인이 만든 업무만 개인으로 바꿀 수 있습니다." },
+          { status: 403 }
+        );
+      }
+      if (nextProjectId !== null) {
+        return NextResponse.json(
+          { error: "개인 업무는 프로젝트에 넣을 수 없습니다. 프로젝트를 먼저 비우세요." },
+          { status: 400 }
+        );
+      }
+      if (nextAssignee !== null && nextAssignee !== task.created_by) {
+        return NextResponse.json(
+          { error: "개인 업무는 다른 사람에게 배정할 수 없습니다." },
+          { status: 400 }
+        );
+      }
+    }
+    if (isVisibility(payload.visibility) && payload.visibility !== task.visibility) {
+      set("visibility", payload.visibility);
+      extraLogs.push(
+        `${session.name}이(가) 공개 범위 변경 (${task.visibility === "private" ? "개인" : "팀 공개"} → ` +
+        `${payload.visibility === "private" ? "개인" : "팀 공개"}) — "${task.title}"`
+      );
+    }
 
     let statusLog = "";
     if (payload.status !== undefined) {
@@ -298,13 +344,18 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       const goalIds = payload.goalIds.map(Number).filter((n: number) => Number.isInteger(n));
       await query("DELETE FROM goal_task WHERE task_id = $1", [taskId]);
       for (const goalId of goalIds) {
+        // §B1·§B3 — 개인 업무는 **개인 목표에만** 붙는다. 팀 목표에 붙으면
+        // 팀 진척 분모에 남의 개인 업무가 섞여 숫자로 존재가 새어 나간다.
+        // 반대로 팀 업무를 남의 개인 목표에 붙이는 것도 막는다.
         await query(
           `INSERT INTO goal_task (goal_id, task_id)
            SELECT $1, $2 WHERE EXISTS (
-             SELECT 1 FROM goal WHERE id = $1 AND is_active = true AND period_type = 'month'
+             SELECT 1 FROM goal g WHERE g.id = $1 AND g.is_active = true AND g.period_type = 'month'
+               AND ($3 = 'team' OR (g.scope = 'personal' AND g.owner_actor_id = $4))
+               AND (g.scope <> 'personal' OR g.owner_actor_id = $4)
            )
            ON CONFLICT DO NOTHING`,
-          [goalId, taskId]
+          [goalId, taskId, nextVisibility, session.id]
         );
       }
       const changed = goalIds.length !== priorSet.size || goalIds.some((g: number) => !priorSet.has(g));
@@ -368,7 +419,7 @@ export async function PATCH(request: Request, ctx: { params: { id: string } }) {
 // GET — 상세 패널용 단일 업무 전체 정보 (+ 영역·프로젝트·담당 이름, 연결 목표, 활동 로그)
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {
-    requireSession();
+    const session = requireSession();
     const id = Number(params.id);
     const t = await queryOne<{
       id: number; title: string; description: string; status: string; priority: string;
@@ -378,7 +429,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       start_date: string | null; due_date: string | null; drop_reason: string | null;
       progress: number; goal_ids: number[] | null;
       blocked: boolean; blocked_reason: string | null; blocked_since: string | null; blocked_by: number | null;
-      resolution: string | null; parent_task_id: number | null; goal_source: string;
+      resolution: string | null; parent_task_id: number | null; goal_source: string; visibility: string;
       parent_title: string | null; blocked_by_title: string | null; child_total: string;
       child_counted: string; child_done: string;
     }>(
@@ -389,7 +440,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
               t.start_date::text, t.due_date::text, t.drop_reason, t.progress,
               array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
               t.blocked, t.blocked_reason, t.blocked_since::text, t.blocked_by,
-              t.resolution, t.parent_task_id, t.goal_source,
+              t.resolution, t.parent_task_id, t.goal_source, t.visibility,
               pt.title AS parent_title, bt.title AS blocked_by_title,
               (SELECT count(*) FROM task c WHERE c.parent_task_id = t.id AND c.is_active = true)::text AS child_total,
               (SELECT count(*) FROM task c WHERE c.parent_task_id = t.id AND ${countableSql("c")})::text AS child_counted,
@@ -404,10 +455,13 @@ export async function GET(_request: Request, { params }: { params: { id: string 
        LEFT JOIN task pt ON pt.id = t.parent_task_id
        LEFT JOIN task bt ON bt.id = t.blocked_by
        WHERE t.id = $1 AND t.is_active = true
+         AND ${visibleTaskSql("$2")}
        GROUP BY t.id, ar.name, ar.color_key, p.name, p.color_key, a.display_name, c.display_name,
                 pt.title, bt.title`,
-      [id]
+      [id, session.id]
     );
+    // ⑨ 남의 개인 업무는 **404**. 403 이면 "그 id 는 존재한다"를 알려주는 셈이다 (§A3).
+    //    조건을 쿼리에 넣었으므로 여기서 따로 분기하지 않는다 — 안 보이면 없는 것이다.
     if (!t) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
 
     const activity = await query<{ id: number; message: string; level: string; created_at: string; user_name: string | null }>(
@@ -443,6 +497,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         }),
         rolledUpFromChildren: Number(t.child_counted) > 0,
         goalSource: t.goal_source,
+        visibility: t.visibility,
         goalLink: await goalLinkInfo(id),
       },
       activity,

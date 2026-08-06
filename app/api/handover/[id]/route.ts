@@ -2,6 +2,7 @@
 // 편집·삭제: 작성자 본인만. 조회: 본인 또는 (shared & (lead | 해당 영역 담당)).
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
+import { visibleTaskSql } from "@/lib/visibility";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
@@ -50,12 +51,13 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     }>(
       `SELECT t.id, t.title, t.status, t.due_date::text, p.name AS project_name, ar.name AS area_name
        FROM handover_task ht
-       JOIN task t ON t.id = ht.task_id
+       -- 인수인계 항목 — 남의 개인 업무는 넘길 대상이 아니다 (§A3)
+       JOIN task t ON t.id = ht.task_id AND (t.visibility = 'team' OR t.created_by = $2)
        LEFT JOIN project p ON p.id = t.project_id
        JOIN area ar ON ar.id = t.area_id
        WHERE ht.handover_id = $1
        ORDER BY t.due_date ASC NULLS LAST, t.id`,
-      [id]
+      [id, session.id]
     );
     const taskIds = tasks.map((t) => t.id);
     const arts = taskIds.length

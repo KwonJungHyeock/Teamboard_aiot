@@ -22,6 +22,8 @@ export interface TaskTableRow {
   progress?: number; // full 전용 — 진행률 0~100
   blocked?: boolean;
   blockedReason?: string | null;
+  /** MD-P-2026-025 §B2 — 개인 업무 표시. 없으면 팀 공개로 본다. */
+  visibility?: "team" | "private";
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -163,6 +165,10 @@ export default function TaskTable({
                     </span>
                   )}
                   {t.title}
+                  {/* §B2 — 자물쇠 아이콘이 아니라 "개인" 텍스트 칩.
+                      아이콘만으로는 무슨 뜻인지 배워야 한다.
+                      기존 상태 칩(.st) 규격을 그대로 쓴다 — 새 컴포넌트를 만들지 않는다. */}
+                  {t.visibility === "private" && <span className="st priv">개인</span>}
                 </td>
                 {full && (
                   <td>

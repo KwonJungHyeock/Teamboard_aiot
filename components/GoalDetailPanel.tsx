@@ -25,6 +25,8 @@ interface GoalDetail {
     status: GoalStatus | null; statusManual: boolean;
     scope: "team" | "personal";
     ownerName: string | null; areaId: number | null; areaName: string | null; projectName: string | null;
+    /** §A4 — 남의 개인 목표라 업무 목록을 주지 않았다. 진척·건수는 그대로 온다. */
+    tasksHidden?: boolean;
   };
   tasks: { id: number; title: string; status: string; assigneeName: string | null; dueDate: string | null }[];
   linkedProjects: LinkedProject[];
@@ -251,8 +253,18 @@ export default function GoalDetailPanel() {
             {/* 연결 업무 (월 목표) */}
             {d.goal.periodType === "month" && (
               <div className="tdp-sec">
-                <div className="tdp-sec-h">연결 업무 <em>({d.tasks.length})</em></div>
-                {d.tasks.length === 0 && <p className="tdp-muted">연결된 업무가 없습니다. 업무 상세의 "연결 목표"에서 이 목표를 선택하세요.</p>}
+                <div className="tdp-sec-h">
+                  연결 업무 <em>({d.goal.tasksHidden ? d.goal.countedTasks : d.tasks.length})</em>
+                </div>
+                {/* §A4 — 팀장은 개인 목표의 진척(숫자)까지만 본다.
+                    비어 있는 게 아니라 **안 보이는 것**이라고 말해야 오해가 없다. */}
+                {d.goal.tasksHidden ? (
+                  <p className="tdp-muted">
+                    개인 목표입니다. 진척과 집계 건수는 보이지만 업무 목록은 열리지 않습니다.
+                  </p>
+                ) : d.tasks.length === 0 ? (
+                  <p className="tdp-muted">연결된 업무가 없습니다. 업무 상세의 "연결 목표"에서 이 목표를 선택하세요.</p>
+                ) : null}
                 {d.tasks.map((t) => (
                   <div className="gdp-task" key={t.id}>
                     <span className={`gdp-st st-${t.status}`}>{STATUS_LABEL[t.status] ?? t.status}</span>

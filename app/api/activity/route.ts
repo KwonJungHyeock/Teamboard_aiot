@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const session = requireSession();
     const url = new URL(request.url);
     const all = url.searchParams.get("scope") === "all" && session.role === "lead";
-    const entries = await recentActivity(30, all ? undefined : session.id);
+    const entries = await recentActivity(30, all ? undefined : session.id, session.id);
     return NextResponse.json({ entries });
   } catch (error) {
     return jsonError(error);

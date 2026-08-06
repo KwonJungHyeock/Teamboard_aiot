@@ -2,6 +2,7 @@
 // 공유 시 activity(kind=task_share) 저장 + 노트의 @멘션 대상에게 알림.
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
+import { visibleTaskSql } from "@/lib/visibility";
 import { query, queryOne } from "@/lib/db";
 import { jsonError } from "@/lib/api";
 import { notify, notifyMentions } from "@/lib/notify";
@@ -32,8 +33,12 @@ export async function GET() {
        FROM activity ac
        JOIN actor a ON a.id = ac.actor_id
        LEFT JOIN task t ON t.id = ac.ref_id AND ac.ref_type = 'task'
+       -- ③ 활동 피드 — 남의 개인 업무를 가리키는 활동은 **줄 자체를 뺀다** (§A3).
+       --    JOIN 만 막으면 제목만 비고 "무언가 있었다"는 사실이 남는다.
+       WHERE ac.ref_type <> 'task' OR t.id IS NULL OR ${visibleTaskSql("$1")}
        ORDER BY ac.created_at DESC
-       LIMIT 40`
+       LIMIT 40`,
+      [session.id]
     );
     const ids = rows.map((r) => r.id);
     const reactions = await reactionsFor("activity", ids, session.id);
@@ -67,8 +72,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "업무를 지정하세요." }, { status: 400 });
     }
     const task = await queryOne<{ id: number; title: string; assignee_id: number | null }>(
-      `SELECT id, title, assignee_id FROM task WHERE id = $1 AND is_active = true`,
-      [taskId]
+      // 남의 개인 업무는 공유(활동 게시)도 못 한다 — 안 보이는 것은 없는 것이다.
+      `SELECT id, title, assignee_id FROM task t
+        WHERE id = $1 AND is_active = true AND ${visibleTaskSql("$2")}`,
+      [taskId, session.id]
     );
     if (!task) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
     const note = String(payload.note ?? "").trim().slice(0, 500);

@@ -3,6 +3,7 @@
 // 목표 화면 (Phase 4 → 파트 C) — 탭(팀 목표/내 목표) + 연도 필터 + 트리 + 보관함.
 // 목표 클릭 시 우측 상세 슬라이드 패널(GoalDetailPanel)이 열린다.
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
 import PageShell from "./PageShell";
@@ -30,7 +31,10 @@ const PERIOD_LABEL: Record<string, string> = { year: "연간", quarter: "분기"
 
 export default function GoalsView({ user, initialYear }: { user: SessionUser; initialYear: number }) {
   const [year, setYear] = useState<number | null>(initialYear); // null = 전체
-  const [tab, setTab] = useState<Tab>("team");
+  // 사이드바 "내 목표"가 /goals?tab=personal 로 들어온다 (MD-P-2026-025 §A1).
+  // 탭은 계속 로컬 상태다 — URL 은 첫 진입에만 쓴다(탭 전환마다 히스토리를 남기지 않는다).
+  const initialTab: Tab = useSearchParams().get("tab") === "personal" ? "personal" : "team";
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [tree, setTree] = useState<GoalNode[]>([]);
   const [linkableTasks, setLinkableTasks] = useState<LinkableTask[]>([]);
   const [unlinked, setUnlinked] = useState<UnlinkedProject[]>([]);

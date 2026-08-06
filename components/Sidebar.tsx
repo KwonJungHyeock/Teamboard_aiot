@@ -4,7 +4,7 @@
 // 그룹: 내 작업 / 목표·보고 / 프로젝트(동적) / 협업 / 관리(lead)
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { AreaWithProjects, SessionUser } from "@/lib/types";
 
 const RAIL_KEY = "tb.rail";
@@ -142,6 +142,7 @@ function NavLink({
   current,
   count,
   dot,
+  soon,
 }: {
   href: string;
   icon: React.ReactNode;
@@ -149,7 +150,18 @@ function NavLink({
   current: boolean;
   count?: number; // 지정 시 우측 카운트 배지 (0이면 회색, >0이면 강조)
   dot?: boolean;  // 숫자 없는 작은 점 — 시스템 알림용 (MD-P-2026-007 §B)
+  soon?: boolean; // 자리만 잡아둔 메뉴 (MD-P-2026-025 §C·§D) — 누를 수 없다
 }) {
+  // 자리만 잡아둔 메뉴는 링크가 아니다. 누르면 아무 데도 안 가는 링크가 더 나쁘다.
+  if (soon) {
+    return (
+      <span className="navsoon" aria-disabled="true" title="다음 단계에서 열립니다">
+        <Icon d={icon} />
+        <span>{label}</span>
+        <em>준비 중</em>
+      </span>
+    );
+  }
   return (
     <Link href={href} aria-current={current ? "page" : undefined}>
       <Icon d={icon} />
@@ -178,6 +190,8 @@ export default function Sidebar({
   notionConnected?: boolean;
 }) {
   const pathname = usePathname();
+  // "내 목표"와 "목표"는 같은 화면의 다른 탭이다 — 어느 쪽이 켜졌는지 쿼리로 가른다.
+  const tab = useSearchParams().get("tab");
   const [rail, setRail] = useState(false);
   const [notif, setNotif] = useState(0);         // 사람 안읽음 (배지 숫자)
   const [sysNotif, setSysNotif] = useState(0);  // 시스템 안읽음 (점만)
@@ -265,21 +279,33 @@ export default function Sidebar({
         <kbd>⌘K</kbd>
       </button>
 
-      {/* '오늘' 그룹 평탄화 — 헤더·토글 없이 최상단 평탄 나열 (자주 쓰는 진입점) */}
-      <nav className="navtop" aria-label="오늘">
-        <NavLink href="/" icon={IC.home} label="홈" current={cur("/")} />
+      {/* ── 내 공간 (MD-P-2026-025 §A1) ─────────────────────────────
+          무언가 적을 때마다 "이걸 올리면 남들이 보나?"를 판단하지 않아도 되도록
+          경계를 **메뉴로** 보인다. 여기 있는 것은 기본적으로 내 것이다. */}
+      <nav className="navgrp" aria-label="내 공간">
+        <div className="navgrp-l">내 공간</div>
         <NavLink href="/tasks" icon={IC.tasks} label="내 업무" current={cur("/tasks")} />
+        <NavLink href="/goals?tab=personal" icon={IC.goal} label="내 목표"
+          current={pathname === "/goals" && tab === "personal"} />
+        {/* §C·§D — 자리만 잡는다. 이번 단계에서는 열지 않는다. */}
+        <NavLink href="/notes" icon={IC.report} label="메모" current={false} soon />
+        <NavLink href="/calendar?mine=1" icon={IC.calendar} label="내 캘린더" current={false} soon />
+        <NavLink href="/saved" icon={IC.bookmark} label="저장됨" current={cur("/saved")} />
+      </nav>
+
+      {/* ── 팀 ──────────────────────────────────────────────────────
+          홈은 여기다. 홈은 팀 전체 현황판이지 개인 화면이 아니다(§A1). */}
+      <nav className="navgrp" aria-label="팀">
+        <div className="navgrp-l">팀</div>
+        <NavLink href="/" icon={IC.home} label="홈" current={cur("/")} />
+        <NavLink href="/goals" icon={IC.goal} label="목표"
+          current={pathname === "/goals" && tab !== "personal"} />
         <NavLink href="/calendar" icon={IC.calendar} label="캘린더" current={cur("/calendar")} />
         {/* 승인 대기 — 사람/에이전트 공간의 유일한 통로. 카운트 배지 */}
         <NavLink href="/inbox" icon={IC.inbox} label="승인 대기" current={cur("/inbox")} count={inboxCount} />
         {/* 활동 — @멘션·답글·공유 인박스 (MD-P-2026-006 §G, 구 "알림"). 미확인 배지 */}
         <NavLink href="/activity" icon={IC.bell} label="활동" current={cur("/activity")}
           count={notif > 0 ? notif : undefined} dot={notif === 0 && sysNotif > 0} />
-        {/* 저장됨 — hover 액션 바에서 담은 항목 */}
-        <NavLink href="/saved" icon={IC.bookmark} label="저장됨" current={cur("/saved")} />
-        {/* 내 에이전트 — 전 구성원 각자의 에이전트.
-            메뉴가 전부 한글인데 여기만 영문이었다 (지시 17-4).
-            화면 자체가 "내 에이전트"라는 명칭을 쓰고 있으므로 그쪽에 맞춘다. */}
         <NavLink href="/assistant" icon={IC.bot} label="내 에이전트" current={cur("/assistant")} />
       </nav>
 
@@ -369,10 +395,10 @@ export default function Sidebar({
       <details className="grp" open>
         <summary>
           <SecIcon d={SEC.goal} tone="goal" />
-          <span className="gname">목표 &amp; 성과</span>
+          <span className="gname">성과</span>
           <Chevron />
         </summary>
-        <NavLink href="/goals" icon={IC.goal} label="목표" current={cur("/goals")} />
+        {/* 목표는 §A1 에서 "내 목표"(내 공간)와 "목표"(팀)로 갈라 위로 올렸다. */}
         {/* 성과 리포트는 전원 조회 가능 (MD-P-2026-010 §F) — 승인 보고서 탭만 팀장 전용 */}
         <NavLink href="/reports" icon={IC.report} label="월간 보고" current={cur("/reports")} />
       </details>

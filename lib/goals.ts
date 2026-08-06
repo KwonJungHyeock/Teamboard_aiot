@@ -12,6 +12,7 @@
 import { query, queryOne } from "./db";
 import type { GoalPeriodType } from "./types";
 import { goalSubtreeTaskInput } from "./projects";
+import { visibleTaskSql } from "./visibility";
 import {
   aggregateTasks, rollupGoals, judgeGoalStatus, isCountable, goalCountedSql, goalClosingSql,
   type GoalStatus, type GoalClosing,
@@ -334,11 +335,22 @@ export async function getGoalTree(opts: {
     due_date: string | null;
     resolution: string | null;
   }>(
+    // ⑦ 목표 트리의 "연결 업무" — 두 겹으로 막는다 (MD-P-2026-025 §A3·§A4).
+    //
+    //   ① 업무 단위 — 남의 개인 업무는 제목이 뜨지 않는다.
+    //   ② 목표 단위 — **남의 개인 목표**에 달린 업무는 팀 업무라도 목록을 주지 않는다.
+    //      팀장은 개인 목표의 제목과 진척(숫자)까지만 본다. 그 아래 내용은 못 본다.
+    //      건수(counted_tasks)는 위 쿼리에서 그대로 세므로 "업무 7건 기준"은 유지된다 —
+    //      숫자는 보이고 내용은 안 보인다. 이 경계가 §A4 의 핵심이다.
     `SELECT gt.goal_id, t.id, t.title, t.status, t.resolution, a.display_name AS assignee_name, t.due_date::text
      FROM goal_task gt
+     JOIN goal g ON g.id = gt.goal_id
      JOIN task t ON t.id = gt.task_id AND t.is_active = true AND t.status <> 'proposed' AND t.work_type <> 'routine'
      LEFT JOIN actor a ON a.id = t.assignee_id
-     ORDER BY t.due_date ASC NULLS LAST, t.id`
+     WHERE ${visibleTaskSql("$1")}
+       AND (g.scope <> 'personal' OR g.owner_actor_id = $1)
+     ORDER BY t.due_date ASC NULLS LAST, t.id`,
+    [viewerId ?? -1]
   );
   const tasksByGoal = new Map<number, GoalTaskRef[]>();
   for (const link of links) {
@@ -449,7 +461,8 @@ export async function getCurrentMonthGoals(todayStr: string): Promise<
     ? await query<{ goal_id: number; status: string }>(
         `SELECT gt.goal_id, t.status
          FROM goal_task gt JOIN task t ON t.id = gt.task_id AND t.is_active = true AND t.status <> 'proposed' AND t.work_type <> 'routine'
-         WHERE gt.goal_id = ANY($1::int[])`,
+         -- 홈은 팀 월 목표만 본다 → 개인 업무는 애초에 대상이 아니다 (§A3).
+         WHERE gt.goal_id = ANY($1::int[]) AND t.visibility = 'team'`,
         [rows.map((r) => r.id)]
       )
     : [];

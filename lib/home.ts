@@ -1,6 +1,7 @@
 // 홈 대시보드 집계 (Phase 3) — 모든 수치는 서버가 DB에서 산출한다 (금지 3: LLM 수치 생성 금지와 동일 원칙).
 // /api/home/summary 라우트와 홈 서버 페이지가 공유한다.
 import { query, queryOne, getInboxCount } from "./db";
+import { visibleTaskSql } from "./visibility";
 import { getCurrentMonthGoals } from "./goals";
 import {
   judgeGoalStatus, countableSql, doneSql, projectProgressSql, projectCountedSql, taskProgressSql,
@@ -222,6 +223,18 @@ function dday(due: string, today: string): string {
 
 const OPEN_TASK = `t.is_active = true AND t.status IN ('todo','doing','review')`; // proposed·done·dropped 제외
 
+// ── 개인 업무 경계 (MD-P-2026-025 §A3) ────────────────────────────────
+//
+// 홈은 **팀 전체 현황판**이다 (§A1 — "개인 화면이 아니다").
+// 그래서 팀 지표에서는 개인 업무를 아예 뺀다. 내 개인 업무라도 팀 숫자는 아니다.
+//   · 팀 지표·구성원 부하·프로젝트 집계  → TEAM_TASK
+//   · "내 차례"·"내 업무" 같은 내 패널     → mineOk(viewerId)
+//
+// viewerId 는 서명된 세션 토큰에서 온 number 다. 그래도 Number() 로 한 번 더
+// 강제해 숫자가 아닌 것이 SQL 로 흘러들 여지를 없앤다(숫자가 아니면 NaN → 구문 오류).
+const TEAM_TASK = `t.visibility = 'team'`;
+const mineOk = (viewerId: number, t = "t") => visibleTaskSql(String(Number(viewerId)), t);
+
 /**
  * 7일치 스파크를 **쿼리 한 번**으로 뽑는다 (MD-P-2026-022 §B).
  * 예전에는 날짜마다 count(*) 를 한 번씩 돌려 스파크 3종에 21회가 나갔다.
@@ -247,12 +260,12 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
 
   // ── 지표 1: 진행 중 업무 (doing) ──
   const doingNow = (await queryOne<{ n: string }>(
-    `SELECT count(*) AS n FROM task t WHERE t.is_active = true AND t.status = 'doing'`
+    `SELECT count(*) AS n FROM task t WHERE t.is_active = true AND t.status = 'doing' AND ${TEAM_TASK}`
   ))!.n;
   // 스파크: 일별 열린 업무 근사치 (생성됨 & 그 시점 미완료)
   const openSpark = await sparkSeries(
     `SELECT count(*) FROM task t
-      WHERE t.is_active = true AND t.status <> 'proposed'
+      WHERE t.is_active = true AND t.status <> 'proposed' AND ${TEAM_TASK}
         AND t.created_at < ${KST_START("d.day + 1")}
         AND (t.completed_at IS NULL OR t.completed_at >= ${KST_START("d.day + 1")})`,
     today
@@ -260,7 +273,8 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   const createdThisWeek = Number(
     (await queryOne<{ n: string }>(
       `SELECT count(*) AS n FROM task t
-       WHERE t.is_active = true AND t.status <> 'proposed' AND t.created_at >= $1::timestamptz`,
+       WHERE t.is_active = true AND t.status <> 'proposed' AND ${TEAM_TASK}
+         AND t.created_at >= $1::timestamptz`,
       [kstDayStart(weekStart)]
     ))!.n
   );
@@ -269,7 +283,8 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   const doneThisWeek = Number(
     (await queryOne<{ n: string }>(
       `SELECT count(*) AS n FROM task t
-       WHERE t.is_active = true AND t.status = 'done' AND t.completed_at >= $1::timestamptz`,
+       WHERE t.is_active = true AND t.status = 'done' AND ${TEAM_TASK}
+         AND t.completed_at >= $1::timestamptz`,
       [kstDayStart(weekStart)]
     ))!.n
   );
@@ -278,13 +293,13 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     Number(
       (await queryOne<{ n: string }>(
         `SELECT count(*) AS n FROM task t
-         WHERE ${OPEN_TASK} AND t.due_date >= $1::date AND t.due_date < $2::date`,
+         WHERE ${OPEN_TASK} AND ${TEAM_TASK} AND t.due_date >= $1::date AND t.due_date < $2::date`,
         [weekStart, addDays(weekStart, 7)]
       ))!.n
     );
   const doneSpark = await sparkSeries(
     `SELECT count(*) FROM task t
-      WHERE t.is_active = true AND t.status = 'done'
+      WHERE t.is_active = true AND t.status = 'done' AND ${TEAM_TASK}
         AND t.completed_at >= ${KST_START("d.day")} AND t.completed_at < ${KST_START("d.day + 1")}`,
     today
   );
@@ -303,7 +318,8 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   const reviewMine = Number(
     (await queryOne<{ n: string }>(
       `SELECT count(*) AS n FROM task t
-       WHERE t.is_active = true AND t.status = 'review' AND t.assignee_id = $1`,
+       WHERE t.is_active = true AND t.status = 'review' AND t.assignee_id = $1
+         AND ${mineOk(viewerId)}`,
       [viewerId]
     ))!.n
   );
@@ -316,7 +332,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
 
   const overdueTasks = Number(
     (await queryOne<{ n: string }>(
-      `SELECT count(*) AS n FROM task t WHERE ${OPEN_TASK} AND t.due_date < $1::date`,
+      `SELECT count(*) AS n FROM task t WHERE ${OPEN_TASK} AND ${TEAM_TASK} AND t.due_date < $1::date`,
       [today]
     ))!.n
   );
@@ -332,7 +348,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   });
   const overdueSpark = await sparkSeries(
     `SELECT count(*) FROM task t
-      WHERE t.is_active = true AND t.status <> 'proposed' AND t.status <> 'dropped'
+      WHERE t.is_active = true AND t.status <> 'proposed' AND t.status <> 'dropped' AND ${TEAM_TASK}
         AND t.due_date < d.day
         AND (t.completed_at IS NULL OR t.completed_at >= ${KST_START("d.day")})`,
     today
@@ -342,9 +358,9 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   const blockedRow = await queryOne<{ n: string; reason: string | null }>(
     `SELECT count(*) AS n,
             (SELECT blocked_reason FROM task
-             WHERE is_active = true AND blocked = true AND status <> 'proposed'
+             WHERE is_active = true AND blocked = true AND status <> 'proposed' AND visibility = 'team'
              ORDER BY blocked_since ASC NULLS LAST LIMIT 1) AS reason
-     FROM task WHERE is_active = true AND blocked = true AND status <> 'proposed'`
+     FROM task WHERE is_active = true AND blocked = true AND status <> 'proposed' AND visibility = 'team'`
   );
   const blockedCount = Number(blockedRow?.n ?? 0);
   const blockedTopReason = blockedRow?.reason ?? null;
@@ -434,7 +450,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
      LEFT JOIN project p ON p.id = t.project_id
      LEFT JOIN area ar ON ar.id = t.area_id
      LEFT JOIN actor ac ON ac.id = t.assignee_id
-     WHERE ${OPEN_TASK}
+     WHERE ${OPEN_TASK} AND ${TEAM_TASK}
      ORDER BY t.due_date ASC NULLS LAST, t.priority = 'high' DESC, t.id`
   );
   // 에이전트 상태 (레인 이름 옆 상태 점) — working 우선, 없으면 pending, 없으면 idle
@@ -524,7 +540,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     `WITH w AS (SELECT generate_series($1::date, $2::date, interval '7 day')::date AS ws)
      SELECT w.ws::text AS ws,
             (SELECT count(*) FROM task t
-              WHERE t.is_active = true AND t.status = 'done'
+              WHERE t.is_active = true AND t.status = 'done' AND ${TEAM_TASK}
                 AND t.completed_at >= ${KST_START("w.ws")}
                 AND t.completed_at <  ${KST_START("w.ws + 7")})::text AS n
        FROM w ORDER BY w.ws`,
@@ -538,6 +554,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
             count(*) FILTER (WHERE t.status IN ('todo', 'review')) AS waiting
      FROM actor ac
      JOIN task t ON t.assignee_id = ac.id AND t.is_active = true AND t.status IN ('todo', 'doing', 'review')
+                AND t.visibility = 'team'
      WHERE ac.type = 'human' AND ac.is_active = true
        AND ac.id NOT IN (SELECT actor_id FROM account WHERE email = 'robodynesystems')
      GROUP BY ac.display_name
@@ -557,7 +574,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
             count(*) FILTER (WHERE t.due_date IS NOT NULL AND t.due_date < $1::date) AS late,
             round(avg(${taskProgressSql("t")})) AS avg
      FROM actor ac
-     JOIN task t ON t.assignee_id = ac.id AND ${OPEN_TASK}
+     JOIN task t ON t.assignee_id = ac.id AND ${OPEN_TASK} AND ${TEAM_TASK}
      WHERE ac.type = 'human' AND ac.is_active = true
      GROUP BY ac.id, ac.display_name
      ORDER BY count(*) FILTER (WHERE t.due_date IS NOT NULL AND t.due_date < $1::date) DESC, count(*) DESC`,
@@ -604,7 +621,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
      FROM task t
      LEFT JOIN project p ON p.id = t.project_id
      LEFT JOIN actor a ON a.id = t.assignee_id
-     WHERE ${OPEN_TASK} AND t.due_date IS NOT NULL AND t.due_date <= $1::date
+     WHERE ${OPEN_TASK} AND ${TEAM_TASK} AND t.due_date IS NOT NULL AND t.due_date <= $1::date
      ORDER BY t.due_date ASC
      LIMIT 8`,
     [in7]
@@ -819,7 +836,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   // A1: 미래만 — 오늘 이상 ~ +14일. 지난 마감은 제외(타임라인 지연 표시로만).
   const upTasks = await query<{ id: number; title: string; due_date: string }>(
     `SELECT t.id, t.title, t.due_date::text FROM task t
-     WHERE ${OPEN_TASK} AND t.due_date IS NOT NULL
+     WHERE ${OPEN_TASK} AND ${mineOk(viewerId)} AND t.due_date IS NOT NULL
        AND t.due_date >= $1::date AND t.due_date <= $2::date
      ORDER BY t.due_date LIMIT 8`,
     [today, in14]
@@ -894,7 +911,8 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   }
   const myTaskRows = await query<{ id: number; title: string; due_date: string }>(
     `SELECT id, title, due_date::text FROM task t
-     WHERE ${OPEN_TASK} AND t.assignee_id = $1 AND t.due_date IS NOT NULL AND t.due_date <= $2::date
+     WHERE ${OPEN_TASK} AND ${mineOk(viewerId)} AND t.assignee_id = $1
+       AND t.due_date IS NOT NULL AND t.due_date <= $2::date
      ORDER BY t.due_date ASC LIMIT 4`,
     [viewerId, today]
   );
