@@ -186,6 +186,13 @@
 
 /* 진척 근거 "업무 14건 기준" (MD-P-2026-024 지시 1) — 신규 스타일을 만들지 않고
    기존 보조 텍스트 규격(10.5px · var(--muted))에 맞춘다. */
+/* 목표 트리 §G 정합 — pg-legacy 래퍼를 되살리면서 다시 살아난 구 규격을 스냅한다.
+   (래퍼가 빠져 있던 동안에는 이 규칙들이 죽어 있어서 위반으로 잡히지도 않았다) */
+.pg-body :is(.gpv, .gtitle-btn) { font-size: 11.5px; }
+.pg-body .gnode > summary { border-radius: 7px; }
+/* 목표 추가 인라인 폼의 입력·셀렉트 (6px → 7px) */
+.pg-body .gtree :is(input, select) { border-radius: 7px; }
+
 /* 뼈대(.pg-body) 밖 화면에도 같은 규격이 적용돼야 한다 — 셸에 의존하지 않는 선택자로 둔다.
    (프로젝트 목록은 아직 PageShell 밖이라 .pg-body 로 걸면 11px 로 새어 나간다) */
 .gpv em, .gdp-basis {
