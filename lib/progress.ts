@@ -244,3 +244,39 @@ export const goalCountedSql = (goalIdExpr: string) => `
 export function countedLabel(counted: number): string {
   return counted > 0 ? `업무 ${counted}건 기준` : "집계 없음";
 }
+
+// ── 기간이 끝난 목표의 마감값 (MD-P-2026-024 회신 3 지시 7) ────────────
+//
+// 기간이 지난 목표는 "지금 집계"가 아니라 **끝난 시점의 기록**을 보여준다.
+// 7월 목표에 8월 업무가 붙거나 프로젝트가 떠나가면 지금 집계는 7월 실적과 무관해진다.
+//
+// 없는 마감값은 **만들지 않는다.** 스냅샷이 없으면 없다고 말한다 —
+// 수동값을 넣어 메우지 않는다(그건 기록이 아니라 창작이다).
+
+/** 기간이 끝난 목표의 마감 기록. 스냅샷이 없으면 progress·date 가 null. */
+export interface GoalClosing {
+  /** 기간 종료일이 지났는가 */
+  ended: boolean;
+  /** 마감 시점 진척. 스냅샷이 없으면 null */
+  progress: number | null;
+  /** 그 값을 찍은 스냅샷 날짜 (YYYY-MM-DD) */
+  date: string | null;
+}
+
+/** "57% · 7/31 마감 기준" / 기록이 없으면 "기간 종료 · 마감 기록 없음". */
+export function closingLabel(c: GoalClosing): string {
+  if (c.progress === null || c.date === null) return "기간 종료 · 마감 기록 없음";
+  const [, m, d] = c.date.split("-");
+  return `${c.progress}% · ${Number(m)}/${Number(d)} 마감 기준`;
+}
+
+/**
+ * 기간 종료일 시점의 스냅샷 — 종료일 당일, 없으면 **그 이전 가장 가까운 날**.
+ * 종료일 이후 스냅샷은 보지 않는다(그건 마감값이 아니다).
+ */
+export const goalClosingSql = (goalIdExpr: string, periodEndExpr: string) => `
+  (SELECT jsonb_build_object('progress', s.progress, 'date', s.snapshot_date::text)
+     FROM goal_snapshot s
+    WHERE s.goal_id = ${goalIdExpr} AND s.snapshot_date <= ${periodEndExpr}
+    ORDER BY s.snapshot_date DESC
+    LIMIT 1)`;

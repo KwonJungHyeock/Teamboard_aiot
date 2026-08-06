@@ -15,6 +15,10 @@ import pg from "pg";
 import fs from "node:fs";
 
 const APPLY = process.argv.includes("--apply");
+
+// 회신 3 [확정] 으로 삭제 승인된 결정 id. 이 목록 밖의 결정이 걸리면 스크립트가 멈춘다.
+// 전문 덤프: docs/archive/MD-P-2026-024_삭제전_결정로그.md
+const APPROVED_DECISIONS = [1, 2, 3];
 const url = process.env.DATABASE_URL
   ?? fs.readFileSync(".env.local", "utf8").match(/postgres[^\s"']+/)[0];
 const pool = new pg.Pool({ connectionString: url });
@@ -55,13 +59,15 @@ try {
       `SELECT count(*)::text AS n FROM goal WHERE parent_id = ANY($1::int[]) AND is_demo = false`, gol],
     ["활성 프로젝트가 데모 목표에 연결",
       `SELECT count(*)::text AS n FROM project WHERE goal_id = ANY($1::int[])`, gol],
-    // decision.discussion_id 는 NOT NULL 이다 — 시그널을 지우려면 결정을 함께 지워야 한다.
-    // 결정은 이 제품의 1급 기록이고 is_demo 플래그도 없다. 승인 없이 지우지 않는다.
-    ["데모 시그널을 참조하는 결정(별도 승인 필요)",
-      `SELECT count(*)::text AS n FROM decision WHERE discussion_id = ANY($1::int[])`, sig],
+    // decision.discussion_id 는 NOT NULL 이라 시그널을 지우려면 결정도 함께 지워야 한다.
+    // 결정 1·2·3 은 회신 3 에서 명시 승인됐다(전문은 docs/archive/ 에 덤프).
+    // **그 외 결정이 하나라도 걸리면 중단한다** — 승인 범위 밖이다.
+    ["승인 목록 밖의 결정이 데모 시그널을 참조",
+      `SELECT count(*)::text AS n FROM decision
+        WHERE discussion_id = ANY($1::int[]) AND id <> ALL($2::int[])`, sig, APPROVED_DECISIONS],
   ];
-  for (const [label, sql, ids] of refs) {
-    const cnt = await n(sql, [ids]);
+  for (const [label, sql, ids, extra] of refs) {
+    const cnt = await n(sql, extra === undefined ? [ids] : [ids, extra]);
     console.log(`  ${label}: ${cnt}건${cnt ? " ❌" : ""}`);
     if (cnt > 0) throw new Error(`중단 — ${label} ${cnt}건. 먼저 정리해야 합니다.`);
   }
@@ -75,7 +81,12 @@ try {
   console.log("\n① 시그널 8건 — 연결 해제 후 삭제");
   await del("review_item(시그널)", `DELETE FROM review_item WHERE signal_id = ANY($1::int[])`, [sig]);
   await del("comment(시그널)",     `DELETE FROM comment     WHERE signal_id = ANY($1::int[])`, [sig]);
-  await del("decision(논의)",      `UPDATE decision SET discussion_id = NULL WHERE discussion_id = ANY($1::int[])`, [sig]);
+  // 승인된 결정 3건은 함께 삭제한다 (전문은 docs/archive/MD-P-2026-024_삭제전_결정로그.md).
+  // superseded_by 자기참조를 먼저 끊는다.
+  await del("decision.superseded_by 해제",
+    `UPDATE decision SET superseded_by = NULL WHERE superseded_by = ANY($1::int[])`, [APPROVED_DECISIONS]);
+  await del("decision(승인 3건)",
+    `DELETE FROM decision WHERE discussion_id = ANY($1::int[]) AND id = ANY($2::int[])`, [sig, APPROVED_DECISIONS]);
   await del("signal",              `DELETE FROM signal WHERE id = ANY($1::int[])`, [sig]);
 
   console.log("\n② 업무 20건 — 연결 해제 → 하위 → 상위");

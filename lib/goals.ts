@@ -13,8 +13,8 @@ import { query, queryOne } from "./db";
 import type { GoalPeriodType } from "./types";
 import { goalSubtreeTaskInput } from "./projects";
 import {
-  aggregateTasks, rollupGoals, judgeGoalStatus, isCountable, goalCountedSql,
-  type GoalStatus,
+  aggregateTasks, rollupGoals, judgeGoalStatus, isCountable, goalCountedSql, goalClosingSql,
+  type GoalStatus, type GoalClosing,
 } from "./progress";
 
 /** KST 기준 오늘(YYYY-MM-DD). lib/home.ts와 같은 규칙이지만
@@ -50,6 +50,8 @@ export interface GoalNode {
   projectCount: number;
   /** 이 목표에 속한 집계 대상 업무 수 — 화면의 "업무 N건 기준" 분모 (MD-P-2026-024 지시 1) */
   countedTasks: number;
+  /** 기간이 끝난 목표의 마감 기록 (회신 3 지시 7). 진행 중이면 ended=false */
+  closing: GoalClosing;
   ownerActorId: number | null;
   ownerName: string | null;
   projectId: number | null;
@@ -246,7 +248,9 @@ export async function getGoalTree(opts: {
   const today = kstToday();
   const { year, scope, viewerId } = opts;
   const filters: string[] = ["g.is_active = true"];
-  const params: unknown[] = [];
+  // today 를 첫 파라미터로 고정한다 — 기간 종료 판정($1)이 뒤의 동적 필터에 밀리지 않게.
+  const params: unknown[] = [today];
+  const pToday = params.length; // = 1
   if (year) { params.push(year); filters.push(`EXTRACT(YEAR FROM g.period_start) = $${params.length}`); }
   if (scope === "team") {
     filters.push(`g.scope = 'team'`);
@@ -281,6 +285,8 @@ export async function getGoalTree(opts: {
     status_manual: GoalStatus | null;
     project_count: number;
     counted_tasks: number;
+    period_ended: boolean;
+    closing: { progress: string | number | null; date: string | null } | null;
     owner_actor_id: number | null;
     owner_name: string | null;
     project_id: number | null;
@@ -297,6 +303,8 @@ export async function getGoalTree(opts: {
             (SELECT count(*)::int FROM project pj
               WHERE pj.goal_id = g.id AND pj.is_active = true AND pj.status <> 'archived') AS project_count,
             ${goalCountedSql("g.id")}::int AS counted_tasks,
+            (g.period_end < $${pToday}::date) AS period_ended,
+            ${goalClosingSql("g.id", "g.period_end")} AS closing,
             g.owner_actor_id,
             o.display_name AS owner_name, g.project_id, p.name AS project_name,
             COALESCE(p.color_key, ar.color_key) AS color_key,
@@ -374,6 +382,11 @@ export async function getGoalTree(opts: {
       areaId: row.area_id,
       areaName: row.area_name,
       countedTasks: Number(row.counted_tasks ?? 0),
+      closing: {
+        ended: !!row.period_ended,
+        progress: row.closing?.progress == null ? null : Math.round(Number(row.closing.progress)),
+        date: row.closing?.date ?? null,
+      },
       tasks: row.period_type === "month" ? (tasksByGoal.get(row.id) ?? []) : [],
       children: [],
     });

@@ -299,6 +299,7 @@ function MonthGoalRow({
           colorKey={goal.colorKey}
           // 진척 근거를 옆에 붙인다 — 정의가 바뀌었으니 분모가 보여야 한다 (지시 1)
           detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
+          closing={goal.closing}
         />
         {canEdit && (
           <button className="lk mu" onClick={() => setEditing((v) => !v)}>
@@ -422,7 +423,8 @@ function BranchNode({
         <GoalTitle goal={goal} />
         <span className="gsp" />
         <GoalProgress progress={goal.progress} colorKey={goal.colorKey}
-          detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)} />
+          detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
+          closing={goal.closing} />
         {canEdit && (
           <button
             className="lk mu"
