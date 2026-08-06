@@ -113,15 +113,23 @@ export interface GoalLinkInfo {
   projectHasNoGoal: boolean;
   projectId: number | null;
   projectName: string | null;
+  /** 소속 프로젝트가 붙어 있는 월 목표 — 목표 고를 때 첫 번째 제안 (지시 20-2) */
+  projectGoalId: number | null;
+  projectGoalTitle: string | null;
 }
 
 /** 업무 상세 화면이 "이 프로젝트는 목표에 연결되어 있지 않습니다"를 띄울지 판단할 재료. */
 export async function goalLinkInfo(taskId: number): Promise<GoalLinkInfo> {
   const row = await queryOne<{
-    goal_source: string; project_id: number | null; project_name: string | null; project_goal: number | null;
+    goal_source: string; project_id: number | null; project_name: string | null;
+    project_goal: number | null; project_goal_title: string | null;
   }>(
-    `SELECT t.goal_source, t.project_id, p.name AS project_name, p.goal_id AS project_goal
-       FROM task t LEFT JOIN project p ON p.id = t.project_id AND p.is_active = true
+    `SELECT t.goal_source, t.project_id, p.name AS project_name,
+            g.id AS project_goal, g.title AS project_goal_title
+       FROM task t
+       LEFT JOIN project p ON p.id = t.project_id AND p.is_active = true
+       LEFT JOIN goal g ON g.id = p.goal_id
+                       AND g.is_active = true AND g.period_type = 'month'
       WHERE t.id = $1`,
     [taskId]
   );
@@ -131,5 +139,7 @@ export async function goalLinkInfo(taskId: number): Promise<GoalLinkInfo> {
     projectHasNoGoal: !!row?.project_id && row.project_goal === null,
     projectId: row?.project_id ?? null,
     projectName: row?.project_name ?? null,
+    projectGoalId: row?.project_goal ?? null,
+    projectGoalTitle: row?.project_goal_title ?? null,
   };
 }

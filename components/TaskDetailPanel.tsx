@@ -33,9 +33,12 @@ interface TaskDetail {
   resolution: string | null;
   parentTaskId: number | null; parentTitle: string | null;
   blockedByTitle: string | null; childCount: number;
-  goalSource: "inherited" | "manual";
+  goalSource: "inherited" | "manual" | "none";
   effectiveProgress: number; rolledUpFromChildren: boolean;
-  goalLink: { projectHasNoGoal: boolean; projectId: number | null; projectName: string | null };
+  goalLink: {
+    projectHasNoGoal: boolean; projectId: number | null; projectName: string | null;
+    projectGoalId: number | null; projectGoalTitle: string | null;
+  };
 }
 interface Selectors {
   actors: { id: number; name: string }[];
@@ -322,6 +325,17 @@ export default function TaskDetailPanel() {
     : "";
   const linkedGoals = t ? (sel?.monthGoals ?? []).filter((g) => t.goalIds.includes(g.id)) : [];
 
+  // 목표 후보 순서 (MD-P-2026-024 회신 6 지시 20-2) —
+  // 소속 프로젝트가 붙어 있는 월 목표를 맨 앞에 둔다. 그 뒤는 서버가 준 순서
+  // (이번 달 우선 · 최근 사용 순, 지시 20-1)를 그대로 쓴다.
+  const goalOptions = (() => {
+    const all = sel?.monthGoals ?? [];
+    const sug = t?.goalLink.projectGoalId ?? null;
+    if (sug === null) return all;
+    const hit = all.find((g) => g.id === sug);
+    return hit ? [hit, ...all.filter((g) => g.id !== sug)] : all;
+  })();
+
   const propRows: PropRow[] = !t ? [] : [
     {
       key: "status", label: "상태",
@@ -416,27 +430,33 @@ export default function TaskDetailPanel() {
     },
     {
       key: "goals", label: "목표",
-      value: linkedGoals.map((g) => g.title).join(", "),
-      empty: linkedGoals.length === 0, action: "＋ 목표 연결",
+      // "목표 없음"은 빈 값이 아니라 사람이 정한 상태다. 비어 보이게 두면 또 붙이라고 조른다(확정 23).
+      value: t.goalSource === "none" ? "목표 없음" : linkedGoals.map((g) => g.title).join(", "),
+      empty: t.goalSource !== "none" && linkedGoals.length === 0, action: "＋ 목표 연결",
       editor: () => (
         <div className="prop-goals">
-          {t.goalLink.projectHasNoGoal && (
-            <p className="prop-none">
-              이 프로젝트는 목표에 연결되어 있지 않습니다.{" "}
-              <a href={`/projects/${t.goalLink.projectId}`}>{t.goalLink.projectName} 연결하기 →</a>
-            </p>
-          )}
           {(sel?.monthGoals.length ?? 0) === 0 && <p className="prop-none">연결 가능한 월 목표가 없습니다.</p>}
-          {sel?.monthGoals.map((g) => (
+          {goalOptions.map((g) => (
             <label key={g.id}>
               <input type="checkbox" checked={t.goalIds.includes(g.id)}
                 onChange={(e) => {
                   const next = e.target.checked ? [...t.goalIds, g.id] : t.goalIds.filter((x) => x !== g.id);
                   patchOpt({ goalIds: next }, { goalIds: next });
                 }} />
-              {g.title} <em>{g.month}</em>
+              {g.title}
+              {/* 소속 프로젝트가 붙어 있는 목표를 맨 앞에 두고 표시한다 (지시 20-2) */}
+              {g.id === t.goalLink.projectGoalId && <b className="prop-sug">제안</b>}
+              <em>{g.month}</em>
             </label>
           ))}
+          {/* 확정 23-3 — "목표 없음"은 여기서도 고를 수 있어야 한다. 일괄 화면에서만 되면 안 된다. */}
+          <label className="prop-gnone">
+            <input type="checkbox" checked={t.goalSource === "none"}
+              onChange={(e) =>
+                patchOpt({ goalSource: e.target.checked ? "none" : "inherited" },
+                         { goalSource: e.target.checked ? "none" : "inherited" })} />
+            목표 없음 <em>성과 집계 대상 아님 · 수행한 업무로는 남습니다</em>
+          </label>
         </div>
       ),
     },
