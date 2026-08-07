@@ -27,7 +27,12 @@ interface GoalDetail {
     ownerName: string | null; areaId: number | null; areaName: string | null; projectName: string | null;
     /** §A4 — 남의 개인 목표라 업무 목록을 주지 않았다. 진척·건수는 그대로 온다. */
     tasksHidden?: boolean;
+    /** 지시 27-2 — 상위 목표 */
+    parentId: number | null;
+    parentTitle: string | null;
   };
+  /** 지시 27-2 — 고를 수 있는 상위 목표. 서버가 주기·스코프·순환을 이미 걸러서 준다. */
+  parentCandidates?: { id: number; title: string; periodStart: string }[];
   tasks: { id: number; title: string; status: string; assigneeName: string | null; dueDate: string | null }[];
   linkedProjects: LinkedProject[];
   childCount: number;
@@ -179,6 +184,21 @@ export default function GoalDetailPanel() {
                   <div className="gdp-ro">{d.goal.scope === "personal" ? (d.goal.ownerName ?? "본인") : (d.goal.areaName ?? "—")}</div>
                 )}
               </label>
+              {/* 지시 27-2 — 상위 목표. 이 항목이 없어서 상위가 틀린 목표를 고치지 못하고
+                  분기 레벨에 새로 만들어 중복이 남았다(판정 A). 연간 목표에는 상위가 없다. */}
+              {d.goal.periodType !== "year" && (
+                <label>상위 목표
+                  {d.canEdit ? (
+                    <select value={d.goal.parentId ?? 0}
+                      onChange={(e) => patch({ parentId: Number(e.target.value) || null })}>
+                      <option value={0}>상위 없음</option>
+                      {(d.parentCandidates ?? []).map((c) => (
+                        <option key={c.id} value={c.id}>{c.title}</option>
+                      ))}
+                    </select>
+                  ) : <div className="gdp-ro">{d.goal.parentTitle ?? "—"}</div>}
+                </label>
+              )}
               <label>연결 프로젝트
                 <div className="gdp-ro num">{d.linkedProjects.length}개</div>
               </label>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-hidden="true">
+  <!-- 승인 대기 빈 상태 (지시 29-3) -->
+  <g fill="none" stroke="#9AA1A9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M16 52l10-28a4 4 0 0 1 4-3h36a4 4 0 0 1 4 3l10 28" />
+    <path d="M16 52h18l4 8h20l4-8h18v18a4 4 0 0 1-4 4H20a4 4 0 0 1-4-4z" />
+  </g>
+</svg>

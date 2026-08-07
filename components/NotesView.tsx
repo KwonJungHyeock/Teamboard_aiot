@@ -130,7 +130,7 @@ export default function NotesView() {
       {!loading && notes.length === 0 ? (
         // C-1 — 빈 상태 3요소 (아이콘 + 설명 + CTA). §G 규격의 EmptyState 를 그대로 쓴다.
         <EmptyState
-          illustration="/empty/notes.svg"
+          icon="notes"
           title="아직 메모가 없어요"
           hint="떠오른 생각·통화 내용·초안을 여기 적어두세요. 나만 볼 수 있고, 필요해지면 선택해서 업무로 만들 수 있어요."
           action={<button className="btn-primary" onClick={create} disabled={busy}>첫 메모 쓰기</button>}

@@ -371,8 +371,15 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       for (const g of await applyInheritance(taskId)) affectedGoals.add(g);
     }
 
-    // 현재(변경 후) 연결 목표 — 상태 변경 시에도 재계산 대상
-    if (statusChanged || Array.isArray(payload.goalIds)) {
+    // 현재(변경 후) 연결 목표 — 상태 변경 시에도 재계산 대상.
+    //
+    // ⚠️ **진행률도 포함해야 한다** (MD-P-2026-024 회신 10 D-5 검증 중 발견).
+    //    목표 진척은 소속 업무의 taskProgress 평균이고(§3 규칙 4), taskProgress 는
+    //    task.progress 를 그대로 쓴다. 그런데 진행률만 바꾸면 여기 조건에 안 걸려
+    //    **직접 연결된 목표가 재계산되지 않았다.** 상태를 건드릴 때까지 옛 숫자가 남았다.
+    //    (프로젝트 경유 목표는 아래 rollupChanged 가 이미 progress 를 보고 있었다 —
+    //     직접 연결만 빠져 있었다.)
+    if (statusChanged || Array.isArray(payload.goalIds) || payload.progress !== undefined) {
       const nowLinks = await query<{ goal_id: number }>(
         "SELECT goal_id FROM goal_task WHERE task_id = $1",
         [taskId]

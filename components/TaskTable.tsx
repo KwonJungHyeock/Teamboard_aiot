@@ -136,7 +136,7 @@ export default function TaskTable({
           {rows.length === 0 && (
             <tr>
               <td colSpan={colCount} style={{ padding: 0 }}>
-                <EmptyState title={emptyText} hint={emptyHint} action={emptyAction} compact />
+                <EmptyState icon="tasks" title={emptyText} hint={emptyHint} action={emptyAction} compact />
               </td>
             </tr>
           )}

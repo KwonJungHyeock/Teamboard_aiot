@@ -3,15 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
+    "check:empty": "node scripts/check-empty-icons.mjs",
     "db:init": "node scripts/init-db.mjs",
     "db:seed-demo": "node scripts/seed-demo.mjs",
+    "dev": "next dev",
     "e2e": "playwright test",
-    "verify:blob": "node scripts/verify-blob-access.mjs",
-    "e2e:ui": "playwright test --ui"
+    "e2e:ui": "playwright test --ui",
+    "lint": "next lint",
+    "prebuild": "node scripts/check-empty-icons.mjs",
+    "start": "next start",
+    "verify:blob": "node scripts/verify-blob-access.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",

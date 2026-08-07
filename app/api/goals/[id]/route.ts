@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { goalCountedSql, countedLabel } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
 import { visibleTaskSql } from "@/lib/visibility";
+import { validateGoalParent } from "@/lib/goals";
+import type { GoalPeriodType } from "@/lib/types";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { recomputeGoalChain, judgeGoalStatus, kstTodayForGoals as kstToday, type GoalStatus } from "@/lib/goals";
@@ -27,14 +29,17 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       status_manual: GoalStatus | null;
       scope: string; owner_actor_id: number | null; owner_name: string | null;
       area_id: number | null; area_name: string | null; project_id: number | null; project_name: string | null;
+      parent_id: number | null; parent_title: string | null;
     }>(
       `SELECT g.id, g.title, g.description, g.period_type, g.period_start::text, g.period_end::text,
               g.progress_mode, g.progress::text, g.progress_auto::text, g.progress_manual::text,
               ${goalCountedSql("g.id")}::int AS counted_tasks,
               g.status_manual,
               g.scope, g.owner_actor_id, o.display_name AS owner_name,
-              g.area_id, ar.name AS area_name, g.project_id, p.name AS project_name
+              g.area_id, ar.name AS area_name, g.project_id, p.name AS project_name,
+              g.parent_id, pg.title AS parent_title
        FROM goal g
+       LEFT JOIN goal pg ON pg.id = g.parent_id
        LEFT JOIN actor o ON o.id = g.owner_actor_id
        LEFT JOIN area ar ON ar.id = g.area_id
        LEFT JOIN project p ON p.id = g.project_id
@@ -80,6 +85,26 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     // 최근 6개월 추이 (§E) — 스냅샷이 있는 달만 점으로. 없는 달은 배열에 없다.
     const trend = await goalTrend(goalId, 6);
 
+    // 상위 목표 후보 (지시 27-2) — 주기 규칙·스코프에 맞고, 자기 자손이 아닌 것.
+    // 후보를 서버에서 좁혀 준다. 화면에서 거르면 규칙이 두 벌이 된다.
+    const expectedParent =
+      g.period_type === "month" ? "quarter" : g.period_type === "quarter" ? "year" : null;
+    const parentCandidates = expectedParent
+      ? await query<{ id: number; title: string; period_start: string }>(
+          `WITH RECURSIVE sub AS (
+             SELECT id FROM goal WHERE id = $1
+             UNION ALL SELECT c.id FROM goal c JOIN sub ON c.parent_id = sub.id
+           )
+           SELECT g2.id, g2.title, g2.period_start::text
+             FROM goal g2
+            WHERE g2.is_active = true AND g2.period_type = $2 AND g2.scope = $3
+              AND ($3 <> 'personal' OR g2.owner_actor_id = $4)
+              AND g2.id NOT IN (SELECT id FROM sub)
+            ORDER BY g2.period_start DESC, g2.id`,
+          [goalId, expectedParent, g.scope, session.id]
+        )
+      : [];
+
     const manual = g.progress_manual === null ? null : Math.round(Number(g.progress_manual));
     const effective = manual !== null ? manual : (g.progress === null ? null : Math.round(Number(g.progress)));
 
@@ -97,7 +122,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         areaId: g.area_id, areaName: g.area_name, projectId: g.project_id, projectName: g.project_name,
         // 화면이 "왜 비어 있지?"를 설명할 수 있게 사실을 함께 준다 (§A4)
         tasksHidden,
+        parentId: g.parent_id,
+        parentTitle: g.parent_title,
       },
+      parentCandidates: parentCandidates.map((c) => ({
+        id: c.id, title: c.title, periodStart: c.period_start,
+      })),
       linkedProjects,
       childCount,
       trend,
@@ -124,7 +154,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       owner_actor_id: number | null;
       is_active: boolean;
       scope: string;
-    }>("SELECT id, title, period_type, owner_actor_id, is_active, scope FROM goal WHERE id = $1", [goalId]);
+      parent_id: number | null;
+    }>("SELECT id, title, period_type, owner_actor_id, is_active, scope, parent_id FROM goal WHERE id = $1", [goalId]);
     if (!goal) return NextResponse.json({ error: "목표를 찾을 수 없습니다." }, { status: 404 });
 
     const isLead = session.role === "lead";
@@ -207,6 +238,29 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (payload.areaId !== undefined && goal.scope === "team") set("area_id", payload.areaId ? Number(payload.areaId) : null);
     if (payload.ownerActorId !== undefined && goal.scope === "team") set("owner_actor_id", payload.ownerActorId ? Number(payload.ownerActorId) : null);
 
+    // ── 상위 목표 변경 (지시 27-2) ─────────────────────────────────
+    // 이 경로가 없어서 상위가 틀린 목표를 고치지 못하고 새로 만들어 중복이 남았다(판정 A).
+    // 검증은 생성 경로와 **같은 함수**를 쓴다 — 규칙이 두 벌이면 한쪽만 낡는다.
+    let parentChanged = false;
+    const oldParentId = goal.parent_id;
+    if (payload.parentId !== undefined) {
+      const nextParent = payload.parentId === null || payload.parentId === 0
+        ? null
+        : Number(payload.parentId);
+      const err = await validateGoalParent({
+        goalId,
+        parentId: nextParent,
+        periodType: goal.period_type as GoalPeriodType,
+        scope: goal.scope,
+        viewerId: session.id,
+      });
+      if (err) return NextResponse.json({ error: err }, { status: 400 });
+      if (nextParent !== oldParentId) {
+        set("parent_id", nextParent);
+        parentChanged = true;
+      }
+    }
+
     if (sets.length > 0) {
       values.push(goalId);
       await query(`UPDATE goal SET ${sets.join(", ")}, updated_at = now() WHERE id = $${values.length}`, values);
@@ -233,7 +287,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     // 진척에 영향 주는 변경(연결·수동 진척·모드) → 체인 재계산 (파트 B)
     const progressAffecting = linksChanged || "progress" in payload || "progressMode" in payload;
-    if (progressAffecting) await recomputeGoalChain(goalId);
+    if (progressAffecting || parentChanged) await recomputeGoalChain(goalId);
+    // 상위가 바뀌면 **떠난 쪽**도 다시 계산해야 한다. 안 하면 옛 상위에 이 목표의 몫이 남는다.
+    if (parentChanged && oldParentId !== null) await recomputeGoalChain(oldParentId);
 
     await logActivity({ userId: session.id, message: `${session.name}이(가) 목표 수정 — "${goal.title}"` });
     return NextResponse.json({ ok: true });

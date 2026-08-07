@@ -514,6 +514,7 @@ export default function GoalTree({
       {years.length === 0 && (
         <EmptyState
           compact
+          icon="tasks"
           title={`${year}년 목표가 아직 없어요`}
           hint={
             isLead

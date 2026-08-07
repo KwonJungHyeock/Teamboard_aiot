@@ -346,7 +346,7 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
         {tab === "discussions" && (
           <section className="card pws-disc" aria-label="논의">
             {data.discussions.length === 0 ? (
-              <EmptyState title="이 프로젝트의 논의가 없어요" hint="논의·결정에서 프로젝트를 지정하면 여기에 모입니다."
+              <EmptyState icon="chat" title="이 프로젝트의 논의가 없어요" hint="논의·결정에서 프로젝트를 지정하면 여기에 모입니다."
                 action={<Link className="btn small" href="/signals">논의·결정으로</Link>} />
             ) : (
               <div className="pws-dlist">

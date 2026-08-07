@@ -103,6 +103,7 @@ export default function DecisionLog({ projectId }: { projectId?: number }) {
         <p className="gerr">{error}</p>
       ) : decisions.length === 0 ? (
         <EmptyState
+          icon="chat"
           title={filtered ? "조건에 맞는 결정이 없어요" : "아직 확정된 결정이 없어요."}
           hint={filtered ? "필터를 바꾸거나 초기화해 보세요." : "논의를 해결하면 여기에 자동으로 쌓입니다."}
         />

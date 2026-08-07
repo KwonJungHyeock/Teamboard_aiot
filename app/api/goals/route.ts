@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 import { countableSql } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
-import { getGoalTree, recomputeGoalChain, kstTodayForGoals } from "@/lib/goals";
+import { getGoalTree, recomputeGoalChain, kstTodayForGoals, validateGoalParent } from "@/lib/goals";
+import type { GoalPeriodType } from "@/lib/types";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
 import { visibleTaskSql } from "@/lib/visibility";
@@ -133,21 +134,23 @@ export async function POST(request: Request) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart) || !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd)) {
       return NextResponse.json({ error: "기간(YYYY-MM-DD)이 필요합니다." }, { status: 400 });
     }
+    // 상위 목표 검증은 수정 경로와 **같은 함수**를 쓴다 (지시 27-2).
+    // 규칙이 두 벌이면 한쪽만 낡는다.
     const parentId = payload.parentId ? Number(payload.parentId) : null;
-    if (parentId) {
-      const parent = await queryOne<{ period_type: string; scope: string; owner_actor_id: number | null }>(
-        "SELECT period_type, scope, owner_actor_id FROM goal WHERE id = $1 AND is_active = true",
-        [parentId]
-      );
-      const expected = periodType === "quarter" ? "year" : periodType === "month" ? "quarter" : null;
-      if (!parent || parent.period_type !== expected) {
-        return NextResponse.json({ error: "상위 목표가 올바르지 않습니다." }, { status: 400 });
-      }
-      // 상위와 스코프 일치 (개인 목표는 본인 소유 상위에만)
-      if (parent.scope !== scope || (scope === "personal" && parent.owner_actor_id !== session.id)) {
-        return NextResponse.json({ error: "상위 목표의 스코프가 일치하지 않습니다." }, { status: 400 });
-      }
-    }
+    const parentErr = await validateGoalParent({
+      goalId: null, parentId, periodType: periodType as GoalPeriodType, scope, viewerId: session.id,
+    });
+    if (parentErr) return NextResponse.json({ error: parentErr }, { status: 400 });
+
+    // 27-4 — 같은 주기·같은 기간에 같은 제목이 이미 있으면 **알려만 준다.**
+    // 저장은 막지 않는다 (B-2 와 같은 원칙: 판단은 사람이 한다).
+    const twin = await queryOne<{ id: number }>(
+      `SELECT id FROM goal
+        WHERE is_active = true AND period_type = $1 AND period_start = $2::date
+          AND scope = $3 AND btrim(lower(title)) = btrim(lower($4))
+        LIMIT 1`,
+      [periodType, periodStart, scope, title]
+    );
 
     // 개인 목표는 owner=자기 강제. 팀 목표는 owner=null(전원 공유), area_id 연결 가능.
     const ownerActorId = scope === "personal" ? session.id : null;
@@ -179,7 +182,8 @@ export async function POST(request: Request) {
       userId: session.id,
       message: `${session.name}이(가) ${scope === "personal" ? "개인 " : "팀 "}${periodType === "year" ? "연간" : periodType === "quarter" ? "분기" : "월"} 목표 생성 — "${title}"`,
     });
-    return NextResponse.json({ goal });
+    // 27-4 — 막지 않고 알려만 준다. 저장을 먼저 끝낸 뒤 사실을 얹는다.
+    return NextResponse.json({ goal, ...(twin ? { duplicateTitleOf: twin.id } : {}) });
   } catch (error) {
     return jsonError(error);
   }

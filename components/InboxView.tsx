@@ -144,6 +144,7 @@ export default function InboxView({ user }: { user: SessionUser }) {
         {total === 0 && !error && (
           <section className="inbox-empty" aria-label="승인 대기 없음">
             <EmptyState
+              icon="inbox"
               title="대기 중 제안이 없어요"
               hint="에이전트가 만든 초안·제안 업무가 여기로 모입니다. 승인해야 홈·업무·논의·결정에 반영됩니다."
             />

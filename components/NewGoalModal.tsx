@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
+import { toast } from "@/lib/quick";
 
 type Scope = "team" | "personal";
 type Period = "year" | "quarter" | "month";
@@ -82,6 +83,11 @@ export default function NewGoalModal({
     const data = await res.json();
     setBusy(false);
     if (!res.ok) { setErr(data.error ?? "목표 생성 실패"); return; }
+    // 27-4 — 같은 주기·같은 기간에 같은 제목이 이미 있었다면 **알려만 준다.**
+    // 저장은 이미 끝났다. 막지 않기로 한 원칙(B-2)과 같다 — 판단은 사람이 한다.
+    if (data.duplicateTitleOf) {
+      toast(`같은 기간에 제목이 같은 목표(#${data.duplicateTitleOf})가 이미 있어요 — 확인해 보세요`, "err");
+    }
     onCreated();
     onClose();
   }

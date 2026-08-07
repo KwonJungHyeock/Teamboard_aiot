@@ -192,7 +192,7 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
           <div className="hud-cards">
             {reviews.length === 0 && (
               <div className="hud-empty">
-                <EmptyState compact title="진행 중인 리뷰 세션이 없어요"
+                <EmptyState compact icon="chat" title="진행 중인 리뷰 세션이 없어요"
                   hint="플랫폼 화면 프리셋 안건으로 리뷰 세션을 시작해 섹션별로 확정·수정·보류를 정합니다." />
               </div>
             )}
@@ -249,7 +249,7 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
             <div className="hud-sh"><h2>피드</h2><span className="sub">공유 {huddles.length}건</span></div>
             {huddles.length === 0 ? (
               <div className="hud-empty">
-                <EmptyState title="공유된 허들룸이 없어요"
+                <EmptyState icon="chat" title="공유된 허들룸이 없어요"
                   hint="논의·결정에서 메모를 허들룸으로 보내면, 팀이 함께 볼 결정·논의로 이 피드에 모입니다." />
               </div>
             ) : (

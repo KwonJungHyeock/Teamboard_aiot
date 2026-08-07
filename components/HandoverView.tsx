@@ -187,7 +187,7 @@ export default function HandoverView({ user }: { user: SessionUser }) {
           <main className="rp-main">
             {!detail && (
               <div className="rp-empty-center no-print">
-                <EmptyState title="문서를 선택하세요" hint="왼쪽에서 문서를 고르거나 새 인수인계를 만드세요." />
+                <EmptyState icon="handover" title="문서를 선택하세요" hint="왼쪽에서 문서를 고르거나 새 인수인계를 만드세요." />
               </div>
             )}
 

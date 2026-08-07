@@ -142,6 +142,70 @@ export async function recomputeGoal(goalId: number): Promise<number | null> {
 
 /** 업무/연결 변경 시 호출 — 해당 목표부터 상위(월→분기→연간)까지 연쇄 재계산.
  *  깊이 3 제한 + 방문 집합으로 순환 참조를 차단한다 (§C5). */
+/**
+ * 상위 목표 지정이 유효한가 (MD-P-2026-024 회신 10 지시 27-2).
+ *
+ * 이 검사가 없어서 생긴 일: 목표의 상위를 바꾸는 경로가 아예 없었고,
+ * 상위가 틀린 목표를 고치지 못해 **분기 레벨에 새로 만들고 원본을 안 지운** 중복이 남았다.
+ * (판정 A — span_sec 44초/52초, 사람이 만든 것)
+ *
+ * 규칙은 생성 때와 같다. 다르면 두 경로가 갈라진다.
+ *   · 주기: 월 → 분기, 분기 → 연간, 연간 → 상위 없음
+ *   · 스코프 일치 (개인 목표는 본인 소유 상위에만)
+ *   · 자기 자신 금지 · 순환 금지 (자기 자손을 상위로 삼을 수 없다)
+ *
+ * @returns 문제가 없으면 null, 있으면 사람이 읽을 사유
+ */
+export async function validateGoalParent(opts: {
+  goalId: number | null;          // 수정이면 대상 id, 생성이면 null
+  parentId: number | null;
+  periodType: GoalPeriodType;
+  scope: string;
+  viewerId: number;
+}): Promise<string | null> {
+  const { goalId, parentId, periodType, scope, viewerId } = opts;
+
+  if (parentId === null) {
+    // 연간이 아닌 목표를 뿌리로 두는 것은 허용한다 — 상위를 아직 안 정한 상태가 있을 수 있다.
+    return null;
+  }
+  if (goalId !== null && parentId === goalId) {
+    return "자기 자신을 상위 목표로 지정할 수 없습니다.";
+  }
+  if (periodType === "year") {
+    return "연간 목표에는 상위 목표를 둘 수 없습니다.";
+  }
+
+  const parent = await queryOne<{ period_type: string; scope: string; owner_actor_id: number | null }>(
+    `SELECT period_type, scope, owner_actor_id FROM goal WHERE id = $1 AND is_active = true`,
+    [parentId]
+  );
+  if (!parent) return "상위 목표를 찾을 수 없습니다.";
+
+  const expected = periodType === "quarter" ? "year" : "quarter";
+  if (parent.period_type !== expected) {
+    const ko = { year: "연간", quarter: "분기", month: "월" } as Record<string, string>;
+    return `${ko[periodType]} 목표의 상위는 ${ko[expected]} 목표여야 합니다.`;
+  }
+  if (parent.scope !== scope || (scope === "personal" && parent.owner_actor_id !== viewerId)) {
+    return "상위 목표의 스코프가 일치하지 않습니다.";
+  }
+
+  // 순환 — 새 상위가 내 자손이면 트리가 끊긴 고리가 된다.
+  if (goalId !== null) {
+    const cycle = await queryOne<{ id: number }>(
+      `WITH RECURSIVE sub AS (
+         SELECT id FROM goal WHERE id = $1
+         UNION ALL SELECT g.id FROM goal g JOIN sub ON g.parent_id = sub.id
+       )
+       SELECT id FROM sub WHERE id = $2`,
+      [goalId, parentId]
+    );
+    if (cycle) return "하위 목표를 상위로 지정할 수 없습니다 (순환).";
+  }
+  return null;
+}
+
 export async function recomputeGoalChain(goalId: number): Promise<void> {
   let cur: number | null = goalId;
   const seen = new Set<number>();
