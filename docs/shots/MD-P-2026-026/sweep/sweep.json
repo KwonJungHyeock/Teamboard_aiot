@@ -833,7 +833,7 @@
       {
         "el": "section.card",
         "w": 1108,
-        "h": 269
+        "h": 345
       },
       {
         "el": "section.card",
@@ -846,7 +846,7 @@
         "h": 33
       }
     ],
-    "btnCount": 5,
+    "btnCount": 7,
     "misaligned": [],
     "coralFill": [],
     "boxy": [],

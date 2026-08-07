@@ -158,10 +158,16 @@
   --scrim:rgba(22,25,29,.45);
   --scrim-strong:rgba(22,25,29,.78);
 
+  /* ── 오버레이 (색면이 아니다 — MD-P-2026-026 §B-3 회신 [확정]) ──
+     색면은 --bg · --surface · --surface-2 셋뿐이다. --glass 는 그 셋 중 하나 위에
+     아주 얇게 얹는 **중성 오버레이**다: 카드 상단 미세 그라데이션, hover 바탕, 칩 배경.
+     웜톤이 아니고(중성 2% 검정), 단독 배경으로 쓰지 않는다.
+     그라데이션 인자로 쓰이는 자리가 있어 불투명 토큰으로 치환할 수 없다 — 그래서 정식 등재한다. */
+  --glass:rgba(22,25,29,.02);
+
   /* ── 레거시 별칭 재매핑 (기존 화면이 그대로 새 톤을 받도록) ── */
   --grid-line:var(--hair);
   --bg-canvas:var(--bg); --bg-surface:var(--surface); --bg-elevated:var(--surface); --bg-rail:var(--surface-2);
-  --glass:rgba(22,25,29,.02);
   --line-hi:#DCE0E5;
   --track-bg:#EDEFF2;
   --border:var(--line);

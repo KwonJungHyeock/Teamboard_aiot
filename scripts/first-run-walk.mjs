@@ -7,6 +7,10 @@
 // 여기서는 **이 스크립트가 만든 행만** 지운다. 기존 데이터는 건드리지 않는다.
 //
 //   node scripts/first-run-walk.mjs
+//
+// ⚠ `| head` 로 파이프하지 말 것. head 가 파이프를 닫으면 SIGPIPE 로 프로세스가 죽고,
+//   finally 의 정리(계정·업무 삭제, 팀 데이터 복원)가 실행되지 않는다.
+//   출력을 줄이고 싶으면 파일로 받아서 보거나 `| cat` 을 거친다.
 import { chromium } from "playwright";
 import { scryptSync, randomBytes } from "node:crypto";
 import fs from "node:fs";
@@ -98,15 +102,22 @@ try {
   await page.waitForTimeout(900);
 
   // ── 3. 첫 사용 안내 (있으면) ──
-  const frn = await page.locator(".frn, [class*=frn-bg]").count();
+  const frn = await page.locator(".frn-bg").count();
   if (frn > 0) {
-    await shot(page, "03-firstrun-1", "첫 사용 안내 1/3 — 계정당 1회 (account.onboarded_at)");
-    for (const n of [2, 3]) {
-      const next = page.getByRole("button", { name: /다음|시작/ }).first();
-      if (await next.count()) { await next.click().catch(() => {}); await page.waitForTimeout(400); }
-      if (await page.locator(".frn, [class*=frn-bg]").count()) await shot(page, `03-firstrun-${n}`, `첫 사용 안내 ${n}/3`);
+    // 클릭은 **모달 안으로 좁힌다.** 페이지 전체에서 /다음|시작/ 을 찾으면
+    // 본문의 다른 버튼을 눌러 슬라이드가 그대로인데도 넘어간 줄 안다 — 실제로 그렇게 틀렸다.
+    const card = page.locator(".frn");
+    for (const n of [1, 2, 3]) {
+      const label = await card.locator(".frn-eyebrow, [class*=frn]").first().innerText().catch(() => "");
+      const step = (await card.innerText()).slice(0, 6).replace(/\s+/g, " ").trim();
+      await shot(page, `03-firstrun-${n}`, `첫 사용 안내 — 화면에 표시된 쪽수 "${step}" (${label ? "" : ""}계정당 1회)`);
+      if (n === 3) break;
+      const next = card.getByRole("button", { name: /^다음$/ }).first();
+      if (!(await next.count())) break;
+      await next.click();
+      await page.waitForTimeout(450);
     }
-    const done = page.getByRole("button", { name: /시작|닫기|건너뛰기/ }).first();
+    const done = card.getByRole("button", { name: /시작하기|건너뛰기/ }).first();
     if (await done.count()) { await done.click().catch(() => {}); await page.waitForTimeout(600); }
   } else {
     steps.push({ id: "03-firstrun", note: "첫 사용 안내가 뜨지 않았다 — 확인 필요", shot: "" });
@@ -176,7 +187,6 @@ try {
     await sql(`DELETE FROM signal WHERE task_id IN (SELECT id FROM task WHERE created_by = $1)`, [actorId]).catch(() => {});
     await sql(`DELETE FROM task WHERE created_by = $1`, [actorId]).catch((e) => console.error("task 정리 실패", e.message));
     await sql(`DELETE FROM notification WHERE user_id = $1 OR actor_id = $1`, [actorId]).catch(() => {});
-    await sql(`DELETE FROM activity WHERE user_id = $1`, [actorId]).catch(() => {});
     await sql(`DELETE FROM account WHERE actor_id = $1`, [actorId]);
     await sql(`DELETE FROM actor WHERE id = $1`, [actorId]);
     const left = await sql(`SELECT count(*)::int n FROM actor WHERE id = $1`, [actorId]);
