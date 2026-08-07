@@ -157,7 +157,7 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
       if (!g || !g.ok) {
         setBusy(false);
         notifyTaskUpdated();
-        setErr("업무는 만들었지만 목표 연결에 실패했어요. 업무 상세에서 다시 연결해 주세요.");
+        setErr("업무는 만들었지만 목표 연결에 실패했어요. 업무 상세에서 다시 연결하거나, 목표 화면의 미연결 업무에서 한 번에 붙일 수 있어요.");
         return;
       }
     }

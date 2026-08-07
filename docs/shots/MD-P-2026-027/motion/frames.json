@@ -2,7 +2,7 @@
   "rows": [
     {
       "id": "H3-09모달열림",
-      "note": "시작 모달 없음 → 중간 matrix matrix(0.997084, 0, 0, 0.997084, 0, 0) · opacity 0.927104 → 끝 matrix none · opacity 1"
+      "note": "시작 모달 없음 → 중간 matrix matrix(0.991066, 0, 0, 0.991066, 0, 0) · opacity 0.84744 → 끝 matrix none · opacity 1"
     },
     {
       "id": "H3-10모달닫힘",
@@ -18,7 +18,7 @@
     },
     {
       "id": "H3-03,04,07완료",
-      "note": "시작 행 opacity 1 · 체크 빈 상태 dashoffset 22px · 상태칸 평소 → 중간 행 opacity 0.55 · 체크 그려짐 dashoffset 0.3924px · 상태칸 하이라이트 → 끝 행 opacity 1 · 체크 그려짐 dashoffset 0px · 상태칸 ?"
+      "note": "시작 행 opacity 1 · 체크 빈 상태 dashoffset 22px · 상태칸 평소 → 중간 행 opacity 0.55 · 체크 그려짐 dashoffset 0px · 상태칸 하이라이트 → 끝 행 opacity 0.55 · 체크 그려짐 dashoffset 0px · 상태칸 평소"
     },
     {
       "id": "H3-01,02진척",
@@ -26,7 +26,7 @@
     },
     {
       "id": "H3-12카드hover",
-      "note": "시작 box-shadow rgba(22, 25, 29, 0.05) 0px 1px 2px 0px → 중간 box-shadow rgba(22, 25, 29, 0.08) 0px 3.88461px 13.5384px 0px → 끝 box-shadow rgba(22, 25, 29, 0.08) 0px 4px 14px 0px"
+      "note": "시작 box-shadow rgba(22, 25, 29, 0.05) 0px 1px 2px 0px → 중간 box-shadow rgba(22, 25, 29, 0.08) 0px 3.9894px 13.9576px 0px → 끝 box-shadow rgba(22, 25, 29, 0.08) 0px 4px 14px 0px"
     },
     {
       "id": "H3-14스켈레톤",

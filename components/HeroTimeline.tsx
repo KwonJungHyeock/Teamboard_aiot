@@ -4,7 +4,8 @@
 //  · 요약: 영역별 그룹 롤업(바 1개=영역, min(start)~max(end), 라벨 "N개 · 평균%").
 //  · 상세: 개별 업무 바(#ID 제목, start~end, 담당·%·T+nd).
 // 날짜는 공용 taskDays()(KST date-only, inclusive) 단일 소스 — 요약/상세/캘린더 동일. 오프바이원 금지.
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { durToken, prefersReduced } from "@/lib/motion";
 import { aggregateTasks } from "@/lib/progress";
 import type { Lane, LaneEvent } from "@/lib/home";
 import { openTaskPanel } from "@/lib/task-panel";
@@ -88,6 +89,9 @@ interface FlatTask {
 interface Bar { id: string; taskId: number | null; label: string; color: string; on: string; late: boolean; startIdx: number; span: number; sub: string }
 interface GLane { key: string; name: string; color: string; bars: Bar[] }
 
+/** §H2 — stagger 는 최대 6개까지. */
+const HERO_GROW_MAX = 6;
+
 export default function HeroTimeline({
   lanes, today, anchor, onAnchorChange, compact,
 }: {
@@ -169,6 +173,42 @@ export default function HeroTimeline({
 
   const nowIdx = today >= from && today < to ? diffDays(today, from) + 0.5 : null;
 
+  // ── §H4-① 진입 애니메이션 — 바가 왼쪽에서 자란다 ─────────────────────
+  //
+  // scaleX(0→1) · origin left · stagger --stagger-1 · **최대 6개**.
+  // 7번째부터는 애니메이션 없이 바로 그린다 — 20ms 씩 밀리면 뒤쪽은 사람이 기다리게 된다.
+  //
+  // **세션당 1회만 재생한다.** 매번 재생하면 홈에 갈 때마다 기다려야 하고, 그건 방해다.
+  // 계정이 아니라 세션으로 판정한다 — 탭을 새로 열면 한 번 더 봐도 괜찮다.
+  //
+  // 재생이 끝나면 클래스를 뗀다. 붙여 둔 채로 두면 탭이 백그라운드로 가서
+  // 애니메이션이 시작되지 않았을 때 scaleX(0) 인 채로 **영영 안 보이는** 바가 남는다.
+  const [grow, setGrow] = useState(false);
+  // useEffect 가 아니라 useLayoutEffect 다 — 그려진 **뒤에** 클래스를 붙이면
+  // 바가 한 번 보였다가 0 으로 줄어들고 다시 자란다. 첫 페인트 전에 붙여야 한다.
+  useLayoutEffect(() => {
+    if (!compact) return;                       // 시그니처는 홈 다크 히어로 하나뿐이다
+    if (prefersReduced()) return;
+    try {
+      if (sessionStorage.getItem("tb:hero-grow") === "1") return;
+      sessionStorage.setItem("tb:hero-grow", "1");
+    } catch { return; }                          // 저장이 막혀 있으면 재생하지 않는다 — 매번 재생보다 낫다
+    setGrow(true);
+  }, [compact]);
+
+  // 재생이 끝나면 클래스를 뗀다. **끄는 일을 켜는 효과 안에 두지 않는다** —
+  // 개발 모드의 StrictMode 는 효과를 붙였다 떼었다 다시 붙이고, 그 과정에서
+  // 켜는 효과는 sessionStorage 가드에 막혀 두 번째에 일찍 빠져나간다.
+  // 그때 타이머만 정리되고 다시 걸리지 않아 클래스가 영원히 남았다.
+  // 끄는 일은 grow 를 보고 따로 건다 — 다시 붙어도 다시 걸린다.
+  useEffect(() => {
+    if (!grow) return;
+    const total = durToken("--stagger-1", 20) * (HERO_GROW_MAX - 1) + durToken("--dur-4", 520) + 80;
+    const t = setTimeout(() => setGrow(false), total);
+    return () => clearTimeout(t);
+  }, [grow]);
+  let growIdx = 0;
+
   return (
     <section className={`tile hero gt2${compact ? " hm-hero" : ""}`} aria-label="팀 타임라인">
       {/* §D2-1: 헤더 한 줄 — 제목 · YYYY.MM · [요약|상세] · (기간 이동) · 우측 ● NOW */}
@@ -218,11 +258,15 @@ export default function HeroTimeline({
                   ))}
                   {nowIdx !== null && <div className="gt-nowline" style={{ left: `${pct(nowIdx)}%` }} />}
                 </div>
-                {lane.bars.map((b) => (
+                {lane.bars.map((b) => {
+                  // 6개까지만 stagger. 나머지는 클래스를 안 붙여 바로 그려진다.
+                  const gi = grow && growIdx < HERO_GROW_MAX ? growIdx++ : -1;
+                  return (
                   <div className="gt-line" key={b.id}>
                     <button
-                      className={`gt2-bar${b.late ? " late" : ""}`}
-                      style={{ left: `${pct(b.startIdx)}%`, width: `calc(${(b.span / n) * 100}% - 3px)`, background: b.color, color: b.on }}
+                      className={`gt2-bar${b.late ? " late" : ""}${gi >= 0 ? " hero-grow" : ""}`}
+                      style={{ left: `${pct(b.startIdx)}%`, width: `calc(${(b.span / n) * 100}% - 3px)`, background: b.color, color: b.on,
+                               ...(gi >= 0 ? ({ "--i": gi } as React.CSSProperties) : null) }}
                       onClick={b.taskId ? () => openTaskPanel(b.taskId as number) : undefined}
                       disabled={!b.taskId}
                       title={`${b.label}${b.sub ? ` · ${b.sub}` : ""}${b.late ? " · ⚠ 지연" : ""}`}
@@ -235,7 +279,8 @@ export default function HeroTimeline({
                       {b.late && <i className="gt2-cap" aria-hidden="true" />}
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </Fragment>
           ))}

@@ -340,6 +340,7 @@ function MonthGoalRow({
           detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
           closing={goal.closing}
           counted={goal.countedTasks}
+          periodType={goal.periodType}
         />
         {canEdit && (
           <button className="lk mu gedit-b" onClick={() => setEditing((v) => !v)}>
@@ -465,7 +466,8 @@ function BranchNode({
         <GoalProgress progress={goal.progress} colorKey={goal.colorKey}
           detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
           closing={goal.closing}
-          counted={goal.countedTasks} />
+          counted={goal.countedTasks}
+          periodType={goal.periodType} />
         {canEdit && (
           <button
             className="lk mu gedit-b"

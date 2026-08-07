@@ -13,7 +13,7 @@
       {
         "el": "div.hm-g2",
         "w": 1108,
-        "h": 387
+        "h": 350
       },
       {
         "el": "div.hh2",
@@ -71,22 +71,22 @@
     "route": "/tasks",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/tasks.png",
-    "scrollHeight": 1692,
+    "scrollHeight": 987,
     "biggest": [
+      {
+        "el": "div.iti",
+        "w": 1108,
+        "h": 38
+      },
       {
         "el": "section.card",
         "w": 1108,
-        "h": 1295
+        "h": 345
       },
       {
-        "el": "table",
-        "w": 1070,
-        "h": 1208
-      },
-      {
-        "el": "colgroup",
-        "w": 1070,
-        "h": 1208
+        "el": "p.tv-hidden",
+        "w": 1108,
+        "h": 18
       }
     ],
     "btnCount": 16,

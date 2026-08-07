@@ -11,6 +11,7 @@
 // **시간·곡선은 전부 CSS 토큰에서 읽는다.** JS 안에 260 이나 520 을 적지 않는다 —
 // 토큰을 고쳤을 때 따라오지 않는 숫자가 하나라도 있으면 규격이 두 벌이 된다.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { CHAIN_WINDOW_MS, GOAL_CHAIN_EVENT } from "./goal-chain";
 
 /** 사용자가 모션을 줄여 달라고 했는지. SSR 에서는 false 로 본다. */
 export function prefersReduced(): boolean {
@@ -160,4 +161,78 @@ export function useExiting<T extends { id: number }>(rows: T[]): { rows: T[]; ex
   }, [rows]);
 
   return { rows: held.length ? [...rows, ...held] : rows, exiting };
+}
+
+/**
+ * 목표 트리 연쇄 카운트업 (§H4-②).
+ *
+ * 층(월 0 · 분기 1 · 연간 2)마다 `--stagger-2` 만큼 늦게 시작하고, 각 층은 `--dur-4` 동안 오른다.
+ * 순서가 보여야 하므로 `--stagger-1`(20ms)이 아니라 `--stagger-2`(60ms)를 쓴다.
+ *
+ * 재생 조건은 셋 다 만족해야 한다:
+ *   ① 사용자가 직접 값을 바꿨다 — GOAL_CHAIN_EVENT 가 최근에 왔다
+ *   ② 값이 실제로 바뀌었다
+ *   ③ 그 행이 **지금 화면에 보인다**
+ *
+ * ③ 이 없으면 스크롤 아래에서 혼자 재생되고 끝난다. 사용자는 아무것도 못 본다.
+ * 그리고 **나중에 보일 때도 재생하지 않는다** — 그때는 "방금 내가 한 일"이 아니다.
+ *
+ * 연달아 바꾸면 세대가 올라간다. 진행 중이던 연쇄는 타이머·RAF 를 끊고 최신 값으로 다시 시작한다 —
+ * 겹쳐 쌓이면 숫자가 두 방향으로 동시에 굴러간다.
+ */
+export function useGoalChainCountUp(
+  target: number | null,
+  level: number,
+  ref: React.RefObject<HTMLElement>,
+): number | null {
+  const [shown, setShown] = useState<number | null>(target);
+  const from = useRef<number | null>(target);
+  const armed = useRef(0);          // 사용자가 값을 바꾼 시각
+  const raf = useRef<number>();
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    const onChain = () => { armed.current = performance.now(); };
+    window.addEventListener(GOAL_CHAIN_EVENT, onChain);
+    return () => window.removeEventListener(GOAL_CHAIN_EVENT, onChain);
+  }, []);
+
+  useEffect(() => {
+    const stop = () => {
+      if (raf.current) cancelAnimationFrame(raf.current);
+      if (timer.current) clearTimeout(timer.current);
+    };
+    stop();                                   // 진행 중이던 연쇄를 먼저 끊는다
+
+    const start = from.current;
+    from.current = target;
+    if (target === null || start === null || start === target) { setShown(target); return; }
+
+    const fresh = performance.now() - armed.current < CHAIN_WINDOW_MS;
+    const el = ref.current;
+    const visible = !!el && (() => {
+      const r = el.getBoundingClientRect();
+      return r.bottom > 0 && r.top < (window.innerHeight || 0) && r.width > 0;
+    })();
+
+    if (!fresh || !visible || prefersReduced()) { setShown(target); return; }
+
+    setShown(start);
+    const dur = durToken("--dur-4", 520);
+    const gap = durToken("--stagger-2", 60) * level;
+    const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+    timer.current = setTimeout(() => {
+      const t0 = performance.now();
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - t0) / dur);
+        setShown(Math.round(start + (target - start) * ease(t)));
+        if (t < 1) raf.current = requestAnimationFrame(tick);
+      };
+      raf.current = requestAnimationFrame(tick);
+    }, gap);
+
+    return stop;
+  }, [target, level, ref]);
+
+  return shown;
 }

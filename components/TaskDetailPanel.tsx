@@ -16,6 +16,7 @@ import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution } from "@/lib/progress";
 import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import ProjectCombo, { type ComboProject } from "./ProjectCombo";
+import { notifyGoalChain } from "@/lib/goal-chain";
 import type { SessionUser } from "@/lib/types";
 import { pfill } from "@/lib/progress-bar";
 import {
@@ -58,6 +59,12 @@ interface Act { id: number; message: string; level: string; created_at: string; 
 const STATUS = [["todo", "대기"], ["doing", "진행"], ["review", "리뷰"], ["done", "완료"]] as const;
 const PRIORITY = [["high", "높음"], ["mid", "보통"], ["low", "낮음"]] as const;
 const WORKTYPE = [["team", "팀업무"], ["personal", "개인업무"], ["routine", "상시업무"]] as const;
+
+/**
+ * §H4-② — 이 필드들이 바뀌면 목표 집계가 실제로 움직인다.
+ * 제목·담당·설명이 바뀌었다고 목표가 오르지는 않는다. 그때 연쇄가 재생되면 거짓말이 된다.
+ */
+const CHAIN_FIELDS = ["progress", "status", "resolution", "goalIds", "goalSource", "projectId"];
 
 function fmt(iso: string): string {
   const d = new Date(iso);
@@ -161,6 +168,7 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
     setTimeout(() => setSave("idle"), 1200);
     await loadDetail(openId);
     notifyTaskUpdated();
+    if (CHAIN_FIELDS.some((k) => k in fields)) notifyGoalChain();
     return true;
   }
 
@@ -186,6 +194,7 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
     setTimeout(() => setSave("idle"), 1200);
     await loadDetail(openId);
     notifyTaskUpdated();
+    if (CHAIN_FIELDS.some((k) => k in fields)) notifyGoalChain();
     return true;
   }
 

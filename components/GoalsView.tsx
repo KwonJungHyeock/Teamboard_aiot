@@ -18,6 +18,7 @@ import GoalLinkBanner from "./GoalLinkBanner";
 import UnlinkedTaskPanel, { type UnlinkedTask, type MonthGoalOption } from "./UnlinkedTaskPanel";
 import SnapshotMenu from "./SnapshotMenu";
 import { GOAL_UPDATED_EVENT, openGoalPanel } from "@/lib/goal-panel";
+import { TASK_UPDATED_EVENT } from "@/lib/task-panel";
 
 type Tab = "team" | "personal";
 const YEARS = [2025, 2026] as const;
@@ -97,11 +98,20 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
     load();
   }, [load]);
 
-  // 목표 변경(패널 저장·진척 재계산) 시 목록 재동기화
+  // 목표 변경(패널 저장·진척 재계산) 시 목록 재동기화.
+  //
+  // TASK_UPDATED 도 함께 듣는다 — 업무 진척이 바뀌면 목표 집계가 실제로 움직이는데,
+  // 예전에는 이 화면이 그 신호를 듣지 않아 **화면을 다시 열어야만** 숫자가 바뀌었다.
+  // §H4-② 연쇄가 "값이 제자리에서 오르는 것"을 보여주는 모션이라, 값이 제자리에서
+  // 바뀌지 않으면 연쇄 자체가 성립하지 않는다.
   useEffect(() => {
     const onUpd = () => load();
     window.addEventListener(GOAL_UPDATED_EVENT, onUpd);
-    return () => window.removeEventListener(GOAL_UPDATED_EVENT, onUpd);
+    window.addEventListener(TASK_UPDATED_EVENT, onUpd);
+    return () => {
+      window.removeEventListener(GOAL_UPDATED_EVENT, onUpd);
+      window.removeEventListener(TASK_UPDATED_EVENT, onUpd);
+    };
   }, [load]);
 
   useEffect(() => {

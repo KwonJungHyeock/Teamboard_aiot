@@ -9,6 +9,7 @@ import SectionEmpty, { type SectionEmptyAction } from "./SectionEmpty";
 import { toast } from "@/lib/quick";
 import { notifyTaskUpdated } from "@/lib/task-panel";
 import { useCountUp, useExiting, useFlip, useHighlight } from "@/lib/motion";
+import { notifyGoalChain } from "@/lib/goal-chain";
 import { pfill } from "@/lib/progress-bar";
 export interface TaskTableRow {
   id: number;
@@ -119,6 +120,7 @@ export default function TaskTable({
       toast("완료 처리에 실패했어요", "err");
     } else {
       notifyTaskUpdated();
+      notifyGoalChain();   // §H4-② — 사람이 완료를 눌렀다. 목표 트리 연쇄를 예약한다.
     }
   }
   return (
