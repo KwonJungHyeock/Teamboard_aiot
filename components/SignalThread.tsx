@@ -12,6 +12,9 @@ import BlobImage from "./BlobImage";
 import { uploadImage, type UploadedImage } from "@/lib/upload";
 import { DecisionConfirm, DecisionCard, draftRationale, type Decision } from "./decision-ui";
 import { openTaskPanel } from "@/lib/task-panel";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
 
 interface Votes { up: number; down: number; mine: string | null }
 interface ThreadSignal {
@@ -188,8 +191,8 @@ export default function SignalThread({
     setComments((cur) => cur.map((c) => (c.id === id ? { ...c, reactions: next } : c)));
   }
 
-  if (error && !signal) return <section className="card sthread"><p className="gerr">{error}</p></section>;
-  if (!signal) return <section className="card sthread"><p className="gempty">불러오는 중...</p></section>;
+  if (error && !signal) return <section className="card sthread"><ErrorNote message="논의를 불러오지 못했어요" cause={error} /></section>;
+  if (!signal) return <section className="card sthread"><Skeleton variant="block" height={180} /></section>;
 
   const active = signal.status === "open" || signal.status === "discussing";
   const decided = signal.status === "decided";
@@ -289,13 +292,13 @@ export default function SignalThread({
         </div>
       )}
 
-      {error && <p className="gerr">{error}</p>}
+      {error && <ErrorNote message={error} />}
 
       {/* 대화형 답글 스레드 */}
       <div className="thread">
         <div className="thread-h"><h3>대화</h3><span className="sub num">{comments.length}</span></div>
         <div className="thread-list">
-          {comments.length === 0 && <p className="thread-empty">첫 메시지를 남겨 논의를 시작하세요. @이름으로 멘션할 수 있어요.</p>}
+          {comments.length === 0 && <SectionEmpty text="첫 메시지를 남겨 논의를 시작하세요 — @이름으로 멘션할 수 있어요" />}
           {comments.map((c) => (
             <div key={c.id} tabIndex={0} className={`msg ha-host ${c.agent ? "ag" : ""} ${c.authorId === user.id ? "mine" : ""}`}>
               <HoverActions

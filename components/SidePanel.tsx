@@ -11,6 +11,9 @@ import { SIDE_PANEL_EVENT, currentPanel, closePanel, openPanel, type PanelRef } 
 import { openTaskPanel } from "@/lib/task-panel";
 import { SIGNAL_CHANGED_EVENT } from "@/lib/collab-events";
 import ResourceLinks from "./ResourceLinks";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
 
 const TITLE: Record<string, string> = { signal: "논의", member: "멤버", decision: "결정", task: "업무" };
 
@@ -102,8 +105,8 @@ function MemberBody({ id }: { id: number }) {
     return () => { alive = false; };
   }, [id]);
 
-  if (err) return <p className="gerr">{err}</p>;
-  if (!d) return <p className="gempty">불러오는 중...</p>;
+  if (err) return <ErrorNote message="구성원 정보를 불러오지 못했어요" cause={err} />;
+  if (!d) return <Skeleton variant="block" height={140} />;
   const role = d.member.isAgent ? "에이전트" : d.member.role === "lead" ? "팀장" : d.member.role === "viewer" ? "뷰어" : "팀원";
   return (
     <div className="spm">
@@ -120,7 +123,7 @@ function MemberBody({ id }: { id: number }) {
       </div>
       <div className="gpanel-sec">
         <h4>담당 업무</h4>
-        {d.tasks.length === 0 ? <p className="gpanel-none">진행 중인 업무가 없어요.</p> : (
+        {d.tasks.length === 0 ? <SectionEmpty text="진행 중인 업무가 없어요" /> : (
           <ul className="gpanel-list">
             {d.tasks.map((t) => (
               <li key={t.id}>
@@ -163,8 +166,8 @@ function DecisionBody({ id }: { id: number }) {
     return () => { alive = false; };
   }, [id]);
 
-  if (err) return <p className="gerr">{err}</p>;
-  if (!d) return <p className="gempty">불러오는 중...</p>;
+  if (err) return <ErrorNote message="결정을 불러오지 못했어요" cause={err} />;
+  if (!d) return <Skeleton variant="block" height={140} />;
   return (
     <div className="spd">
       <DecisionCard decision={d.decision} />

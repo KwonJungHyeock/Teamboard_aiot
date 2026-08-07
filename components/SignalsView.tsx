@@ -8,6 +8,8 @@ import { toast } from "@/lib/quick";
 import PageShell from "./PageShell";
 import SignalPanel, { type SignalPanelItem } from "./SignalPanel";
 import DecisionLog from "./DecisionLog";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
 import { SIDE_PANEL_EVENT, currentPanel, openPanel, closePanel } from "@/lib/side-panel";
 import { SIGNAL_CHANGED_EVENT } from "@/lib/collab-events";
 
@@ -224,6 +226,22 @@ export default function SignalsView({ user }: { user: SessionUser }) {
     if (sp.get("tab") === "decision") setMainTab("decision");
   }, []);
 
+  /**
+   * 탭을 URL 에 반영한다 (MD-P-2026-026 §A-3).
+   * 예전에는 탭이 로컬 상태뿐이라 `/signals?tab=decision` 으로 **들어올 수는 있어도**
+   * 클릭한 결과가 주소에 남지 않았다. 그래서 결정 탭의 화면을 링크로 지목할 수 없었고,
+   * 점검 스크립트도 그 화면에 직접 도달하지 못했다.
+   * history 는 쌓지 않는다 — 탭 왕복이 뒤로가기 이력을 채우면 화면을 벗어날 수 없다.
+   */
+  function pickMainTab(next: "discussion" | "decision") {
+    setMainTab(next);
+    const sp = new URLSearchParams(window.location.search);
+    if (next === "decision") sp.set("tab", "decision");
+    else sp.delete("tab");
+    const qs = sp.toString();
+    window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+  }
+
   const load = useCallback(async () => {
     try {
       const urls = showClosed
@@ -311,7 +329,7 @@ export default function SignalsView({ user }: { user: SessionUser }) {
       title="논의·결정"
       subtitle="결정 · 확인 요청 · 메모 · 리스크. 리스크는 상단 고정, 정체는 임계값 기준입니다."
       actions={
-        mainTab === "discussion" ? (
+        mainTab === "discussion" && !(!loading && signals.length === 0 && !composing) ? (
           <button className="btn-primary" onClick={() => setComposing((v) => !v)} aria-expanded={composing}>
             ＋ 새 논의·결정
           </button>
@@ -322,7 +340,7 @@ export default function SignalsView({ user }: { user: SessionUser }) {
         { key: "decision", label: "결정" },
       ]}
       activeTab={mainTab}
-      onTab={(k) => setMainTab(k as "discussion" | "decision")}
+      onTab={(k) => pickMainTab(k as "discussion" | "decision")}
       filters={
         mainTab === "discussion" ? (
           <>
@@ -347,9 +365,9 @@ export default function SignalsView({ user }: { user: SessionUser }) {
             />
           )}
 
-          {loading && <p className="gempty">불러오는 중...</p>}
-          {error && <p className="gerr">{error}</p>}
-          {!loading && (
+          {loading && <Skeleton variant="list" />}
+          {error && <ErrorNote message="논의·결정을 불러오지 못했어요" cause={error} onRetry={load} />}
+          {!loading && !error && (
             <SignalPanel
               items={signals.map((s) => toPanelItem(s, user))}
               stalledCount={stalledCount}
@@ -357,6 +375,7 @@ export default function SignalsView({ user }: { user: SessionUser }) {
               selectedId={selectedId}
               onQuickAct={quickAct}
               busyId={busyId}
+              onNew={() => setComposing(true)}
             />
           )}
         </>

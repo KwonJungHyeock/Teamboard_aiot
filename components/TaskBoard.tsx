@@ -9,6 +9,7 @@ import { openQuickCreate } from "@/lib/quick";
 import {
   type TaskItem, type BoardGroup, BOARD_STATUSES, STATUS_META, statusColor, areaColor, dday,
 } from "@/lib/task-view";
+import SectionEmpty from "./SectionEmpty";
 
 interface Col { key: string; label: string; count: number; dot?: string; prefill: Record<string, unknown>; move: Record<string, unknown> }
 
@@ -137,7 +138,7 @@ export default function TaskBoard({
                   </article>
                 );
               })}
-              {items.length === 0 && <p className="tb-empty">비어 있음</p>}
+              {items.length === 0 && <SectionEmpty text="비어 있음" />}
               <button
                 className="tb-add"
                 onClick={(e) => openQuickCreate({ x: e.clientX, y: e.clientY }, col.prefill)}

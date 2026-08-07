@@ -7,6 +7,8 @@
 // 시스템(마감 자동 알림 등)은 숫자 없이 점으로만 알린다.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PageShell from "./PageShell";
+import EmptyState from "./EmptyState";
+import Skeleton from "./Skeleton";
 import Link from "next/link";
 import { relTime } from "./collab-ui";
 import HoverActions from "./HoverActions";
@@ -409,12 +411,13 @@ export default function ActivityInbox() {
             </div>
 
             {loading ? (
-              <p className="gempty">불러오는 중...</p>
+              <Skeleton variant="list" />
             ) : shown.length === 0 ? (
-              <div className="actv-empty">
-                <p>새 활동이 없어요.</p>
-                <p className="sub">자주 쓰는 필터는 왼쪽 아래 <b>저장된 뷰</b>로 고정해두면 한 번에 돌아올 수 있어요.</p>
-              </div>
+              <EmptyState
+                icon="inbox"
+                title="새 활동이 없어요"
+                hint="멘션·답글·승인·상태 변경이 생기면 여기에 모입니다. 자주 쓰는 필터는 왼쪽 아래 저장된 뷰로 고정해두면 한 번에 돌아올 수 있어요."
+              />
             ) : (
               <section className="card" style={{ padding: 0, overflow: "hidden" }}>
                 <div className="ninbox">

@@ -5,6 +5,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { countedLabel } from "@/lib/progress";
 import Link from "next/link";
+import EmptyState from "./EmptyState";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
 import type { SessionUser } from "@/lib/types";
 
 interface ProjectCard {
@@ -122,8 +125,20 @@ export default function ProjectsIndexView({ user }: { user: SessionUser }) {
           </div>
         </div>
 
-        {loading && <p className="gempty">불러오는 중...</p>}
-        {error && <p className="gerr">{error}</p>}
+        {loading && <Skeleton variant="block" height={120} />}
+        {error && <ErrorNote message="프로젝트를 불러오지 못했어요" cause={error} onRetry={load} />}
+
+        {!loading && !error && shown.length === 0 && (
+          <EmptyState
+            icon="tasks"
+            title={filter ? `${STATUS_LABEL[filter] ?? filter} 상태의 프로젝트가 없어요` : "아직 프로젝트가 없어요"}
+            hint={
+              filter
+                ? "위 상태 필터를 바꾸면 다른 프로젝트를 볼 수 있어요."
+                : "여러 업무를 묶어 하나의 목표로 굴릴 때 프로젝트를 만듭니다. 진행률·목표·열린 업무는 자동으로 집계됩니다."
+            }
+          />
+        )}
 
         <div className="pgrid">
           {!loading &&
@@ -158,9 +173,6 @@ export default function ProjectsIndexView({ user }: { user: SessionUser }) {
                 </div>
               </Link>
             ))}
-          {!loading && shown.length === 0 && (
-            <p className="gempty">해당 상태의 프로젝트가 없습니다.</p>
-          )}
         </div>
 
         {user.role === "lead" && <NewProjectForm onDone={load} />}

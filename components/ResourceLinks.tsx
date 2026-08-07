@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from "react";
 import HoverActions from "./HoverActions";
 import { toast } from "@/lib/quick";
+import Skeleton from "./Skeleton";
 
 type EntityType = "task" | "project" | "goal" | "decision";
 type Provider = "notion" | "figma" | "github" | "other";
@@ -143,10 +144,10 @@ export default function ResourceLinks({
       )}
 
       {loading ? (
-        <p className="tdp-muted">불러오는 중…</p>
+        <Skeleton variant="list" rows={2} />
       ) : links.length === 0 ? (
         <p className="tdp-muted">
-          연결된 리소스가 없습니다. Notion 문서·Figma 파일 URL을 붙여넣어 연결하세요.
+          연결된 리소스가 없어요. Notion 문서·Figma 파일 URL을 붙여넣어 연결하세요.
         </p>
       ) : (
         links.map((l) => {

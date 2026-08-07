@@ -12,6 +12,8 @@ import DocEditor, { type DocBlock } from "./DocEditor";
 import PropertyBlock, { type PropRow } from "./PropertyBlock";
 import LinkedResources from "./LinkedResources";
 import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution } from "@/lib/progress";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
 import {
   TASK_PANEL_EVENT,
   currentTaskRef,
@@ -622,7 +624,7 @@ export default function TaskDetailPanel() {
           </div>
         )}
 
-        {openId !== "new" && !t && !err && <div className="tdp-body"><p className="tdp-muted">불러오는 중…</p></div>}
+        {openId !== "new" && !t && !err && <div className="tdp-body"><Skeleton variant="page" rows={3} /></div>}
         {openId !== "new" && err && !t && <div className="tdp-body"><p className="tdp-err">{err}</p></div>}
 
         {t && (
@@ -766,7 +768,7 @@ export default function TaskDetailPanel() {
             {/* 활동 타임라인 */}
             <div className="tdp-sec">
               <div className="tdp-sec-h">활동 타임라인</div>
-              {activity.length === 0 && <p className="tdp-muted">기록된 활동이 없습니다.</p>}
+              {activity.length === 0 && <SectionEmpty text="기록된 활동이 없어요" />}
               {activity.map((a) => (
                 <div className="tdp-act" key={a.id}>
                   <span className="tdp-act-t">{fmt(a.created_at)}</span>

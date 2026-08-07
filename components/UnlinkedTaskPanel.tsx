@@ -11,6 +11,8 @@
 // 새 시각 토큰을 만들지 않는다. §C 목록 규격(.dl / .dl-row 38px · 12.5px)을 그대로 쓴다.
 import { useMemo, useState } from "react";
 import { toast } from "@/lib/quick";
+import SectionEmpty from "./SectionEmpty";
+import ErrorNote from "./ErrorNote";
 
 export interface UnlinkedTask {
   id: number;
@@ -110,10 +112,7 @@ export default function UnlinkedTaskPanel({
   if (tasks.length === 0) {
     return (
       <div className="dl">
-        <div className="dl-empty">
-          <p>목표에 연결되지 않은 업무가 없어요</p>
-          <p className="dl-empty-sub">모든 업무가 목표에 집계되거나 "목표 없음"으로 정리됐습니다.</p>
-        </div>
+        <SectionEmpty text="목표에 연결되지 않은 업무가 없어요 — 모든 업무가 목표에 집계되거나 '목표 없음'으로 정리됐습니다" />
       </div>
     );
   }
@@ -135,11 +134,11 @@ export default function UnlinkedTaskPanel({
         {checked.size > 0 && (
           <button className="btn-ghost" onClick={() => setChecked(new Set())}>선택 해제</button>
         )}
-        {error && <span className="gerr">{error}</span>}
+        {error && <ErrorNote message={error} />}
       </div>
 
       {monthGoals.length === 0 && (
-        <p className="utp-none">이번 달 팀 월 목표가 없습니다. 목표를 먼저 만들어 주세요.</p>
+        <SectionEmpty text="이번 달 팀 월 목표가 없어요 — 목표를 먼저 만들어 주세요" action={{ label: "목표 만들기 →", href: "/goals" }} />
       )}
 
       {groups.map(([name, list]) => {

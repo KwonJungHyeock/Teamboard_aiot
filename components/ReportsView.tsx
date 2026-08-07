@@ -7,6 +7,10 @@ import PageShell from "./PageShell";
 import ReportView, { type ReportData } from "./ReportView";
 import ReportEditor from "./ReportEditor";
 import PerfReport from "./PerfReport";
+import EmptyState from "./EmptyState";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
 import type { SessionUser } from "@/lib/types";
 
 interface ReportListItem {
@@ -47,11 +51,13 @@ export default function ReportsView({ user, notionConnected = true }: { user: Se
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // 첫 목록이 오기 전 빈 상태를 띄우면 "보고서가 없다"고 잘못 말하게 된다 (§A-4)
+  const [listLoading, setListLoading] = useState(true);
 
   const loadList = useCallback(async () => {
-    const res = await fetch("/api/reports");
-    const data = await res.json();
-    if (res.ok) setList(data.reports ?? []);
+    const res = await fetch("/api/reports").catch(() => null);
+    if (res && res.ok) setList((await res.json()).reports ?? []);
+    setListLoading(false);
   }, []);
 
   useEffect(() => {
@@ -141,9 +147,37 @@ export default function ReportsView({ user, notionConnected = true }: { user: Se
 
         {mainTab === "approval" && isLead && (
         <>
-        {error && <p className="gerr">{error}</p>}
+        {error && <ErrorNote message={error} />}
         {notice && <p className="rp-notice no-print">{notice}</p>}
 
+        {listLoading && <Skeleton variant="page" />}
+
+        {/* A-b — 좌우 분할은 **고를 것이 있을 때만** 그린다 (MD-P-2026-026 §A).
+            보고서가 0건이면 좌측 "생성된 보고서가 없습니다" 와
+            우측 "왼쪽에서 보고서를 선택하세요" 가 동시에 떴다.
+            생성기는 빈 상태 안으로 들여온다 — 여기서 할 수 있는 유일한 일이다. */}
+        {!listLoading && list.length === 0 ? (
+          <EmptyState
+            icon="handover"
+            title="아직 생성된 보고서가 없어요"
+            hint="연·월을 고르고 생성하면 그 달의 목표·완료 업무·결정·리스크가 DB 집계값으로 채워집니다. 서술만 손으로 다듬어 승인하세요."
+            action={
+              <div className="rp-gen">
+                <select aria-label="연도" value={genYear} onChange={(e) => setGenYear(Number(e.target.value))}>
+                  {[now.getUTCFullYear() - 1, now.getUTCFullYear()].map((y) => (
+                    <option key={y} value={y}>{y}년</option>
+                  ))}
+                </select>
+                <select aria-label="월" value={genMonth} onChange={(e) => setGenMonth(Number(e.target.value))}>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <option key={m} value={m}>{m}월</option>
+                  ))}
+                </select>
+                <button className="btn-primary" disabled={busy} onClick={generate}>보고서 생성</button>
+              </div>
+            }
+          />
+        ) : !listLoading ? (
         <div className="rp-cols">
           <aside className="rp-side no-print">
             <div className="ch">
@@ -170,7 +204,6 @@ export default function ReportsView({ user, notionConnected = true }: { user: Se
                 보고서 생성
               </button>
             </div>
-            {list.length === 0 && <p className="gempty">생성된 보고서가 없습니다.</p>}
             {list.map((r) => (
               <button
                 key={r.id}
@@ -189,9 +222,7 @@ export default function ReportsView({ user, notionConnected = true }: { user: Se
 
           <div className="rp-main">
             {!detail && (
-              <div className="rp-empty-center">
-                <p className="gempty">왼쪽에서 보고서를 선택하거나 새로 생성하세요.</p>
-              </div>
+              <SectionEmpty text="왼쪽에서 보고서를 고르거나 위에서 새로 생성하세요" />
             )}
             {detail && (
               <>
@@ -234,6 +265,7 @@ export default function ReportsView({ user, notionConnected = true }: { user: Se
             )}
           </div>
         </div>
+        ) : null}
         </>
         )}
       </div>

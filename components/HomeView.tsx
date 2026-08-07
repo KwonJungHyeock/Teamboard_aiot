@@ -9,6 +9,7 @@ import { openPanel } from "@/lib/side-panel";
 import type { HomeSummary } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
 import PageShell from "./PageShell";
+import SectionEmpty from "./SectionEmpty";
 import HeroTimeline from "./HeroTimeline";
 import { openNewTaskPanel } from "@/lib/task-panel";
 
@@ -119,13 +120,14 @@ function Block({
   );
 }
 
+/**
+ * 홈 위젯의 빈 상태 — 공용 SectionEmpty 로 넘긴다 (MD-P-2026-026 §A · 확정 B-7).
+ * 예전에는 여기서 코랄 `btn-primary` 를 그렸다. 홈 위젯 다섯 개가 동시에 비면
+ * 한 화면에 주 액션 버튼이 다섯 개 떴고, 그중 무엇이 지금 할 일인지 알 수 없었다.
+ * 섹션 빈 상태의 행동 유도는 텍스트 링크 하나까지다.
+ */
 function BlockEmpty({ text, cta, href }: { text: string; cta?: string; href?: string }) {
-  return (
-    <div className="hm-empty">
-      <p>{text}</p>
-      {cta && href && <Link className="btn-primary" href={href}>{cta}</Link>}
-    </div>
-  );
+  return <SectionEmpty text={text} action={cta && href ? { label: `${cta} →`, href } : undefined} />;
 }
 
 /* ══════════ §D4 목표 ══════════ */
@@ -150,7 +152,7 @@ function GoalsBlock({ annual, annualLabel, quarters, myGoalCount }: {
     <Block title="목표" more="전체 관리 →" moreHref="/goals"
       foot={myGoalCount > 0 ? <Link className="hm-foot" href="/goals?scope=personal">내 목표 <b className="num">{myGoalCount}</b>건 →</Link> : null}>
       {rows.length === 0 ? (
-        <BlockEmpty text="등록된 목표가 없어요. 연간·분기 목표를 추가하면 달성 현황이 모입니다." cta="목표 추가" href="/goals" />
+        <BlockEmpty text="등록된 목표가 없어요" cta="목표 추가" href="/goals" />
       ) : rows.map((r) => {
         const st = r.status ? GOAL_STATUS[r.status] : null;
         return (
@@ -179,7 +181,7 @@ function DecisionsBlock({ items, decidedThisWeek }: {
     <Block title="결정 대기" count={items.length} more="전체 관리 →" moreHref="/signals"
       foot={<Link className="hm-foot" href="/signals?tab=decision">이번 주 확정된 결정 <b className="num">{decidedThisWeek}</b>건 →</Link>}>
       {items.length === 0 ? (
-        <BlockEmpty text="대기 중인 결정이 없어요. 논의중인 결정이 오래된 순으로 쌓입니다." cta="논의·결정으로" href="/signals" />
+        <BlockEmpty text="대기 중인 결정이 없어요" cta="논의·결정으로" href="/signals" />
       ) : items.map((d) => (
         <button className="hm-row hm-row-dec" key={d.id} onClick={() => openPanel("signal", d.id)}>
           <span className="hm-c1">
@@ -207,7 +209,7 @@ function UpcomingBlock({ items, today }: { items: HomeSummary["upcoming"]; today
   return (
     <Block title="다가오는 일정" more="전체 관리 →" moreHref="/calendar">
       {future.length === 0 ? (
-        <BlockEmpty text="예정된 일정이 없어요. 회의·마감이 14일 안에 잡히면 여기 모입니다." />
+        <BlockEmpty text="예정된 일정이 없어요" />
       ) : future.map((it) => {
         const k = UP_KIND[it.kind];
         const [, mm, dd] = it.date.split("-");
@@ -276,7 +278,7 @@ function FocusBlock({ items, agent }: { items: HomeSummary["myFocus"]; agent: Ho
         </Link>
       }>
       {items.length === 0
-        ? <BlockEmpty text="지금 처리할 것이 없어요. 멘션·답글·승인·오늘 마감이 생기면 여기 모입니다." />
+        ? <BlockEmpty text="지금 처리할 것이 없어요" />
         : items.slice(0, 5).map((f) => <FocusRow key={f.key} f={f} />)}
     </Block>
   );
@@ -285,7 +287,7 @@ function FocusBlock({ items, agent }: { items: HomeSummary["myFocus"]; agent: Ho
 /* ══════════ §D5 내 초점 탭 — 목록 행(38px) ══════════ */
 function FocusTab({ items }: { items: HomeSummary["myFocus"] }) {
   if (items.length === 0) {
-    return <div className="dl"><div className="dl-empty"><p>지금 처리할 것이 없어요.</p></div></div>;
+    return <div className="dl"><SectionEmpty text="지금 처리할 것이 없어요" /></div>;
   }
   return (
     <div className="dl">
@@ -315,7 +317,7 @@ function FocusTab({ items }: { items: HomeSummary["myFocus"] }) {
 /* ══════════ §D5 팀 현황 탭 — 목록 행(38px) ══════════ */
 function TeamTab({ rows }: { rows: HomeSummary["teamStatus"] }) {
   if (rows.length === 0) {
-    return <div className="dl"><div className="dl-empty"><p>진행 중인 업무가 있는 팀원이 없어요.</p></div></div>;
+    return <div className="dl"><SectionEmpty text="진행 중인 업무가 있는 팀원이 없어요" /></div>;
   }
   return (
     <div className="dl">

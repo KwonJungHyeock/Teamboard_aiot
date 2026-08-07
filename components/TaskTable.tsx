@@ -5,6 +5,7 @@
 // variant="full"(/tasks): 목표·우선순위 컬럼 추가 + 상태 인라인 드롭다운. compact(홈)은 5열 유지.
 import { useState } from "react";
 import EmptyState from "./EmptyState";
+import SectionEmpty, { type SectionEmptyAction } from "./SectionEmpty";
 import { toast } from "@/lib/quick";
 import { notifyTaskUpdated } from "@/lib/task-panel";
 export interface TaskTableRow {
@@ -43,9 +44,11 @@ export default function TaskTable({
   rows,
   title = "마감 임박",
   sub,
-  emptyText = "표시할 업무가 없습니다.",
+  emptyScope = "section",
+  emptyText = "표시할 업무가 없어요",
   emptyHint,
   emptyAction,
+  emptyLink,
   onRowClick,
   selectedId,
   variant = "compact",
@@ -56,10 +59,20 @@ export default function TaskTable({
   rows: TaskTableRow[];
   title?: string;
   sub?: string;
+  /**
+   * 이 표가 **화면 전체**인지 **화면의 한 블록**인지 — 호출자가 정한다 (MD-P-2026-026 §A).
+   * 같은 컴포넌트가 /tasks 본문 전체이기도 하고 영역 화면의 한 탭이기도 하다.
+   * 예전에는 `compact` 하나가 열 개수와 빈 상태 규격을 겸했고, 그래서
+   * 블록 하나가 비었을 뿐인데 88px 삽화와 코랄 버튼이 떴다.
+   */
+  emptyScope?: "full" | "section";
   emptyText?: string;
-  /** 빈 상태 보조 문구 + 첫 행동 유도 (파트 B) */
+  /** emptyScope="full" 전용 — 설명 문장. 섹션에서는 무시된다(한 줄 규격). */
   emptyHint?: string;
+  /** emptyScope="full" 전용 — CTA 버튼. */
   emptyAction?: React.ReactNode;
+  /** emptyScope="section" 전용 — 텍스트 링크 하나. 버튼은 받지 않는다. */
+  emptyLink?: SectionEmptyAction;
   onRowClick?: (id: number) => void;
   selectedId?: number | null;
   variant?: "compact" | "full";
@@ -136,7 +149,11 @@ export default function TaskTable({
           {rows.length === 0 && (
             <tr>
               <td colSpan={colCount} style={{ padding: 0 }}>
-                <EmptyState icon="tasks" title={emptyText} hint={emptyHint} action={emptyAction} compact />
+                {emptyScope === "full" ? (
+                  <EmptyState icon="tasks" title={emptyText} hint={emptyHint} action={emptyAction} />
+                ) : (
+                  <SectionEmpty text={emptyText} action={emptyLink} />
+                )}
               </td>
             </tr>
           )}

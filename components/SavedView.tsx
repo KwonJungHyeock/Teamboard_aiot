@@ -4,6 +4,8 @@
 // "저장 → 한 곳에 모임 → 다시 찾기" 경로가 Slack과 같아 전이가 일어난다.
 import { useCallback, useEffect, useState } from "react";
 import PageShell from "./PageShell";
+import EmptyState from "./EmptyState";
+import Skeleton from "./Skeleton";
 import HoverActions, { type SaveType } from "./HoverActions";
 import { openPanel } from "@/lib/side-panel";
 import { openTaskPanel } from "@/lib/task-panel";
@@ -66,9 +68,13 @@ export default function SavedView() {
       <div className="wrap">
 
         {loading ? (
-          <p className="gempty">불러오는 중...</p>
+          <Skeleton variant="list" />
         ) : shown.length === 0 ? (
-          <p className="gempty">저장한 항목이 없어요. 항목 위 액션 바의 저장 아이콘을 눌러보세요.</p>
+          <EmptyState
+            icon="inbox"
+            title={filter === "all" ? "저장한 항목이 없어요" : `저장한 ${KIND[filter]}이(가) 없어요`}
+            hint="목록·코멘트·업무 카드에 마우스를 올리면 뜨는 저장 아이콘을 누르면 여기에 담깁니다. 나중에 다시 찾을 것을 모아두는 자리예요."
+          />
         ) : (
           <section className="card" style={{ padding: 0, overflow: "hidden" }}>
             <div className="ninbox">

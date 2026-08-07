@@ -224,3 +224,52 @@
 
 **이번 지시로 하지 않았다.** 지시 29 는 `EmptyState` 사용처를 대상으로 했고,
 50곳 이관은 범위가 다르며 규격 결정이 먼저 필요하다.
+
+### 종결 — MD-P-2026-026 §A 에서 처리 (2026-08-07)
+
+2단 규격(전체 `EmptyState` / 섹션 `SectionEmpty`)을 §G 에 정의하고 전수 이관했다.
+로딩(`Skeleton`)·오류(`ErrorNote`) 규격도 함께 정의했다. **B-7 닫음.**
+
+---
+
+## B-8 — 폼 제출 오류는 아직 `.gerr` 한 줄이다
+
+**발견 경위.** MD-P-2026-026 §A 이관 중.
+
+§A-5 오류 규격(`ErrorNote`)은 **데이터를 못 불러온 상태**를 대상으로 정의했고,
+그 자리는 전부 이관했다. 그런데 **폼 제출 실패**는 성격이 다르다 —
+"계정 발급 실패" · "저장 실패" 같은 것들로, 아직 `.gerr` 한 줄로 남아 있다.
+
+    components/GoalTree.tsx:81 · 135 · 290     목표 추가 폼
+    components/ProjectsIndexView.tsx:68        새 프로젝트 폼
+    components/HuddleFeed.tsx:90               허들 전송
+    components/ProfileView.tsx:127 · 163       프로필 · 비밀번호
+    components/PasswordGate.tsx:51             로그인
+    components/MemberManager.tsx (일부)         계정 발급
+
+**판단이 필요한 지점.** 제출 실패에 "다시 시도" 버튼을 붙이는 것이 맞는지 모르겠다.
+누르면 같은 값으로 또 실패한다. 폼 오류는 **입력 옆에 붙는 것**이 맞고,
+그렇다면 §A-5 와 다른 규격이어야 한다. 규격 결정이 먼저다.
+
+**이번에 하지 않았다.** §A 범위는 "빈 상태 · 로딩 · 오류(불러오기)" 였다.
+
+---
+
+## B-9 — 이관 후에도 남은 죽은 CSS
+
+**발견 경위.** MD-P-2026-026 §A 이관 후 정리.
+
+이관으로 사용처가 0이 된 클래스들이 스타일시트에 남아 있다.
+
+    .gempty            (app/home.css 등)   — tsx 사용처 0
+    .dl-empty / .dl-empty-sub               — tsx 사용처 0
+    .dl-led · .dl-skel                      — DataList 삭제로 사용처 0
+    .rp-empty · .ho-empty · .tb-empty
+    .tg-empty · .an-empty · .gt2-empty
+    .pcv-empty · .agf-empty · .hm-empty
+    .prep-empty · .actv-empty · .thread-empty
+    .dcf-none · .snapm-none · .utp-none · .pws-ov-none · .gpanel-none
+
+**지금 지우지 않았다.** §A 는 화면 동작을 바꾸는 작업이고,
+CSS 삭제는 **눈으로 확인해야 하는 별개 작업**이다. 한 커밋에 섞으면
+회귀가 났을 때 원인이 이관인지 삭제인지 갈리지 않는다. §B 시각 마감 스윕에서 함께 정리한다.

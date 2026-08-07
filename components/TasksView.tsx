@@ -5,6 +5,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
 import PageShell from "./PageShell";
 import TaskBoard from "./TaskBoard";
 import TaskCalendar from "./TaskCalendar";
@@ -350,6 +352,13 @@ export default function TasksView({ user }: { user: SessionUser }) {
       });
   }, [filteredTasks, today, goalTitleOf]);
 
+  /**
+   * 전체 빈 상태가 떠 있는가 (MD-P-2026-026 §A).
+   * 그때는 빈 상태 안의 CTA 가 헤더 액션과 **같은 동작**을 한다.
+   * 코랄 버튼을 둘 두면 어느 것이 지금 할 일인지 알 수 없다 (§B 주 액션 1개).
+   */
+  const emptyNow = !loading && !error && lens === "sheet" && rows.length === 0;
+
   const hiddenDone = tasks.filter((t) => t.status === "done" || t.status === "dropped").length;
 
   return (
@@ -361,7 +370,8 @@ export default function TasksView({ user }: { user: SessionUser }) {
       subtitle={isMine
         ? "담당이 나인 업무만 보고 있습니다. 담당을 ‘전체 담당’으로 바꾸면 전체를 조회합니다."
         : "에이전트 제안은 인박스에서 승인해야 목록·홈·캘린더에 반영됩니다."}
-      actions={<button className="btn-primary" onClick={quickNew}>＋ 새 업무</button>}
+      // 전체 빈 상태가 떠 있으면 그 안의 CTA 가 같은 동작을 한다 — 같은 코랄 버튼을 둘 두지 않는다 (§B)
+      actions={emptyNow ? undefined : <button className="btn-primary" onClick={quickNew}>＋ 새 업무</button>}
       tabs={(["sheet", "board", "calendar", "timeline"] as TaskLens[]).map((v) => ({ key: v, label: LENS_LABEL[v] }))}
       activeTab={lens}
       onTab={(k) => pickLens(k as TaskLens)}
@@ -434,13 +444,14 @@ export default function TasksView({ user }: { user: SessionUser }) {
           </div>
         )}
 
-        {loading && <p className="gempty">불러오는 중...</p>}
-        {error && <p className="gerr">{error}</p>}
-        {!loading && lens === "sheet" && (
+        {loading && <Skeleton variant="list" />}
+        {error && <ErrorNote message="업무를 불러오지 못했어요" cause={error} onRetry={load} />}
+        {!loading && !error && lens === "sheet" && (
           <TaskTable
             rows={rows}
             title={isMine ? "내 업무" : "업무 목록"}
             sub={`${rows.length}건`}
+            emptyScope="full"
             emptyText="아직 업무가 없어요"
             emptyHint="상단 필터를 조정하거나, 새 업무를 만들어 시작하세요."
             emptyAction={
@@ -454,7 +465,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
             onRowClick={(id) => openTaskPanel(id)}
           />
         )}
-        {!loading && lens === "board" && (
+        {!loading && !error && lens === "board" && (
           <TaskBoard
             tasks={filteredTasks}
             today={today}
@@ -464,8 +475,8 @@ export default function TasksView({ user }: { user: SessionUser }) {
             onMove={moveTask}
           />
         )}
-        {!loading && lens === "calendar" && <TaskCalendar tasks={filteredTasks} today={today} />}
-        {!loading && lens === "timeline" && <TaskGantt tasks={filteredTasks} today={today} actors={actors} />}
+        {!loading && !error && lens === "calendar" && <TaskCalendar tasks={filteredTasks} today={today} />}
+        {!loading && !error && lens === "timeline" && <TaskGantt tasks={filteredTasks} today={today} actors={actors} />}
 
         {/* 완료를 감춘 이유와 되돌리는 길을 목록 아래에 남긴다 (§E) */}
         {!showDone && hiddenDone > 0 && (

@@ -4,6 +4,7 @@
 // 토큰 값 자체는 서버에서만 쓰이고 여기로 내려오지 않는다. 연결 여부·봇 이름만 확인한다.
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "@/lib/quick";
+import Skeleton from "./Skeleton";
 
 interface Status {
   configured: boolean;
@@ -61,7 +62,7 @@ export default function NotionConnection() {
     toast(d.parentPageId ? "상위 페이지를 지정했어요" : "상위 페이지 지정을 해제했어요");
   }
 
-  if (!st) return <section className="card"><p className="gempty">불러오는 중...</p></section>;
+  if (!st) return <section className="card"><Skeleton variant="block" height={96} /></section>;
 
   const connected = st.configured && st.ok !== false;
 

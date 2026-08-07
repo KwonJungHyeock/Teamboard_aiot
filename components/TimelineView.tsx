@@ -1,8 +1,11 @@
 "use client";
 
 // 화면 B — 팀 타임라인 (공유, 읽기 중심). 기록은 승인 게이트를 통해서만.
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { TimelineItem } from "@/lib/types";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
 
 export default function TimelineView() {
   const [items, setItems] = useState<TimelineItem[]>([]);
@@ -12,8 +15,10 @@ export default function TimelineView() {
   const [assigneeFilter, setAssigneeFilter] = useState("전체");
   const [areaFilter, setAreaFilter] = useState("전체");
 
-  useEffect(() => {
-    fetch("/api/notion/timeline")
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    return fetch("/api/notion/timeline")
       .then(async (r) => {
         const data = await r.json();
         if (!r.ok) throw new Error(data.error ?? "타임라인 조회 실패");
@@ -22,6 +27,8 @@ export default function TimelineView() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const assignees = useMemo(
     () => Array.from(new Set(items.flatMap((i) => i.assignees.map((a) => a.name)))).sort(),
@@ -91,14 +98,10 @@ export default function TimelineView() {
         </select>
       </div>
 
-      {loading && <p className="muted">Notion에서 불러오는 중...</p>}
+      {loading && <Skeleton variant="list" />}
       {/* 빈·오류 상태에도 다음 행동을 남긴다 (MD-P-2026-013 디자인 마감 기준) */}
       {error && (
-        <div className="gempty">
-          <p>Notion 타임라인을 불러오지 못했어요.</p>
-          <p className="sub">{error}</p>
-          <a className="btn small" href="/settings">설정에서 Notion 연동 확인 →</a>
-        </div>
+        <ErrorNote message="Notion 타임라인을 불러오지 못했어요" cause={error} onRetry={load} />
       )}
 
       {!loading && !error && (
@@ -148,8 +151,8 @@ export default function TimelineView() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="muted">
-                    조건에 맞는 업무가 없습니다.
+                  <td colSpan={6} style={{ padding: 0 }}>
+                    <SectionEmpty text="조건에 맞는 업무가 없어요" />
                   </td>
                 </tr>
               )}

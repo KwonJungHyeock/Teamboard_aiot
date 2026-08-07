@@ -9,6 +9,7 @@ import { aggregateTasks } from "@/lib/progress";
 import type { Lane, LaneEvent } from "@/lib/home";
 import { openTaskPanel } from "@/lib/task-panel";
 import { taskDays, dateDiffDays } from "@/lib/task-view";
+import SectionEmpty from "./SectionEmpty";
 
 export type TimelineMode = "summary" | "detail";
 
@@ -203,7 +204,7 @@ export default function HeroTimeline({
           </div>
 
           {gridLanes.length === 0 ? (
-            <div className="gt2-empty">이 기간에 표시할 업무가 없어요. ‹ › 로 다른 달을 보거나 업무에 기간을 지정하세요.</div>
+            <SectionEmpty text="이 기간에 표시할 업무가 없어요" />
           ) : gridLanes.map((lane) => (
             <Fragment key={lane.key}>
               <div className="gt-lane-l">

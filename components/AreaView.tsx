@@ -7,6 +7,9 @@ import { useCallback, useEffect, useState } from "react";
 import { countedLabel } from "@/lib/progress";
 import Link from "next/link";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
 import { openNewTaskPanel, openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
 
 interface AreaOverview {
@@ -38,7 +41,7 @@ export default function AreaView({ areaKey }: { areaKey: string }) {
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/areas/${areaKey}/overview`);
-    if (!res.ok) { setErr("영역을 불러올 수 없습니다."); return; }
+    if (!res.ok) { setErr("영역을 불러오지 못했어요"); return; }
     setData(await res.json());
     setErr("");
   }, [areaKey]);
@@ -71,8 +74,8 @@ export default function AreaView({ areaKey }: { areaKey: string }) {
       </div>
 
       <div className="wrap">
-        {err && <p className="gerr">{err}</p>}
-        {!data && !err && <p className="gempty">불러오는 중…</p>}
+        {err && <ErrorNote message={err} onRetry={load} />}
+        {!data && !err && <Skeleton variant="page" />}
 
         {area && data && (
           <>
@@ -113,16 +116,12 @@ export default function AreaView({ areaKey }: { areaKey: string }) {
                 variant="full"
                 title="업무"
                 sub={`${data.tasks.length}건 · 기본 유형 ${labelWorkType(area.defaultWorkType)}`}
+                emptyScope="section"
                 emptyText="이 영역에 아직 업무가 없어요"
-                emptyHint={`"+ 이 영역에 업무 추가"로 ${area.name} 업무를 시작하세요. 영역·기본 업무유형이 미리 채워집니다.`}
-                emptyAction={
-                  <button
-                    className="btn small primary"
-                    onClick={() => openNewTaskPanel({ areaId: area.id, workType: area.defaultWorkType })}
-                  >
-                    ＋ 이 영역에 업무 추가
-                  </button>
-                }
+                emptyLink={{
+                  label: "이 영역에 업무 추가 →",
+                  onClick: () => openNewTaskPanel({ areaId: area.id, workType: area.defaultWorkType }),
+                }}
                 onRowClick={(id) => openTaskPanel(id)}
               />
             )}
@@ -130,7 +129,7 @@ export default function AreaView({ areaKey }: { areaKey: string }) {
             {tab === "projects" && (
               <section className="card">
                 <div className="ch"><h2>프로젝트</h2><span className="sub">{data.projects.length}개</span></div>
-                {data.projects.length === 0 && <p className="gempty">이 영역에 프로젝트가 없습니다.</p>}
+                {data.projects.length === 0 && <SectionEmpty text="이 영역에 프로젝트가 없어요" />}
                 <div className="pgrid">
                   {data.projects.map((p) => (
                     <Link key={p.id} className="pcard card" href={`/projects/${p.id}`}>
@@ -161,7 +160,7 @@ export default function AreaView({ areaKey }: { areaKey: string }) {
             {tab === "goals" && (
               <section className="card">
                 <div className="ch"><h2>목표</h2><span className="sub">{data.goals.length}개</span></div>
-                {data.goals.length === 0 && <p className="gempty">이 영역에 목표가 없습니다.</p>}
+                {data.goals.length === 0 && <SectionEmpty text="이 영역에 목표가 없어요" action={{ label: "목표 만들기 →", href: "/goals" }} />}
                 {data.goals.map((g) => (
                   <div className="pr" key={g.id}>
                     <div className="pr-t">
@@ -179,7 +178,7 @@ export default function AreaView({ areaKey }: { areaKey: string }) {
             {tab === "assets" && (
               <section className="card">
                 <div className="ch"><h2>자료</h2><span className="sub">{data.assets.length}건</span></div>
-                {data.assets.length === 0 && <p className="gempty">연결된 자료가 없습니다.</p>}
+                {data.assets.length === 0 && <SectionEmpty text="연결된 자료가 없어요" />}
                 <div className="acards">
                   {data.assets.map((a) => (
                     <div className="acard" key={a.id}>

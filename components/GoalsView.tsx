@@ -9,6 +9,9 @@ import type { SessionUser } from "@/lib/types";
 import PageShell from "./PageShell";
 import GoalTree, { type LinkableTask } from "./GoalTree";
 import EmptyState from "./EmptyState";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
 import NewGoalModal from "./NewGoalModal";
 import GoalLinkBanner from "./GoalLinkBanner";
 import UnlinkedTaskPanel, { type UnlinkedTask, type MonthGoalOption } from "./UnlinkedTaskPanel";
@@ -169,22 +172,23 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
         <GoalLinkBanner projects={unlinked} tree={tree} onLinked={load} />
       )}
 
-      {loading && <p className="gempty">불러오는 중...</p>}
-      {error && <p className="gerr">{error}</p>}
+      {loading && <Skeleton variant="list" />}
+      {error && <ErrorNote message="목표를 불러오지 못했어요" cause={error} onRetry={load} />}
       {!loading && !error && tree.length === 0 && (
-        <div className="dl">
-          <div className="dl-empty">
-            <p>{tab === "team" ? "팀 목표가 없어요" : "내 개인 목표가 없어요"}</p>
-            <p className="dl-empty-sub">
-              {tab === "team"
-                ? "팀장이 연간 목표를 세우고 분기·월로 나누면, 연결된 업무 진척이 여기 모입니다."
-                : "개인 목표를 세우고 내 업무를 연결해 나만의 진척을 관리하세요. (나만 볼 수 있어요)"}
-            </p>
-            {(tab === "personal" || user.role === "lead") && (
+        <EmptyState
+          icon="tasks"
+          title={tab === "team" ? "팀 목표가 없어요" : "내 개인 목표가 없어요"}
+          hint={
+            tab === "team"
+              ? "팀장이 연간 목표를 세우고 분기·월로 나누면, 연결된 업무 진척이 여기 모입니다."
+              : "개인 목표를 세우고 내 업무를 연결해 나만의 진척을 관리하세요. 나만 볼 수 있어요."
+          }
+          action={
+            tab === "personal" || user.role === "lead" ? (
               <button className="btn-primary" onClick={() => setShowNew(true)}>목표 만들기</button>
-            )}
-          </div>
-        </div>
+            ) : undefined
+          }
+        />
       )}
       {!loading && !error && tree.length > 0 && (
         <GoalTree
@@ -201,9 +205,9 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
       {showArchive && (
         <div className="dl garchive">
           <div className="dl-head"><span className="dl-c">보관함 — {year ?? "전체"}년</span></div>
-          {archiveError && <p className="gerr">{archiveError}</p>}
+          {archiveError && <ErrorNote message="보관함을 불러오지 못했어요" cause={archiveError} onRetry={loadArchive} />}
           {archived.length === 0 && !archiveError && (
-            <div className="dl-empty"><p>보관된 목표가 없습니다.</p></div>
+            <SectionEmpty text="보관된 목표가 없어요" />
           )}
           {archived.map((goal) => (
             <div key={goal.id} className="dl-row">

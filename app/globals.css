@@ -233,21 +233,9 @@ select:focus {
   background: rgba(248, 113, 113, 0.14);
 }
 
-/* 빈 상태 (파트 B) — .hv/전역 어디서든 동일. 토큰만 사용. */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 6px;
-  padding: 30px 20px;
-}
-.empty-state.es-compact { padding: 18px 16px; }
-.empty-state .es-illust { max-width: 120px; height: auto; opacity: 0.85; margin-bottom: 6px; }
-.empty-state .es-title { margin: 0; font-size: var(--fs-body); color: var(--mid); font-weight: 500; }
-.empty-state .es-hint { margin: 0; font-size: var(--fs-meta); color: var(--lo); max-width: 340px; line-height: 1.55; }
-.empty-state .es-action { margin-top: 10px; }
+/* 빈 상태 — app/design.css 의 "§A 빈 상태 · 로딩 · 오류" 한 벌로 옮겼다 (MD-P-2026-026 §A).
+   여기·563줄·1297줄 세 곳에 규칙이 흩어져 서로 덮어쓰고 있었다.
+   그 결과 아이콘이 §G 규격 88px 이 아니라 120px 로 그려졌고, 아무도 몰랐다. */
 
 .btn.small {
   /* 행 내부 액션: 컴팩트 텍스트 버튼 */
@@ -558,20 +546,7 @@ table.tl tr:hover td {
   }
 }
 
-/* 빈 상태 — 일러스트 슬롯. 파일(/assets/illust/*.png)이 없으면 onError로 이미지를 숨겨
-   깨진 이미지 없이 텍스트만 남는다 (P1-3). */
-.empty-state {
-  text-align: center;
-  padding: 20px 12px;
-}
-.empty-state img {
-  width: 88px;
-  height: 88px;
-  object-fit: contain;
-  opacity: 0.85;
-  margin: 0 auto 10px;
-  display: block;
-}
+/* (빈 상태 일러스트 슬롯 규칙은 app/design.css 로 이동 — MD-P-2026-026 §A) */
 
 .section-gap {
   margin-top: 18px;
@@ -1293,13 +1268,9 @@ body {
 .side .brand .nm small { display: block; font-family: var(--f-d); font-size: 10px; font-weight: 500; letter-spacing: .08em; color: var(--sb-muted); margin-top: 3px; }
 body.rail .side .mk-logo { margin: 0 auto; }
 
-/* 빈 상태 워터마크(선택) — 밝은 카드의 큰 빈 상태에만 마크 흐리게(opacity .08) */
-.empty-state:not(.es-compact) { position: relative; }
-.empty-state:not(.es-compact)::after {
-  content: ""; position: absolute; inset: 0; margin: auto; width: 116px; height: 80px;
-  background: url(/brand/eduino_mark.png) center / contain no-repeat; opacity: .08; z-index: 0; pointer-events: none;
-}
-.empty-state > * { position: relative; z-index: 1; }
+/* 빈 상태 워터마크 제거 (MD-P-2026-026 §A).
+   §G 전체 빈 상태는 아이콘 + 제목 + 설명 + CTA 네 요소다. 뒤에 깔린 반투명 마크는
+   다섯 번째 요소였고, 아이콘과 겹쳐 둘 다 흐려 보였다. 게다가 이전 브랜드 마크였다. */
 
 /* ============================================================
    결정 로그 (MD-P-2026-004) — 확정 팝오버 · 고정 결정 카드 · 로그 목록.

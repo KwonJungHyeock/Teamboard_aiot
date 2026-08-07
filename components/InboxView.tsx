@@ -10,6 +10,7 @@ import type { SessionUser, Draft } from "@/lib/types";
 import { toast } from "@/lib/quick";
 import ApproveModal, { type DraftSummary } from "./ApproveModal";
 import EmptyState from "./EmptyState";
+import ErrorNote from "./ErrorNote";
 
 type DraftRow = Draft & { user_name?: string; assistant_name?: string; cost_tokens?: number | null };
 
@@ -123,7 +124,7 @@ export default function InboxView({ user }: { user: SessionUser }) {
     <div className="hv pg-legacy">
       <div className="wrap">
 
-        {error && <p className="gerr">{error}</p>}
+        {error && <ErrorNote message={error} onRetry={load} />}
 
         {/* 데모 모드 — LLM 키 미연결 시 명시 (비용은 예시값) */}
         {demo && (

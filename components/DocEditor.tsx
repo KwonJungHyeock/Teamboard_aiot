@@ -13,6 +13,7 @@ import { toast } from "@/lib/quick";
 import { pgDate } from "@/lib/pgtime";
 import { uploadImage } from "@/lib/upload";
 import BlobImage from "./BlobImage";
+import SectionEmpty from "./SectionEmpty";
 
 export type DocBlockType = "text" | "heading" | "checklist" | "quote" | "code" | "divider" | "link" | "image";
 
@@ -302,12 +303,10 @@ export default function DocEditor({ taskId, readOnly, onBlocks, endpoint }: {
 
       {blocks.length === 0 ? (
         <div className="doc-empty">
-          <p>여기에 진행 내용·자료조사·결정 근거를 적어두면 나중에 찾기 쉬워집니다.</p>
-          {!readOnly && (
-            <button className="btn-primary" onClick={() => addAfter(null, { id: uid(), type: "text", text: "" })}>
-              ＋ 첫 문단 쓰기
-            </button>
-          )}
+          <SectionEmpty
+            text="여기에 진행 내용·자료조사·결정 근거를 적어두면 나중에 찾기 쉬워집니다"
+            action={!readOnly ? { label: "첫 문단 쓰기 →", onClick: () => addAfter(null, { id: uid(), type: "text", text: "" }) } : undefined}
+          />
         </div>
       ) : (
         <div className="doc-blocks">

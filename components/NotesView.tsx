@@ -10,6 +10,9 @@ import { useSearchParams } from "next/navigation";
 import PageShell from "./PageShell";
 import DocEditor from "./DocEditor";
 import EmptyState from "./EmptyState";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
 import { toast } from "@/lib/quick";
 import { openNewTaskPanel } from "@/lib/task-panel";
 
@@ -123,9 +126,13 @@ export default function NotesView() {
       crumb={["내 공간", "메모"]}
       title="메모"
       subtitle={<>나만 봅니다. 팀장도 볼 수 없어요. 공유가 필요하면 논의로 옮기세요.</>}
-      actions={<button className="btn-primary" onClick={create} disabled={busy}>＋ 새 메모</button>}
+      actions={
+        !loading && notes.length === 0
+          ? undefined
+          : <button className="btn-primary" onClick={create} disabled={busy}>＋ 새 메모</button>
+      }
     >
-      {err && <p className="gerr">{err}</p>}
+      {err && <ErrorNote message={err} onRetry={load} />}
 
       {!loading && notes.length === 0 ? (
         // C-1 — 빈 상태 3요소 (아이콘 + 설명 + CTA). §G 규격의 EmptyState 를 그대로 쓴다.
@@ -139,7 +146,7 @@ export default function NotesView() {
         <div className="nt">
           {/* 목록 — §C 목록 규격(38px 행 · 12.5px) */}
           <div className="nt-list dl">
-            {loading && <div className="dl-row"><span className="dl-c">불러오는 중…</span></div>}
+            {loading && <Skeleton variant="list" />}
             {notes.map((n) => (
               <div key={n.id} className={`dl-row nt-row${n.id === openId ? " on" : ""}`}>
                 <button className="nt-open" onClick={() => setOpenId(n.id)}>
@@ -155,7 +162,7 @@ export default function NotesView() {
           {/* 편집기 */}
           <div className="nt-edit">
             {open === null ? (
-              <p className="tdp-muted">왼쪽에서 메모를 고르거나 새로 만드세요.</p>
+              <SectionEmpty text="왼쪽에서 메모를 고르거나 새로 만드세요" action={{ label: "새 메모 →", onClick: create }} />
             ) : (
               <>
                 <div className="nt-head">

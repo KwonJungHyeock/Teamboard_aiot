@@ -5,6 +5,7 @@
 // 종료 시 memo→decision 승격(결정사항 확정). 그리기·캔버스 없음(펜 없음).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { renderHighlight, VoteButtons } from "./huddle-ui";
+import SectionEmpty from "./SectionEmpty";
 
 interface Votes { up: number; down: number; mine: string | null }
 interface MComment { id: number; body: string; imageUrl?: string | null; authorName: string; createdAt: string; votes?: Votes }
@@ -110,7 +111,7 @@ export default function MeetingMode({
         <div className="meeting-left">
           {signal?.body && <p className="meeting-lead">{renderHighlight(signal.body)}</p>}
           <div className="meeting-comments" ref={listRef}>
-            {comments.length === 0 && <p className="tdp-muted">아직 코멘트가 없습니다. 첫 발언을 남겨보세요.</p>}
+            {comments.length === 0 && <SectionEmpty text="아직 코멘트가 없어요 — 첫 발언을 남겨보세요" />}
             {comments.map((c) => (
               <div className={`meeting-c ${c.body.startsWith("✅ 결정:") ? "is-decision" : ""}`} key={c.id}>
                 <div className="meeting-c-h"><b>{c.authorName}</b>
@@ -130,7 +131,7 @@ export default function MeetingMode({
         {/* 우: 결정사항 패널 */}
         <aside className="meeting-right">
           <div className="meeting-r-h">결정사항</div>
-          {decisionComments.length === 0 && <p className="tdp-muted">아직 확정된 결정이 없습니다.</p>}
+          {decisionComments.length === 0 && <SectionEmpty text="아직 확정된 결정이 없어요" />}
           {decisionComments.map((c) => (
             <div className="meeting-decision" key={c.id}>{renderHighlight(c.body.replace("✅ 결정:", "").trim())}</div>
           ))}
