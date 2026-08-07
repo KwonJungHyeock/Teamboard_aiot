@@ -6,7 +6,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "./Markdown";
 import { decTime, type Decision } from "./decision-ui";
-import { uploadImage, blobSrc } from "@/lib/upload";
+import { blobSrc } from "@/lib/upload";
+import { AttachButton, AttachStatus, DropZone, useAttach } from "./Attach";
 import { openPanel } from "@/lib/side-panel";
 import DocEditor, { type DocBlock } from "./DocEditor";
 import PropertyBlock, { type PropRow } from "./PropertyBlock";
@@ -87,7 +88,6 @@ export default function TaskDetailPanel() {
   const [prog, setProg] = useState(0);             // 진행률 슬라이더 로컬 상태
   const [blockReason, setBlockReason] = useState(""); // 막힘 사유 편집 버퍼
   const [blockErr, setBlockErr] = useState("");
-  const [uploading, setUploading] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);   // 팀 타임라인 공유(협업 A)
   const [shareNote, setShareNote] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
@@ -276,26 +276,30 @@ export default function TaskDetailPanel() {
     else setErr((await res.json()).error ?? "공유 실패");
   }
 
-  // 이미지 업로드(붙여넣기/드롭/파일) → Private Blob → 마크다운 삽입 (MD-P-2026-014a).
-  // 마크다운에는 공개 URL이 아니라 /api/blob 라우트 경로를 넣는다.
-  async function insertUpload(file: File, into: "desc" | "comment") {
-    if (typeof openId !== "number") return;
-    setUploading(true); setErr("");
-    try {
-      const up = await uploadImage(file, { kind: "task", id: openId });
+  // 이미지 업로드 — 공용 첨부 한 벌을 쓴다 (MD-P-2026-026 §B-2).
+  // 마크다운에는 공개 URL이 아니라 /api/blob 라우트 경로를 넣는다 (014a).
+  // 목적지(설명/코멘트)는 ref 로 들고 있는다 — 훅은 파일 하나만 알면 되고,
+  // "다시 시도" 가 원래 목적지로 돌아가야 하기 때문이다.
+  const uploadInto = useRef<"desc" | "comment">("desc");
+  const descRef2 = useRef(descText);
+  descRef2.current = descText;
+  const attach = useAttach(
+    { kind: "task", id: typeof openId === "number" ? openId : 0 },
+    async (up) => {
       const md = `![${up.name}](${blobSrc(up.pathname)})`;
-      if (into === "desc") {
-        const next = descText ? `${descText}\n${md}` : md;
+      if (uploadInto.current === "desc") {
+        const next = descRef2.current ? `${descRef2.current}\n${md}` : md;
         setDescText(next);
         await patch({ description: next });
       } else {
         setNewComment((c) => (c ? `${c} ${md}` : md));
       }
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "이미지 업로드 실패");
-    } finally {
-      setUploading(false);
     }
+  );
+  function insertUpload(file: File, into: "desc" | "comment") {
+    if (typeof openId !== "number") return;
+    uploadInto.current = into;
+    void attach.send(file);
   }
   function pasteImage(e: React.ClipboardEvent, into: "desc" | "comment") {
     const img = Array.from(e.clipboardData.items).find((i) => i.type.startsWith("image/"));
@@ -303,10 +307,6 @@ export default function TaskDetailPanel() {
       const f = img.getAsFile();
       if (f) { e.preventDefault(); insertUpload(f, into); }
     }
-  }
-  function dropImage(e: React.DragEvent, into: "desc" | "comment") {
-    const f = e.dataTransfer.files?.[0];
-    if (f && f.type.startsWith("image/")) { e.preventDefault(); insertUpload(f, into); }
   }
 
   async function softDelete() {
@@ -721,6 +721,7 @@ export default function TaskDetailPanel() {
             {/* 기존 평문 설명 — 문서로 옮기기 전 자료가 남아 있어서 접어서 보존한다 */}
             <details className="tdp-sec tdp-legacy" open={!!descText.trim()}>
               <summary className="tdp-sec-h">설명 (기존 평문) <em>마크다운</em></summary>
+              <DropZone onFile={(f) => insertUpload(f, "desc")}>
               <textarea
                 ref={descRef}
                 className="tdp-desc" rows={4} value={descText}
@@ -728,10 +729,12 @@ export default function TaskDetailPanel() {
                 onChange={(e) => setDescText(e.target.value)}
                 onBlur={() => { if (descText !== t.description) patch({ description: descText }); }}
                 onPaste={(e) => pasteImage(e, "desc")}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => dropImage(e, "desc")}
               />
-              {uploading && <p className="tdp-muted">이미지 업로드 중…</p>}
+              </DropZone>
+              <div className="tdp-attach">
+                <AttachButton onFile={(f) => insertUpload(f, "desc")} busy={attach.busy} />
+              </div>
+              <AttachStatus state={attach.state} onRetry={attach.retry} onDismiss={attach.dismiss} />
               {descText.trim() && (
                 <div className="tdp-preview">
                   <div className="tdp-preview-h">미리보기</div>
@@ -788,8 +791,9 @@ export default function TaskDetailPanel() {
               ))}
               <div className="tdp-cmt-new">
                 <input value={newComment} onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="코멘트… 이미지 붙여넣기 가능" onKeyDown={(e) => e.key === "Enter" && addComment()}
+                  placeholder="코멘트… 이미지를 붙여넣거나 끌어다 놓으세요" onKeyDown={(e) => e.key === "Enter" && addComment()}
                   onPaste={(e) => pasteImage(e, "comment")} />
+                <AttachButton onFile={(f) => insertUpload(f, "comment")} busy={attach.busy} />
                 <button className="btn small primary" onClick={addComment} disabled={!newComment.trim()}>등록</button>
               </div>
             </div>

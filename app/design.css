@@ -50,6 +50,60 @@
   transition: background .12s ease; }
 .btn-ghost:hover { background: var(--surface-2); }
 
+/* ── §B-1 버튼·컨트롤 규격 통일 (MD-P-2026-026) ──
+   레거시 `.hv` 층(app/home.css)에 라운드 6/8/10/14/18 · 글자 11/12px 이 남아 있었다.
+   지금까지의 규격 덮어쓰기는 전부 `.pg-body` 안으로 스코프돼 있어서,
+   PageShell 을 쓰지 않는 화면(/areas/{id} 등)은 규격 밖 값을 그대로 그렸다.
+   여기서는 **레거시 스코프까지 함께** 잡는다 — 같은 무게(0,2,x)에 design.css 가 뒤에 실린다. */
+/* 텍스트 링크 버튼 — 클래스는 있는데 스타일이 `.hv` 안에만 있어서
+   PageShell 화면에서는 **브라우저 기본 회색 각진 박스**로 그려지고 있었다.
+   /projects/1 "＋ 링크" · /signals 결정 "원본 논의 →" · /activity "저장" 여섯 자리. */
+.lk, :is(.hv, .pg-body, .pg-head, .pg-filters, .tdp, .gpanel, .doc) .lk {
+  background: 0; border: 0; padding: 0; cursor: pointer; font-family: inherit;
+  font-size: 11.5px; font-weight: 600; color: var(--edu-text); }
+.lk:hover { text-decoration: underline; }
+.lk:disabled { opacity: .5; cursor: default; text-decoration: none; }
+a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
+.drow-link { font-size: 12.5px; }
+
+/* 세그먼트 (보기 전환) — `.lk` 와 같은 문제였다. 스타일이 `.hv` 안에만 있어서
+   PageShell 화면(/activity 등)에서는 브라우저 기본 버튼 두 개가 떠 있었다. */
+.seg, :is(.hv, .pg-body) .seg {
+  display: inline-flex; align-items: center; gap: 2px; padding: 2px;
+  border-radius: 9px; background: var(--surface-2); border: 1px solid var(--line); }
+.seg button, :is(.hv, .pg-body) .seg button {
+  height: 22px; padding: 0 10px; border: 0; background: 0; cursor: pointer;
+  border-radius: 7px; font-family: inherit; font-size: 11.5px; font-weight: 600;
+  color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
+.seg button[aria-pressed="true"], :is(.hv, .pg-body) .seg button[aria-pressed="true"] {
+  background: var(--surface); color: var(--ink); box-shadow: var(--e1); }
+
+/* 보조 버튼 — r6 · 12px · h28 → 7 · 12.5px · h30 (.btn-ghost 와 같은 치수) */
+:is(.hv, .pg-body) .gbtn { height: 30px; border-radius: 7px; font-size: 12.5px; }
+:is(.hv, .pg-body) :is(.gedit select, .gedit input) { border-radius: 7px; font-size: 12.5px; height: 30px; }
+
+/* 영역 화면 탭 — r18 · 11px 은 어느 규격에도 없다. 필터 칩(.pg-chip)과 같은 치수로. */
+:is(.hv, .pg-body) .tab { border-radius: 4px; font-size: 11.5px; padding: 0 10px; height: 26px;
+  display: inline-flex; align-items: center; gap: 5px; }
+:is(.hv, .pg-body) .tab .n { font-size: 10.5px; margin-left: 0; }
+
+/* 전역 .btn — globals.css 가 r6 · 14px 로 잡고 있다. §G 는 r7 · 12.5px(작은 것은 11.5). */
+.btn, :is(.hv, .pg-body) .btn { border-radius: 7px; font-size: 12.5px; }
+.btn.small, :is(.hv, .pg-body) .btn.small { border-radius: 7px; font-size: 11.5px; }
+.btn-brand, .btn-outline, :is(.hv, .pg-body) :is(.btn-brand, .btn-outline) {
+  border-radius: 7px; font-size: 12.5px; }
+
+/* 결정 로그의 "원본 논의 →" — 색·굵기만 주고 배경·테두리를 안 껐다.
+   그래서 브라우저 기본 버튼(회색 각진 박스)이 그대로 보였다. */
+.drow-link { background: 0; border: 0; padding: 0; cursor: pointer; font-family: inherit; }
+.drow-link:hover { text-decoration: underline; }
+
+/* 허들룸 — r14/r8/r10 → 9/7/9, 11px → 11.5px */
+:is(.hv, .pg-body) .hud-card { border-radius: 9px; }
+:is(.hv, .pg-body) .hud-act { border-radius: 7px; }
+:is(.hv, .pg-body) .hud-add { border-radius: 9px; }
+:is(.hv, .pg-body) .hud-st { font-size: 11.5px; border-radius: 4px; }
+
 /* ── §C 목록 = 행 ── */
 .dl { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; box-shadow: var(--e1); }
 .dl-head { display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 13px;
@@ -67,8 +121,6 @@
 .dl-c.num { font-family: var(--f-d); font-variant-numeric: tabular-nums; text-align: right; }
 .dl-head .dl-c.num { text-align: right; }
 
-.dl-led { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.dl-led i { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
 
 .dl-bar { display: inline-flex; align-items: center; gap: 7px; justify-content: flex-end; width: 100%; }
 .dl-bar i { display: block; width: 52px; height: 4px; border-radius: 999px; background: var(--track-bg); flex: 0 0 52px; overflow: hidden; }
@@ -87,7 +139,7 @@
    §G: 아이콘 88px + 제목 + 설명 + CTA 4요소. 세로 가운데. 위아래 최소 48px. */
 .empty-state {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  text-align: center; gap: 6px; padding: 48px 20px; min-height: 240px;
+  text-align: center; gap: 6px; padding: 48px 20px; min-height: 320px;
 }
 .empty-state .es-illust { width: 88px; height: 88px; flex: 0 0 88px;
   object-fit: contain; opacity: .85; margin-bottom: 6px; }
@@ -145,12 +197,41 @@
   text-decoration: underline; text-underline-offset: 2px; }
 .err-retry:hover { color: var(--coral-d); }
 
+/* ── §B-2 첨부 (MD-P-2026-026) ──
+   버튼·드롭 영역·업로드 중·실패를 한 벌로. 여섯 곳이 여섯 가지로 생겼던 것을 모은다. */
+
+/* 드롭 영역 — 평소엔 조용하다. 드래그가 들어와야 보인다. */
+.dz { position: relative; }
+.dz.on { outline: 2px dashed var(--coral); outline-offset: -2px; border-radius: 9px; }
+/* 덮개는 **반투명**이다. 불투명하게 덮으면 무엇 위에 놓는 중인지 안 보인다.
+   문구는 위쪽에 붙인다 — 드롭 영역이 길면 가운데는 화면 밖으로 나간다. */
+.dz-hint { position: absolute; inset: 0; z-index: 3; display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 20px; border-radius: 9px; pointer-events: none;
+  background: color-mix(in srgb, var(--coral-bg) 72%, transparent); }
+.dz-hint-l { background: var(--coral-d); color: #fff; font-size: 11.5px; font-weight: 700;
+  border-radius: 999px; padding: 5px 12px; box-shadow: var(--e2); }
+
+/* 진행·실패 한 줄 */
+.atc { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 8px 0; font-size: 12.5px; }
+.atc p { margin: 0; color: var(--ink2); }
+.atc em { font-style: normal; color: var(--muted); }
+.atc-name { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 업로드 중 = 정적 스켈레톤 타일. 스피너·shimmer 금지 (§A-4 와 같은 규칙) */
+.atc-skel { display: block; width: 56px; height: 38px; flex: 0 0 56px;
+  border-radius: 7px; background: var(--surface-2); border: 1px solid var(--hair); }
+.atc-x { margin-left: auto; width: 22px; height: 22px; border: 0; border-radius: 4px; background: 0;
+  color: var(--muted); cursor: pointer; font-size: 10.5px; }
+.atc-x:hover { background: var(--surface-2); color: var(--ink2); }
+/* 리뷰 세션 슬롯의 업로드 중 자리 — 도착할 이미지와 같은 크기의 정적 뼈대 */
+.rv-drop-skel { display: block; width: 100%; height: 100%; background: var(--surface-2); }
+/* 문서형 본문·캔버스의 이미지 자리 — 도착할 이미지와 같은 크기의 정적 뼈대 */
+:is(.doc-img-ph, .pcv-img-ph):not(.off) { display: block; min-height: 120px; border-radius: 7px;
+  background: var(--surface-2); border: 1px solid var(--hair); }
+
 /* 화면에는 안 보이고 스크린리더에만 읽히는 문구 */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
-.dl-empty { padding: 32px 16px; text-align: center; }
-.dl-empty p { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
 
 /* ── §G 공통 ── */
 /* 포커스 링 — 모든 인터랙티브 요소 */
@@ -230,10 +311,6 @@
 .doc-add-k { font-size: 10.5px; }
 .doc-empty { padding: 28px 16px; text-align: center; border: 1px dashed var(--line); border-radius: 9px; background: var(--surface-2); }
 .doc-empty p { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
-.doc-skel { display: flex; flex-direction: column; gap: 8px; }
-.doc-skel span { height: 16px; border-radius: 4px; background: var(--surface-2); }
-.doc-skel span:nth-child(2) { width: 80%; }
-.doc-skel span:nth-child(3) { width: 55%; }
 
 /* ── §F1 속성 블록 ── */
 .prop { display: flex; flex-direction: column; }
@@ -496,8 +573,6 @@
 .hm-foot b { color: var(--ink); }
 .hm-agent-n { margin-left: auto; font-size: 10.5px; }
 
-.hm-empty { padding: 20px 13px; text-align: center; }
-.hm-empty p { font-size: 11.5px; color: var(--muted); margin: 0 0 8px; }
 
 /* 필터바 NOW */
 .hm-now { font-family: var(--f-d); font-variant-numeric: tabular-nums; font-size: 11.5px; color: var(--muted); }
@@ -605,7 +680,6 @@
 .cmt-tools { display: flex; gap: 8px; margin-bottom: 8px; }
 
 /* ── §A2 논의·결정 — 목록 행 규격에 맞춘 최소 보정 (MD-P-2026-022) ── */
-.dl-empty-sub { font-size: 11.5px; color: var(--muted); margin: 0; }
 .dl-row .sig-ty { font-size: 10.5px; font-weight: 800; border-radius: 4px; padding: 1px 5px; }
 .dl-row .atag { font-size: 10.5px; margin-right: 5px; }
 .dl-c.sig-meta { font-size: 11.5px; color: var(--muted); }
@@ -727,7 +801,6 @@
 .utp-bulk select { height: 26px; border-radius: 4px; border: 1px solid var(--line);
   background: var(--surface); color: var(--ink2); font-size: 11.5px; padding: 0 8px; }
 .utp-n { font-size: 11.5px; font-weight: 700; color: var(--muted); }
-.utp-none { font-size: 11.5px; color: var(--muted); margin: 0; }
 .utp-g { display: flex; flex-direction: column; gap: 4px; }
 .utp-gh { display: flex; align-items: center; gap: 8px; }
 .utp-fold { background: 0; border: 0; padding: 0; cursor: pointer; font: inherit;

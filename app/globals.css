@@ -918,8 +918,6 @@ body.meeting-on .side { display: none !important; }
 .agf-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--coral); }
 
 .agf-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
-.agf-empty { text-align: center; padding: 24px 8px; color: var(--muted); font-size: 13px; }
-.agf-empty .lk { margin-top: 8px; }
 
 .agf-jobs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .agf-job { border: 1px solid var(--line); border-radius: var(--r-s); padding: 10px 12px; background: var(--card); }
@@ -1120,7 +1118,6 @@ mark.hl { background: color-mix(in srgb, var(--amber) 26%, var(--card)); color: 
 .thread-h { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
 .thread-h h3 { font-size: 14px; font-weight: 800; margin: 0; }
 .thread-h .sub { color: var(--muted); font-size: 12px; }
-.thread-empty { color: var(--muted); font-size: 13px; padding: 10px 2px; }
 .thread-list { display: flex; flex-direction: column; gap: 14px; }
 .msg { display: flex; gap: 10px; align-items: flex-start; }
 .msg-b { flex: 1; min-width: 0; }
@@ -1165,15 +1162,8 @@ mark.hl { background: color-mix(in srgb, var(--amber) 26%, var(--card)); color: 
 .n-approve { margin-top: 6px; }
 
 /* 활동 피드 (팀 타임라인 공유) */
-.afeed { display: flex; flex-direction: column; gap: 10px; }
 .acard { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--grid-line); border-radius: 14px; background: var(--card); }
-.acard-b { flex: 1; min-width: 0; }
-.acard-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.acard-top b { font-size: 13.5px; }
 .acard-t { color: var(--muted); font-size: 11.5px; margin-left: auto; }
-.a-taskchip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; background: color-mix(in srgb, var(--edu) 12%, var(--card)); color: var(--edu-text); font-size: 12px; font-weight: 600; text-decoration: none; }
-.acard-note { margin-top: 5px; font-size: 13.5px; line-height: 1.55; color: var(--ink); white-space: pre-wrap; }
-.acard-open { font-size: 12.5px; }
 
 /* 타임라인 공유 토글(빠른 생성·상세) */
 .sharebox { border: 1px solid var(--grid-line); border-radius: 12px; padding: 10px 12px; background: color-mix(in srgb, var(--edu) 5%, var(--card)); }
@@ -1243,13 +1233,14 @@ mark.hl { background: color-mix(in srgb, var(--amber) 26%, var(--card)); color: 
 /* ============================================================
    보완 — 워크스페이스 배경(E) + 사이드바 아코디언(B)
    ============================================================ */
-/* E: 체크/그리드 패턴 제거 → 미세 세로 그라데이션(상단 약간 밝게). 깊이는 카드 그림자로만. */
+/* E: 페이지 캔버스는 --bg 단색이다 (MD-P-2026-026 §B-3).
+   여기 있던 `linear-gradient(#F8F6F1 → #F3F0E8)` 이 앱 전체 배경을 **아이보리**로 덮고 있었다.
+   background-color 는 --bg(중성 회색)였으므로 토큰 검사에는 잡히지 않았고,
+   그 위의 카드만 순백이라 화면마다 아이보리와 화이트가 섞여 보였다.
+   색면은 --bg · --surface · --surface-2 세 가지뿐이다. */
 body {
   background-color: var(--bg);
-  background-image: linear-gradient(180deg, #F8F6F1 0%, #F3F0E8 100%);
-  background-size: auto;
-  background-position: 0 0;
-  background-attachment: fixed;
+  background-image: none;
 }
 
 /* B: 업무 영역 아코디언 (다크 사이드바) */
@@ -1296,7 +1287,6 @@ body.rail .side .mk-logo { margin: 0 auto; }
 .dcf-task.on { background: color-mix(in srgb, var(--blue) 10%, var(--card)); }
 .dcf-task .num { color: var(--muted); font-size: 11.5px; flex: 0 0 auto; }
 .dcf-task input { width: 15px; height: 15px; accent-color: var(--brand); flex: 0 0 15px; }
-.dcf-none { font-size: 12.5px; color: var(--muted); padding: 6px 7px; }
 .dcf-err { margin: 0 0 10px; font-size: 12.5px; color: var(--coral-text); }
 .dcf-foot { display: flex; align-items: center; gap: 8px; }
 .dcf-note { flex: 1; font-size: 11.5px; color: var(--muted); }
@@ -1437,7 +1427,7 @@ body.rail .side .mk-logo { margin: 0 auto; }
 .pws-ov-card.wide { grid-column: 1 / -1; }
 .pws-ov-h { font-size: 13px; font-weight: 800; color: var(--ink); margin-bottom: 12px; }
 .pws-ov-h .num { color: var(--muted); font-weight: 700; margin-left: 4px; }
-.pws-ov-sub, .pws-ov-none { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+.pws-ov-sub { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
 .pws-prog { display: flex; align-items: center; gap: 12px; }
 .pws-prog-track { flex: 1; height: 10px; border-radius: 99px; background: var(--track-bg); overflow: hidden; }
 .pws-prog-track i { display: block; height: 100%; border-radius: 99px; background: var(--blue); }
@@ -1501,9 +1491,6 @@ body.rail .side .mk-logo { margin: 0 auto; }
 .pcv-add button:hover { border-color: var(--blue); color: var(--edu-text); }
 .pcv-add button.off { opacity: .5; cursor: not-allowed; }
 .pcv-add button.off:hover { border-color: var(--line); color: var(--ink-soft); }
-.pcv-empty { padding: 44px 20px; text-align: center; }
-.pcv-empty p { margin: 0 0 4px; font-size: 14px; color: var(--ink); }
-.pcv-empty p.sub { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; }
 .pcv-blocks { display: flex; flex-direction: column; }
 .pcv-b { position: relative; padding: 12px 44px 12px 16px; border-bottom: 1px solid var(--hair); }
 .pcv-b:last-child { border-bottom: 0; }
@@ -1569,7 +1556,6 @@ body.gpanel-open .main { padding-right: 420px; transition: padding-right .18s cu
 
 .gpanel-sec { margin-top: 16px; border-top: 1px solid var(--grid-line); padding-top: 12px; }
 .gpanel-sec h4 { font-size: 12.5px; font-weight: 800; color: var(--ink-soft); margin: 0 0 8px; letter-spacing: .02em; }
-.gpanel-none { font-size: 13px; color: var(--muted); }
 .gpanel-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .gpanel-list li { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
 .gpanel-list li button { flex: 1; text-align: left; border: 0; background: transparent; color: var(--ink); font-size: 13.5px; padding: 5px 6px; border-radius: 7px; cursor: pointer; }
@@ -1747,9 +1733,6 @@ body.gpanel-open .agf-fab { display: none; }
 .nitem.picked { background: color-mix(in srgb, var(--coral) 8%, var(--card)); }
 .actv-bundle { font-size: 11px; font-weight: 700; color: var(--coral);
   background: color-mix(in srgb, var(--coral) 12%, var(--card)); padding: 1px 7px; border-radius: 999px; }
-.actv-empty { padding: 44px 16px; text-align: center; color: var(--ink-soft); }
-.actv-empty p { font-size: 15px; font-weight: 600; }
-.actv-empty .sub { font-size: 13px; font-weight: 400; color: var(--muted); margin-top: 6px; }
 
 /* ── 음소거 (§F) ── */
 .actv-mute-wrap { position: relative; }
@@ -1916,7 +1899,6 @@ body.gpanel-open .agf-fab { display: none; }
 .prep-sec h2 em { font-style: normal; font-size: 10pt; font-weight: 600; color: #6B7480; margin-left: 6px; }
 .prep-group { margin-bottom: 14px; break-inside: avoid; }
 .prep-group h3 { font-size: 10pt; font-weight: 700; color: #3A4150; margin: 12px 0 6px; }
-.prep-empty { font-size: 9.5pt; color: #6B7480; padding: 10px 0; }
 .prep-note { margin-top: 8px; font-size: 8.6pt; color: #6B7480; }
 .prep-note b { color: #1B1F27; }
 
@@ -1934,7 +1916,7 @@ body.gpanel-open .agf-fab { display: none; }
 .prep-t thead th:first-child { border-top-left-radius: 7px; }
 .prep-t thead th:last-child { border-top-right-radius: 7px; }
 .prep-t tbody td { padding: 7px 9px; border-bottom: 1px solid #ECEFF3; vertical-align: top; }
-.prep-t tbody tr:nth-child(even) { background: #FAFBFC; }
+.prep-t tbody tr:nth-child(even) { background: var(--surface-2); }
 .prep-t tbody tr { break-inside: avoid; }
 
 .prep-lv { font-size: 8pt; font-weight: 700; padding: 1px 6px; border-radius: 999px;
@@ -2022,7 +2004,6 @@ body.gpanel-open .agf-fab { display: none; }
 .snapm-led.ok { background: var(--green); }
 .snapm-led.bad { background: var(--coral); }
 .snapm-src { font-size: 10.5px; color: var(--muted); }
-.snapm-none { padding: 8px 10px; font-size: 11.5px; color: var(--muted); }
 
 .snapm .pws-more:focus-visible, .snapm-menu button:focus-visible { outline: 2px solid var(--edu); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .gtr-line { transition: none; } }

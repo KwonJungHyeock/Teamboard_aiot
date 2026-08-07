@@ -13,6 +13,7 @@ import { openTaskPanel } from "@/lib/task-panel";
 import { useRouter } from "next/navigation";
 import { uploadImage } from "@/lib/upload";
 import BlobImage from "./BlobImage";
+import { DropZone } from "./Attach";
 import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 
@@ -230,11 +231,6 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
         const f = Array.from(e.clipboardData.files ?? []).find((x) => x.type.startsWith("image/"));
         if (f) { e.preventDefault(); void insertImage(f); }
       }}
-      onDragOver={(e) => { if (!readOnly && blobReady) e.preventDefault(); }}
-      onDrop={(e) => {
-        const f = Array.from(e.dataTransfer.files ?? []).find((x) => x.type.startsWith("image/"));
-        if (f) { e.preventDefault(); void insertImage(f); }
-      }}
     >
       <div className="pcv-bar">
         <span className="pcv-status">
@@ -262,7 +258,7 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
           action={!readOnly ? { label: "첫 블록 추가 →", onClick: () => addBlock("text") } : undefined}
         />
       ) : (
-        <div className="pcv-blocks">
+        <DropZone className="pcv-blocks" onFile={(f) => void insertImage(f)} disabled={readOnly || !blobReady}>
           {blocks.map((b) => (
             <div className="pcv-b" key={b.id}>
               {b.type === "text" && (
@@ -298,7 +294,7 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
               {b.type === "image" && (
                 b.pathname
                   ? <BlobImage value={b.pathname} name={b.name} alt={b.name ?? "첨부 이미지"} className="pcv-img" />
-                  : <div className="pcv-img-ph">이미지 올리는 중…</div>
+                  : <div className="pcv-img-ph" role="status" aria-label={`${b.name ?? "이미지"} 올리는 중`} />
               )}
 
               {b.type === "link" && b.internal && (
@@ -329,7 +325,7 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
               )}
             </div>
           ))}
-        </div>
+        </DropZone>
       )}
     </section>
   );

@@ -12,6 +12,8 @@ import { useAutocomplete } from "./autocomplete";
 import { toast } from "@/lib/quick";
 import { pgDate } from "@/lib/pgtime";
 import { uploadImage } from "@/lib/upload";
+import { AttachButton, DropZone } from "./Attach";
+import Skeleton from "./Skeleton";
 import BlobImage from "./BlobImage";
 import SectionEmpty from "./SectionEmpty";
 
@@ -287,11 +289,11 @@ export default function DocEditor({ taskId, readOnly, onBlocks, endpoint }: {
     : null;
 
   if (loading) {
-    return <div className="doc-skel" aria-hidden="true"><span /><span /><span /></div>;
+    return <Skeleton variant="list" rows={3} />;
   }
 
   return (
-    <div className="doc">
+    <DropZone className="doc" onFile={(f) => void insertImage(null, f)} disabled={readOnly || !blobReady}>
       <div className="doc-bar">
         <span className={`doc-save ${save}`} role="status">
           {save === "saving" ? "저장 중…"
@@ -299,6 +301,10 @@ export default function DocEditor({ taskId, readOnly, onBlocks, endpoint }: {
               : savedLabel ? `저장됨 ${savedLabel}` : "자동 저장됨"}
         </span>
         <span className="doc-hint">본문에서 <kbd>/</kbd> 를 누르면 블록을 넣을 수 있어요</span>
+        {!readOnly && (
+          <AttachButton onFile={(f) => void insertImage(null, f)} disabled={!blobReady}
+            reason="이미지 저장소가 연결되지 않았어요" />
+        )}
       </div>
 
       {blocks.length === 0 ? (
@@ -379,9 +385,9 @@ export default function DocEditor({ taskId, readOnly, onBlocks, endpoint }: {
               {b.type === "image" && (
                 b.pathname
                   ? <BlobImage value={b.pathname} name={b.name} alt={b.name ?? "첨부 이미지"} className="doc-img" />
-                  : <div className="doc-img-ph">
-                      {blobReady ? "이미지 올리는 중…" : "이미지 저장소가 연결되지 않았습니다"}
-                    </div>
+                  : blobReady
+                    ? <div className="doc-img-ph" role="status" aria-label={`${b.name ?? "이미지"} 올리는 중`} />
+                    : <div className="doc-img-ph off">이미지 저장소가 연결되지 않았습니다</div>
               )}
 
               {!readOnly && (
@@ -396,7 +402,7 @@ export default function DocEditor({ taskId, readOnly, onBlocks, endpoint }: {
           )}
         </div>
       )}
-    </div>
+    </DropZone>
   );
 }
 
