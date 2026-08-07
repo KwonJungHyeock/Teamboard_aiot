@@ -1045,3 +1045,151 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .agf-badge, .agf-notif {
   border-radius: 9px; font-size: 10.5px; background: var(--ink); color: var(--surface);
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+ * MD-P-2026-027 §C · §D — 업무 등록 모달 · 프로젝트 연결
+ * ══════════════════════════════════════════════════════════════════════ */
+
+/* ── §C1 등록 모달 — 720 × 560, 최대 90vh ───────────────────────────
+ *
+ * 만드는 자리와 고치는 자리를 나눈 결과다. 420px 패널에 생성 폼을 욱여넣던 때는
+ * 설명이 4줄 textarea 였고 목표 연결은 "만든 뒤 상세에서" 로 미뤄져 있었다.
+ * 왼쪽은 쓰는 자리(제목·본문), 오른쪽 220px 은 고르는 자리(속성)다.
+ * 모션은 §H 토큰만 쓴다 — 모달은 --dur-3.
+ */
+.ntm-bg {
+  position: fixed; inset: 0; z-index: 70;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--scrim); padding: 24px;
+}
+.ntm {
+  width: 720px; max-width: 100%; height: 560px; max-height: 90vh;
+  display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 9px; box-shadow: var(--e3); overflow: hidden;
+}
+.ntm-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px; border-bottom: 1px solid var(--line); flex: 0 0 auto;
+}
+.ntm-crumb { font-size: 12.5px; color: var(--muted); }
+.ntm-made { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+.ntm-x {
+  margin-left: auto; width: 26px; height: 26px; border: 1px solid var(--line);
+  border-radius: 7px; background: var(--surface); color: var(--muted); cursor: pointer;
+}
+.ntm-made + .ntm-x { margin-left: 8px; }
+.ntm-x:hover { background: var(--surface-2); color: var(--ink); }
+
+.ntm-body { display: flex; min-height: 0; flex: 1 1 auto; }
+.ntm-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; padding: 16px; gap: 10px; }
+.ntm-side {
+  flex: 0 0 220px; width: 220px; border-left: 1px solid var(--line);
+  padding: 12px; overflow-y: auto; background: var(--surface-2);
+}
+/* 속성 블록은 상세 패널과 같은 규격(라벨 88px + 값)을 그대로 쓴다.
+   220px 안에서는 라벨을 줄여야 값이 읽힌다. */
+.ntm-side .prop-row { grid-template-columns: 66px 1fr; }
+.ntm-side .prop-l { font-size: 11.5px; }
+.ntm-side .prop-v { font-size: 12.5px; }
+.ntm-off { color: var(--muted); font-size: 11.5px; }
+
+.ntm-title {
+  font-size: 19px; font-weight: 600; line-height: 1.35; color: var(--ink);
+  border: 0; border-bottom: 1px solid transparent; background: transparent;
+  padding: 2px 0; width: 100%;
+}
+.ntm-title:focus { outline: none; border-bottom-color: var(--line-hi); }
+.ntm-title::placeholder { color: var(--muted); font-weight: 400; }
+
+.ntm-note { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.ntm-tools { display: flex; gap: 4px; padding-bottom: 6px; }
+.ntm-tool {
+  min-width: 26px; height: 24px; padding: 0 6px;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface); color: var(--muted);
+  font-size: 11.5px; cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.ntm-tool:hover { background: var(--surface-2); color: var(--ink); }
+.ntm-desc {
+  flex: 1 1 auto; min-height: 0; resize: none; width: 100%;
+  border: 1px solid var(--line); border-radius: 7px; padding: 10px 12px;
+  font: inherit; font-size: 13px; line-height: 1.6; color: var(--ink);
+  background: var(--surface);
+}
+.ntm-desc:focus { outline: none; border-color: var(--line-hi); }
+
+.ntm-err { padding: 0 16px 8px; }
+.ntm-foot {
+  display: flex; align-items: center; gap: 10px; flex: 0 0 auto;
+  padding: 12px 14px; border-top: 1px solid var(--line); background: var(--surface);
+}
+.ntm-keep { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink2); cursor: pointer; }
+.ntm-keep input { width: 15px; height: 15px; accent-color: var(--brand); }
+.ntm-kbd { margin-left: 7px; font-style: normal; font-size: 10.5px; opacity: .75; }
+
+/* ── §D1 프로젝트 검색형 콤보박스 ─────────────────────────────────── */
+.pcb { position: relative; }
+.pcb-v {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+  border: 1px solid transparent; border-radius: 4px; background: transparent;
+  padding: 1px 4px; font: inherit; font-size: 12.5px; color: var(--ink); cursor: pointer;
+  text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pcb-v:hover { background: var(--surface-2); }
+.pcb-v.empty { color: var(--muted); }
+.pcb-off { font-size: 11.5px; color: var(--muted); }
+
+.pcb-pop {
+  position: absolute; z-index: 5; top: calc(100% + 4px); left: 0;
+  width: 248px; max-width: 78vw;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 7px; box-shadow: var(--e2); padding: 6px;
+}
+.pcb-q {
+  width: 100%; border: 1px solid var(--line); border-radius: 4px;
+  padding: 5px 8px; font: inherit; font-size: 12.5px; color: var(--ink); background: var(--surface);
+}
+.pcb-q:focus { outline: none; border-color: var(--line-hi); }
+.pcb-list { max-height: 232px; overflow-y: auto; margin-top: 5px; }
+.pcb-o {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  border: 0; border-radius: 4px; background: transparent;
+  padding: 5px 7px; font: inherit; font-size: 12.5px; color: var(--ink);
+  cursor: pointer; text-align: left;
+}
+.pcb-o.cur { background: var(--surface-2); }
+.pcb-o.on { font-weight: 600; }
+.pcb-o-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcb-rec { margin-left: auto; font-style: normal; font-size: 10.5px; color: var(--muted); }
+.pcb-none { padding: 8px 7px; font-size: 11.5px; color: var(--muted); }
+/* 만들기 줄은 목록과 선으로 나눈다 — 고르는 것과 만드는 것은 다른 행동이다 */
+.pcb-new { margin-top: 4px; border-top: 1px solid var(--line); padding-top: 7px; color: var(--brand); }
+.pcb-err { margin-top: 5px; font-size: 11.5px; color: var(--danger); }
+
+/* ── §C3 · §D2 한 줄 업무 입력 ────────────────────────────────────── */
+.iti {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--line); border-radius: 7px;
+  background: var(--surface); padding: 0 10px; height: 38px; margin-bottom: 8px;
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+.iti:focus-within { border-color: var(--line-hi); }
+.iti.err { border-color: var(--danger); }
+.iti-p { color: var(--muted); font-size: 12.5px; }
+.iti-q {
+  flex: 1 1 auto; min-width: 0; border: 0; background: transparent;
+  font: inherit; font-size: 12.5px; color: var(--ink); height: 100%;
+}
+.iti-q:focus { outline: none; }
+.iti-q::placeholder { color: var(--muted); }
+.iti-e { font-size: 11.5px; color: var(--danger); }
+/* 표 **아래**에 붙는 자리 (§D2) — 여백이 반대로 붙는다 */
+.iti.under { margin-top: 8px; margin-bottom: 0; }
+
+/* ── §D3 일괄 지정 (BulkBar 재사용) ───────────────────────────────── */
+.tv-bulk-l { font-size: 11.5px; color: var(--muted); }
+.col-chk { width: 34px; text-align: center; }
+.col-chk input { width: 15px; height: 15px; accent-color: var(--brand); cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .ntm-tool, .iti { transition: none; } }

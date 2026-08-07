@@ -15,13 +15,14 @@ import LinkedResources from "./LinkedResources";
 import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution } from "@/lib/progress";
 import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
+import ProjectCombo, { type ComboProject } from "./ProjectCombo";
+import type { SessionUser } from "@/lib/types";
 import {
   TASK_PANEL_EVENT,
   currentTaskRef,
   closeTaskPanel,
   notifyTaskUpdated,
   openTaskPanel,
-  type NewTaskPrefill,
 } from "@/lib/task-panel";
 
 interface TaskDetail {
@@ -63,17 +64,10 @@ function fmt(iso: string): string {
   return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-interface Draft {
-  title: string; areaId: number; projectId: number; assigneeId: number;
-  visibility: "team" | "private";
-  priority: string; workType: string; startDate: string; dueDate: string; description: string;
-}
-
-export default function TaskDetailPanel() {
-  const [openId, setOpenId] = useState<number | "new" | null>(null);
-  const [prefill, setPrefill] = useState<NewTaskPrefill>({});
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [creating, setCreating] = useState(false);
+export default function TaskDetailPanel({ user }: { user: SessionUser }) {
+  // 이 패널은 **이미 있는 업무를 보고 고치는 용도로만** 남는다 (MD-P-2026-027 §C4).
+  // 새 업무 생성은 NewTaskModal 이 맡는다. 만드는 자리가 둘이면 필드가 갈라진다.
+  const [openId, setOpenId] = useState<number | null>(null);
   const [t, setT] = useState<TaskDetail | null>(null);
   const [sel, setSel] = useState<Selectors | null>(null);
   const [comments, setComments] = useState<Cmt[]>([]);
@@ -96,17 +90,15 @@ export default function TaskDetailPanel() {
   const descRef = useRef<HTMLTextAreaElement>(null);
 
   // ── 열림 상태 소스: URL ?task + 이벤트 + 뒤로가기 ──
+  // `new` 는 여기서 무시한다 — 모달이 받는다 (§C4).
   useEffect(() => {
-    const sync = () => setOpenId(currentTaskRef());
+    const sync = () => { const r = currentTaskRef(); setOpenId(typeof r === "number" ? r : null); };
     sync();
     const onEvent = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail && typeof detail === "object" && detail.mode === "new") {
-        setPrefill(detail.prefill ?? {});
-        setOpenId("new");
-      } else {
-        setOpenId(typeof detail === "number" ? detail : detail === null ? null : currentTaskRef());
-      }
+      if (typeof detail === "number") setOpenId(detail);
+      else if (detail === null) setOpenId(null);
+      else sync();
     };
     window.addEventListener(TASK_PANEL_EVENT, onEvent);
     window.addEventListener("popstate", sync);
@@ -138,62 +130,9 @@ export default function TaskDetailPanel() {
     setErr(""); setDropping(false); setDropReason("");
     // 열 때마다 셀렉트 재조회 — 세션 중 새로 만든 월 목표·프로젝트가 즉시 연결 후보로 뜨도록.
     fetch("/api/meta/selectors").then((r) => r.json()).then(setSel).catch(() => {});
-    if (openId === "new") { setT(null); return; }
     loadDetail(openId);
     loadComments(openId);
   }, [openId, loadDetail, loadComments]);
-
-  // 새 업무 초안 초기화 (진입 시 1회) + 영역 기본값은 selectors 도착 후 채움
-  useEffect(() => {
-    if (openId === "new") {
-      setDraft((d) =>
-        d ?? {
-          title: prefill.title ?? "", areaId: prefill.areaId ?? 0, projectId: prefill.projectId ?? 0,
-          assigneeId: prefill.assigneeId ?? 0, priority: "mid",
-          // §B1 — 기본값은 팀 공개. 개인은 명시적으로 고른다.
-          // 단, 메모에서 넘어온 업무는 기본이 "개인"이다 (§C C-2) — 메모에서 나온 것이니
-          // 개인이 자연스럽다. 그래도 화면에서 바꿀 수 있다.
-          visibility: prefill.visibility ?? "team",
-          workType: prefill.workType ?? "team",
-          startDate: prefill.startDate ?? "", dueDate: prefill.dueDate ?? "", description: "",
-        }
-      );
-    } else {
-      setDraft(null);
-      setCreating(false);
-    }
-  }, [openId, prefill]);
-  useEffect(() => {
-    if (openId === "new" && sel && draft && !draft.areaId) {
-      setDraft({ ...draft, areaId: sel.areas[0]?.id ?? 0 });
-    }
-  }, [openId, sel, draft]);
-
-  async function createTask() {
-    if (!draft || !draft.title.trim()) { setErr("제목을 입력하세요."); return; }
-    setCreating(true); setErr("");
-    const res = await fetch("/api/tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: draft.title.trim(),
-        areaId: draft.areaId || undefined,
-        projectId: draft.projectId || undefined,
-        assigneeId: draft.assigneeId || undefined,
-        workType: draft.workType,
-        visibility: draft.visibility,
-        priority: draft.priority,
-        startDate: draft.startDate || undefined,
-        dueDate: draft.dueDate || undefined,
-        description: draft.description,
-      }),
-    });
-    setCreating(false);
-    if (!res.ok) { setErr((await res.json()).error ?? "생성 실패"); return; }
-    const { id } = await res.json();
-    notifyTaskUpdated();
-    openTaskPanel(id); // 생성된 업무 상세로 전환
-  }
 
   // ESC 닫기
   useEffect(() => {
@@ -322,7 +261,6 @@ export default function TaskDetailPanel() {
   }
 
   if (openId == null) return null;
-  const areaProjects = sel?.projects.filter((p) => p.areaId === (t?.areaId ?? -1)) ?? [];
 
   // ── §F1 속성 블록 — 순서 고정: 상태 / 담당 / 기간 / 우선순위 / 진행률 / 프로젝트 / 목표.
   //    영역·업무유형은 기존 기능을 잃지 않도록 그 뒤에 붙인다(5개 초과 → "속성 접기"로 접힘).
@@ -423,18 +361,24 @@ export default function TaskDetailPanel() {
       ),
     },
     {
+      // §D4 — 값을 누르면 그 자리에서 바꾼다. 셀렉트가 아니라 검색형 콤보박스다(§D1).
+      // 후보를 **영역으로 좁히지 않는다** — 예전에는 t.areaId 와 같은 영역의 프로젝트만
+      // 보여서, 영역을 잘못 고른 업무는 정작 붙여야 할 프로젝트가 목록에 없었다.
       key: "project", label: "프로젝트",
       value: t.projectName, empty: !t.projectId, action: "＋ 프로젝트 연결",
-      editor: (close) => (
-        <select autoFocus value={t.projectId ?? 0}
-          onChange={(e) => {
-            const id = Number(e.target.value) || null;
-            patchOpt({ projectId: id }, { projectId: id, projectName: areaProjects.find((p) => p.id === id)?.name ?? null });
-            close();
-          }}>
-          <option value={0}>없음</option>
-          {areaProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+      editor: () => (
+        <ProjectCombo
+          value={t.projectId}
+          projects={sel?.projects ?? []}
+          areaId={t.areaId}
+          canCreate={user.role === "lead"}
+          disabled={t.visibility === "private"}
+          disabledReason={t.visibility === "private" ? "개인 업무는 프로젝트에 넣을 수 없습니다" : undefined}
+          onChange={(id) =>
+            patchOpt({ projectId: id }, { projectId: id, projectName: (sel?.projects ?? []).find((p) => p.id === id)?.name ?? null })
+          }
+          onCreated={(p: ComboProject) => setSel((s) => (s ? { ...s, projects: [...s.projects, p] } : s))}
+        />
       ),
     },
     {
@@ -543,7 +487,7 @@ export default function TaskDetailPanel() {
       <aside className="tdp" role="dialog" aria-label="업무 상세">
         <div className="tdp-head">
           <span className="tdp-crumb">
-            {openId === "new" ? "새 업무" : `업무 상세 ${t ? `· #${t.id}` : ""}`}
+            업무 상세 {t ? `· #${t.id}` : ""}
           </span>
           <span className={`tdp-save ${save}`}>
             {save === "saving" ? "저장 중…" : save === "saved" ? "저장됨" : ""}
@@ -551,81 +495,8 @@ export default function TaskDetailPanel() {
           <button className="tdp-x" onClick={() => closeTaskPanel()} aria-label="닫기">✕</button>
         </div>
 
-        {/* ── 새 업무(빈 상태) — 파트 4 ── */}
-        {openId === "new" && draft && (
-          <div className="tdp-body">
-            {err && <p className="tdp-err">{err}</p>}
-            <input
-              className="tdp-title"
-              autoFocus
-              placeholder="새 업무 제목"
-              value={draft.title}
-              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-              onKeyDown={(e) => { if (e.key === "Enter") createTask(); }}
-            />
-            <div className="tdp-grid">
-              <label>영역
-                <select value={draft.areaId} onChange={(e) => setDraft({ ...draft, areaId: Number(e.target.value), projectId: 0 })}>
-                  {sel?.areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-              </label>
-              <label>업무유형
-                <select value={draft.workType} onChange={(e) => setDraft({ ...draft, workType: e.target.value })}>
-                  {WORKTYPE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              </label>
-              {/* §B1 공개 범위 — 기본값은 팀 공개. 개인은 명시적으로 고른다. */}
-              <label>공개 범위
-                <select value={draft.visibility}
-                  onChange={(e) => {
-                    const v = e.target.value as "team" | "private";
-                    // 개인으로 바꾸면 프로젝트를 비운다 — 개인 업무는 프로젝트에 못 들어간다(§A2).
-                    setDraft({ ...draft, visibility: v, projectId: v === "private" ? 0 : draft.projectId });
-                  }}>
-                  <option value="team">팀 공개</option>
-                  <option value="private">개인 (나만 봄)</option>
-                </select>
-              </label>
-              <label>프로젝트
-                <select value={draft.projectId} disabled={draft.visibility === "private"}
-                  title={draft.visibility === "private" ? "개인 업무는 프로젝트에 넣을 수 없습니다" : undefined}
-                  onChange={(e) => setDraft({ ...draft, projectId: Number(e.target.value) })}>
-                  <option value={0}>없음</option>
-                  {sel?.projects.filter((p) => p.areaId === draft.areaId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </label>
-              <label>담당
-                <select value={draft.assigneeId} disabled={draft.visibility === "private"}
-                  title={draft.visibility === "private" ? "개인 업무는 본인 담당입니다" : undefined}
-                  onChange={(e) => setDraft({ ...draft, assigneeId: Number(e.target.value) })}>
-                  <option value={0}>미지정</option>
-                  {sel?.actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-              </label>
-              <label>우선순위
-                <select value={draft.priority} onChange={(e) => setDraft({ ...draft, priority: e.target.value })}>
-                  {PRIORITY.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              </label>
-              <label>시작일
-                <input type="date" value={draft.startDate} onChange={(e) => setDraft({ ...draft, startDate: e.target.value })} />
-              </label>
-              <label>마감일
-                <input type="date" value={draft.dueDate} onChange={(e) => setDraft({ ...draft, dueDate: e.target.value })} />
-              </label>
-            </div>
-            <div className="tdp-sec">
-              <div className="tdp-sec-h">설명 <em>(선택)</em></div>
-              <textarea className="tdp-desc" rows={4} value={draft.description}
-                placeholder="업무 설명을 입력하세요…"
-                onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
-            </div>
-            <p className="tdp-muted">만든 뒤 상세 화면에서 목표 연결·코멘트를 추가할 수 있습니다.</p>
-          </div>
-        )}
-
-        {openId !== "new" && !t && !err && <div className="tdp-body"><Skeleton variant="page" rows={3} /></div>}
-        {openId !== "new" && err && !t && <div className="tdp-body"><p className="tdp-err">{err}</p></div>}
+        {!t && !err && <div className="tdp-body"><Skeleton variant="page" rows={3} /></div>}
+        {err && !t && <div className="tdp-body"><p className="tdp-err">{err}</p></div>}
 
         {t && (
           <div className="tdp-body">
@@ -797,15 +668,6 @@ export default function TaskDetailPanel() {
                 <button className="btn small primary" onClick={addComment} disabled={!newComment.trim()}>등록</button>
               </div>
             </div>
-          </div>
-        )}
-
-        {openId === "new" && (
-          <div className="tdp-foot tdp-foot-new">
-            <button className="btn ghost" onClick={() => closeTaskPanel()}>취소</button>
-            <button className="tdp-create btn-brand" disabled={creating || !draft?.title.trim()} onClick={createTask}>
-              {creating ? "만드는 중…" : "＋ 만들기"}
-            </button>
           </div>
         )}
 

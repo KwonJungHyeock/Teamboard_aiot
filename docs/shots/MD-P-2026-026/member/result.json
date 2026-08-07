@@ -55,6 +55,15 @@
       "why": ""
     },
     {
+      "id": "combo-new-project",
+      "path": "/tasks?panel=task:new",
+      "what": "프로젝트 콤보박스의 '새 프로젝트로 만들기'",
+      "lead": true,
+      "member": false,
+      "ok": true,
+      "why": ""
+    },
+    {
       "id": "huddle-review",
       "path": "/huddle",
       "what": "새 리뷰 세션 시작",

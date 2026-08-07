@@ -55,6 +55,10 @@ export default function TaskTable({
   onStatusChange,
   accent,
   quickComplete,
+  selectable,
+  checked,
+  onToggleCheck,
+  onToggleAll,
 }: {
   rows: TaskTableRow[];
   title?: string;
@@ -82,9 +86,16 @@ export default function TaskTable({
   accent?: string;
   /** hover 인라인 액션(완료·열기) 활성화 — 낙관적 업데이트 + 토스트 */
   quickComplete?: boolean;
+  /** 다중 선택 (MD-P-2026-027 §D3) — 체크박스 열을 맨 앞에 붙인다 */
+  selectable?: boolean;
+  checked?: Set<number>;
+  onToggleCheck?: (id: number) => void;
+  onToggleAll?: () => void;
 }) {
   const full = variant === "full";
-  const colCount = full ? 9 : 5;
+  const colCount = (full ? 9 : 5) + (selectable ? 1 : 0);
+  const on = (id: number) => !!checked?.has(id);
+  const allOn = selectable && rows.length > 0 && rows.every((r) => on(r.id));
   // 낙관적 완료 — 즉시 반영(페이드) 후 PATCH, 실패 시 롤백
   const [doneLocal, setDoneLocal] = useState<Set<number>>(new Set());
   async function completeNow(id: number, e: React.MouseEvent) {
@@ -109,6 +120,7 @@ export default function TaskTable({
       </div>
       <table>
         <colgroup>
+          {selectable && <col style={{ width: "34px" }} />}
           {full ? (
             <>
               <col />
@@ -134,6 +146,12 @@ export default function TaskTable({
         </colgroup>
         <thead>
           <tr>
+            {selectable && (
+              <th className="col-chk">
+                <input type="checkbox" checked={allOn} onChange={() => onToggleAll?.()}
+                  aria-label="전체 선택" disabled={rows.length === 0} />
+              </th>
+            )}
             <th>업무</th>
             {full && <th>목표</th>}
             {full && <th>영역</th>}
@@ -175,6 +193,12 @@ export default function TaskTable({
                     .join(" ") || undefined
                 }
               >
+                {selectable && (
+                  <td className="col-chk" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={on(t.id)} onChange={() => onToggleCheck?.(t.id)}
+                      aria-label={`${t.title} 선택`} />
+                  </td>
+                )}
                 <td>
                   {t.blocked && (
                     <span className="blk-mark" title={t.blockedReason ? `막힘: ${t.blockedReason}` : "막힘"} aria-label="막힘">

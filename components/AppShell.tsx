@@ -7,6 +7,7 @@ import Sidebar from "./Sidebar";
 import CommandPalette from "./CommandPalette";
 import PasswordGate from "./PasswordGate";
 import TaskDetailPanel from "./TaskDetailPanel";
+import NewTaskModal from "./NewTaskModal";
 import GoalDetailPanel from "./GoalDetailPanel";
 import SidePanel from "./SidePanel";
 import Shortcuts from "./Shortcuts";
@@ -57,7 +58,9 @@ export default async function AppShell({
         <Sidebar user={current} inboxCount={inboxCount} notionConnected={notionConnected} />
         <main className="main">{children}</main>
       </div>
-      <TaskDetailPanel />
+      <TaskDetailPanel user={current} />
+      {/* 만드는 자리(모달)와 고치는 자리(패널)를 나눈다 — MD-P-2026-027 §C */}
+      <NewTaskModal user={current} />
       <SidePanel user={current} />
       <GoalDetailPanel />
       <Shortcuts />

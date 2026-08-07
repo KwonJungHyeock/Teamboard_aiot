@@ -74,22 +74,22 @@
     "scrollHeight": 987,
     "biggest": [
       {
-        "el": "div.sk.sk-list",
+        "el": "div.iti",
         "w": 1108,
-        "h": 154
-      },
-      {
-        "el": "div.sk-rows",
-        "w": 1108,
-        "h": 154
-      },
-      {
-        "el": "span.sk-row",
-        "w": 1106,
         "h": 38
+      },
+      {
+        "el": "section.card",
+        "w": 1108,
+        "h": 345
+      },
+      {
+        "el": "p.tv-hidden",
+        "w": 1108,
+        "h": 18
       }
     ],
-    "btnCount": 15,
+    "btnCount": 16,
     "misaligned": [],
     "coralFill": [],
     "boxy": [],
@@ -114,13 +114,13 @@
       {
         "bg": "rgb(255, 255, 255)",
         "token": "--surface",
-        "n": 2,
+        "n": 3,
         "sample": "header.pg-head"
       },
       {
         "bg": "rgb(251, 252, 252)",
         "token": "--surface-2",
-        "n": 5,
+        "n": 1,
         "sample": "div.pg-filters"
       }
     ],
@@ -424,7 +424,7 @@
       {
         "el": "section.card.dlog",
         "w": 1108,
-        "h": 219
+        "h": 410
       },
       {
         "el": "div.dlog-bar",
@@ -432,12 +432,12 @@
         "h": 63
       },
       {
-        "el": "div.sk.sk-list",
+        "el": "div.dlist",
         "w": 1106,
-        "h": 154
+        "h": 345
       }
     ],
-    "btnCount": 2,
+    "btnCount": 5,
     "misaligned": [],
     "coralFill": [],
     "boxy": [],
@@ -462,14 +462,8 @@
       {
         "bg": "rgb(255, 255, 255)",
         "token": "--surface",
-        "n": 3,
+        "n": 2,
         "sample": "header.pg-head"
-      },
-      {
-        "bg": "rgb(251, 252, 252)",
-        "token": "--surface-2",
-        "n": 4,
-        "sample": "span.sk-row"
       }
     ],
     "gridEmpty": [],
@@ -551,7 +545,7 @@
       {
         "el": "div.actv-main",
         "w": 896,
-        "h": 323
+        "h": 320
       },
       {
         "el": "div.actv-bar",
@@ -654,6 +648,11 @@
     "scrollHeight": 987,
     "biggest": [
       {
+        "el": "div.tile.ma-credit",
+        "w": 1108,
+        "h": 86
+      },
+      {
         "el": "section.tile.ma-dispatch",
         "w": 1108,
         "h": 333
@@ -662,11 +661,6 @@
         "el": "div.th",
         "w": 1108,
         "h": 45
-      },
-      {
-        "el": "h3",
-        "w": 1108,
-        "h": 22
       }
     ],
     "btnCount": 4,
@@ -1176,7 +1170,7 @@
     "route": "/areas/1",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/areas_1.png",
-    "scrollHeight": 1646,
+    "scrollHeight": 1692,
     "biggest": [
       {
         "el": "section.card",
@@ -1219,7 +1213,7 @@
       {
         "bg": "rgb(255, 255, 255)",
         "token": "--surface",
-        "n": 2,
+        "n": 3,
         "sample": "header.pg-head"
       },
       {

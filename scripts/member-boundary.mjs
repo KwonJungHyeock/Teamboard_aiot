@@ -59,6 +59,20 @@ const CASES = [
       if (!(await team.count())) return false;
       return !(await team.isDisabled());     // 비활성이면 "쓸 수 없다" = 안 보이는 것과 같다
     } },
+  // MD-P-2026-027 §D1 — 프로젝트 콤보박스의 "새 프로젝트로 만들기".
+  // POST /api/projects 는 팀장 전용이므로, 팀원에게 이 줄을 보여 주면
+  // 눌러도 403 이 나는 버튼을 보여 주는 셈이다. 아예 그리지 않는다.
+  { id: "combo-new-project", path: "/tasks?panel=task:new", what: "프로젝트 콤보박스의 '새 프로젝트로 만들기'",
+    check: async (p) => {
+      await p.waitForTimeout(1200);
+      const row = p.locator('.ntm-side .prop-row:has(.prop-l:text-is("프로젝트")) .pcb-v');
+      if (await row.count() === 0) return false;
+      await row.click();
+      await p.waitForTimeout(300);
+      await p.locator(".pcb-q").fill("존재하지않을이름ZZZ");
+      await p.waitForTimeout(300);
+      return (await p.locator(".pcb-new").count()) > 0;
+    } },
   { id: "huddle-review", path: "/huddle", what: "새 리뷰 세션 시작",
     check: (p) => p.getByRole("button", { name: /새 리뷰 세션 시작/ }).count().then((n) => n > 0) },
 ];

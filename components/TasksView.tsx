@@ -12,11 +12,14 @@ import PageShell from "./PageShell";
 import TaskBoard from "./TaskBoard";
 import TaskCalendar from "./TaskCalendar";
 import TaskGantt from "./TaskGantt";
-import { toast, openQuickCreate } from "@/lib/quick";
+import { toast } from "@/lib/quick";
 import {
   type TaskItem, type TaskLens, type BoardGroup, LENS_LABEL, GROUP_LABEL, dueLabel,
 } from "@/lib/task-view";
-import { openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
+import { openTaskPanel, openNewTaskModal, TASK_UPDATED_EVENT } from "@/lib/task-panel";
+import InlineTaskInput from "./InlineTaskInput";
+import BulkBar from "./BulkBar";
+import ProjectCombo from "./ProjectCombo";
 
 interface AreaOption {
   id: number;
@@ -118,14 +121,44 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [areaDefaulted, setAreaDefaulted] = useState(false);
   const isMine = fAssignee === String(user.id);
 
-  // 새 업무 — 단일 흐름: 빠른 생성 팝오버(현재 영역·담당 프리셋). 별도 생성 시트 없음.
-  const quickNew = useCallback((e: React.MouseEvent) => {
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    openQuickCreate(
-      { x: r.left, y: r.bottom + 6 },
-      { areaId: fArea ? Number(fArea) : undefined, assigneeId: isMine ? user.id : undefined }
-    );
+  // 새 업무 — 등록 모달 (MD-P-2026-027 §C). 지금 필터(영역·담당)를 프리셋으로 물려준다.
+  const quickNew = useCallback(() => {
+    openNewTaskModal({ areaId: fArea ? Number(fArea) : undefined, assigneeId: isMine ? user.id : undefined });
   }, [fArea, isMine, user.id]);
+
+  // ── §D3 다중 선택 → 프로젝트 일괄 지정 ──
+  // 일괄 지정 줄은 목표 미연결 화면이 쓰던 BulkBar 를 그대로 쓴다. 새로 만들지 않는다.
+  const [checked, setChecked] = useState<Set<number>>(new Set());
+  const [bulkProject, setBulkProject] = useState<number | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const toggleCheck = useCallback((id: number) => setChecked((prev) => {
+    const n = new Set(prev);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    return n;
+  }), []);
+
+  async function assignProject() {
+    const ids = Array.from(checked);
+    if (ids.length === 0 || bulkBusy) return;
+    setBulkBusy(true);
+    let ok = 0;
+    const failed: string[] = [];
+    for (const id of ids) {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: bulkProject }),
+      }).catch(() => null);
+      if (res && res.ok) ok += 1;
+      else failed.push(String((res && (await res.json().catch(() => ({}))).error) || "실패"));
+    }
+    setBulkBusy(false);
+    setChecked(new Set());
+    // 몇 건이 왜 안 됐는지 말한다. 개인 업무는 프로젝트에 못 들어가므로 실제로 갈린다.
+    if (ok === 0) toast(failed[0] ?? "지정하지 못했어요", "err");
+    else if (failed.length > 0) toast(`${ok}건 지정 · ${failed.length}건 실패 — ${failed[0]}`, "err");
+    else toast(bulkProject === null ? `${ok}건의 프로젝트 연결을 해제했어요` : `${ok}건을 프로젝트에 지정했어요`);
+    load();
+  }
 
   /**
    * 지금 필터를 저장된 뷰로 만든다 (§B3).
@@ -425,8 +458,10 @@ export default function TasksView({ user }: { user: SessionUser }) {
       subtitle={isMine
         ? "담당이 나인 업무만 보고 있습니다. 담당을 ‘전체 담당’으로 바꾸면 전체를 조회합니다."
         : "에이전트 제안은 인박스에서 승인해야 목록·홈·캘린더에 반영됩니다."}
-      // 전체 빈 상태가 떠 있으면 그 안의 CTA 가 같은 동작을 한다 — 같은 코랄 버튼을 둘 두지 않는다 (§B)
-      actions={emptyNow ? undefined : <button className="btn-primary" onClick={quickNew}>＋ 새 업무</button>}
+      // 코랄 채움은 화면당 1개다 (§B).
+      //  · 전체 빈 상태가 떠 있으면 그 안의 CTA 가 같은 동작을 한다 → 헤더는 숨긴다
+      //  · 일괄 지정 줄이 떠 있으면 지금의 주 액션은 "선택 업무에 지정" 이다 → 헤더는 숨긴다
+      actions={emptyNow || checked.size > 0 ? undefined : <button className="btn-primary" onClick={quickNew}>＋ 새 업무</button>}
       tabs={(["sheet", "board", "calendar", "timeline"] as TaskLens[]).map((v) => ({ key: v, label: LENS_LABEL[v] }))}
       activeTab={lens}
       onTab={(k) => pickLens(k as TaskLens)}
@@ -513,23 +548,56 @@ export default function TasksView({ user }: { user: SessionUser }) {
         {loading && <Skeleton variant="list" />}
         {error && <ErrorNote message="업무를 불러오지 못했어요" cause={error} onRetry={load} />}
         {!loading && !error && lens === "sheet" && (
-          <TaskTable
-            rows={rows}
-            title={isMine ? "내 업무" : "업무 목록"}
-            sub={`${rows.length}건`}
-            emptyScope="full"
-            emptyText="아직 업무가 없어요"
-            emptyHint="상단 필터를 조정하거나, 새 업무를 만들어 시작하세요."
-            emptyAction={
-              <button className="btn small primary" onClick={quickNew}>
-                ＋ 새 업무
-              </button>
-            }
-            variant="full"
-            quickComplete
-            onStatusChange={changeStatus}
-            onRowClick={(id) => openTaskPanel(id)}
-          />
+          <>
+            {/* §C3 — 목록 맨 위 한 줄 입력. Enter 즉시 생성, ⌘Enter 모달 확장.
+                빠른 입력을 없애지 않는다. 대부분의 업무는 제목 한 줄이면 충분하다. */}
+            <InlineTaskInput
+              prefill={{ areaId: fArea ? Number(fArea) : undefined, assigneeId: isMine ? user.id : undefined }}
+              onCreated={load}
+            />
+            {/* §D3 — 체크한 업무의 프로젝트를 한 번에 지정한다.
+                고른 것이 없으면 줄 자체를 그리지 않는다 — 늘 떠 있으면 목록이 밀린다. */}
+            {checked.size > 0 && (
+              <BulkBar count={checked.size} total={rows.length} onClear={() => setChecked(new Set())}>
+                <span className="tv-bulk-l">프로젝트</span>
+                <ProjectCombo
+                  value={bulkProject}
+                  projects={projects}
+                  areaId={fArea ? Number(fArea) : undefined}
+                  canCreate={user.role === "lead"}
+                  placeholder="프로젝트 선택…"
+                  onChange={setBulkProject}
+                  onCreated={(p) => setProjects((cur) => [...cur, p])}
+                />
+                <button className="btn-primary" disabled={bulkBusy} onClick={assignProject}>
+                  {bulkBusy ? "지정 중…" : "선택 업무에 지정"}
+                </button>
+              </BulkBar>
+            )}
+            <TaskTable
+              rows={rows}
+              title={isMine ? "내 업무" : "업무 목록"}
+              sub={`${rows.length}건`}
+              emptyScope="full"
+              emptyText="아직 업무가 없어요"
+              emptyHint="상단 필터를 조정하거나, 새 업무를 만들어 시작하세요."
+              emptyAction={
+                <button className="btn small primary" onClick={quickNew}>
+                  ＋ 새 업무
+                </button>
+              }
+              variant="full"
+              quickComplete
+              selectable
+              checked={checked}
+              onToggleCheck={toggleCheck}
+              onToggleAll={() =>
+                setChecked((prev) => (rows.every((r) => prev.has(r.id)) ? new Set() : new Set(rows.map((r) => r.id))))
+              }
+              onStatusChange={changeStatus}
+              onRowClick={(id) => openTaskPanel(id)}
+            />
+          </>
         )}
         {!loading && !error && lens === "board" && (
           <TaskBoard

@@ -12,6 +12,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "@/lib/quick";
 import SectionEmpty from "./SectionEmpty";
+import BulkBar from "./BulkBar";
 import ErrorNote from "./ErrorNote";
 
 export interface UnlinkedTask {
@@ -119,9 +120,8 @@ export default function UnlinkedTaskPanel({
 
   return (
     <section className="utp" aria-label="목표 미연결 업무">
-      {/* 일괄 지정 줄 — 체크한 업무를 한 번에 붙인다 */}
-      <div className="utp-bulk">
-        <span className="utp-n num">{checked.size > 0 ? `${checked.size}건 선택` : `${tasks.length}건`}</span>
+      {/* 일괄 지정 줄 — 체크한 업무를 한 번에 붙인다 (공용 BulkBar, §D3 에서 재사용) */}
+      <BulkBar count={checked.size} total={tasks.length} onClear={() => setChecked(new Set())}>
         <select value={bulkGoal} onChange={(e) => setBulkGoal(Number(e.target.value))} disabled={checked.size === 0}>
           <option value={0}>월 목표 선택…</option>
           <option value={NONE}>목표 없음 (성과 집계 대상 아님)</option>
@@ -131,11 +131,8 @@ export default function UnlinkedTaskPanel({
           onClick={() => link(Array.from(checked), bulkGoal)}>
           선택 업무 연결
         </button>
-        {checked.size > 0 && (
-          <button className="btn-ghost" onClick={() => setChecked(new Set())}>선택 해제</button>
-        )}
-        {error && <ErrorNote message={error} />}
-      </div>
+      </BulkBar>
+      {error && <ErrorNote message={error} />}
 
       {monthGoals.length === 0 && (
         <SectionEmpty text="이번 달 팀 월 목표가 없어요 — 목표를 먼저 만들어 주세요" action={{ label: "목표 만들기 →", href: "/goals" }} />

@@ -9,6 +9,7 @@ import Link from "next/link";
 import type { SessionUser } from "@/lib/types";
 import type { TaskItem } from "@/lib/task-view";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
+import InlineTaskInput from "./InlineTaskInput";
 import TaskBoard from "./TaskBoard";
 import PageShell from "./PageShell";
 import ProjectCanvas from "./ProjectCanvas";
@@ -17,10 +18,10 @@ import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import ErrorNote from "./ErrorNote";
 import ResourceLinks from "./ResourceLinks";
-import { openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
+import { openNewTaskModal, openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
 import { SIDE_PANEL_EVENT, currentPanel, openPanel } from "@/lib/side-panel";
 import { SIGNAL_CHANGED_EVENT } from "@/lib/collab-events";
-import { openQuickCreate, toast } from "@/lib/quick";
+import { toast } from "@/lib/quick";
 import { dday } from "@/lib/task-view";
 
 const TABS = [
@@ -231,7 +232,8 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
             )}
           </span>
           {!readOnly && (
-            <button className="btn-primary" onClick={(e) => openQuickCreate({ x: e.clientX - 300, y: e.clientY + 10 }, { areaId: p.areaId ?? undefined })}>
+            <button className="btn-primary"
+              onClick={() => openNewTaskModal({ projectId, areaId: p.areaId ?? undefined })}>
               ＋ 업무
             </button>
           )}
@@ -324,10 +326,22 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
               </div>
             </div>
             {taskView === "table" ? (
-              <TaskTable rows={rows} title="업무" variant="full"
-                emptyScope="section"
-                emptyText="이 프로젝트에 업무가 없어요"
-                onRowClick={(id) => openTaskPanel(id)} />
+              <>
+                <TaskTable rows={rows} title="업무" variant="full"
+                  emptyScope="section"
+                  emptyText="이 프로젝트에 업무가 없어요"
+                  onRowClick={(id) => openTaskPanel(id)} />
+                {/* §D2 — 목록 맨 아래 한 줄 입력. 여기서 만들면 프로젝트가 자동으로 붙는다.
+                    "연결"이라는 별도 행위를 없애는 것이 목적이다. 보관된 프로젝트에는 그리지 않는다. */}
+                {!readOnly && (
+                  <InlineTaskInput
+                    className="under"
+                    prefill={{ projectId, areaId: p.areaId ?? undefined }}
+                    placeholder={`${p.name} 에 업무 추가 — Enter, ⌘Enter 로 자세히`}
+                    onCreated={async () => { await loadTasks(); await load(); }}
+                  />
+                )}
+              </>
             ) : (
               <TaskBoard tasks={fullTasks} today={data.today} group="status"
                 areas={p.areaId ? [{ id: p.areaId, name: p.areaName ?? "", colorKey: p.areaColor }] : []}
