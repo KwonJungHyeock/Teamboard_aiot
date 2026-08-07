@@ -7,6 +7,12 @@
 //   ② 대기는 고정 sleep 이 아니라 **선택자 대기**로 한다. 클라이언트 렌더와 경주하면 안 된다.
 //   ③ 도달하지 못한 곳은 통과로 세지 않는다. `MISS` 로 적고 그대로 보고한다.
 //
+// 복원 주의: `UPDATE t SET is_active = true` 는 **원래 꺼져 있던 행까지 켠다**.
+// 이 저장소의 로컬 데이터는 전부 켜져 있어 실제 피해는 없었지만,
+// 소프트 삭제가 섞인 DB 에서는 복원이 아니라 삭제 취소가 된다.
+// 그래서 `WHERE is_active` 로 끈 뒤 되돌릴 때도 같은 범위를 되돌린다는 전제를 명시해 둔다 —
+// 이 전제가 깨지는 DB 에서는 first-run-walk.mjs 처럼 id 목록을 적어 두고 되돌려야 한다.
+//
 //   BASE=http://127.0.0.1:3000 node scripts/capture-empty-states.mjs
 import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
