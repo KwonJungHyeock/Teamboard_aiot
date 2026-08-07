@@ -191,7 +191,10 @@ export default function Sidebar({
 }) {
   const pathname = usePathname();
   // "내 목표"와 "목표"는 같은 화면의 다른 탭이다 — 어느 쪽이 켜졌는지 쿼리로 가른다.
-  const tab = useSearchParams().get("tab");
+  const sp = useSearchParams();
+  const tab = sp.get("tab");
+  // "캘린더"와 "내 캘린더"는 같은 화면의 레이어 차이다 — 어느 쪽이 켜졌는지 쿼리로 가른다.
+  const mineParam = sp.get("mine");
   const [rail, setRail] = useState(false);
   const [notif, setNotif] = useState(0);         // 사람 안읽음 (배지 숫자)
   const [sysNotif, setSysNotif] = useState(0);  // 시스템 안읽음 (점만)
@@ -287,9 +290,10 @@ export default function Sidebar({
         <NavLink href="/tasks" icon={IC.tasks} label="내 업무" current={cur("/tasks")} />
         <NavLink href="/goals?tab=personal" icon={IC.goal} label="내 목표"
           current={pathname === "/goals" && tab === "personal"} />
-        {/* §C·§D — 자리만 잡는다. 이번 단계에서는 열지 않는다. */}
-        <NavLink href="/notes" icon={IC.report} label="메모" current={false} soon />
-        <NavLink href="/calendar?mine=1" icon={IC.calendar} label="내 캘린더" current={false} soon />
+        {/* §C·§D 완료 — "준비 중" 꼬리표를 뗐다 (D-3) */}
+        <NavLink href="/notes" icon={IC.report} label="메모" current={cur("/notes")} />
+        <NavLink href="/calendar?mine=1" icon={IC.calendar} label="내 캘린더"
+          current={pathname === "/calendar" && mineParam === "1"} />
         <NavLink href="/saved" icon={IC.bookmark} label="저장됨" current={cur("/saved")} />
       </nav>
 
@@ -300,7 +304,8 @@ export default function Sidebar({
         <NavLink href="/" icon={IC.home} label="홈" current={cur("/")} />
         <NavLink href="/goals" icon={IC.goal} label="목표"
           current={pathname === "/goals" && tab !== "personal"} />
-        <NavLink href="/calendar" icon={IC.calendar} label="캘린더" current={cur("/calendar")} />
+        <NavLink href="/calendar" icon={IC.calendar} label="캘린더"
+          current={pathname === "/calendar" && mineParam !== "1"} />
         {/* 승인 대기 — 사람/에이전트 공간의 유일한 통로. 카운트 배지 */}
         <NavLink href="/inbox" icon={IC.inbox} label="승인 대기" current={cur("/inbox")} count={inboxCount} />
         {/* 활동 — @멘션·답글·공유 인박스 (MD-P-2026-006 §G, 구 "알림"). 미확인 배지 */}

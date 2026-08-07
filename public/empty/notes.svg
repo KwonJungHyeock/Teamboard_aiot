@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-hidden="true">
+  <!-- 개인 메모 빈 상태 아이콘 (MD-P-2026-025 §C C-1).
+       장식색을 쓰지 않는다 — 빈 상태는 안내이지 경고가 아니다.
+       currentColor 대신 중립 회색을 직접 쓴다(이미지로 삽입돼 상속이 안 되므로). -->
+  <g fill="none" stroke="#9AA1A9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 종이 -->
+    <path d="M24 14h34l14 14v54a4 4 0 0 1-4 4H24a4 4 0 0 1-4-4V18a4 4 0 0 1 4-4z" />
+    <!-- 접힌 모서리 -->
+    <path d="M58 14v14h14" />
+    <!-- 글줄 -->
+    <path d="M32 46h28M32 58h28M32 70h18" />
+  </g>
+</svg>

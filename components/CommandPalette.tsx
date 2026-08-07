@@ -11,9 +11,9 @@ import { openTaskPanel, notifyTaskUpdated } from "@/lib/task-panel";
 import { openQuickCreate } from "@/lib/quick";
 import { openPanel } from "@/lib/side-panel";
 
-interface SearchHit { kind: "project" | "task" | "person" | "decision"; id: number; title: string; meta: string }
+interface SearchHit { kind: "project" | "task" | "person" | "decision" | "note"; id: number; title: string; meta: string }
 const HIT_LABEL: Record<SearchHit["kind"], string> = {
-  project: "프로젝트", task: "업무", person: "사람", decision: "결정",
+  project: "프로젝트", task: "업무", person: "사람", decision: "결정", note: "메모",
 };
 
 interface PaletteItem {
@@ -29,6 +29,7 @@ interface PaletteItem {
 const NAV_ITEMS: PaletteItem[] = [
   { label: "홈", href: "/", keywords: "home dashboard 대시보드" },
   { label: "내 업무", href: "/tasks", keywords: "task 업무 할일 todo" },
+  { label: "메모", href: "/notes", keywords: "note memo 메모 노트 개인" },
   { label: "캘린더", href: "/calendar", keywords: "calendar 일정 스케줄" },
   { label: "내 에이전트", href: "/assistant", keywords: "assistant agent ai my 에이전트" },
   { label: "목표", href: "/goals", keywords: "goal okr 연간 분기 월" },
@@ -135,6 +136,8 @@ export default function CommandPalette({ role, notionConnected = true }: { role:
     close();
     if (h.kind === "project") { router.push(`/projects/${h.id}`); return; }
     if (h.kind === "task") { openTaskPanel(h.id); return; }
+    // 메모는 패널이 없다 — 메모 화면으로 이동한다 (MD-P-2026-025 §C)
+    if (h.kind === "note") { router.push(`/notes?note=${h.id}`); return; }
     openPanel(h.kind === "person" ? "member" : "decision", h.id);
   }, [close, router]);
 

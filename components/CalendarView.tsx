@@ -11,6 +11,7 @@ import type { SessionUser } from "@/lib/types";
 import { openTaskPanel, notifyTaskUpdated } from "@/lib/task-panel";
 import { openQuickCreate, toast } from "@/lib/quick";
 import { taskDays, dateAddDays, dateDiffDays } from "@/lib/task-view";
+import { useSearchParams } from "next/navigation";
 
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 const MAX_ROWS_MONTH = 3;
@@ -37,7 +38,14 @@ function areaColor(ck: string | null): string {
 const PRIO = { high: { label: "높음", color: "var(--coral)" }, mid: { label: "보통", color: "var(--slate)" }, low: { label: "낮음", color: "var(--hair)" } } as const;
 function md(date: string) { return `${Number(date.slice(5, 7))}/${Number(date.slice(8))}`; }
 
-type CalTask = Pick<LaneTask, "id" | "title" | "startDate" | "dueDate" | "status" | "priority" | "progress"> & { colorKey: string | null; assigneeName: string | null };
+type CalTask = Pick<LaneTask, "id" | "title" | "startDate" | "dueDate" | "status" | "priority" | "progress"> & {
+  colorKey: string | null; assigneeName: string | null;
+  /** MD-P-2026-025 §D — 개인 업무는 팀 막대가 아니라 "내 일정" 레이어에 점으로 간다 */
+  visibility?: "team" | "private";
+};
+
+/** 개인 일정 (§D) — 종일 일정만. 기존 스팬 바 규격을 그대로 쓴다. */
+interface MyEvent { id: number; title: string; startDate: string; endDate: string }
 
 // 한 주(7일) 안의 막대 세그먼트 — 열/폭 + 실제 시작/끝 여부 + 스택 행
 interface Seg { task: CalTask; col: number; span: number; isStart: boolean; isEnd: boolean; row: number; s: string; e: string }
@@ -45,7 +53,7 @@ interface Seg { task: CalTask; col: number; span: number; isStart: boolean; isEn
 function flatten(lanes: HomeSummary["lanes"]): CalTask[] {
   const out: CalTask[] = [];
   for (const l of lanes) for (const t of l.tasks) {
-    out.push({ id: t.id, title: t.title, startDate: t.startDate, dueDate: t.dueDate, status: t.status, priority: t.priority, progress: t.progress, colorKey: t.areaColorKey ?? t.colorKey, assigneeName: t.assigneeName });
+    out.push({ id: t.id, title: t.title, startDate: t.startDate, dueDate: t.dueDate, status: t.status, priority: t.priority, progress: t.progress, colorKey: t.areaColorKey ?? t.colorKey, assigneeName: t.assigneeName, visibility: (t as { visibility?: "team" | "private" }).visibility });
   }
   return out;
 }
@@ -56,6 +64,11 @@ export default function CalendarView({ summary, user }: { summary: HomeSummary; 
   const [view, setView] = useState<"month" | "week">("month");
   const [anchor, setAnchor] = useState(today);
   const [tasks, setTasks] = useState<CalTask[]>(() => flatten(summary.lanes));
+  // ── "내 일정" 레이어 (MD-P-2026-025 §D) ──────────────────────────
+  // 새 화면을 만들지 않는다. 기존 캘린더에 레이어 하나를 얹는다.
+  // 사이드바 "내 캘린더"가 /calendar?mine=1 로 들어온다.
+  const [mine, setMine] = useState(useSearchParams().get("mine") === "1");
+  const [events, setEvents] = useState<MyEvent[]>([]);
   // 서버 데이터 변경(재조회) 반영
   useEffect(() => { setTasks(flatten(summary.lanes)); }, [summary.lanes]);
   // 외부(패널 등)에서 업무 변경 시 재조회
@@ -67,6 +80,7 @@ export default function CalendarView({ summary, user }: { summary: HomeSummary; 
         setTasks(data.tasks.filter((t: any) => ["todo", "doing", "review"].includes(t.status)).map((t: any) => ({
           id: t.id, title: t.title, startDate: t.startDate, dueDate: t.dueDate, status: t.status,
           priority: t.priority, progress: t.progress ?? 0, colorKey: t.areaColorKey ?? t.colorKey ?? null, assigneeName: t.assigneeName ?? null,
+          visibility: t.visibility ?? "team",
         })));
       }
     } catch { /* noop */ }
@@ -79,6 +93,9 @@ export default function CalendarView({ summary, user }: { summary: HomeSummary; 
 
   const [overflow, setOverflow] = useState<{ date: string; x: number; y: number } | null>(null);
   const [prioMenu, setPrioMenu] = useState<{ id: number; x: number; y: number } | null>(null);
+  // 개인 일정 만들기 — 레이어가 켜져 있을 때만 뜬다
+  const [evForm, setEvForm] = useState<{ title: string; start: string; end: string } | null>(null);
+  const [evBusy, setEvBusy] = useState(false);
 
   function move(dir: -1 | 1) {
     if (view === "week") setAnchor(dateAddDays(anchor, dir * 7));
@@ -93,6 +110,37 @@ export default function CalendarView({ summary, user }: { summary: HomeSummary; 
   }, [view, anchor]);
   const curMonth = anchor.slice(0, 7);
   const label = `${anchor.slice(0, 4)}년 ${Number(anchor.slice(5, 7))}월`;
+
+  // 첫 렌더의 업무 목록은 홈 요약(lanes)에서 온다 — 그건 **팀 지표**라 개인 업무가 빠져 있다
+  // (lib/home.ts TEAM_TASK, §A3). 그래서 레이어를 켜면 /api/tasks 로 다시 읽어
+  // 내 개인 업무를 가져온다. 남의 개인 업무는 서버가 이미 걸러낸다.
+  useEffect(() => { if (mine) reload(); }, [mine, reload]);
+
+  // 보이는 기간의 개인 일정만 가져온다. 레이어를 끄면 요청도 하지 않는다.
+  const rangeFrom = weeks[0];
+  const rangeTo = dateAddDays(weeks[weeks.length - 1], 6);
+  useEffect(() => {
+    if (!mine) { setEvents([]); return; }
+    let alive = true;
+    fetch(`/api/personal-events?from=${rangeFrom}&to=${rangeTo}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive && d) setEvents(d.events ?? []); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [mine, rangeFrom, rangeTo]);
+
+  // 개인 업무는 팀 막대에 섞지 않는다 (§D-1) — "내 일정" 레이어에 점으로 간다.
+  // 남의 개인 업무는 애초에 서버에서 빠져 있다(§A3 ④). 여기 있는 private 는 전부 내 것이다.
+  const teamTasks = useMemo(() => tasks.filter((t) => t.visibility !== "private"), [tasks]);
+  const myDueDots = useMemo(
+    () =>
+      mine
+        ? tasks
+            .filter((t) => t.visibility === "private" && t.dueDate)
+            .map((t) => ({ id: t.id, title: t.title, date: t.dueDate!.slice(0, 10) }))
+        : [],
+    [mine, tasks]
+  );
 
   // ── 낙관적 재조정 (드래그/우선순위) ──
   async function patchTask(id: number, body: Record<string, unknown>, prev: CalTask, undoMsg?: string) {
@@ -118,6 +166,30 @@ export default function CalendarView({ summary, user }: { summary: HomeSummary; 
     const from = taskDays(prev), to = taskDays(nt);
     const msg = from && to ? `${t.title.slice(0, 14)} 일정 ${md(from.start)}~${md(from.end)} → ${md(to.start)}~${md(to.end)}로 변경됨` : "일정 변경됨";
     patchTask(t.id, body, prev, msg);
+  }
+
+  async function addEvent() {
+    if (!evForm || !evForm.title.trim() || evBusy) return;
+    setEvBusy(true);
+    const res = await fetch("/api/personal-events", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: evForm.title.trim(),
+        startDate: evForm.start,
+        endDate: evForm.end || evForm.start,
+      }),
+    }).catch(() => null);
+    setEvBusy(false);
+    if (!res || !res.ok) {
+      toast((await res?.json().catch(() => ({})))?.error ?? "일정을 추가하지 못했어요", "err");
+      return;
+    }
+    setEvForm(null);
+    toast("내 일정을 추가했어요");
+    // 목록 새로고침 — 범위 의존성이 그대로라 수동으로 다시 읽는다
+    const d = await fetch(`/api/personal-events?from=${rangeFrom}&to=${rangeTo}`)
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (d) setEvents(d.events ?? []);
   }
 
   function setPriority(id: number, p: "high" | "mid" | "low") {
@@ -147,11 +219,42 @@ export default function CalendarView({ summary, user }: { summary: HomeSummary; 
           <span className="pg-period num">{label}</span>
           <button className="pg-chip" onClick={() => move(1)} aria-label="다음 기간">›</button>
           <button className="pg-chip" onClick={() => setAnchor(today)}>오늘</button>
+          {/* §D — "내 일정" 레이어. 새 화면이 아니라 이 화면 위의 켜고 끄는 층이다. */}
+          <button className={`pg-chip${mine ? " on" : ""}`} aria-pressed={mine}
+            onClick={() => setMine((v) => !v)}>
+            내 일정
+          </button>
         </>
       }
     >
     <div className="hv pg-legacy" onClick={() => { setOverflow(null); setPrioMenu(null); }}>
       <div className="wrap">
+
+        {/* §D — 내 일정 추가. 레이어가 켜져 있을 때만 보인다.
+            팀 업무 만들기와 섞이면 무엇이 팀에 보이는지 다시 헷갈린다. */}
+        {mine && (
+          <div className="cal2-evbar" onClick={(e) => e.stopPropagation()}>
+            <span className="cal2-evbar-l">내 일정 — 나만 봅니다</span>
+            {evForm === null ? (
+              <button className="lk" onClick={() => setEvForm({ title: "", start: today, end: today })}>
+                ＋ 일정 추가
+              </button>
+            ) : (
+              <>
+                <input autoFocus placeholder="일정 제목" value={evForm.title}
+                  onChange={(e) => setEvForm({ ...evForm, title: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === "Enter") addEvent(); }} />
+                <input type="date" value={evForm.start}
+                  onChange={(e) => setEvForm({ ...evForm, start: e.target.value })} />
+                <span className="cal2-evbar-s">~</span>
+                <input type="date" value={evForm.end} min={evForm.start}
+                  onChange={(e) => setEvForm({ ...evForm, end: e.target.value })} />
+                <button className="lk" disabled={evBusy || !evForm.title.trim()} onClick={addEvent}>추가</button>
+                <button className="lk mu" onClick={() => setEvForm(null)}>취소</button>
+              </>
+            )}
+          </div>
+        )}
 
         <section className={`tile cal2 ${view}`} aria-label={view === "month" ? "월 달력" : "주 달력"}>
           <div className="cal2-dow">
@@ -160,7 +263,8 @@ export default function CalendarView({ summary, user }: { summary: HomeSummary; 
           <div className="cal2-body">
             {weeks.map((ws) => (
               <WeekRow
-                key={ws} weekStart={ws} tasks={tasks} today={today} curMonth={curMonth} view={view}
+                key={ws} weekStart={ws} tasks={teamTasks} today={today} curMonth={curMonth} view={view}
+                events={mine ? events : []} dueDots={myDueDots}
                 onCreate={(date, x, y) => openQuickCreate({ x, y }, { startDate: date, dueDate: date })}
                 onOpen={(id) => openTaskPanel(id)}
                 onReschedule={applyReschedule}
@@ -201,9 +305,12 @@ export default function CalendarView({ summary, user }: { summary: HomeSummary; 
 
 // ── 한 주(7일) 행 — 배경 셀 + 스팬 막대 오버레이 + 드래그 ──
 function WeekRow({
-  weekStart, tasks, today, curMonth, view, onCreate, onOpen, onReschedule, onOverflow, onPrio,
+  weekStart, tasks, today, curMonth, view, events, dueDots, onCreate, onOpen, onReschedule, onOverflow, onPrio,
 }: {
   weekStart: string; tasks: CalTask[]; today: string; curMonth: string; view: "month" | "week";
+  /** §D "내 일정" 레이어 — 일정은 스팬 바, 업무 기한은 점 */
+  events: MyEvent[];
+  dueDots: { id: number; title: string; date: string }[];
   onCreate: (date: string, x: number, y: number) => void;
   onOpen: (id: number) => void;
   onReschedule: (t: CalTask, newStart: string, newEnd: string, mode: "move" | "start" | "end") => void;
@@ -287,7 +394,13 @@ function WeekRow({
   }
 
   const rowH = view === "week" ? 26 : 23;
-  const bodyH = view === "week" ? 520 : Math.max(96, 30 + maxRows * rowH + 16);
+  // 개인 일정은 팀 막대 아래 줄에 놓는다 (§D-1). 위에 겹치면 날짜 숫자를 덮는다.
+  const usedRows = segs.length ? Math.max(...segs.map((x) => x.row)) + 1 : 0;
+  const evTop = 30 + usedRows * rowH;
+  const evRows = events.filter((ev) => !(ev.endDate < weekStart || ev.startDate > weekEnd)).length;
+  const bodyH = view === "week"
+    ? 520
+    : Math.max(96, 30 + (maxRows + (evRows > 0 ? 1 : 0)) * rowH + 16);
 
   return (
     <div className="cal2-week" style={{ height: bodyH }}>
@@ -310,6 +423,44 @@ function WeekRow({
           );
         })}
       </div>
+
+      {/* ── "내 일정" 레이어 (§D) ─────────────────────────────────
+          팀 막대와 같은 좌표계를 쓰되 **다르게 보여야** 한다 (D-1):
+            · 개인 일정   → 스팬 바 (점선 테두리)
+            · 개인 업무 기한 → 점
+          새 색을 만들지 않는다 — 중립 --slate 하나만 쓴다. */}
+      {(events.length > 0 || dueDots.length > 0) && (
+        <div className="cal2-mine" aria-label="내 일정">
+          {/* 팀 막대가 쓴 줄 수 아래에 얹는다. top 을 고정하면 날짜 숫자를 덮는다. */}
+          {events.map((ev) => {
+            if (ev.endDate < weekStart || ev.startDate > weekEnd) return null;
+            const cs = ev.startDate < weekStart ? weekStart : ev.startDate;
+            const ce = ev.endDate > weekEnd ? weekEnd : ev.endDate;
+            const col = dateDiffDays(cs, weekStart);
+            const span = dateDiffDays(ce, cs) + 1;
+            return (
+              <div key={`ev${ev.id}@${col}`} className="cal2-ev"
+                style={{ left: `${(col / 7) * 100}%`, width: `calc(${(span / 7) * 100}% - 4px)`, top: evTop }}
+                title={`${ev.title} · ${ev.startDate.slice(5)}~${ev.endDate.slice(5)} (내 일정)`}>
+                <span className="cal2-ev-t">{ev.title}</span>
+              </div>
+            );
+          })}
+          {days.map((date, i) => {
+            const hits = dueDots.filter((d) => d.date === date);
+            if (hits.length === 0) return null;
+            return (
+              // 날짜 숫자 바로 옆에 붙인다 — 오른쪽 끝은 "＋ 추가" 자리다
+              <span key={`dot${date}`} className="cal2-mydot"
+                style={{ left: `calc(${(i / 7) * 100}% + 26px)`, top: 9 }}
+                title={`내 업무 기한 ${hits.length}건 — ${hits.map((h) => h.title).join(", ")}`}
+                aria-label={`내 업무 기한 ${hits.length}건`}>
+                {hits.length > 1 ? hits.length : ""}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       {/* 스팬 막대 오버레이 */}
       <div className="cal2-bars" ref={rowRef}>

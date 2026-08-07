@@ -761,6 +761,86 @@
   color: var(--muted); opacity: .8;
 }
 
+/* ── "내 일정" 레이어 (MD-P-2026-025 §D) ────────────────────────────
+ *
+ * 기존 캘린더 위에 얹는 층이다. 새 화면을 만들지 않았다.
+ * D-1 — 일정과 업무 기한은 **시각적으로 구분**한다:
+ *   · 개인 일정   → 스팬 바, 점선 테두리 (팀 막대는 실선)
+ *   · 개인 업무 기한 → 점
+ * 새 색을 만들지 않는다. 중립 --slate 하나만 쓴다 —
+ * 영역 색은 팀 업무의 소속을 뜻하는데, 개인 일정에는 영역이 없다.
+ */
+.cal2-mine { position: absolute; inset: 0; pointer-events: none; }
+.cal2-ev {
+  position: absolute; height: 18px; display: flex; align-items: center;
+  padding: 0 6px; border-radius: 4px; pointer-events: auto;
+  background: color-mix(in srgb, var(--slate) 10%, var(--card));
+  border: 1px dashed color-mix(in srgb, var(--slate) 45%, var(--card));
+}
+.cal2-ev-t {
+  font-size: 10.5px; color: var(--ink2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* 업무 기한은 점 하나. 여러 건이면 숫자를 안에 넣는다. */
+.cal2-mydot {
+  position: absolute; width: 10px; height: 10px; border-radius: 50%;
+  display: grid; place-items: center; pointer-events: auto;
+  background: var(--slate); color: var(--card);
+  font-size: 10.5px; font-weight: 700; line-height: 1;
+}
+.cal2-mydot:not(:empty) { width: 14px; height: 14px; }
+
+/* 내 일정 추가 줄 — 팀 업무 만들기와 섞이지 않게 별도 줄로 둔다 */
+.cal2-evbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 10px; padding: 8px 12px;
+  background: var(--surface-2); border-left: 1px solid var(--line); border-radius: 0 4px 4px 0;
+}
+.cal2-evbar-l { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.cal2-evbar-s { font-size: 11.5px; color: var(--muted); }
+.cal2-evbar input[type="text"], .cal2-evbar input:not([type]) { min-width: 180px; }
+
+/* ── 개인 메모 (MD-P-2026-025 §C) ───────────────────────────────────
+ *
+ * 왼쪽 목록 + 오른쪽 편집기. 목록은 §C 규격(38px 행 · 12.5px)을 그대로 쓴다.
+ * 새 시각 토큰을 만들지 않는다 — 여기 쓰인 값은 전부 기존 스케일에서 왔다.
+ */
+.nt { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .nt { grid-template-columns: 1fr; } }
+
+.nt-list { max-height: 70vh; overflow: auto; }
+.nt-row { gap: 8px; }
+.nt-row.on { background: var(--surface-2); }
+/* 제목 + 발췌를 한 행(38px) 안에 넣는다. 발췌는 넘치면 잘라낸다 — 줄이 늘어나면 규격이 깨진다. */
+.nt-open {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 8px;
+  background: 0; border: 0; padding: 0; text-align: left; cursor: pointer; font-family: inherit;
+}
+.nt-open b { font-size: 12.5px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.nt-open em {
+  font-style: normal; font-size: 11.5px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+.nt-open:hover b { color: var(--coral-d); }
+.nt-date { flex: 0 0 auto; font-size: 10.5px; color: var(--muted); }
+/* 삭제는 행 hover 에서만 — 목록마다 ✕ 가 떠 있으면 지우라고 조르는 화면이 된다 */
+.nt-del {
+  flex: 0 0 auto; background: 0; border: 0; padding: 0 4px; cursor: pointer;
+  font-size: 11.5px; color: var(--muted); opacity: 0; transition: opacity .12s ease;
+}
+.nt-row:hover .nt-del, .nt-del:focus-visible { opacity: 1; }
+.nt-del:hover { color: var(--coral-d); }
+@media (prefers-reduced-motion: reduce) { .nt-del { transition: none; } }
+@media (hover: none) { .nt-del { opacity: 1; } }
+
+.nt-edit {
+  border: 1px solid var(--line); border-radius: 9px; padding: 14px 16px;
+  background: var(--surface); min-height: 320px;
+}
+.nt-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.nt-head .tdp-title { flex: 1 1 auto; min-width: 0; }
+.nt-totask { flex: 0 0 auto; font-size: 11.5px; }
+
 /* ── 개인 업무 칩 (MD-P-2026-025 §B2) ───────────────────────────────
  *
  * 자물쇠 아이콘이 아니라 **"개인" 텍스트**다. 아이콘은 뜻을 배워야 하지만

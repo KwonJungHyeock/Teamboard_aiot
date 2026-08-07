@@ -10,7 +10,7 @@ import { visibleTaskSql } from "@/lib/visibility";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export type SearchKind = "project" | "task" | "person" | "decision";
+export type SearchKind = "project" | "task" | "person" | "decision" | "note";
 export interface SearchHit {
   kind: SearchKind;
   id: number;
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     const lim = q ? 6 : 4;
 
     // 질의 없음 = 최근 항목(최근 방문 대체). 질의 있음 = ILIKE 부분일치.
-    const [projects, tasks, people, decisions] = await Promise.all([
+    const [projects, tasks, people, notes, decisions] = await Promise.all([
       query<{ id: number; name: string; status: string; area_name: string | null }>(
         q
           ? `SELECT p.id, p.name, p.status, a.name AS area_name FROM project p
@@ -60,6 +60,18 @@ export async function GET(request: Request) {
              WHERE a.is_active = true AND a.type = 'human' ORDER BY a.id LIMIT ${lim}`,
         q ? [like] : []
       ),
+      // 개인 메모 (MD-P-2026-025 §C) — **본인 것만** 잡힌다. owner_actor_id 가 곧 조건이다.
+      // 본문(body)까지 훑으면 남이 못 보는 것이라 해도 검색 비용이 커지므로 제목만 본다.
+      query<{ id: number; title: string; updated_at: string }>(
+        q
+          ? `SELECT id, title, updated_at::text FROM note
+              WHERE owner_actor_id = $1 AND is_active = true AND title ILIKE $2
+              ORDER BY updated_at DESC LIMIT ${lim}`
+          : `SELECT id, title, updated_at::text FROM note
+              WHERE owner_actor_id = $1 AND is_active = true
+              ORDER BY updated_at DESC LIMIT ${lim}`,
+        q ? [session.id, like] : [session.id]
+      ),
       query<{ id: number; title: string; status: string; decided_by_name: string }>(
         q
           ? `SELECT d.id, d.title, d.status, a.display_name AS decided_by_name FROM decision d
@@ -90,6 +102,10 @@ export async function GET(request: Request) {
       ...people.map((a) => ({
         kind: "person" as const, id: a.id, title: a.display_name,
         meta: a.type === "agent" ? "에이전트" : a.role === "lead" ? "팀장" : "팀원",
+      })),
+      ...notes.map((n) => ({
+        kind: "note" as const, id: n.id, title: n.title || "제목 없는 메모",
+        meta: "개인 메모",
       })),
       ...decisions.map((d) => ({
         kind: "decision" as const, id: d.id, title: d.title,

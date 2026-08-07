@@ -9,6 +9,8 @@
 | B-2 | 업무 저장 직전 **제목 유사 안내** (저장은 막지 않음) | MD-P-2026-024 회신 8 [백로그] | 대기 |
 | B-3 | **/huddle §G 규격 정리** — 허들룸 재설계 때 함께 | MD-P-2026-024 회신 9 [확정] | 보류 (재설계 대기) |
 | B-4 | **목표에 생성자 기록 없음** (`goal.created_by` 부재) | MD-P-2026-024 회신 9 [백로그] | 대기 (025 이후) |
+| B-5 | **타임라인 경로 private 노출 실측** — 현재 판정 보류 | MD-P-2026-025 §A·§B 회신 [확정] | 보류 (Notion 연결 필요) |
+| B-6 | **개인 메모에 이미지 블록** — blob 스코프 `note` 부재 | MD-P-2026-025 §C 구현 중 발견 | 대기 |
 
 ---
 
@@ -111,3 +113,65 @@
 - `POST /api/goals` 에서 세션 사용자로 채운다.
 
 **착수 시점.** MD-P-2026-025 이후. 이번 지시로 구현하지 않는다.
+
+
+---
+
+## B-5 — 타임라인 경로의 private 업무 노출 실측 (판정 보류)
+
+**확정 (MD-P-2026-025 §A·§B 회신).**
+
+> Notion 토큰 없이 500 이 난 것을 통과로 세지 않은 판단이 맞습니다.
+> 다만 구조적 근거는 남겨두세요.
+
+**현재 상태 — 판정 보류.**
+`§A3` 의 열 경로 중 ⑤ 타임라인만 **실측하지 못했다.**
+로컬에 `NOTION_TOKEN` 이 없어 `/api/notion/timeline` 이 500 을 돌려준다.
+500 은 "차단됐다"가 아니라 **이 경로를 행사하지 못했다**는 뜻이므로 통과로 세지 않는다.
+
+**구조적 근거 (실측이 아님).**
+
+| 확인 | 결과 |
+| --- | --- |
+| `app/api/notion/timeline/route.ts` 전문 | `queryTimeline()` 한 줄만 호출. task 조회 없음 |
+| `lib/notion.ts` 안의 `FROM task` / `JOIN task` | **0건** |
+| `lib/notion.ts` 의 DB 접근 전부 | `SELECT value FROM config WHERE key='notion_scope'` **1곳뿐** |
+| 데이터 출처 | `notionFetch('/data_sources/{dsId}/query')` — 외부 Notion API |
+| `components/TimelineView.tsx` 의 fetch | `/api/notion/timeline` 하나뿐 |
+
+즉 이 화면의 데이터는 **우리 DB 가 아니라 Notion 에서 온다.**
+`task.visibility` 가 관여할 여지가 구조적으로 없다.
+다만 Notion 쪽에 업무를 밀어 넣는 경로(`createTimelinePage` 등)가 개인 업무를
+올려보내면 그때는 Notion 에서 샌다 — **그 방향이 진짜 확인 대상이다.**
+
+**할 일.**
+1. Notion 연결 환경에서 `/api/notion/timeline` 을 실제로 호출해 private 업무 노출 여부 실측.
+2. 반대 방향 점검 — 개인 업무가 Notion 타임라인으로 **밀려 올라가지 않는지** 확인.
+   (현재 승인 경로 `POST /api/drafts/{id}/approve` 만 Notion 에 쓴다)
+3. 결과를 §A3 표에 채워 넣고 이 항목을 닫는다.
+
+
+---
+
+## B-6 — 개인 메모에 이미지 블록 (blob 스코프 부재)
+
+**발견 경위.** MD-P-2026-025 §C 구현 중.
+메모는 문서형 업무의 편집기(`DocEditor`)를 그대로 재사용하는데,
+이미지 블록만 동작하지 않는다.
+
+**원인.** `lib/blob.ts` 의 `BlobScopeKind` 가
+`"project" | "task" | "review" | "signal"` 네 가지뿐이고 `note` 가 없다.
+경로를 만들 수도, `canReadBlob`/`canWriteBlob` 으로 접근을 판정할 수도 없다.
+
+**이번 단계에서 넣지 않은 이유.**
+스코프를 추가하려면 `lib/blob-access.ts` 에 **새 접근 판정 분기**가 생긴다.
+§A3 는 누출 경로를 하나하나 실제 요청으로 확인하라고 정했는데,
+검증하지 못한 접근 경로를 늘리는 것은 그 취지와 정면으로 어긋난다.
+지금은 `blobReady: false` 로 내려보내 편집기가 이미지 명령 자체를 막는다 —
+별도 차단 장치를 만들지 않고 기존 규칙을 그대로 썼다.
+
+**할 일.**
+1. `BlobScopeKind` 에 `note` 추가 + `PATH_RE` 확장.
+2. `canReadBlob`/`canWriteBlob` 에 `note` 분기 — 판정은 `owner_actor_id = viewer` 하나뿐이다.
+3. `app/api/notes/[id]` 가 `blobReady: blobEnabled()` 를 내려보내게 변경.
+4. **§A3 형식으로 실측** — 남의 메모 이미지 pathname 을 직접 호출해 차단되는지 확인.

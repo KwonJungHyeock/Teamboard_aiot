@@ -13,6 +13,10 @@ export type NewTaskPrefill = {
   workType?: string;
   startDate?: string;
   dueDate?: string;
+  /** 제목 미리 채우기 — 메모의 선택 텍스트에서 업무를 만들 때 (MD-P-2026-025 §C) */
+  title?: string;
+  /** 공개 범위 기본값. 메모에서 나온 업무는 "개인"이다 (§C C-2) */
+  visibility?: "team" | "private";
 };
 
 /** 현재 URL의 ?task 값. 정수 id | "new"(새 업무) | null */

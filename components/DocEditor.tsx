@@ -47,12 +47,19 @@ const SLASH: { key: string; label: string; hint: string; make: () => DocBlock }[
 
 const URL_RE = /^https?:\/\/\S+$/i;
 
-export default function DocEditor({ taskId, readOnly, onBlocks }: {
+export default function DocEditor({ taskId, readOnly, onBlocks, endpoint }: {
   taskId: number;
   readOnly?: boolean;
   /** 현재 블록을 부모에 알린다 — §F3 연결된 리소스 자동 집계가 본문을 단일 소스로 쓰기 위함 */
   onBlocks?: (blocks: DocBlock[]) => void;
+  /**
+   * 저장 위치 (MD-P-2026-025 §C) — 기본은 업무 문서.
+   * 개인 메모가 같은 편집기를 쓰되 `/api/notes/{id}` 로 저장한다.
+   * 편집기를 포크하지 않는다 — 자동저장·낙관적 동시성 규칙을 두 벌 만들면 갈라진다.
+   */
+  endpoint?: string;
 }) {
+  const api = endpoint ?? `/api/tasks/${taskId}/doc`;
   const [blocks, setBlocks] = useState<DocBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [save, setSave] = useState<"idle" | "saving" | "saved" | "err">("idle");
@@ -68,7 +75,7 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    fetch(`/api/tasks/${taskId}/doc`)
+    fetch(api)
       .then((r) => r.json())
       .then((d) => {
         if (!alive) return;
@@ -82,7 +89,7 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
       .catch(() => {})
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
-  }, [taskId]);
+  }, [api]);
 
   useEffect(() => { blocksRef.current = blocks; }, [blocks]);
 
@@ -95,14 +102,14 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       setSave("saving");
-      const res = await fetch(`/api/tasks/${taskId}/doc`, {
+      const res = await fetch(api, {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blocks: next, baseUpdatedAt: base.current }),
       }).catch(() => null);
 
       if (res && res.status === 409) {
         // 캔버스와 같은 규칙 — 조용히 덮어쓰지 않고 최신본을 다시 불러온다
-        const latest = await fetch(`/api/tasks/${taskId}/doc`).then((r) => r.json()).catch(() => null);
+        const latest = await fetch(api).then((r) => r.json()).catch(() => null);
         if (latest) {
           setBlocks(latest.blocks ?? []);
           lastOk.current = latest.blocks ?? [];
@@ -127,7 +134,7 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
       setSave("saved");
       setTimeout(() => setSave("idle"), 1600);
     }, 800);
-  }, [taskId, readOnly]);
+  }, [api, readOnly]);
 
   const update = useCallback((next: DocBlock[]) => { setBlocks(next); schedule(next); }, [schedule]);
 
@@ -139,7 +146,7 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
     if (readOnly) return false;
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
     setSave("saving");
-    const res = await fetch(`/api/tasks/${taskId}/doc`, {
+    const res = await fetch(api, {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ blocks: next, baseUpdatedAt: base.current }),
     }).catch(() => null);
@@ -151,7 +158,7 @@ export default function DocEditor({ taskId, readOnly, onBlocks }: {
     setSave("saved");
     setTimeout(() => setSave("idle"), 1600);
     return true;
-  }, [taskId, readOnly]);
+  }, [api, readOnly]);
 
   const patch = useCallback((id: string, p: Partial<DocBlock>) => {
     setBlocks((cur) => {

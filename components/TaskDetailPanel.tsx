@@ -146,9 +146,12 @@ export default function TaskDetailPanel() {
     if (openId === "new") {
       setDraft((d) =>
         d ?? {
-          title: "", areaId: prefill.areaId ?? 0, projectId: prefill.projectId ?? 0,
+          title: prefill.title ?? "", areaId: prefill.areaId ?? 0, projectId: prefill.projectId ?? 0,
           assigneeId: prefill.assigneeId ?? 0, priority: "mid",
-          visibility: "team",   // §B1 — 기본값은 팀 공개. 개인은 명시적으로 고른다.
+          // §B1 — 기본값은 팀 공개. 개인은 명시적으로 고른다.
+          // 단, 메모에서 넘어온 업무는 기본이 "개인"이다 (§C C-2) — 메모에서 나온 것이니
+          // 개인이 자연스럽다. 그래도 화면에서 바꿀 수 있다.
+          visibility: prefill.visibility ?? "team",
           workType: prefill.workType ?? "team",
           startDate: prefill.startDate ?? "", dueDate: prefill.dueDate ?? "", description: "",
         }
