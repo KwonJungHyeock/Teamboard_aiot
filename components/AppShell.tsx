@@ -1,6 +1,6 @@
 // 공통 셸 (Phase 2) — 배경 레이어 + 사이드바 + 본문 + 커맨드 팔레트
 import { redirect } from "next/navigation";
-import { getAreasWithProjects, getInboxCount } from "@/lib/db";
+import { getInboxCount } from "@/lib/db";
 import { getLiveSession } from "@/lib/auth";
 import type { SessionUser } from "@/lib/types";
 import Sidebar from "./Sidebar";
@@ -44,10 +44,9 @@ export default async function AppShell({
     );
   }
 
-  const [areas, inboxCount] = await Promise.all([
-    getAreasWithProjects(),
-    getInboxCount(current.id, current.role === "lead"),
-  ]);
+  // 사이드바에서 영역·프로젝트 트리를 내렸으므로(027 §B2) 그 조인 쿼리도 뺀다.
+  // 안 쓰는 데이터를 매 페이지 로드마다 실어 나르지 않는다.
+  const inboxCount = await getInboxCount(current.id, current.role === "lead");
   // 파트 Z — Notion 토큰 유무로 관련 UI 자동 분기(미연결 시 숨김)
   const notionConnected = !!process.env.NOTION_TOKEN;
   return (
@@ -55,7 +54,7 @@ export default async function AppShell({
       <div className="bgfx" aria-hidden="true" />
       <div className="grain" aria-hidden="true" />
       <div className="app">
-        <Sidebar user={current} areas={areas} inboxCount={inboxCount} notionConnected={notionConnected} />
+        <Sidebar user={current} inboxCount={inboxCount} notionConnected={notionConnected} />
         <main className="main">{children}</main>
       </div>
       <TaskDetailPanel />

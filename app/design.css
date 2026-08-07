@@ -228,6 +228,24 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 :is(.doc-img-ph, .pcv-img-ph):not(.off) { display: block; min-height: 120px; border-radius: 7px;
   background: var(--surface-2); border: 1px solid var(--hair); }
 
+/* ── §B2 영역 필터 칩 (MD-P-2026-027) ──
+   사이드바에서 내려온 영역 7개. 색 점은 사이드바에서 쓰던 영역 색 그대로다. */
+.pg-chip.area-chip { gap: 6px; }
+.tv-savefilter { margin-left: 4px; }
+.pg-chip.area-chip .pjdot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
+
+/* ── §B3 저장된 뷰 핀 (사이드바 「내 공간」 아래) ──
+   다크 표면 위라 색은 사이드바 토큰을 따른다. */
+.side .pinviews { display: flex; flex-direction: column; gap: 1px; margin: 2px 0 0 26px; }
+.side .pinview a { display: flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 8px;
+  border-radius: 4px; color: var(--sb-ink2); font-size: 11.5px; text-decoration: none; }
+.side .pinview a:hover { background: rgba(255, 255, 255, .06); color: var(--sb-ink); }
+.side .pinview[draggable="true"] { cursor: grab; }
+.side .pinview.dragging { opacity: .5; }
+.side .pinview-t { flex: 0 0 auto; font-size: 10.5px; font-weight: 700; color: var(--sb-ink2);
+  background: rgba(255, 255, 255, .08); border-radius: 4px; padding: 1px 5px; }
+.side .pinview-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* 화면에는 안 보이고 스크린리더에만 읽히는 문구 */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

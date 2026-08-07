@@ -16,6 +16,7 @@ import { openPanel } from "@/lib/side-panel";
 import { READ_LIST_EVENT } from "@/lib/shortcuts";
 import { toast } from "@/lib/quick";
 import { pgDate } from "@/lib/pgtime";
+import { notifySavedViewsChanged } from "@/lib/saved-views-events";
 import {
   RAIL_KINDS, KIND_LABEL, KIND_ICON, CHANNEL_LABEL, KIND_CHANNEL,
   type ActivityKind, type Channel,
@@ -36,7 +37,9 @@ interface NItem {
 }
 interface Counts { human: number; system: number; byKind: Record<string, number> }
 interface ViewFilter { kind?: ActivityKind | "all"; channel?: Channel | "all"; unreadOnly?: boolean; builtin?: string }
-interface SavedView { id: number; name: string; filter: ViewFilter }
+// 저장된 뷰는 공용 표·공용 경로를 쓴다 (MD-P-2026-027 §B3).
+// 여기서 필드 이름을 따로 두면 활동 화면만 다른 모양이 되고, 그쪽이 낡는다.
+interface SavedView { id: number; name: string; filters: ViewFilter }
 
 const SCOPE = "activity";
 
@@ -69,7 +72,7 @@ export default function ActivityInbox() {
       const [nres, mres, vres] = await Promise.all([
         fetch("/api/notifications"),
         fetch("/api/read-markers"),
-        fetch("/api/notifications/views"),
+        fetch("/api/saved-views?target=activity"),
       ]);
       const d = await nres.json();
       setItems(d.items ?? []);
@@ -180,7 +183,7 @@ export default function ActivityInbox() {
   const view: ViewFilter | undefined = activeView?.startsWith("builtin:")
     ? BUILTIN_VIEWS.find((v) => `builtin:${v.key}` === activeView)?.filter
     : activeView?.startsWith("saved:")
-      ? views.find((v) => `saved:${v.id}` === activeView)?.filter
+      ? views.find((v) => `saved:${v.id}` === activeView)?.filters
       : undefined;
 
   const shown = useMemo(() => {
@@ -259,14 +262,15 @@ export default function ActivityInbox() {
     const name = viewName.trim();
     if (!name) return;
     setSaving(true);
-    const res = await fetch("/api/notifications/views", {
+    const res = await fetch("/api/saved-views", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, filter: { kind, channel } }),
+      body: JSON.stringify({ name, target: "activity", filters: { kind, channel } }),
     }).catch(() => null);
     setSaving(false);
     const d = res ? await res.json().catch(() => null) : null;
     if (!res || !res.ok) { toast(d?.error ?? "저장에 실패했어요", "err"); return; }
     setViewName("");
+    notifySavedViewsChanged();   // 사이드바 핀을 즉시 맞춘다 (§B3)
     await load();
     toast(`"${name}" 뷰를 저장했어요`);
   }
@@ -348,18 +352,20 @@ export default function ActivityInbox() {
                     onClick: async () => {
                       const name = window.prompt("새 이름", v.name);
                       if (!name?.trim()) return;
-                      await fetch("/api/notifications/views", {
+                      await fetch("/api/saved-views", {
                         method: "PATCH", headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ id: v.id, name: name.trim() }),
                       }).catch(() => {});
+                      notifySavedViewsChanged();
                       await load();
                     },
                   },
                   {
                     label: "삭제", danger: true,
                     onClick: async () => {
-                      await fetch(`/api/notifications/views?id=${v.id}`, { method: "DELETE" }).catch(() => {});
+                      await fetch(`/api/saved-views?id=${v.id}`, { method: "DELETE" }).catch(() => {});
                       if (activeView === `saved:${v.id}`) setActiveView(null);
+                      notifySavedViewsChanged();
                       await load();
                     },
                   },

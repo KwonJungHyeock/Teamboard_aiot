@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
 import Skeleton from "./Skeleton";
+import { notifySavedViewsChanged } from "@/lib/saved-views-events";
 import ErrorNote from "./ErrorNote";
 import PageShell from "./PageShell";
 import TaskBoard from "./TaskBoard";
@@ -95,7 +96,14 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [search, setSearch] = useState("");
 
   // 필터 (영역 · 프로젝트 · 담당 · 상태 · 기한). 담당 기본값=본인 → "내 업무" 진입.
-  const [fArea, setFArea] = useState("");
+  //
+  // 영역은 **여러 개**를 고를 수 있다 (MD-P-2026-027 §B2).
+  // 사이드바에서 영역 7개를 내리고 여기 칩으로 옮겼다 — 사이드바는 "어디로 갈까"이고
+  // 영역은 "무엇을 볼까"라서 필터가 맞는 자리다.
+  // URL 은 `?area=2,3` 으로 쓴다. 링크로 공유·북마크된다.
+  const [fAreas, setFAreas] = useState<number[]>([]);
+  const fArea = fAreas.length === 1 ? String(fAreas[0]) : "";   // 새 업무 프리셋용 (하나일 때만 의미가 있다)
+  const areaParam = fAreas.join(",");
   const [fProject, setFProject] = useState("");
   const [fAssignee, setFAssignee] = useState(String(user.id));
   const [fStatus, setFStatus] = useState("");
@@ -115,6 +123,42 @@ export default function TasksView({ user }: { user: SessionUser }) {
       { areaId: fArea ? Number(fArea) : undefined, assigneeId: isMine ? user.id : undefined }
     );
   }, [fArea, isMine, user.id]);
+
+  /**
+   * 지금 필터를 저장된 뷰로 만든다 (§B3).
+   * 저장하는 것은 **URL 에 담기는 조건 그대로**다 — 그래야 뷰를 눌렀을 때
+   * 지금 화면과 같은 것이 뜬다. 화면 상태와 저장 형식이 다르면 반드시 어긋난다.
+   */
+  const [savingView, setSavingView] = useState(false);
+  async function saveCurrentView() {
+    const name = window.prompt("이 조건에 붙일 이름")?.trim();
+    if (!name) return;
+    setSavingView(true);
+    const filters: Record<string, string> = {};
+    if (areaParam) filters.area = areaParam;
+    if (fProject) filters.project = fProject;
+    if (fAssignee) filters.assignee = fAssignee;
+    if (fStatus) filters.status = fStatus;
+    if (fDue) filters.due = fDue;
+    if (fBlocked) filters.blocked = "1";
+    if (sortBy !== "due") filters.sort = sortBy;
+    if (showDone) filters.done = "1";
+    const res = await fetch("/api/saved-views", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, target: "tasks", filters }),
+    }).catch(() => null);
+    setSavingView(false);
+    const d = res ? await res.json().catch(() => null) : null;
+    if (!res || !res.ok) { toast(d?.error ?? "저장하지 못했어요", "err"); return; }
+    notifySavedViewsChanged();
+    toast(`"${name}" 뷰를 저장했어요`);
+  }
+
+  /** 영역 칩 토글. 다중 선택이고, 전부 끄면 "전체 영역"이다. */
+  function toggleArea(id: number) {
+    setAreaDefaulted(true);
+    setFAreas((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id].sort((a, b) => a - b)));
+  }
 
   // 뷰(렌즈) 전환 — 마지막 뷰·그룹 기준 기억(localStorage)
   const [lens, setLens] = useState<TaskLens>("sheet");
@@ -144,7 +188,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const load = useCallback(async () => {
     try {
       const qs = new URLSearchParams();
-      if (fArea) qs.set("area", fArea);
+      if (areaParam) qs.set("area", areaParam);
       if (fProject) qs.set("project", fProject);
       if (fAssignee) qs.set("assignee", fAssignee);
       if (fStatus) qs.set("status", fStatus);
@@ -162,7 +206,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
     } finally {
       setLoading(false);
     }
-  }, [fArea, fProject, fAssignee, fStatus, fDue, fBlocked]);
+  }, [areaParam, fProject, fAssignee, fStatus, fDue, fBlocked]);
 
   // 셀렉트 룩업은 목록과 분리된 /api/meta/selectors에서 (Phase 8 D-3)
   const loadSelectors = useCallback(async () => {
@@ -200,10 +244,10 @@ export default function TasksView({ user }: { user: SessionUser }) {
     if (areaDefaulted) return;
     const urlArea = new URLSearchParams(window.location.search).get("area");
     if (urlArea) {
-      setFArea(urlArea);
-      setAreaDefaulted(true);
+      const ids = urlArea.split(",").map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n > 0);
+      if (ids.length) { setFAreas(ids); setAreaDefaulted(true); }
     } else if (myAreaIds.length > 0) {
-      setFArea(String(myAreaIds[0]));
+      setFAreas([myAreaIds[0]]);
       setAreaDefaulted(true);
     }
   }, [myAreaIds, areaDefaulted]);
@@ -316,7 +360,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
     if (loading) return;
     const sp = new URLSearchParams(window.location.search);
     const set = (k: string, v: string | null) => (v ? sp.set(k, v) : sp.delete(k));
-    set("area", fArea || null);
+    set("area", areaParam || null);
     set("project", fProject || null);
     set("assignee", fAssignee || null);
     set("status", fStatus || null);
@@ -326,7 +370,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
     set("done", showDone ? "1" : null);
     const qs = sp.toString();
     window.history.replaceState({}, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
-  }, [loading, fArea, fProject, fAssignee, fStatus, fDue, fBlocked, sortBy, showDone]);
+  }, [loading, areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, sortBy, showDone]);
 
   const rows: TaskTableRow[] = useMemo(() => {
     return filteredTasks
@@ -379,10 +423,16 @@ export default function TasksView({ user }: { user: SessionUser }) {
         <>
           <input className="tsearch" placeholder="업무·프로젝트·담당 검색"
             value={search} onChange={(e) => setSearch(e.target.value)} />
-          <select value={fArea} onChange={(e) => { setFArea(e.target.value); setAreaDefaulted(true); }}>
-            <option value="">전체 영역</option>
-            {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          {/* 영역 칩 — 다중 선택. 색 점은 사이드바에서 쓰던 영역 색을 그대로 쓴다 (§B2) */}
+          <button className={`pg-chip${fAreas.length === 0 ? " on" : ""}`}
+            onClick={() => { setFAreas([]); setAreaDefaulted(true); }}>전체 영역</button>
+          {areas.map((a) => (
+            <button key={a.id} className={`pg-chip area-chip${fAreas.includes(a.id) ? " on" : ""}`}
+              aria-pressed={fAreas.includes(a.id)} onClick={() => toggleArea(a.id)}>
+              <i className={`pjdot ${a.colorKey ?? "team"}`} />
+              {a.name}
+            </button>
+          ))}
           <select value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
             <option value="">전체 담당</option>
             {actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -392,6 +442,11 @@ export default function TasksView({ user }: { user: SessionUser }) {
           </select>
           <button className={`pg-chip${showDone ? " on" : ""}`} onClick={() => toggleDone(!showDone)}>
             완료 포함
+          </button>
+          {/* 지금 조건에 이름을 붙여 저장한다 (§B3). 저장된 뷰는 「내 공간」 아래 핀으로 붙는다.
+              버튼이 아니라 텍스트 링크다 — 화면의 주 액션이 아니다. */}
+          <button className="lk tv-savefilter" onClick={saveCurrentView} disabled={savingView}>
+            이 조건 저장
           </button>
         </>
       }

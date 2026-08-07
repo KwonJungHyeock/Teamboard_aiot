@@ -72,7 +72,14 @@ export async function GET(request: Request) {
       // 기본 목록은 proposed 제외 — 인박스는 status=proposed로 명시 조회
       where.push("t.status <> 'proposed'");
     }
-    if (area) add("t.area_id = ?", Number(area));
+    // 영역은 **여러 개**를 받는다 — `?area=2,3` (MD-P-2026-027 §B2).
+    // 사이드바에서 한 번에 하나만 고르던 것을 필터 칩 다중 선택으로 바꿨다.
+    // 값 하나만 오는 예전 링크(`?area=2`)도 그대로 동작한다.
+    if (area) {
+      const ids = area.split(",").map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n > 0);
+      if (ids.length === 1) add("t.area_id = ?", ids[0]);
+      else if (ids.length > 1) add("t.area_id = ANY(?::int[])", ids);
+    }
     if (project) add("t.project_id = ?", Number(project));
     if (assignee) add("t.assignee_id = ?", Number(assignee));
 

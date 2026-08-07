@@ -3,7 +3,7 @@
     "route": "/",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/home.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "section.tile.hero",
@@ -71,7 +71,7 @@
     "route": "/tasks",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/tasks.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "section.card",
@@ -89,7 +89,7 @@
         "h": 33
       }
     ],
-    "btnCount": 7,
+    "btnCount": 16,
     "misaligned": [],
     "coralFill": [],
     "boxy": [],
@@ -193,7 +193,7 @@
     "route": "/projects",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/projects.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "div.top",
@@ -242,7 +242,7 @@
     "route": "/projects/1",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/projects_1.png",
-    "scrollHeight": 1544,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "div.pws-ov",
@@ -297,7 +297,7 @@
     "route": "/calendar",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/calendar.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 1018,
     "biggest": [
       {
         "el": "section.tile.cal2",
@@ -358,7 +358,7 @@
     "route": "/signals",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/signals.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "div.sig-wrap",
@@ -419,7 +419,7 @@
     "route": "/signals?tab=decision",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/signals_tab_decision.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "section.card.dlog",
@@ -474,7 +474,7 @@
     "route": "/inbox",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/inbox.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "div.inbox-demo",
@@ -535,7 +535,7 @@
     "route": "/activity",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/activity.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "div.actv-body",
@@ -590,7 +590,7 @@
     "route": "/huddle",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/huddle.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 1087,
     "biggest": [
       {
         "el": "div.top",
@@ -645,7 +645,7 @@
     "route": "/assistant",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/assistant.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "div.tile.ma-credit",
@@ -767,7 +767,7 @@
     "route": "/handover",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/handover.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "div.rp-cols",
@@ -828,12 +828,12 @@
     "route": "/members",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/members.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "section.card",
         "w": 1108,
-        "h": 345
+        "h": 269
       },
       {
         "el": "section.card",
@@ -846,7 +846,7 @@
         "h": 33
       }
     ],
-    "btnCount": 7,
+    "btnCount": 5,
     "misaligned": [],
     "coralFill": [],
     "boxy": [],
@@ -883,7 +883,7 @@
     "route": "/settings",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/settings.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "div.top",
@@ -944,7 +944,7 @@
     "route": "/saved",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/saved.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "div.empty-state",
@@ -1005,7 +1005,7 @@
     "route": "/notes",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/notes.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "div.empty-state",
@@ -1060,7 +1060,7 @@
     "route": "/profile",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/profile.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "div.top",
@@ -1115,7 +1115,7 @@
     "route": "/status",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/status.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
         "el": "div.an-wrap",
@@ -1170,25 +1170,25 @@
     "route": "/areas/1",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/areas_1.png",
-    "scrollHeight": 1430,
+    "scrollHeight": 950,
     "biggest": [
       {
-        "el": "div.top",
-        "w": 1152,
-        "h": 55
+        "el": "section.card",
+        "w": 1108,
+        "h": 345
       },
       {
-        "el": "div.area-hd.train",
-        "w": 1104,
-        "h": 110
+        "el": "p.tv-hidden",
+        "w": 1108,
+        "h": 18
       },
       {
-        "el": "div.tabs",
-        "w": 1104,
-        "h": 26
+        "el": "div.ch",
+        "w": 1070,
+        "h": 33
       }
     ],
-    "btnCount": 5,
+    "btnCount": 16,
     "misaligned": [],
     "coralFill": [],
     "boxy": [],
@@ -1211,17 +1211,16 @@
         "sample": "aside.side"
       },
       {
-        "bg": "linear-gradient(100deg, rgba(22, 25, 29, 0.02), rgba(0, 0, 0, 0)), non",
-        "token": "의도된 그라데이션",
-        "kind": "image",
-        "n": 1,
-        "sample": "div.area-hd.train"
-      },
-      {
         "bg": "rgb(255, 255, 255)",
         "token": "--surface",
         "n": 2,
-        "sample": "div.area-hd.train"
+        "sample": "header.pg-head"
+      },
+      {
+        "bg": "rgb(251, 252, 252)",
+        "token": "--surface-2",
+        "n": 1,
+        "sample": "div.pg-filters"
       }
     ],
     "gridEmpty": [],

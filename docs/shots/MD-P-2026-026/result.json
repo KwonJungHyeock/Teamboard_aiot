@@ -104,11 +104,11 @@
     "path": "/"
   },
   {
-    "id": "sec-area",
-    "scope": "section",
+    "id": "sec-area-filter",
+    "scope": "full",
     "status": "OK",
-    "detail": ".sec-empty × 1",
-    "shot": "docs/shots/MD-P-2026-026/sec-area.png",
+    "detail": ".empty-state × 1 · 아이콘 88px · 위여백 48px · 제목 ○ 설명 ○ CTA ○",
+    "shot": "docs/shots/MD-P-2026-026/sec-area-filter.png",
     "path": "/areas/1"
   },
   {

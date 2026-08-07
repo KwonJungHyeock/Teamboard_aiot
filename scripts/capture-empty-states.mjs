@@ -102,15 +102,16 @@ const CASES = [
             "UPDATE task SET is_active = false WHERE is_active"],
     restore: ["UPDATE goal SET is_active = true", "UPDATE signal SET is_active = true",
               "UPDATE task SET is_active = true"] },
-  { id: "sec-area", path: null, scope: "section",
+  // /areas/{id} 는 MD-P-2026-027 §B2 에서 /tasks?area={id} 로 리다이렉트된다.
+  // 영역 화면의 섹션 빈 상태(프로젝트·목표·자료 탭)는 그 화면과 함께 사라졌다.
+  // 대신 같은 규격을 쓰는 **업무 영역 필터 결과 0건**을 본다.
+  { id: "sec-area-filter", path: null, scope: "full",
     resolve: async () => {
       const r = await sql("SELECT id FROM area WHERE is_active ORDER BY sort_order LIMIT 1");
-      return r[0] ? `/areas/${r[0].id}` : null;
+      return r[0] ? `/areas/${r[0].id}` : null;        // 리다이렉트를 타고 /tasks?area= 로 간다
     },
-    click: "프로젝트",
-    empty: ["UPDATE project SET is_active = false WHERE is_active",
-            "UPDATE goal SET is_active = false WHERE is_active"],
-    restore: ["UPDATE project SET is_active = true", "UPDATE goal SET is_active = true"] },
+    empty: ["UPDATE task SET is_active = false WHERE is_active"],
+    restore: ["UPDATE task SET is_active = true"] },
   { id: "sec-goals-archive", path: "/goals", scope: "section", click: "보관함",
     empty: [], restore: [] },
   { id: "sec-handover-shared", path: "/handover", scope: "section",
