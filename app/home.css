@@ -463,18 +463,7 @@
 .hv .cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--card-gap)}
 @media(max-width:1100px){.hv .cols{grid-template-columns:minmax(0,1fr)}}
 
-/* ── 영역 작업 공간 헤더 (파트 6) — 영역 색 액센트 ── */
-.hv .area-hd{display:flex;align-items:flex-start;gap:14px;padding:16px 18px;margin-bottom:14px;
-  border:1px solid var(--line);border-left-width:4px;border-radius:var(--r);
-  background:linear-gradient(100deg,var(--glass),transparent),var(--bg-surface);box-shadow:var(--card-shadow)}
-.hv .area-hd .area-dot{width:12px;height:12px;flex:0 0 12px;border-radius:4px;margin-top:6px}
-.hv .area-hd h1{font-size:var(--fs-page-title);line-height:1.2;margin:1px 0 2px}
-.hv .area-hd .eb{font-family:var(--f-d);font-size:var(--fs-meta);letter-spacing:.1em;color:var(--lo)}
-.hv .area-hd p{font-size:var(--fs-meta);color:var(--mid);margin-top:3px}
-.hv .area-hd.edu{border-left-color:var(--edu)} .hv .area-hd.edu .area-dot{background:var(--edu)}
-.hv .area-hd.play{border-left-color:var(--play)} .hv .area-hd.play .area-dot{background:var(--play)}
-.hv .area-hd.train{border-left-color:var(--train)} .hv .area-hd.train .area-dot{background:var(--train)}
-.hv .area-hd.team{border-left-color:var(--team)} .hv .area-hd.team .area-dot{background:var(--team)}
+/* 영역 작업 공간 헤더(.area-hd)는 MD-P-2026-027 B11 에서 화면과 함께 삭제됐다. */
 
 /* ── 타임라인 빈 칸 업무 추가 (파트 4 캘린더) ── */
 .hv .ln-n .ln-add{margin-left:auto;width:22px;height:22px;flex:0 0 22px;border:1px solid var(--line);
@@ -515,16 +504,8 @@
 /* ── 허들 (3순위 — 하단 저강조) ── */
 .hv .huddle-lo{align-self:start}
 
-/* ── 자료 링크 카드 (Phase 5) — 메타데이터만, 본문 없음 ── */
-.hv .acards{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
-.hv .acard{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;min-width:0}
-.hv .akind{font-family:var(--f-d);font-size:10.5px;letter-spacing:.08em;border:1px solid var(--line);border-radius:5px;padding:1px 7px;color:var(--lo);white-space:nowrap}
-.hv .akind.notion{color:var(--hi);border-color:var(--line-hi)}
-.hv .akind.github{color:var(--play)}
-.hv .akind.figma{color:var(--train)}
-.hv .acard-t{font-size:12.5px;color:var(--hi);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hv .acard-t:hover{text-decoration:underline}
-.hv .acard-u{font-style:normal;font-size:10.5px;color:var(--lo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:32%}
+/* 영역 자료 링크 카드(.acards/.acard/.akind)는 MD-P-2026-027 B11 에서 삭제됐다.
+   업무 단위 자료는 인수인계 화면이 .ho-akind 로 따로 그린다. */
 
 /* ── 인수인계 (파트 Y) — 목록 재사용(rp-*) + 문서 편집/미리보기 ── */
 .hv .ho-sec-h{display:flex;align-items:center;gap:8px;font-size:var(--fs-meta);color:var(--lo);font-family:var(--f-d);letter-spacing:.06em;margin:0 0 8px;padding:0 4px}
@@ -670,7 +651,7 @@
 .hv .crumb, .hv .head .eb, .hv .seg button, .hv .mc .l, .hv .mc .d,
 .hv th, .hv .st, .hv .due, .hv .bg, .hv .atag, .hv .ch .sub, .hv .tab .n,
 .hv .areatag, .hv .wtag, .hv .gtag, .hv .gpv, .hv .gdrop, .hv .hrs, .hv .ovf,
-.hv .akind, .hv .pst, .hv .nowl::before, .hv .suml em, .hv .sig .mt {
+.hv .ho-akind, .hv .pst, .hv .nowl::before, .hv .suml em, .hv .sig .mt {
   font-family: var(--font-sans);
 }
 /* 시계는 모노 유지(로고 MISSION DECK 는 globals .brand/.login-brand 에서 모노 유지) */

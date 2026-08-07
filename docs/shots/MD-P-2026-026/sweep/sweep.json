@@ -74,22 +74,22 @@
     "scrollHeight": 987,
     "biggest": [
       {
-        "el": "section.card",
+        "el": "div.sk.sk-list",
         "w": 1108,
-        "h": 345
+        "h": 154
       },
       {
-        "el": "p.tv-hidden",
+        "el": "div.sk-rows",
         "w": 1108,
-        "h": 18
+        "h": 154
       },
       {
-        "el": "div.ch",
-        "w": 1070,
-        "h": 33
+        "el": "span.sk-row",
+        "w": 1106,
+        "h": 38
       }
     ],
-    "btnCount": 16,
+    "btnCount": 15,
     "misaligned": [],
     "coralFill": [],
     "boxy": [],
@@ -120,7 +120,7 @@
       {
         "bg": "rgb(251, 252, 252)",
         "token": "--surface-2",
-        "n": 1,
+        "n": 5,
         "sample": "div.pg-filters"
       }
     ],
@@ -424,7 +424,7 @@
       {
         "el": "section.card.dlog",
         "w": 1108,
-        "h": 410
+        "h": 219
       },
       {
         "el": "div.dlog-bar",
@@ -432,12 +432,12 @@
         "h": 63
       },
       {
-        "el": "div.dlist",
+        "el": "div.sk.sk-list",
         "w": 1106,
-        "h": 345
+        "h": 154
       }
     ],
-    "btnCount": 5,
+    "btnCount": 2,
     "misaligned": [],
     "coralFill": [],
     "boxy": [],
@@ -462,8 +462,14 @@
       {
         "bg": "rgb(255, 255, 255)",
         "token": "--surface",
-        "n": 2,
+        "n": 3,
         "sample": "header.pg-head"
+      },
+      {
+        "bg": "rgb(251, 252, 252)",
+        "token": "--surface-2",
+        "n": 4,
+        "sample": "span.sk-row"
       }
     ],
     "gridEmpty": [],
@@ -648,11 +654,6 @@
     "scrollHeight": 987,
     "biggest": [
       {
-        "el": "div.tile.ma-credit",
-        "w": 1108,
-        "h": 86
-      },
-      {
         "el": "section.tile.ma-dispatch",
         "w": 1108,
         "h": 333
@@ -661,6 +662,11 @@
         "el": "div.th",
         "w": 1108,
         "h": 45
+      },
+      {
+        "el": "h3",
+        "w": 1108,
+        "h": 22
       }
     ],
     "btnCount": 4,
@@ -1170,22 +1176,22 @@
     "route": "/areas/1",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/areas_1.png",
-    "scrollHeight": 987,
+    "scrollHeight": 1646,
     "biggest": [
       {
         "el": "section.card",
         "w": 1108,
-        "h": 345
+        "h": 1295
       },
       {
-        "el": "p.tv-hidden",
-        "w": 1108,
-        "h": 18
-      },
-      {
-        "el": "div.ch",
+        "el": "table",
         "w": 1070,
-        "h": 33
+        "h": 1208
+      },
+      {
+        "el": "colgroup",
+        "w": 1070,
+        "h": 1208
       }
     ],
     "btnCount": 16,

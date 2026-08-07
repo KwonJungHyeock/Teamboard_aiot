@@ -79,19 +79,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       [projectId]
     );
 
-    // 자료 탭 — {kind, title, url} 링크 카드 데이터만. 본문은 가져오지 않는다 (Phase 5-5)
-    const artifacts = await query<{
-      id: number;
-      kind: string;
-      title: string;
-      url: string;
-      created_at: string;
-    }>(
-      `SELECT id, kind, title, url, created_at::text
-       FROM artifact WHERE project_id = $1 AND is_active = true
-       ORDER BY created_at DESC`,
-      [projectId]
-    );
+    // 자료 탭은 MD-P-2026-027 B11 에서 폐기했다 (읽는 곳 0건). 필드도 함께 내린다.
 
     return NextResponse.json({
       project: {
@@ -117,7 +105,6 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         childCounted: Number(t.child_counted),
         childDone: Number(t.child_done),
       })),
-      artifacts,
       today: kstToday(),
     });
   } catch (error) {
