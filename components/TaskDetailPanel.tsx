@@ -17,6 +17,7 @@ import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import ProjectCombo, { type ComboProject } from "./ProjectCombo";
 import type { SessionUser } from "@/lib/types";
+import { pfill } from "@/lib/progress-bar";
 import {
   TASK_PANEL_EVENT,
   currentTaskRef,
@@ -340,7 +341,7 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
       key: "progress", label: "진행률",
       value: (
         <span className="prop-prog">
-          <i><b style={{ width: `${t.effectiveProgress}%` }} /></i>
+          <i><b style={pfill(t.effectiveProgress)} /></i>
           <em className="num">{t.effectiveProgress}%</em>
           {t.rolledUpFromChildren && <em className="prop-note">하위 업무로 계산 중</em>}
         </span>

@@ -11,10 +11,15 @@
 // ⚠ `| head` 로 파이프하지 말 것. head 가 파이프를 닫으면 SIGPIPE 로 프로세스가 죽고,
 //   finally 의 정리(계정·업무 삭제, 팀 데이터 복원)가 실행되지 않는다.
 //   출력을 줄이고 싶으면 파일로 받아서 보거나 `| cat` 을 거친다.
+//
+// **로컬 전용. 원격 DB 에서 실행 금지** (지시 32) — 아래 requireLocalDb 가 강제한다.
 import { chromium } from "playwright";
 import { scryptSync, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
+import { requireLocalDb } from "./local-only.mjs";
+
+requireLocalDb("first-run-walk.mjs");
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-026/first-run";

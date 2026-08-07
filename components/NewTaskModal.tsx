@@ -17,6 +17,7 @@ import PropertyBlock, { type PropRow } from "./PropertyBlock";
 import ProjectCombo, { type ComboProject } from "./ProjectCombo";
 import ErrorNote from "./ErrorNote";
 import { toast } from "@/lib/quick";
+import { durToken, prefersReduced } from "@/lib/motion";
 import {
   NEW_TASK_MODAL_EVENT, closeNewTaskModal, currentTaskRef, notifyTaskUpdated,
   openTaskPanel, type NewTaskPrefill,
@@ -74,6 +75,9 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
   const [err, setErr] = useState("");
   const [keepOpen, setKeepOpen] = useState(false);   // "만들고 계속 추가"
   const [made, setMade] = useState(0);                // 연달아 만든 건수 — 계속 추가 흐름의 유일한 피드백
+  // §H3 모달 닫힘 — 역방향 애니메이션(--dur-2)이 끝난 뒤에 언마운트한다.
+  // 바로 지우면 닫히는 모습이 없다.
+  const [closing, setClosing] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
   // ── 열림 상태: 이벤트 + URL(?panel=task:new) + 뒤로가기 ──
@@ -94,7 +98,7 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
   }, []);
 
   useEffect(() => {
-    if (!open) { setD(null); setErr(""); setMade(0); setKeepOpen(false); return; }
+    if (!open) { setD(null); setErr(""); setMade(0); setKeepOpen(false); setClosing(false); return; }
     setD(blank(prefill, user.id));
     setErr("");
     // 열 때마다 다시 받는다 — 방금 만든 프로젝트·목표가 후보로 떠야 한다.
@@ -114,7 +118,9 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
   const requestClose = useCallback(() => {
     // 내용이 있으면 확인하고 닫는다 (§C2). 몇 줄 쓴 것을 Esc 한 번으로 날리지 않는다.
     if (dirty && !window.confirm("작성 중인 내용을 버리고 닫을까요?")) return;
-    closeNewTaskModal();
+    if (prefersReduced()) { closeNewTaskModal(); return; }
+    setClosing(true);
+    setTimeout(closeNewTaskModal, durToken("--dur-2", 180));
   }, [dirty]);
 
   async function create() {
@@ -295,7 +301,7 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
   ];
 
   return (
-    <div className="ntm-bg" onMouseDown={(e) => { if (e.target === e.currentTarget) requestClose(); }}>
+    <div className={`ntm-bg${closing ? " closing" : ""}`} onMouseDown={(e) => { if (e.target === e.currentTarget) requestClose(); }}>
       <div className="ntm" role="dialog" aria-modal="true" aria-label="새 업무">
         <div className="ntm-head">
           <span className="ntm-crumb">새 업무</span>

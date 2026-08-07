@@ -16,6 +16,7 @@ import HoverActions from "./HoverActions";
 import { toast } from "@/lib/quick";
 import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
+import { pfill } from "@/lib/progress-bar";
 
 interface Contribution { actorId: number | null; name: string; total: number; done: number; sharePct: number }
 export interface LinkedProject { id: number; name: string; colorKey: string | null; status: string; progress: number | null }
@@ -150,7 +151,7 @@ export default function GoalDetailPanel() {
                 {d.goal.progress != null && <em className="gdp-basis">{countedLabel(d.goal.countedTasks)}</em>}
               </div>
               <div className={`bar${d.goal.progress == null ? " empty" : ""}`}>
-                <i className="edu" style={{ width: `${Math.min(d.goal.progress ?? 0, 100)}%` }} />
+                <i className="edu" style={pfill(d.goal.progress ?? 0)} />
               </div>
               {d.goal.progress == null && (
                 <p className="gdp-nodata">
@@ -305,7 +306,7 @@ export default function GoalDetailPanel() {
                   <div className="gdp-contrib" key={c.actorId ?? "none"}>
                     <span className="gdp-contrib-n">{c.name}</span>
                     <span className="gdp-contrib-m">담당 {c.total} · 완료 {c.done}</span>
-                    <div className="bar" style={{ flex: 1 }}><i className="play" style={{ width: `${c.sharePct}%` }} /></div>
+                    <div className="bar" style={{ flex: 1 }}><i className="play" style={pfill(c.sharePct)} /></div>
                     <b>{c.sharePct}%</b>
                   </div>
                 ))}

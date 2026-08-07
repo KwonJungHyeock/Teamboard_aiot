@@ -6,11 +6,16 @@
 //   함께 확인해야 그 단언이 살아 있는 단언이 된다.
 //
 //   node scripts/member-boundary.mjs
+//
+// **로컬 전용. 원격 DB 에서 실행 금지** (지시 32) — 아래 requireLocalDb 가 강제한다.
 import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import { scryptSync, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
+import { requireLocalDb } from "./local-only.mjs";
+
+requireLocalDb("member-boundary.mjs");
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-026/member";

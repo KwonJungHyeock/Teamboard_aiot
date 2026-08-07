@@ -14,10 +14,15 @@
 // 이 전제가 깨지는 DB 에서는 first-run-walk.mjs 처럼 id 목록을 적어 두고 되돌려야 한다.
 //
 //   BASE=http://127.0.0.1:3000 node scripts/capture-empty-states.mjs
+//
+// **로컬 전용. 원격 DB 에서 실행 금지** (지시 32) — 아래 requireLocalDb 가 강제한다.
 import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
+import { requireLocalDb } from "./local-only.mjs";
+
+requireLocalDb("capture-empty-states.mjs");
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-026";
@@ -245,12 +250,19 @@ for (const c of CASES) {
       if (m.padTop < 48) { row.spec = true; row.detail += ` · 위반: 위여백 ${m.padTop}px (규격 ≥48)`; }
     }
 
-    // 로딩 규격 실측 — 텍스트·스피너·애니메이션이 없어야 한다 (§A-4)
+    // 로딩 규격 실측 — 텍스트·스피너가 없어야 한다 (§A-4).
+    //
+    // 애니메이션은 **sk-shimmer 하나만** 허용한다. 026 §A-4 는 "shimmer 금지 —
+    // 움직임은 후속 모션 규격에서" 였고, 그 후속(027 §H2)이 스켈레톤 한 곳에 허용했다.
+    // 그래서 여기서 "애니메이션 0"을 고집하면 검사가 낡은 규칙을 지키게 된다.
+    // 대신 **다른 이름의 애니메이션이 섞이면** 잡고, reduce 에서 멈추는지도 함께 본다.
     if (c.scope === "skeleton") {
       const m = await page.evaluate(() => {
         const el = document.querySelector(".sk");
         const vis = [...el.querySelectorAll("*")].filter((x) => !x.classList.contains("sr-only"));
-        const anim = vis.filter((x) => getComputedStyle(x).animationName !== "none").length;
+        const names = vis.map((x) => getComputedStyle(x).animationName).filter((n) => n && n !== "none");
+        const anim = names.length;
+        const other = Array.from(new Set(names.filter((n) => n !== "sk-shimmer")));
         // innerText 는 sr-only 까지 읽는다 — "눈에 보이는 글자"를 재려면 빼고 세야 한다.
         // 대신 sr-only 가 정말 1px 로 숨겨져 있는지는 따로 확인한다 (숨긴 척만 하면 안 된다).
         const clone = el.cloneNode(true);
@@ -262,14 +274,27 @@ for (const c of CASES) {
         probe.remove();
         const sr = el.querySelector(".sr-only");
         const srBox = sr ? sr.getBoundingClientRect() : null;
-        return { rows: el.querySelectorAll(".sk-row").length, anim, text,
+        return { rows: el.querySelectorAll(".sk-row").length, anim, other, text,
                  srHidden: srBox ? (srBox.width <= 1.5 && srBox.height <= 1.5) : null,
                  h: Math.round(el.getBoundingClientRect().height) };
       });
-      row.detail += ` · 행 ${m.rows}개 · 높이 ${m.h}px · 애니메이션 ${m.anim} · 보이는 글자 "${m.text}" · sr-only 숨김 ${m.srHidden === null ? "없음" : m.srHidden ? "○" : "✗"}`;
+      // reduce 에서 shimmer 가 정말 멈추는지 — 짝이 되는 확인 (§H2)
+      const rctx = await page.context().browser().newContext({ viewport: { width: 1440, height: 950 }, reducedMotion: "reduce" });
+      await rctx.addCookies(await page.context().cookies());
+      const rp = await rctx.newPage();
+      if (c.route?.mode === "hang") await rp.route(c.route.url, async () => {});   // 같은 요청을 붙잡아야 스켈레톤이 뜬다
+      await rp.goto(page.url(), { waitUntil: "domcontentloaded" }).catch(() => {});
+      const rAnim = await rp.waitForSelector(".sk", { timeout: 8000 })
+        .then(() => rp.evaluate(() => [...document.querySelectorAll(".sk *")]
+          .map((x) => getComputedStyle(x).animationName).filter((n) => n && n !== "none").length))
+        .catch(() => -1);
+      await rctx.close();
+      row.detail += ` · 행 ${m.rows}개 · 높이 ${m.h}px · 애니메이션 ${m.anim}(${m.other.length ? m.other.join(",") : "sk-shimmer 뿐"}) · reduce 애니메이션 ${rAnim} · 보이는 글자 "${m.text}" · sr-only 숨김 ${m.srHidden === null ? "없음" : m.srHidden ? "○" : "✗"}`;
       if (m.srHidden === false) { row.spec = true; row.detail += " · 위반: sr-only 가 화면에 보인다"; }
       if (m.text !== "") { row.spec = true; row.detail += " · 위반: 텍스트 있음"; }
-      if (m.anim > 0) { row.spec = true; row.detail += " · 위반: 애니메이션 있음"; }
+      if (m.other.length > 0) { row.spec = true; row.detail += ` · 위반: sk-shimmer 밖 애니메이션 ${m.other.join(",")}`; }
+      if (m.anim === 0) { row.spec = true; row.detail += " · 위반: shimmer 가 아예 없다"; }
+      if (rAnim > 0) { row.spec = true; row.detail += " · 위반: reduce 에서도 움직인다"; }
     }
     if (c.scope === "error") {
       const m = await page.evaluate(() => {

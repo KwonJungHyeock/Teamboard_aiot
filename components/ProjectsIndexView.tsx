@@ -10,6 +10,7 @@ import AreaFilter, { useAreaChips, useAreaSelection } from "./AreaFilter";
 import Skeleton from "./Skeleton";
 import ErrorNote from "./ErrorNote";
 import type { SessionUser } from "@/lib/types";
+import { pfill } from "@/lib/progress-bar";
 
 interface ProjectCard {
   id: number;
@@ -168,7 +169,7 @@ export default function ProjectsIndexView({ user }: { user: SessionUser }) {
                   <div className="bar">
                     <i
                       className={p.colorKey ?? "team"}
-                      style={{ width: `${p.percent ?? 0}%` }}
+                      style={pfill(p.percent ?? 0)}
                     />
                   </div>
                   <span className="gpv">

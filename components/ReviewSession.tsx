@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import { AttachButton, DropZone } from "./Attach";
+import { pfill } from "@/lib/progress-bar";
 
 interface ReviewComment { id: number; author: string; body: string; createdAt: string }
 interface Item {
@@ -187,7 +188,7 @@ export default function ReviewSession({
           <b>{d?.title ?? "불러오는 중…"}</b>
           {d && <span className="rv-st">확정 {d.progress.done}/{d.progress.total}</span>}
         </div>
-        <div className="rv-prog"><i style={{ width: `${pct}%` }} /></div>
+        <div className="rv-prog"><i style={pfill(pct)} /></div>
         <button className="btn" onClick={onClose}>세션 종료</button>
       </div>
 

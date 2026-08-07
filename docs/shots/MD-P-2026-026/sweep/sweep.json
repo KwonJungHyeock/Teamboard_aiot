@@ -71,22 +71,22 @@
     "route": "/tasks",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/tasks.png",
-    "scrollHeight": 987,
+    "scrollHeight": 1692,
     "biggest": [
-      {
-        "el": "div.iti",
-        "w": 1108,
-        "h": 38
-      },
       {
         "el": "section.card",
         "w": 1108,
-        "h": 345
+        "h": 1295
       },
       {
-        "el": "p.tv-hidden",
-        "w": 1108,
-        "h": 18
+        "el": "table",
+        "w": 1070,
+        "h": 1208
+      },
+      {
+        "el": "colgroup",
+        "w": 1070,
+        "h": 1208
       }
     ],
     "btnCount": 16,

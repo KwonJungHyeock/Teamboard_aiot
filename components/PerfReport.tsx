@@ -9,6 +9,7 @@ import type { SessionUser } from "@/lib/types";
 import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import ErrorNote from "./ErrorNote";
+import { pfill } from "@/lib/progress-bar";
 
 const GOAL_STATUS: Record<string, { label: string; tone: string }> = {
   ontrack: { label: "온트랙", tone: "--green" },
@@ -208,7 +209,7 @@ export default function PerfReport({ user }: { user: SessionUser }) {
                           <div className="prep-prog">
                             <div className={`prep-track${g.progress === null ? " empty" : ""}`}>
                               {g.progress !== null && (
-                                <i style={{ width: `${Math.max(g.progress, 2)}%`, background: `var(${st?.tone ?? "--slate"})` }} />
+                                <i style={{ ...pfill(Math.max(g.progress, 2)), background: `var(${st?.tone ?? "--slate"})` }} />
                               )}
                             </div>
                             <span className={`prep-pct num${g.progress === null ? " none" : ""}`}>{pct(g.progress)}</span>
@@ -281,7 +282,7 @@ export default function PerfReport({ user }: { user: SessionUser }) {
                       <td className="num">{t.dueDate ?? "—"}</td>
                       <td>
                         <div className="prep-prog sm">
-                          <div className="prep-track"><i style={{ width: `${Math.max(t.progress, 2)}%`, background: "var(--blue)" }} /></div>
+                          <div className="prep-track"><i style={{ ...pfill(Math.max(t.progress, 2)), background: "var(--blue)" }} /></div>
                           <span className="prep-pct num">{t.progress}%</span>
                         </div>
                       </td>

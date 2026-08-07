@@ -23,6 +23,7 @@ import { SIDE_PANEL_EVENT, currentPanel, openPanel } from "@/lib/side-panel";
 import { SIGNAL_CHANGED_EVENT } from "@/lib/collab-events";
 import { toast } from "@/lib/quick";
 import { dday } from "@/lib/task-view";
+import { pfill } from "@/lib/progress-bar";
 
 const TABS = [
   ["overview", "개요"],
@@ -262,7 +263,7 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
             <section className="card pws-ov-card">
               <div className="pws-ov-h">진척 롤업</div>
               <div className="pws-prog">
-                <div className="pws-prog-track"><i style={{ width: `${Math.max(p.progress ?? 0, 2)}%` }} /></div>
+                <div className="pws-prog-track"><i style={pfill(Math.max(p.progress ?? 0, 2))} /></div>
                 <span className="pws-prog-v num">{p.progress === null ? "집계 없음" : `${p.progress}%`}</span>
               </div>
               {/* 진척 근거 — 분모를 그대로 보여준다. 기간 가중은 폐지됐다 (MD-P-2026-024 회신 ③) */}

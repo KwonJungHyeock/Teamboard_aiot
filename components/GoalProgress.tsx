@@ -4,6 +4,7 @@
 // 기간이 끝난 목표는 closing 을 넘긴다 — "57% · 7/31 마감 기준" 또는
 // "기간 종료 · 마감 기록 없음". 수동 배지는 붙이지 않는다(손으로 넣은 값이 아니다).
 import { closingLabel, canShowBar, countedLabel, type GoalClosing } from "@/lib/progress";
+import { pfill } from "@/lib/progress-bar";
 export default function GoalProgress({
   progress,
   colorKey,
@@ -33,7 +34,7 @@ export default function GoalProgress({
     <div className="gprog">
       <div className={`bar${drawBar ? "" : " empty"}`}>
         {drawBar && (
-          <i className={colorKey ?? "edu"} style={{ width: `${Math.min(shown!, 100)}%` }} />
+          <i className={colorKey ?? "edu"} style={pfill(shown!)} />
         )}
       </div>
       <span className={`gpv${drawBar ? "" : " none"}`}>

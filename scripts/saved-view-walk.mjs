@@ -2,10 +2,15 @@
 //
 // 저장 → 사이드바 핀 등장 → 눌러서 조건 복원 → 순서 변경 → 삭제까지 실제로 밟는다.
 // 만든 것은 끝나고 지운다. 라벨에는 **화면에서 읽은 값**을 적는다 (§G 캡처 라벨 규격).
+//
+// **로컬 전용. 원격 DB 에서 실행 금지** (지시 32) — 아래 requireLocalDb 가 강제한다.
 import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
+import { requireLocalDb } from "./local-only.mjs";
+
+requireLocalDb("saved-view-walk.mjs");
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-027/saved-view";

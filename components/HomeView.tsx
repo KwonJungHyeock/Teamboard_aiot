@@ -12,6 +12,7 @@ import PageShell from "./PageShell";
 import SectionEmpty from "./SectionEmpty";
 import HeroTimeline from "./HeroTimeline";
 import { openNewTaskPanel } from "@/lib/task-panel";
+import { pfill } from "@/lib/progress-bar";
 
 type TabKey = "overview" | "focus" | "team";
 type Range = "quarter" | "all";
@@ -334,7 +335,7 @@ function TeamTab({ rows }: { rows: HomeSummary["teamStatus"] }) {
           <span className={`dl-c num${r.late > 0 ? " hm-over" : ""}`} style={{ flex: "0 0 80px" }}>{r.late > 0 ? r.late : "—"}</span>
           <span className="dl-c num" style={{ flex: "0 0 110px" }}>
             <span className="dl-bar">
-              <i><b style={{ width: `${r.avgProgress ?? 0}%` }} /></i>
+              <i><b style={pfill(r.avgProgress ?? 0)} /></i>
               <em className={r.avgProgress === null ? "dl-bar-na" : ""}>{r.avgProgress === null ? "—" : `${r.avgProgress}%`}</em>
             </span>
           </span>

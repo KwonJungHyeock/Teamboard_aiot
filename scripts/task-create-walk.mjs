@@ -5,10 +5,15 @@
 // 만든 것은 끝나고 지운다 — 실측 흔적을 데이터에 남기지 않는다.
 //
 // ⚠ | head 로 파이프하지 말 것. SIGPIPE 로 finally 정리가 죽는다.
+//
+// **로컬 전용. 원격 DB 에서 실행 금지** (지시 32) — 아래 requireLocalDb 가 강제한다.
 import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
+import { requireLocalDb } from "./local-only.mjs";
+
+requireLocalDb("task-create-walk.mjs");
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-027/task-create";

@@ -3,11 +3,13 @@
 // 업무 테이블 (Phase 3 마감 임박 → Phase 5 공용화) — 홈 "마감 임박"과 /tasks 목록이
 // 같은 컴포넌트를 재사용한다 (Phase 5 검수 포인트 6). 컬럼 폭 고정 (프로토타입 colgroup).
 // variant="full"(/tasks): 목표·우선순위 컬럼 추가 + 상태 인라인 드롭다운. compact(홈)은 5열 유지.
-import { useState } from "react";
+import { useRef, useState } from "react";
 import EmptyState from "./EmptyState";
 import SectionEmpty, { type SectionEmptyAction } from "./SectionEmpty";
 import { toast } from "@/lib/quick";
 import { notifyTaskUpdated } from "@/lib/task-panel";
+import { useCountUp, useExiting, useFlip, useHighlight } from "@/lib/motion";
+import { pfill } from "@/lib/progress-bar";
 export interface TaskTableRow {
   id: number;
   title: string;
@@ -94,6 +96,12 @@ export default function TaskTable({
 }) {
   const full = variant === "full";
   const colCount = (full ? 9 : 5) + (selectable ? 1 : 0);
+  // §H3 — 필터·정렬로 순서가 바뀌면 FLIP 으로 미끄러지고(--dur-3),
+  // 목록에서 빠진 행은 한 사이클 붙잡아 두고 사라진다(--dur-2).
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
+  const { rows: shown, exiting } = useExiting(rows);
+  useFlip(bodyRef as unknown as React.RefObject<HTMLElement>, rows.map((r) => r.id).join(","), "tr[data-flip]");
+  const [hot, flash] = useHighlight();
   const on = (id: number) => !!checked?.has(id);
   const allOn = selectable && rows.length > 0 && rows.every((r) => on(r.id));
   // 낙관적 완료 — 즉시 반영(페이드) 후 PATCH, 실패 시 롤백
@@ -101,6 +109,7 @@ export default function TaskTable({
   async function completeNow(id: number, e: React.MouseEvent) {
     e.stopPropagation();
     setDoneLocal((s) => new Set(s).add(id));
+    flash(`st-${id}`);   // 상태 칸이 바뀌었다는 표시 (§H3 "값이 바뀐 칸")
     toast("완료 처리했어요");
     const res = await fetch(`/api/tasks/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "done" }),
@@ -163,7 +172,7 @@ export default function TaskTable({
             <th>기한</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody ref={bodyRef}>
           {rows.length === 0 && (
             <tr>
               <td colSpan={colCount} style={{ padding: 0 }}>
@@ -175,7 +184,7 @@ export default function TaskTable({
               </td>
             </tr>
           )}
-          {rows.map((t) => {
+          {shown.map((t) => {
             const status = STATUS_LABEL[t.status] ?? { label: t.status, cls: "todo" };
             const dueCls = t.overdue
               ? "bad"
@@ -186,9 +195,11 @@ export default function TaskTable({
             return (
               <tr
                 key={t.id}
+                data-flip={t.id}
                 onClick={onRowClick ? () => onRowClick(t.id) : undefined}
                 className={
-                  [onRowClick ? "clickable" : "", selectedId === t.id ? "selected" : "", doneLocal.has(t.id) ? "done-opt" : ""]
+                  [onRowClick ? "clickable" : "", selectedId === t.id ? "selected" : "",
+                   doneLocal.has(t.id) ? "done-opt" : "", exiting.has(t.id) ? "row-out" : ""]
                     .filter(Boolean)
                     .join(" ") || undefined
                 }
@@ -242,12 +253,12 @@ export default function TaskTable({
                 {full && (
                   <td className="col-prog">
                     <div className="tt-prog" title={`진행률 ${t.progress ?? 0}%`}>
-                      <i className={t.status === "done" ? "pf-green" : "pf-blue"} style={{ width: `${t.progress ?? 0}%` }} />
+                      <i className={t.status === "done" ? "pf-green" : "pf-blue"} style={pfill(t.progress ?? 0)} />
                     </div>
-                    <span className="tt-prog-n">{t.progress ?? 0}%</span>
+                    <ProgPct value={t.progress ?? 0} />
                   </td>
                 )}
-                <td className="col-st">
+                <td className={`col-st${hot.has(`st-${t.id}`) ? " hl" : ""}`}>
                   {editable ? (
                     <select
                       className={`stsel st-${t.status}`}
@@ -276,7 +287,13 @@ export default function TaskTable({
                   <span className="tt-dday">{t.dday ?? "—"}</span>
                   {quickComplete && t.status !== "done" && t.status !== "dropped" && (
                     <span className="tt-row-act">
-                      <button className="tt-act c" onClick={(e) => completeNow(t.id, e)} title="완료 처리" aria-label="완료 처리">✓</button>
+                      <button className="tt-act c" onClick={(e) => completeNow(t.id, e)} title="완료 처리" aria-label="완료 처리">
+                        {/* §H3 — 체크마크를 stroke-dashoffset 으로 그린다 (--dur-stroke).
+                            글자 ✓ 는 켜지고 꺼질 뿐이고, 그리는 동작이 "지금 됐다"를 말한다. */}
+                        <svg className={`chk-draw${doneLocal.has(t.id) ? " on" : ""}`} viewBox="0 0 16 16" aria-hidden="true">
+                          <path d="M3 8.5 L6.5 12 L13 4.5" />
+                        </svg>
+                      </button>
                       {onRowClick && <button className="tt-act o" onClick={(e) => { e.stopPropagation(); onRowClick(t.id); }} title="열기" aria-label="열기">↗</button>}
                     </span>
                   )}
@@ -288,4 +305,10 @@ export default function TaskTable({
       </table>
     </section>
   );
+}
+
+/** 진행률 숫자 — 값이 바뀔 때만 카운트업한다 (§H3, --dur-4). */
+function ProgPct({ value }: { value: number }) {
+  const n = useCountUp(value);
+  return <span className="tt-prog-n">{n}%</span>;
 }

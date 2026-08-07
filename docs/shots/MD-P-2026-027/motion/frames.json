@@ -1,0 +1,37 @@
+{
+  "rows": [
+    {
+      "id": "H3-09모달열림",
+      "note": "시작 모달 없음 → 중간 matrix matrix(0.997084, 0, 0, 0.997084, 0, 0) · opacity 0.927104 → 끝 matrix none · opacity 1"
+    },
+    {
+      "id": "H3-10모달닫힘",
+      "note": "시작 스크림 opacity 1 → 중간 스크림 opacity 0 → 끝 스크림 없음"
+    },
+    {
+      "id": "H3-11탭밑줄",
+      "note": "시작 밑줄 x=284 w=57 → 중간 밑줄 x=345 w=57 → 끝 밑줄 x=357 w=57"
+    },
+    {
+      "id": "H3-11탭목록",
+      "note": "탭 \"성과 리포트 · 승인 보고서\""
+    },
+    {
+      "id": "H3-03,04,07완료",
+      "note": "시작 행 opacity 1 · 체크 빈 상태 dashoffset 22px · 상태칸 평소 → 중간 행 opacity 0.55 · 체크 그려짐 dashoffset 0.3924px · 상태칸 하이라이트 → 끝 행 opacity 1 · 체크 그려짐 dashoffset 0px · 상태칸 ?"
+    },
+    {
+      "id": "H3-01,02진척",
+      "note": "시작 패널 바 matrix(0, 0, 0, 1, 0, 0) · 숫자 \"0%\" → 중간 패널 바 matrix(0, 0, 0, 1, 0, 0) · 숫자 \"0%\" → 끝 패널 바 matrix(0.7, 0, 0, 1, 0, 0) · 숫자 \"70%\""
+    },
+    {
+      "id": "H3-12카드hover",
+      "note": "시작 box-shadow rgba(22, 25, 29, 0.05) 0px 1px 2px 0px → 중간 box-shadow rgba(22, 25, 29, 0.08) 0px 3.88461px 13.5384px 0px → 끝 box-shadow rgba(22, 25, 29, 0.08) 0px 4px 14px 0px"
+    },
+    {
+      "id": "H3-14스켈레톤",
+      "note": "animation sk-shimmer 1.2s infinite (sk-shimmer 1.2s infinite 이어야 한다)"
+    }
+  ],
+  "reduceBad": 0
+}

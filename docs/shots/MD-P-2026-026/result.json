@@ -155,7 +155,7 @@
     "id": "load-tasks",
     "scope": "skeleton",
     "status": "OK",
-    "detail": ".sk × 1 · 행 4개 · 높이 154px · 애니메이션 0 · 보이는 글자 \"\" · sr-only 숨김 ○",
+    "detail": ".sk × 1 · 행 4개 · 높이 154px · 애니메이션 4(sk-shimmer 뿐) · reduce 애니메이션 0 · 보이는 글자 \"\" · sr-only 숨김 ○",
     "shot": "docs/shots/MD-P-2026-026/load-tasks.png",
     "path": "/tasks"
   },
@@ -163,7 +163,7 @@
     "id": "load-goals",
     "scope": "skeleton",
     "status": "OK",
-    "detail": ".sk × 1 · 행 4개 · 높이 154px · 애니메이션 0 · 보이는 글자 \"\" · sr-only 숨김 ○",
+    "detail": ".sk × 1 · 행 4개 · 높이 154px · 애니메이션 4(sk-shimmer 뿐) · reduce 애니메이션 0 · 보이는 글자 \"\" · sr-only 숨김 ○",
     "shot": "docs/shots/MD-P-2026-026/load-goals.png",
     "path": "/goals"
   },
