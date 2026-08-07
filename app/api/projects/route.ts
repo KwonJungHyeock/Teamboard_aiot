@@ -13,9 +13,13 @@ export const dynamic = "force-dynamic";
 const PROJECT_STATUSES = ["active", "done", "hold"] as const; // 진행중 / 완료 / 보류
 const COLOR_KEYS = ["edu", "play", "train", "team"] as const;
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     requireSession();
+    // 영역 필터 — /tasks 와 같은 형식(`?area=2,3`)이다 (MD-P-2026-027 B11-3).
+    // 영역을 사이드바에서 내렸으므로 그 축을 여기서도 쓸 수 있어야 한다.
+    const areaIds = (new URL(request.url).searchParams.get("area") ?? "")
+      .split(",").map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n > 0);
     const rows = await query<{
       id: number;
       name: string;
@@ -43,7 +47,9 @@ export async function GET() {
               (SELECT count(*) FROM goal g WHERE g.project_id = p.id AND g.is_active = true) AS goal_count
        FROM project p
        WHERE p.is_active = true
-       ORDER BY p.id`
+         ${areaIds.length ? "AND p.area_id = ANY($1::int[])" : ""}
+       ORDER BY p.id`,
+      areaIds.length ? [areaIds] : []
     );
     return NextResponse.json({
       projects: rows.map((p) => ({

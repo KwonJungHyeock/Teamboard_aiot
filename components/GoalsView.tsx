@@ -9,6 +9,7 @@ import type { SessionUser } from "@/lib/types";
 import PageShell from "./PageShell";
 import GoalTree, { type LinkableTask } from "./GoalTree";
 import EmptyState from "./EmptyState";
+import AreaFilter, { useAreaChips, useAreaSelection } from "./AreaFilter";
 import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import ErrorNote from "./ErrorNote";
@@ -57,9 +58,13 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
   }, []);
 
   const yearQ = year ? `&year=${year}` : "";
+  // 영역 축 — /tasks · /projects 와 같은 컴포넌트·같은 URL 형식(?area=2,3) (B11-3)
+  const areas = useAreaChips();
+  const [areaIds, toggleArea, clearAreas, areaQs] = useAreaSelection();
+
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/goals?scope=${tab}${yearQ}`);
+      const res = await fetch(`/api/goals?scope=${tab}${yearQ}${areaQs ? `&area=${areaQs}` : ""}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "목표 조회 실패");
       setTree(data.tree ?? []);
@@ -73,7 +78,7 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
     } finally {
       setLoading(false);
     }
-  }, [tab, yearQ]);
+  }, [tab, yearQ, areaQs]);
 
   const loadArchive = useCallback(async () => {
     try {
@@ -147,6 +152,9 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
           <button className="pg-chip" onClick={() => setShowArchive((v) => !v)}>
             {showArchive ? "보관함 닫기" : "보관함"}
           </button>
+          {/* 영역 축 (B11-3) — 트리는 상위/하위가 이어져야 하므로 서버가
+              "자기 또는 자손이 그 영역"인 목표를 남긴다. 월 목표만 영역을 갖는 경우가 많다. */}
+          <AreaFilter areas={areas} selected={areaIds} onToggle={toggleArea} onClear={clearAreas} />
         </>
       }
     >
@@ -177,11 +185,16 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
       {!loading && !error && tree.length === 0 && (
         <EmptyState
           icon="tasks"
-          title={tab === "team" ? "팀 목표가 없어요" : "내 개인 목표가 없어요"}
+          title={
+            areaIds.length > 0 ? "이 영역에 목표가 없어요"
+              : tab === "team" ? "팀 목표가 없어요" : "내 개인 목표가 없어요"
+          }
           hint={
-            tab === "team"
-              ? "팀장이 연간 목표를 세우고 분기·월로 나누면, 연결된 업무 진척이 여기 모입니다."
-              : "개인 목표를 세우고 내 업무를 연결해 나만의 진척을 관리하세요. 나만 볼 수 있어요."
+            areaIds.length > 0
+              ? "위 영역 칩을 바꾸거나 전체 영역으로 돌리면 다른 목표를 볼 수 있어요."
+              : tab === "team"
+                ? "팀장이 연간 목표를 세우고 분기·월로 나누면, 연결된 업무 진척이 여기 모입니다."
+                : "개인 목표를 세우고 내 업무를 연결해 나만의 진척을 관리하세요. 나만 볼 수 있어요."
           }
           action={
             tab === "personal" || user.role === "lead" ? (

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { countedLabel } from "@/lib/progress";
 import Link from "next/link";
 import EmptyState from "./EmptyState";
+import AreaFilter, { useAreaChips, useAreaSelection } from "./AreaFilter";
 import Skeleton from "./Skeleton";
 import ErrorNote from "./ErrorNote";
 import type { SessionUser } from "@/lib/types";
@@ -75,10 +76,13 @@ export default function ProjectsIndexView({ user }: { user: SessionUser }) {
   const [filter, setFilter] = useState(""); // '' = 전체
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // 영역 축 — /tasks 와 같은 컴포넌트·같은 URL 형식(?area=2,3) (B11-3)
+  const areas = useAreaChips();
+  const [areaIds, toggleArea, clearAreas, areaQs] = useAreaSelection();
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/projects");
+      const res = await fetch(`/api/projects${areaQs ? `?area=${areaQs}` : ""}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "프로젝트 조회 실패");
       setProjects(data.projects ?? []);
@@ -88,7 +92,7 @@ export default function ProjectsIndexView({ user }: { user: SessionUser }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [areaQs]);
 
   useEffect(() => {
     load();
@@ -125,16 +129,24 @@ export default function ProjectsIndexView({ user }: { user: SessionUser }) {
           </div>
         </div>
 
+        <div className="pg-filters areafilter-row" role="group" aria-label="영역 필터">
+          <AreaFilter areas={areas} selected={areaIds} onToggle={toggleArea} onClear={clearAreas} />
+        </div>
+
         {loading && <Skeleton variant="block" height={120} />}
         {error && <ErrorNote message="프로젝트를 불러오지 못했어요" cause={error} onRetry={load} />}
 
         {!loading && !error && shown.length === 0 && (
           <EmptyState
             icon="tasks"
-            title={filter ? `${STATUS_LABEL[filter] ?? filter} 상태의 프로젝트가 없어요` : "아직 프로젝트가 없어요"}
+            title={
+              areaIds.length > 0 ? "이 영역에 프로젝트가 없어요"
+                : filter ? `${STATUS_LABEL[filter] ?? filter} 상태의 프로젝트가 없어요`
+                  : "아직 프로젝트가 없어요"
+            }
             hint={
-              filter
-                ? "위 상태 필터를 바꾸면 다른 프로젝트를 볼 수 있어요."
+              areaIds.length > 0 || filter
+                ? "위 필터를 바꾸면 다른 프로젝트를 볼 수 있어요."
                 : "여러 업무를 묶어 하나의 목표로 굴릴 때 프로젝트를 만듭니다. 진행률·목표·열린 업무는 자동으로 집계됩니다."
             }
           />

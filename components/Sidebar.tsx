@@ -3,8 +3,14 @@
 // 공통 사이드바 — 세 묶음 (MD-P-2026-027 §B1)
 //
 //   내 공간 : 내 업무 · 내 목표 · 메모 · 내 캘린더 · 저장됨  (+ 저장된 뷰 핀)
-//   팀     : 홈 · 목표 · 프로젝트 · 업무 · 캘린더 · 논의·결정 · 활동 · 승인 대기
-//   관리   : 멤버 · 설정 · 인수인계 · 내 에이전트            ← 기본 접힘
+//   팀     : 홈 · 목표 · 프로젝트 · 업무 · 캘린더 · 타임라인 · 논의·결정 ·
+//            허들룸 · 활동 · 승인 대기 · 월간 보고
+//   관리   : 구성원 · 업무 현황 · 인수인계 · 내 에이전트     ← 기본 접힘
+//   하단   : 계정 · 프로필 · 설정 · 로그아웃
+//
+// 설정은 「관리」에 두지 않는다 (§B 회신 B1-a). 팀장 전용이 아닌데
+// 「관리」가 기본 접힘이라 팀원이 못 찾는다. 계정 블록이 개인 설정의 자리다.
+// Notion 타임라인도 「관리」가 아니다 (B1-b) — 업무 일정을 보는 팀 기능이다.
 //
 // **업무 영역 7개를 사이드바에서 뺐다** (§B2). 영역은 "어디로 갈까"가 아니라
 // "무엇을 볼까"라서 /tasks 필터 칩이 맞는 자리다. 사이드바가 데이터 개수만큼
@@ -286,6 +292,11 @@ export default function Sidebar({
     window.dispatchEvent(new CustomEvent("tb:open-palette"));
   }
 
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    window.location.href = "/login";
+  }
+
   const isLead = user.role === "lead";
   const cur = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -322,7 +333,8 @@ export default function Sidebar({
           경계를 **메뉴로** 보인다. 여기 있는 것은 기본적으로 내 것이다. */}
       <nav className="navgrp" aria-label="내 공간">
         <div className="navgrp-l">내 공간</div>
-        <NavLink href="/tasks" icon={IC.tasks} label="내 업무" current={cur("/tasks") && !sp.get("area")} />
+        <NavLink href="/tasks" icon={IC.tasks} label="내 업무"
+          current={cur("/tasks") && sp.get("assignee") !== "all"} />
         <NavLink href="/goals?tab=personal" icon={IC.goal} label="내 목표"
           current={pathname === "/goals" && tab === "personal"} />
         <NavLink href="/notes" icon={IC.report} label="메모" current={cur("/notes")} />
@@ -365,18 +377,26 @@ export default function Sidebar({
         {/* 프로젝트 — 예전에는 영역 아래 트리로 펼쳐 놨다. 사이드바가 데이터 개수만큼
             길어지면 내비게이션이 아니라 목록이 된다 (§B2). 여기서는 입구만 준다. */}
         <NavLink href="/projects" icon={IC.project} label="프로젝트" current={cur("/projects")} />
-        {/* 업무 — 담당 필터 없이 팀 전체. 「내 업무」와 같은 화면의 다른 조건이다. */}
-        <NavLink href="/tasks?assignee=" icon={IC.tasks} label="업무"
-          current={cur("/tasks") && sp.get("assignee") === ""} />
+        {/* 업무 — 담당 필터 없이 팀 전체. 「내 업무」와 같은 화면의 다른 조건이다.
+            빈 파라미터(`?assignee=`)가 아니라 **명시값**을 쓴다 (B-12).
+            빈 값은 "지정 안 함"과 "전체"를 구별하지 못하고, 주소도 지저분하다. */}
+        <NavLink href="/tasks?assignee=all" icon={IC.tasks} label="업무"
+          current={cur("/tasks") && sp.get("assignee") === "all"} />
         <NavLink href="/calendar" icon={IC.calendar} label="캘린더"
           current={pathname === "/calendar" && mineParam !== "1"} />
+        {/* 타임라인 — 업무 일정을 보는 팀 기능이다 (B1-b). 캘린더 옆이 자리다.
+            토큰이 없으면 서버가 "/" 로 튕기므로 **메뉴 자체를 그리지 않는다** —
+            눌러도 홈으로 돌아오는 링크를 남기지 않는다. */}
+        {notionConnected && (
+          <NavLink href="/timeline" icon={IC.external} label="타임라인" current={cur("/timeline")} />
+        )}
         <NavLink href="/signals" icon={IC.signal} label="논의·결정" current={cur("/signals")} />
+        <NavLink href="/huddle" icon={IC.huddle} label="허들룸" current={cur("/huddle")} />
         {/* 활동 — @멘션·답글·공유 인박스. 미확인 배지 */}
         <NavLink href="/activity" icon={IC.bell} label="활동" current={cur("/activity")}
           count={notif > 0 ? notif : undefined} dot={notif === 0 && sysNotif > 0} />
         {/* 승인 대기 — 사람/에이전트 공간의 유일한 통로 */}
         <NavLink href="/inbox" icon={IC.inbox} label="승인 대기" current={cur("/inbox")} count={inboxCount} />
-        <NavLink href="/huddle" icon={IC.huddle} label="허들룸" current={cur("/huddle")} />
         <NavLink href="/reports" icon={IC.report} label="월간 보고" current={cur("/reports")} />
       </nav>
 
@@ -388,31 +408,35 @@ export default function Sidebar({
           <span className="gname">관리</span>
           <Chevron />
         </summary>
-        <NavLink href="/handover" icon={IC.handover} label="인수인계" current={cur("/handover")} />
-        <NavLink href="/assistant" icon={IC.bot} label="내 에이전트" current={cur("/assistant")} />
         {isLead && (
           <>
             <NavLink href="/members" icon={IC.members} label="구성원" current={cur("/members")} />
             <NavLink href="/status" icon={IC.status} label="업무 현황" current={cur("/status")} />
-            <NavLink href="/settings" icon={IC.settings} label="설정" current={cur("/settings")} />
-            {/* Notion 타임라인 — 미연결이면 숨김 (파트 Z) */}
-            {notionConnected && (
-              <NavLink href="/timeline" icon={IC.external} label="Notion 타임라인" current={cur("/timeline")} />
-            )}
           </>
         )}
+        <NavLink href="/handover" icon={IC.handover} label="인수인계" current={cur("/handover")} />
+        <NavLink href="/assistant" icon={IC.bot} label="내 에이전트" current={cur("/assistant")} />
       </details>
 
       <div className="sp" />
 
-      {/* 계정 블록 클릭 → 개별 프로필 (로그아웃은 프로필 화면 상단) */}
-      <Link className="acct" href="/profile" aria-current={cur("/profile") ? "page" : undefined} title="내 프로필">
-        <span className="av">{user.name.slice(0, 1)}</span>
-        <div>
-          <b>{user.name}</b>
-          <span>{user.role === "lead" ? "LEAD" : user.role.toUpperCase()} · 프로필</span>
+      {/* 계정 블록 — 이름 · 프로필 · 설정 · 로그아웃 한 덩어리 (B1-a).
+          설정은 팀장 전용이 아니다. 「관리」가 기본 접힘이라 거기 있으면 팀원이 못 찾는다.
+          개인에 관한 것은 개인 자리에 둔다. */}
+      <div className="acctblk">
+        <Link className="acct" href="/profile" aria-current={cur("/profile") ? "page" : undefined} title="내 프로필">
+          <span className="av">{user.name.slice(0, 1)}</span>
+          <div>
+            <b>{user.name}</b>
+            <span>{user.role === "lead" ? "LEAD" : user.role.toUpperCase()}</span>
+          </div>
+        </Link>
+        <div className="acct-a">
+          <Link className="acct-l" href="/profile" aria-current={cur("/profile") ? "page" : undefined}>프로필</Link>
+          <Link className="acct-l" href="/settings" aria-current={cur("/settings") ? "page" : undefined}>설정</Link>
+          <button className="acct-l" onClick={logout}>로그아웃</button>
         </div>
-      </Link>
+      </div>
     </aside>
   );
 }

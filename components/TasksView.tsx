@@ -105,6 +105,9 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const fArea = fAreas.length === 1 ? String(fAreas[0]) : "";   // 새 업무 프리셋용 (하나일 때만 의미가 있다)
   const areaParam = fAreas.join(",");
   const [fProject, setFProject] = useState("");
+  // 담당 필터. `""` 는 "전체 담당"이다.
+  // URL 에서는 빈 값 대신 **`all`** 을 쓴다 (B-12) — 빈 파라미터는 "지정 안 함"과
+  // 구별되지 않고, `?assignee=` 라는 껍데기가 주소에 남는다.
   const [fAssignee, setFAssignee] = useState(String(user.id));
   const [fStatus, setFStatus] = useState("");
   const [fDue, setFDue] = useState("");
@@ -137,7 +140,9 @@ export default function TasksView({ user }: { user: SessionUser }) {
     const filters: Record<string, string> = {};
     if (areaParam) filters.area = areaParam;
     if (fProject) filters.project = fProject;
-    if (fAssignee) filters.assignee = fAssignee;
+    // 저장할 때도 "전체 담당"을 명시한다. 빼먹으면 복원 시 기본값(본인)으로 돌아가
+    // 저장한 것과 다른 화면이 뜬다.
+    filters.assignee = fAssignee || "all";
     if (fStatus) filters.status = fStatus;
     if (fDue) filters.due = fDue;
     if (fBlocked) filters.blocked = "1";
@@ -242,7 +247,13 @@ export default function TasksView({ user }: { user: SessionUser }) {
   // "내 업무" 진입 = 담당 본인 + 영역 본인 (한 번만 적용, 이후엔 사용자 선택 존중).
   useEffect(() => {
     if (areaDefaulted) return;
-    const urlArea = new URLSearchParams(window.location.search).get("area");
+    const sp0 = new URLSearchParams(window.location.search);
+    // 담당 — `all` 이면 전체 담당(빈 문자열). 숫자면 그 사람. 없으면 기본값(본인) 유지.
+    const urlAssignee = sp0.get("assignee");
+    if (urlAssignee === "all") setFAssignee("");
+    else if (urlAssignee && Number.isInteger(Number(urlAssignee))) setFAssignee(urlAssignee);
+
+    const urlArea = sp0.get("area");
     if (urlArea) {
       const ids = urlArea.split(",").map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n > 0);
       if (ids.length) { setFAreas(ids); setAreaDefaulted(true); }
@@ -362,7 +373,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
     const set = (k: string, v: string | null) => (v ? sp.set(k, v) : sp.delete(k));
     set("area", areaParam || null);
     set("project", fProject || null);
-    set("assignee", fAssignee || null);
+    set("assignee", fAssignee || "all");
     set("status", fStatus || null);
     set("due", fDue || null);
     set("blocked", fBlocked ? "1" : null);

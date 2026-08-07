@@ -3,7 +3,7 @@
     "route": "/",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/home.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "section.tile.hero",
@@ -71,7 +71,7 @@
     "route": "/tasks",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/tasks.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "section.card",
@@ -150,7 +150,7 @@
         "h": 577
       }
     ],
-    "btnCount": 28,
+    "btnCount": 36,
     "misaligned": [],
     "coralFill": [],
     "boxy": [],
@@ -193,7 +193,7 @@
     "route": "/projects",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/projects.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "div.top",
@@ -206,12 +206,12 @@
         "h": 78
       },
       {
-        "el": "div.pgrid",
+        "el": "div.pg-filters.areafilter-row",
         "w": 1104,
-        "h": 109
+        "h": 36
       }
     ],
-    "btnCount": 5,
+    "btnCount": 13,
     "misaligned": [],
     "coralFill": [],
     "boxy": [],
@@ -242,7 +242,7 @@
     "route": "/projects/1",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/projects_1.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "div.pws-ov",
@@ -358,7 +358,7 @@
     "route": "/signals",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/signals.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "div.sig-wrap",
@@ -419,7 +419,7 @@
     "route": "/signals?tab=decision",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/signals_tab_decision.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "section.card.dlog",
@@ -474,7 +474,7 @@
     "route": "/inbox",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/inbox.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "div.inbox-demo",
@@ -535,7 +535,7 @@
     "route": "/activity",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/activity.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "div.actv-body",
@@ -645,7 +645,7 @@
     "route": "/assistant",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/assistant.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "div.tile.ma-credit",
@@ -767,7 +767,7 @@
     "route": "/handover",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/handover.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "div.rp-cols",
@@ -828,7 +828,7 @@
     "route": "/members",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/members.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "section.card",
@@ -883,7 +883,7 @@
     "route": "/settings",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/settings.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "div.top",
@@ -944,7 +944,7 @@
     "route": "/saved",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/saved.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "div.empty-state",
@@ -1005,7 +1005,7 @@
     "route": "/notes",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/notes.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "div.empty-state",
@@ -1060,7 +1060,7 @@
     "route": "/profile",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/profile.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "div.top",
@@ -1115,7 +1115,7 @@
     "route": "/status",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/status.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "div.an-wrap",
@@ -1170,7 +1170,7 @@
     "route": "/areas/1",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-026/sweep/areas_1.png",
-    "scrollHeight": 950,
+    "scrollHeight": 987,
     "biggest": [
       {
         "el": "section.card",
