@@ -7,6 +7,9 @@ import PageShell from "./PageShell";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import EmptyState from "./EmptyState";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
 
 interface ListItem {
   id: number; title: string; status: string; area_id: number | null; area_name: string | null;
@@ -50,10 +53,19 @@ export default function HandoverView({ user }: { user: SessionUser }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  // 첫 목록이 오기 전에 빈 상태를 띄우면 "문서가 없다"고 잘못 말하게 된다 (MD-P-2026-026 §A-4)
+  const [loading, setLoading] = useState(true);
+  const [listError, setListError] = useState("");
 
   const loadList = useCallback(async () => {
-    const res = await fetch("/api/handover");
-    if (res.ok) { const d = await res.json(); setMine(d.mine ?? []); setShared(d.shared ?? []); }
+    const res = await fetch("/api/handover").catch(() => null);
+    if (res && res.ok) {
+      const d = await res.json();
+      setMine(d.mine ?? []); setShared(d.shared ?? []); setListError("");
+    } else {
+      setListError("인수인계 목록을 불러오지 못했어요");
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => { loadList(); }, [loadList]);
@@ -140,21 +152,35 @@ export default function HandoverView({ user }: { user: SessionUser }) {
       title="인수인계 자료"
       subtitle={<>담당 업무를 넘길 때 필요한 문서를 만들고, 준비되면 공유하세요. PDF로 내보낼 수 있습니다.</>}
       actions={
-        <button className="btn-primary no-print" onClick={create} disabled={busy}>＋ 새 인수인계</button>
+        // 전체 빈 상태가 떠 있으면 그 안의 CTA 가 같은 동작을 한다 — 코랄 버튼 하나 규칙 (§B)
+        !loading && !listError && mine.length === 0 && shared.length === 0
+          ? undefined
+          : <button className="btn-primary no-print" onClick={create} disabled={busy}>＋ 새 인수인계</button>
       }
     >
     <div className="hv pg-legacy">
       <div className="wrap">
 
+        {/* A-a — 좌우 분할은 **볼 것이 있을 때만** 그린다 (MD-P-2026-026 §A).
+            예전에는 문서가 0건이어도 좌우가 그려져서, 좌측 "아직 문서가 없어요" 와
+            우측 "문서를 선택하세요" 라는 빈 상태 두 개가 같은 화면에 동시에 떴다.
+            고를 것이 없는데 고르라고 말하는 화면이었다. */}
+        {loading && <Skeleton variant="page" />}
+        {!loading && listError && <ErrorNote message={listError} onRetry={loadList} />}
+
+        {!loading && !listError && mine.length === 0 && shared.length === 0 ? (
+          <EmptyState
+            icon="handover"
+            title="아직 인수인계 문서가 없어요"
+            hint="담당 업무를 넘길 때 필요한 내용을 문서로 정리하세요. 연결한 업무의 제목·상태·기한·자료가 자동으로 삽입되고, PDF로 내보낼 수 있어요."
+            action={<button className="btn-primary" onClick={create} disabled={busy}>＋ 새 인수인계</button>}
+          />
+        ) : !loading && !listError ? (
         <div className="rp-cols">
           <aside className="rp-side no-print">
             <div className="ho-sec-h">내 인수인계 <span>{mine.length}</span></div>
             {mine.length === 0 && (
-              // 빈 상태에서 바로 시작할 수 있게 CTA를 안에 둔다 (MD-P-2026-013)
-              <div className="gempty">
-                <p>아직 문서가 없어요.</p>
-                <button className="btn small" onClick={create} disabled={busy}>＋ 새 인수인계</button>
-              </div>
+              <SectionEmpty text="내가 만든 문서가 없어요" action={{ label: "새 인수인계 →", onClick: create }} />
             )}
             {mine.map((h) => {
               const shared_ = h.status === "shared";
@@ -171,7 +197,7 @@ export default function HandoverView({ user }: { user: SessionUser }) {
             })}
 
             <div className="ho-sec-h" style={{ marginTop: 16 }}>공유받은 문서 <span>{shared.length}</span></div>
-            {shared.length === 0 && <p className="gempty">공유받은 문서가 없습니다.</p>}
+            {shared.length === 0 && <SectionEmpty text="공유받은 문서가 없어요" />}
             {shared.map((h) => (
               <button key={h.id} className={`ho-item${selectedId === h.id ? " on" : ""}`} onClick={() => setSelectedId(h.id)}>
                 <span className="led s-done" aria-hidden="true" />
@@ -186,14 +212,14 @@ export default function HandoverView({ user }: { user: SessionUser }) {
 
           <main className="rp-main">
             {!detail && (
-              <div className="rp-empty-center no-print">
-                <EmptyState icon="handover" title="문서를 선택하세요" hint="왼쪽에서 문서를 고르거나 새 인수인계를 만드세요." />
+              <div className="no-print">
+                <SectionEmpty text="왼쪽에서 문서를 고르거나 새 인수인계를 만드세요" action={{ label: "새 인수인계 →", onClick: create }} />
               </div>
             )}
 
             {detail && draft && (
               <>
-                {error && <p className="gerr no-print">{error}</p>}
+                {error && <div className="no-print"><ErrorNote message={error} onRetry={() => selectedId != null && loadDetail(selectedId)} /></div>}
                 {notice && <p className="rp-notice no-print">{notice}</p>}
 
                 {canEdit ? (
@@ -218,7 +244,7 @@ export default function HandoverView({ user }: { user: SessionUser }) {
                     <div className="tform-r">
                       <label>담당 업무 선택 (선택한 업무의 제목·상태·기한·자료가 문서에 삽입됩니다)</label>
                       <div className="ho-tasks">
-                        {selTasks.length === 0 && <p className="gempty">선택할 업무가 없습니다.</p>}
+                        {selTasks.length === 0 && <SectionEmpty text="선택할 업무가 없어요" />}
                         {selTasks.map((t) => (
                           <label key={t.id} className="ho-task-pick">
                             <input type="checkbox" checked={draft.taskIds.includes(t.id)} onChange={() => toggleTask(t.id)} />
@@ -257,11 +283,11 @@ export default function HandoverView({ user }: { user: SessionUser }) {
                   {(canEdit ? draft.content : detail.handover.content).trim() ? (
                     <pre className="ho-body">{canEdit ? draft.content : detail.handover.content}</pre>
                   ) : (
-                    <p className="ho-empty no-print">본문을 입력하면 여기에 표시됩니다.</p>
+                    <SectionEmpty text="본문을 입력하면 여기에 표시됩니다" />
                   )}
 
                   <h2 className="ho-h2">담당 업무 ({detail.linkedTasks.length})</h2>
-                  {detail.linkedTasks.length === 0 && <p className="ho-empty">연결된 업무가 없습니다.</p>}
+                  {detail.linkedTasks.length === 0 && <SectionEmpty text="연결된 업무가 없어요" />}
                   {detail.linkedTasks.map((t) => (
                     <div className="ho-task" key={t.id}>
                       <div className="ho-task-h">
@@ -286,6 +312,7 @@ export default function HandoverView({ user }: { user: SessionUser }) {
             )}
           </main>
         </div>
+        ) : null}
       </div>
     </div>
     </PageShell>

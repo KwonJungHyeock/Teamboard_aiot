@@ -5,15 +5,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/types";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
+import Skeleton from "./Skeleton";
+import { notifySavedViewsChanged } from "@/lib/saved-views-events";
+import ErrorNote from "./ErrorNote";
 import PageShell from "./PageShell";
 import TaskBoard from "./TaskBoard";
 import TaskCalendar from "./TaskCalendar";
 import TaskGantt from "./TaskGantt";
-import { toast, openQuickCreate } from "@/lib/quick";
+import { toast } from "@/lib/quick";
 import {
   type TaskItem, type TaskLens, type BoardGroup, LENS_LABEL, GROUP_LABEL, dueLabel,
 } from "@/lib/task-view";
-import { openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
+import { openTaskPanel, openNewTaskModal, TASK_UPDATED_EVENT } from "@/lib/task-panel";
+import InlineTaskInput from "./InlineTaskInput";
+import BulkBar from "./BulkBar";
+import ProjectCombo from "./ProjectCombo";
 
 interface AreaOption {
   id: number;
@@ -93,8 +99,18 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [search, setSearch] = useState("");
 
   // 필터 (영역 · 프로젝트 · 담당 · 상태 · 기한). 담당 기본값=본인 → "내 업무" 진입.
-  const [fArea, setFArea] = useState("");
+  //
+  // 영역은 **여러 개**를 고를 수 있다 (MD-P-2026-027 §B2).
+  // 사이드바에서 영역 7개를 내리고 여기 칩으로 옮겼다 — 사이드바는 "어디로 갈까"이고
+  // 영역은 "무엇을 볼까"라서 필터가 맞는 자리다.
+  // URL 은 `?area=2,3` 으로 쓴다. 링크로 공유·북마크된다.
+  const [fAreas, setFAreas] = useState<number[]>([]);
+  const fArea = fAreas.length === 1 ? String(fAreas[0]) : "";   // 새 업무 프리셋용 (하나일 때만 의미가 있다)
+  const areaParam = fAreas.join(",");
   const [fProject, setFProject] = useState("");
+  // 담당 필터. `""` 는 "전체 담당"이다.
+  // URL 에서는 빈 값 대신 **`all`** 을 쓴다 (B-12) — 빈 파라미터는 "지정 안 함"과
+  // 구별되지 않고, `?assignee=` 라는 껍데기가 주소에 남는다.
   const [fAssignee, setFAssignee] = useState(String(user.id));
   const [fStatus, setFStatus] = useState("");
   const [fDue, setFDue] = useState("");
@@ -105,14 +121,82 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [areaDefaulted, setAreaDefaulted] = useState(false);
   const isMine = fAssignee === String(user.id);
 
-  // 새 업무 — 단일 흐름: 빠른 생성 팝오버(현재 영역·담당 프리셋). 별도 생성 시트 없음.
-  const quickNew = useCallback((e: React.MouseEvent) => {
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    openQuickCreate(
-      { x: r.left, y: r.bottom + 6 },
-      { areaId: fArea ? Number(fArea) : undefined, assigneeId: isMine ? user.id : undefined }
-    );
+  // 새 업무 — 등록 모달 (MD-P-2026-027 §C). 지금 필터(영역·담당)를 프리셋으로 물려준다.
+  const quickNew = useCallback(() => {
+    openNewTaskModal({ areaId: fArea ? Number(fArea) : undefined, assigneeId: isMine ? user.id : undefined });
   }, [fArea, isMine, user.id]);
+
+  // ── §D3 다중 선택 → 프로젝트 일괄 지정 ──
+  // 일괄 지정 줄은 목표 미연결 화면이 쓰던 BulkBar 를 그대로 쓴다. 새로 만들지 않는다.
+  const [checked, setChecked] = useState<Set<number>>(new Set());
+  const [bulkProject, setBulkProject] = useState<number | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const toggleCheck = useCallback((id: number) => setChecked((prev) => {
+    const n = new Set(prev);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    return n;
+  }), []);
+
+  async function assignProject() {
+    const ids = Array.from(checked);
+    if (ids.length === 0 || bulkBusy) return;
+    setBulkBusy(true);
+    let ok = 0;
+    const failed: string[] = [];
+    for (const id of ids) {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: bulkProject }),
+      }).catch(() => null);
+      if (res && res.ok) ok += 1;
+      else failed.push(String((res && (await res.json().catch(() => ({}))).error) || "실패"));
+    }
+    setBulkBusy(false);
+    setChecked(new Set());
+    // 몇 건이 왜 안 됐는지 말한다. 개인 업무는 프로젝트에 못 들어가므로 실제로 갈린다.
+    if (ok === 0) toast(failed[0] ?? "지정하지 못했어요", "err");
+    else if (failed.length > 0) toast(`${ok}건 지정 · ${failed.length}건 실패 — ${failed[0]}`, "err");
+    else toast(bulkProject === null ? `${ok}건의 프로젝트 연결을 해제했어요` : `${ok}건을 프로젝트에 지정했어요`);
+    load();
+  }
+
+  /**
+   * 지금 필터를 저장된 뷰로 만든다 (§B3).
+   * 저장하는 것은 **URL 에 담기는 조건 그대로**다 — 그래야 뷰를 눌렀을 때
+   * 지금 화면과 같은 것이 뜬다. 화면 상태와 저장 형식이 다르면 반드시 어긋난다.
+   */
+  const [savingView, setSavingView] = useState(false);
+  async function saveCurrentView() {
+    const name = window.prompt("이 조건에 붙일 이름")?.trim();
+    if (!name) return;
+    setSavingView(true);
+    const filters: Record<string, string> = {};
+    if (areaParam) filters.area = areaParam;
+    if (fProject) filters.project = fProject;
+    // 저장할 때도 "전체 담당"을 명시한다. 빼먹으면 복원 시 기본값(본인)으로 돌아가
+    // 저장한 것과 다른 화면이 뜬다.
+    filters.assignee = fAssignee || "all";
+    if (fStatus) filters.status = fStatus;
+    if (fDue) filters.due = fDue;
+    if (fBlocked) filters.blocked = "1";
+    if (sortBy !== "due") filters.sort = sortBy;
+    if (showDone) filters.done = "1";
+    const res = await fetch("/api/saved-views", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, target: "tasks", filters }),
+    }).catch(() => null);
+    setSavingView(false);
+    const d = res ? await res.json().catch(() => null) : null;
+    if (!res || !res.ok) { toast(d?.error ?? "저장하지 못했어요", "err"); return; }
+    notifySavedViewsChanged();
+    toast(`"${name}" 뷰를 저장했어요`);
+  }
+
+  /** 영역 칩 토글. 다중 선택이고, 전부 끄면 "전체 영역"이다. */
+  function toggleArea(id: number) {
+    setAreaDefaulted(true);
+    setFAreas((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id].sort((a, b) => a - b)));
+  }
 
   // 뷰(렌즈) 전환 — 마지막 뷰·그룹 기준 기억(localStorage)
   const [lens, setLens] = useState<TaskLens>("sheet");
@@ -142,7 +226,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const load = useCallback(async () => {
     try {
       const qs = new URLSearchParams();
-      if (fArea) qs.set("area", fArea);
+      if (areaParam) qs.set("area", areaParam);
       if (fProject) qs.set("project", fProject);
       if (fAssignee) qs.set("assignee", fAssignee);
       if (fStatus) qs.set("status", fStatus);
@@ -160,7 +244,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
     } finally {
       setLoading(false);
     }
-  }, [fArea, fProject, fAssignee, fStatus, fDue, fBlocked]);
+  }, [areaParam, fProject, fAssignee, fStatus, fDue, fBlocked]);
 
   // 셀렉트 룩업은 목록과 분리된 /api/meta/selectors에서 (Phase 8 D-3)
   const loadSelectors = useCallback(async () => {
@@ -196,12 +280,18 @@ export default function TasksView({ user }: { user: SessionUser }) {
   // "내 업무" 진입 = 담당 본인 + 영역 본인 (한 번만 적용, 이후엔 사용자 선택 존중).
   useEffect(() => {
     if (areaDefaulted) return;
-    const urlArea = new URLSearchParams(window.location.search).get("area");
+    const sp0 = new URLSearchParams(window.location.search);
+    // 담당 — `all` 이면 전체 담당(빈 문자열). 숫자면 그 사람. 없으면 기본값(본인) 유지.
+    const urlAssignee = sp0.get("assignee");
+    if (urlAssignee === "all") setFAssignee("");
+    else if (urlAssignee && Number.isInteger(Number(urlAssignee))) setFAssignee(urlAssignee);
+
+    const urlArea = sp0.get("area");
     if (urlArea) {
-      setFArea(urlArea);
-      setAreaDefaulted(true);
+      const ids = urlArea.split(",").map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n > 0);
+      if (ids.length) { setFAreas(ids); setAreaDefaulted(true); }
     } else if (myAreaIds.length > 0) {
-      setFArea(String(myAreaIds[0]));
+      setFAreas([myAreaIds[0]]);
       setAreaDefaulted(true);
     }
   }, [myAreaIds, areaDefaulted]);
@@ -314,9 +404,9 @@ export default function TasksView({ user }: { user: SessionUser }) {
     if (loading) return;
     const sp = new URLSearchParams(window.location.search);
     const set = (k: string, v: string | null) => (v ? sp.set(k, v) : sp.delete(k));
-    set("area", fArea || null);
+    set("area", areaParam || null);
     set("project", fProject || null);
-    set("assignee", fAssignee || null);
+    set("assignee", fAssignee || "all");
     set("status", fStatus || null);
     set("due", fDue || null);
     set("blocked", fBlocked ? "1" : null);
@@ -324,7 +414,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
     set("done", showDone ? "1" : null);
     const qs = sp.toString();
     window.history.replaceState({}, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
-  }, [loading, fArea, fProject, fAssignee, fStatus, fDue, fBlocked, sortBy, showDone]);
+  }, [loading, areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, sortBy, showDone]);
 
   const rows: TaskTableRow[] = useMemo(() => {
     return filteredTasks
@@ -350,6 +440,13 @@ export default function TasksView({ user }: { user: SessionUser }) {
       });
   }, [filteredTasks, today, goalTitleOf]);
 
+  /**
+   * 전체 빈 상태가 떠 있는가 (MD-P-2026-026 §A).
+   * 그때는 빈 상태 안의 CTA 가 헤더 액션과 **같은 동작**을 한다.
+   * 코랄 버튼을 둘 두면 어느 것이 지금 할 일인지 알 수 없다 (§B 주 액션 1개).
+   */
+  const emptyNow = !loading && !error && lens === "sheet" && rows.length === 0;
+
   const hiddenDone = tasks.filter((t) => t.status === "done" || t.status === "dropped").length;
 
   return (
@@ -361,7 +458,10 @@ export default function TasksView({ user }: { user: SessionUser }) {
       subtitle={isMine
         ? "담당이 나인 업무만 보고 있습니다. 담당을 ‘전체 담당’으로 바꾸면 전체를 조회합니다."
         : "에이전트 제안은 인박스에서 승인해야 목록·홈·캘린더에 반영됩니다."}
-      actions={<button className="btn-primary" onClick={quickNew}>＋ 새 업무</button>}
+      // 코랄 채움은 화면당 1개다 (§B).
+      //  · 전체 빈 상태가 떠 있으면 그 안의 CTA 가 같은 동작을 한다 → 헤더는 숨긴다
+      //  · 일괄 지정 줄이 떠 있으면 지금의 주 액션은 "선택 업무에 지정" 이다 → 헤더는 숨긴다
+      actions={emptyNow || checked.size > 0 ? undefined : <button className="btn-primary" onClick={quickNew}>＋ 새 업무</button>}
       tabs={(["sheet", "board", "calendar", "timeline"] as TaskLens[]).map((v) => ({ key: v, label: LENS_LABEL[v] }))}
       activeTab={lens}
       onTab={(k) => pickLens(k as TaskLens)}
@@ -369,10 +469,16 @@ export default function TasksView({ user }: { user: SessionUser }) {
         <>
           <input className="tsearch" placeholder="업무·프로젝트·담당 검색"
             value={search} onChange={(e) => setSearch(e.target.value)} />
-          <select value={fArea} onChange={(e) => { setFArea(e.target.value); setAreaDefaulted(true); }}>
-            <option value="">전체 영역</option>
-            {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          {/* 영역 칩 — 다중 선택. 색 점은 사이드바에서 쓰던 영역 색을 그대로 쓴다 (§B2) */}
+          <button className={`pg-chip${fAreas.length === 0 ? " on" : ""}`}
+            onClick={() => { setFAreas([]); setAreaDefaulted(true); }}>전체 영역</button>
+          {areas.map((a) => (
+            <button key={a.id} className={`pg-chip area-chip${fAreas.includes(a.id) ? " on" : ""}`}
+              aria-pressed={fAreas.includes(a.id)} onClick={() => toggleArea(a.id)}>
+              <i className={`pjdot ${a.colorKey ?? "team"}`} />
+              {a.name}
+            </button>
+          ))}
           <select value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
             <option value="">전체 담당</option>
             {actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -382,6 +488,11 @@ export default function TasksView({ user }: { user: SessionUser }) {
           </select>
           <button className={`pg-chip${showDone ? " on" : ""}`} onClick={() => toggleDone(!showDone)}>
             완료 포함
+          </button>
+          {/* 지금 조건에 이름을 붙여 저장한다 (§B3). 저장된 뷰는 「내 공간」 아래 핀으로 붙는다.
+              버튼이 아니라 텍스트 링크다 — 화면의 주 액션이 아니다. */}
+          <button className="lk tv-savefilter" onClick={saveCurrentView} disabled={savingView}>
+            이 조건 저장
           </button>
         </>
       }
@@ -434,27 +545,61 @@ export default function TasksView({ user }: { user: SessionUser }) {
           </div>
         )}
 
-        {loading && <p className="gempty">불러오는 중...</p>}
-        {error && <p className="gerr">{error}</p>}
-        {!loading && lens === "sheet" && (
-          <TaskTable
-            rows={rows}
-            title={isMine ? "내 업무" : "업무 목록"}
-            sub={`${rows.length}건`}
-            emptyText="아직 업무가 없어요"
-            emptyHint="상단 필터를 조정하거나, 새 업무를 만들어 시작하세요."
-            emptyAction={
-              <button className="btn small primary" onClick={quickNew}>
-                ＋ 새 업무
-              </button>
-            }
-            variant="full"
-            quickComplete
-            onStatusChange={changeStatus}
-            onRowClick={(id) => openTaskPanel(id)}
-          />
+        {loading && <Skeleton variant="list" />}
+        {error && <ErrorNote message="업무를 불러오지 못했어요" cause={error} onRetry={load} />}
+        {!loading && !error && lens === "sheet" && (
+          <>
+            {/* §C3 — 목록 맨 위 한 줄 입력. Enter 즉시 생성, ⌘Enter 모달 확장.
+                빠른 입력을 없애지 않는다. 대부분의 업무는 제목 한 줄이면 충분하다. */}
+            <InlineTaskInput
+              prefill={{ areaId: fArea ? Number(fArea) : undefined, assigneeId: isMine ? user.id : undefined }}
+              onCreated={load}
+            />
+            {/* §D3 — 체크한 업무의 프로젝트를 한 번에 지정한다.
+                고른 것이 없으면 줄 자체를 그리지 않는다 — 늘 떠 있으면 목록이 밀린다. */}
+            {checked.size > 0 && (
+              <BulkBar count={checked.size} total={rows.length} onClear={() => setChecked(new Set())}>
+                <span className="tv-bulk-l">프로젝트</span>
+                <ProjectCombo
+                  value={bulkProject}
+                  projects={projects}
+                  areaId={fArea ? Number(fArea) : undefined}
+                  canCreate={user.role === "lead"}
+                  placeholder="프로젝트 선택…"
+                  onChange={setBulkProject}
+                  onCreated={(p) => setProjects((cur) => [...cur, p])}
+                />
+                <button className="btn-primary" disabled={bulkBusy} onClick={assignProject}>
+                  {bulkBusy ? "지정 중…" : "선택 업무에 지정"}
+                </button>
+              </BulkBar>
+            )}
+            <TaskTable
+              rows={rows}
+              title={isMine ? "내 업무" : "업무 목록"}
+              sub={`${rows.length}건`}
+              emptyScope="full"
+              emptyText="아직 업무가 없어요"
+              emptyHint="상단 필터를 조정하거나, 새 업무를 만들어 시작하세요."
+              emptyAction={
+                <button className="btn small primary" onClick={quickNew}>
+                  ＋ 새 업무
+                </button>
+              }
+              variant="full"
+              quickComplete
+              selectable
+              checked={checked}
+              onToggleCheck={toggleCheck}
+              onToggleAll={() =>
+                setChecked((prev) => (rows.every((r) => prev.has(r.id)) ? new Set() : new Set(rows.map((r) => r.id))))
+              }
+              onStatusChange={changeStatus}
+              onRowClick={(id) => openTaskPanel(id)}
+            />
+          </>
         )}
-        {!loading && lens === "board" && (
+        {!loading && !error && lens === "board" && (
           <TaskBoard
             tasks={filteredTasks}
             today={today}
@@ -464,8 +609,8 @@ export default function TasksView({ user }: { user: SessionUser }) {
             onMove={moveTask}
           />
         )}
-        {!loading && lens === "calendar" && <TaskCalendar tasks={filteredTasks} today={today} />}
-        {!loading && lens === "timeline" && <TaskGantt tasks={filteredTasks} today={today} actors={actors} />}
+        {!loading && !error && lens === "calendar" && <TaskCalendar tasks={filteredTasks} today={today} />}
+        {!loading && !error && lens === "timeline" && <TaskGantt tasks={filteredTasks} today={today} actors={actors} />}
 
         {/* 완료를 감춘 이유와 되돌리는 길을 목록 아래에 남긴다 (§E) */}
         {!showDone && hiddenDone > 0 && (

@@ -9,17 +9,21 @@ import Link from "next/link";
 import type { SessionUser } from "@/lib/types";
 import type { TaskItem } from "@/lib/task-view";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
+import InlineTaskInput from "./InlineTaskInput";
 import TaskBoard from "./TaskBoard";
 import PageShell from "./PageShell";
 import ProjectCanvas from "./ProjectCanvas";
 import DecisionLog from "./DecisionLog";
-import EmptyState from "./EmptyState";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
 import ResourceLinks from "./ResourceLinks";
-import { openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
+import { openNewTaskModal, openTaskPanel, TASK_UPDATED_EVENT } from "@/lib/task-panel";
 import { SIDE_PANEL_EVENT, currentPanel, openPanel } from "@/lib/side-panel";
 import { SIGNAL_CHANGED_EVENT } from "@/lib/collab-events";
-import { openQuickCreate, toast } from "@/lib/quick";
+import { toast } from "@/lib/quick";
 import { dday } from "@/lib/task-view";
+import { pfill } from "@/lib/progress-bar";
 
 const TABS = [
   ["overview", "개요"],
@@ -163,8 +167,8 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
     };
   }), [fullTasks, data?.today]);
 
-  if (error) return <div className="hv"><div className="wrap"><p className="gerr">{error}</p></div></div>;
-  if (!data) return <div className="hv"><div className="wrap"><p className="gempty">불러오는 중...</p></div></div>;
+  if (error) return <div className="hv"><div className="wrap"><ErrorNote message="프로젝트를 불러오지 못했어요" cause={error} onRetry={load} /></div></div>;
+  if (!data) return <div className="hv"><div className="wrap"><Skeleton variant="page" /></div></div>;
   const p = data.project;
 
   return (
@@ -229,7 +233,8 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
             )}
           </span>
           {!readOnly && (
-            <button className="btn-primary" onClick={(e) => openQuickCreate({ x: e.clientX - 300, y: e.clientY + 10 }, { areaId: p.areaId ?? undefined })}>
+            <button className="btn-primary"
+              onClick={() => openNewTaskModal({ projectId, areaId: p.areaId ?? undefined })}>
               ＋ 업무
             </button>
           )}
@@ -258,7 +263,7 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
             <section className="card pws-ov-card">
               <div className="pws-ov-h">진척 롤업</div>
               <div className="pws-prog">
-                <div className="pws-prog-track"><i style={{ width: `${Math.max(p.progress ?? 0, 2)}%` }} /></div>
+                <div className="pws-prog-track"><i style={pfill(Math.max(p.progress ?? 0, 2))} /></div>
                 <span className="pws-prog-v num">{p.progress === null ? "집계 없음" : `${p.progress}%`}</span>
               </div>
               {/* 진척 근거 — 분모를 그대로 보여준다. 기간 가중은 폐지됐다 (MD-P-2026-024 회신 ③) */}
@@ -267,7 +272,7 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
 
             <section className="card pws-ov-card">
               <div className="pws-ov-h">다가오는 마감 <span className="num">{data.upcoming.length}</span></div>
-              {data.upcoming.length === 0 ? <p className="pws-ov-none">예정된 마감이 없어요.</p> : (
+              {data.upcoming.length === 0 ? <SectionEmpty text="예정된 마감이 없어요" /> : (
                 <ul className="pws-list">
                   {data.upcoming.map((t) => (
                     <li key={t.id}>
@@ -281,7 +286,7 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
 
             <section className="card pws-ov-card">
               <div className="pws-ov-h">미해결 논의 <span className="num">{data.openDiscussions}</span></div>
-              {data.openDiscussions === 0 ? <p className="pws-ov-none">미해결 논의가 없어요.</p> : (
+              {data.openDiscussions === 0 ? <SectionEmpty text="미해결 논의가 없어요" /> : (
                 <ul className="pws-list">
                   {data.discussions.filter((d) => d.open).slice(0, 3).map((d) => (
                     <li key={d.id}>
@@ -301,7 +306,7 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
 
             <section className="card pws-ov-card wide">
               <div className="pws-ov-h">최근 활동</div>
-              {data.activity.length === 0 ? <p className="pws-ov-none">기록된 활동이 없어요.</p> : (
+              {data.activity.length === 0 ? <SectionEmpty text="기록된 활동이 없어요" /> : (
                 <ul className="pws-act">
                   {data.activity.map((a) => (
                     <li key={a.id}><span className="num">{a.created_at.slice(5, 16).replace("T", " ")}</span>{a.message}</li>
@@ -322,10 +327,22 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
               </div>
             </div>
             {taskView === "table" ? (
-              <TaskTable rows={rows} title="업무" variant="full"
-                emptyText="이 프로젝트에 업무가 없어요"
-                emptyHint="＋ 업무로 첫 항목을 추가하세요."
-                onRowClick={(id) => openTaskPanel(id)} />
+              <>
+                <TaskTable rows={rows} title="업무" variant="full"
+                  emptyScope="section"
+                  emptyText="이 프로젝트에 업무가 없어요"
+                  onRowClick={(id) => openTaskPanel(id)} />
+                {/* §D2 — 목록 맨 아래 한 줄 입력. 여기서 만들면 프로젝트가 자동으로 붙는다.
+                    "연결"이라는 별도 행위를 없애는 것이 목적이다. 보관된 프로젝트에는 그리지 않는다. */}
+                {!readOnly && (
+                  <InlineTaskInput
+                    className="under"
+                    prefill={{ projectId, areaId: p.areaId ?? undefined }}
+                    placeholder={`${p.name} 에 업무 추가 — Enter, ⌘Enter 로 자세히`}
+                    onCreated={async () => { await loadTasks(); await load(); }}
+                  />
+                )}
+              </>
             ) : (
               <TaskBoard tasks={fullTasks} today={data.today} group="status"
                 areas={p.areaId ? [{ id: p.areaId, name: p.areaName ?? "", colorKey: p.areaColor }] : []}
@@ -346,8 +363,8 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
         {tab === "discussions" && (
           <section className="card pws-disc" aria-label="논의">
             {data.discussions.length === 0 ? (
-              <EmptyState icon="chat" title="이 프로젝트의 논의가 없어요" hint="논의·결정에서 프로젝트를 지정하면 여기에 모입니다."
-                action={<Link className="btn small" href="/signals">논의·결정으로</Link>} />
+              <SectionEmpty text="이 프로젝트의 논의가 없어요 — 논의·결정에서 프로젝트를 지정하면 여기에 모입니다"
+                action={{ label: "논의·결정으로 →", href: "/signals" }} />
             ) : (
               <div className="pws-dlist">
                 {data.discussions.map((d) => (

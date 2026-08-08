@@ -1,11 +1,27 @@
 "use client";
 
-// 공통 사이드바 (Phase 2) — 그룹 구조는 SPEC 4.3 + 발주 지시 기준 (프로토타입은 밀도·스타일 참조)
-// 그룹: 내 작업 / 목표·보고 / 프로젝트(동적) / 협업 / 관리(lead)
-import { useEffect, useState } from "react";
+// 공통 사이드바 — 세 묶음 (MD-P-2026-027 §B1)
+//
+//   내 공간 : 내 업무 · 내 목표 · 메모 · 내 캘린더 · 저장됨  (+ 저장된 뷰 핀)
+//   팀     : 홈 · 목표 · 프로젝트 · 업무 · 캘린더 · 타임라인 · 논의·결정 ·
+//            허들룸 · 활동 · 승인 대기 · 월간 보고
+//   관리   : 구성원 · 업무 현황 · 인수인계 · 내 에이전트     ← 기본 접힘
+//   하단   : 계정 · 프로필 · 설정 · 로그아웃
+//
+// 설정은 「관리」에 두지 않는다 (§B 회신 B1-a). 팀장 전용이 아닌데
+// 「관리」가 기본 접힘이라 팀원이 못 찾는다. 계정 블록이 개인 설정의 자리다.
+// Notion 타임라인도 「관리」가 아니다 (B1-b) — 업무 일정을 보는 팀 기능이다.
+//
+// **업무 영역 7개를 사이드바에서 뺐다** (§B2). 영역은 "어디로 갈까"가 아니라
+// "무엇을 볼까"라서 /tasks 필터 칩이 맞는 자리다. 사이드바가 데이터 개수만큼
+// 길어지면 내비게이션이 아니라 목록이 된다.
+// 프로젝트 트리도 같은 이유로 내렸다 — 「팀 › 프로젝트」 한 줄로 들어간다.
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import type { AreaWithProjects, SessionUser } from "@/lib/types";
+import type { SessionUser } from "@/lib/types";
+import { viewHref, type SavedView } from "@/lib/saved-views";
+import { SAVED_VIEWS_EVENT } from "@/lib/saved-views-events";
 
 const RAIL_KEY = "tb.rail";
 
@@ -87,6 +103,11 @@ const IC = {
       <path d="M14 4h6v6" />
       <path d="M20 4 11 13" />
       <path d="M19 14v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" />
+    </>
+  ),
+  project: (
+    <>
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
     </>
   ),
   handover: (
@@ -172,6 +193,11 @@ function NavLink({
   );
 }
 
+/** 핀에 붙는 화면 표시 — 같은 이름의 뷰가 화면마다 있을 수 있어 어느 화면 것인지 밝힌다. */
+const VIEW_TARGET_LABEL: Record<SavedView["target"], string> = {
+  tasks: "업무", goals: "목표", activity: "활동",
+};
+
 const Chevron = () => (
   <svg className="cv" viewBox="0 0 24 24" aria-hidden="true">
     <path d="M9 6l6 6-6 6" />
@@ -180,12 +206,10 @@ const Chevron = () => (
 
 export default function Sidebar({
   user,
-  areas,
   inboxCount,
   notionConnected = true,
 }: {
   user: SessionUser;
-  areas: AreaWithProjects[];
   inboxCount: number;
   notionConnected?: boolean;
 }) {
@@ -198,16 +222,37 @@ export default function Sidebar({
   const [rail, setRail] = useState(false);
   const [notif, setNotif] = useState(0);         // 사람 안읽음 (배지 숫자)
   const [sysNotif, setSysNotif] = useState(0);  // 시스템 안읽음 (점만)
-  // B: 업무 영역 아코디언 — 하위 프로젝트 접기/펼치기. 디폴트 닫힘.
-  const [openAreas, setOpenAreas] = useState<Record<number, boolean>>({});
-  // 보관된 프로젝트는 트리에서 숨기고 토글로만 노출 (MD-P-2026-005 §D·F)
-  const [showArchived, setShowArchived] = useState(false);
-  const toggleArea = (id: number) => setOpenAreas((p) => ({ ...p, [id]: !p[id] }));
-  // 활성 하위 항목이 있는 영역은 자동 펼침(사용자 토글은 보존)
+  // 저장된 뷰 — 「내 공간」 아래 핀으로 붙는다 (§B3). 항상 개인이다.
+  const [views, setViews] = useState<SavedView[]>([]);
+  const [dragId, setDragId] = useState<number | null>(null);
+
+  const loadViews = useCallback(() => {
+    fetch("/api/saved-views")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setViews((d.views ?? []).filter((v: SavedView) => v.isPinned)))
+      .catch(() => {});
+  }, []);
+  useEffect(() => { loadViews(); }, [loadViews]);
   useEffect(() => {
-    const active = areas.find((a) => a.projects?.some((p) => pathname.startsWith(`/projects/${p.id}`)));
-    if (active) setOpenAreas((prev) => (prev[active.id] ? prev : { ...prev, [active.id]: true }));
-  }, [pathname, areas]);
+    window.addEventListener(SAVED_VIEWS_EVENT, loadViews);
+    return () => window.removeEventListener(SAVED_VIEWS_EVENT, loadViews);
+  }, [loadViews]);
+
+  /** 드래그로 순서 변경 — 놓는 순간 전체 순서를 한 번에 보낸다. */
+  function dropOn(targetId: number) {
+    if (dragId === null || dragId === targetId) return;
+    const next = views.slice();
+    const from = next.findIndex((v) => v.id === dragId);
+    const to = next.findIndex((v) => v.id === targetId);
+    if (from < 0 || to < 0) return;
+    next.splice(to, 0, next.splice(from, 1)[0]);
+    setViews(next);                      // 낙관적 — 놓자마자 자리가 잡혀야 한다
+    setDragId(null);
+    fetch("/api/saved-views", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: next.map((v) => v.id) }),
+    }).catch(() => loadViews());         // 실패하면 서버 값으로 되돌린다
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem(RAIL_KEY) === "1";
@@ -247,11 +292,12 @@ export default function Sidebar({
     window.dispatchEvent(new CustomEvent("tb:open-palette"));
   }
 
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    window.location.href = "/login";
+  }
+
   const isLead = user.role === "lead";
-  // 보관 프로젝트 필터 — 토글이 꺼져 있으면 트리에서 숨긴다
-  const visibleProjects = (area: AreaWithProjects) =>
-    (area.projects ?? []).filter((p) => showArchived || p.status !== "archived");
-  const hasArchived = areas.some((a) => (a.projects ?? []).some((p) => p.status === "archived"));
   const cur = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
@@ -282,19 +328,43 @@ export default function Sidebar({
         <kbd>⌘K</kbd>
       </button>
 
-      {/* ── 내 공간 (MD-P-2026-025 §A1) ─────────────────────────────
+      {/* ── 내 공간 (MD-P-2026-025 §A1 · 027 §B1) ───────────────────
           무언가 적을 때마다 "이걸 올리면 남들이 보나?"를 판단하지 않아도 되도록
           경계를 **메뉴로** 보인다. 여기 있는 것은 기본적으로 내 것이다. */}
       <nav className="navgrp" aria-label="내 공간">
         <div className="navgrp-l">내 공간</div>
-        <NavLink href="/tasks" icon={IC.tasks} label="내 업무" current={cur("/tasks")} />
+        <NavLink href="/tasks" icon={IC.tasks} label="내 업무"
+          current={cur("/tasks") && sp.get("assignee") !== "all"} />
         <NavLink href="/goals?tab=personal" icon={IC.goal} label="내 목표"
           current={pathname === "/goals" && tab === "personal"} />
-        {/* §C·§D 완료 — "준비 중" 꼬리표를 뗐다 (D-3) */}
         <NavLink href="/notes" icon={IC.report} label="메모" current={cur("/notes")} />
         <NavLink href="/calendar?mine=1" icon={IC.calendar} label="내 캘린더"
           current={pathname === "/calendar" && mineParam === "1"} />
         <NavLink href="/saved" icon={IC.bookmark} label="저장됨" current={cur("/saved")} />
+
+        {/* 저장된 뷰 핀 (§B3) — 항상 개인이다. 공유 옵션을 만들지 않는다.
+            드래그로 순서를 바꾼다. 놓는 순간 전체 순서를 한 번에 저장한다. */}
+        {views.length > 0 && (
+          <div className="pinviews" role="list" aria-label="저장된 뷰">
+            {views.map((v) => (
+              <div
+                key={v.id}
+                role="listitem"
+                className={`pinview${dragId === v.id ? " dragging" : ""}`}
+                draggable
+                onDragStart={() => setDragId(v.id)}
+                onDragEnd={() => setDragId(null)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => dropOn(v.id)}
+              >
+                <Link href={viewHref(v)} title={`${VIEW_TARGET_LABEL[v.target]} · ${v.name}`}>
+                  <span className="pinview-t">{VIEW_TARGET_LABEL[v.target]}</span>
+                  <span className="pinview-n">{v.name}</span>
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
       </nav>
 
       {/* ── 팀 ──────────────────────────────────────────────────────
@@ -304,154 +374,69 @@ export default function Sidebar({
         <NavLink href="/" icon={IC.home} label="홈" current={cur("/")} />
         <NavLink href="/goals" icon={IC.goal} label="목표"
           current={pathname === "/goals" && tab !== "personal"} />
+        {/* 프로젝트 — 예전에는 영역 아래 트리로 펼쳐 놨다. 사이드바가 데이터 개수만큼
+            길어지면 내비게이션이 아니라 목록이 된다 (§B2). 여기서는 입구만 준다. */}
+        <NavLink href="/projects" icon={IC.project} label="프로젝트" current={cur("/projects")} />
+        {/* 업무 — 담당 필터 없이 팀 전체. 「내 업무」와 같은 화면의 다른 조건이다.
+            빈 파라미터(`?assignee=`)가 아니라 **명시값**을 쓴다 (B-12).
+            빈 값은 "지정 안 함"과 "전체"를 구별하지 못하고, 주소도 지저분하다. */}
+        <NavLink href="/tasks?assignee=all" icon={IC.tasks} label="업무"
+          current={cur("/tasks") && sp.get("assignee") === "all"} />
         <NavLink href="/calendar" icon={IC.calendar} label="캘린더"
           current={pathname === "/calendar" && mineParam !== "1"} />
-        {/* 승인 대기 — 사람/에이전트 공간의 유일한 통로. 카운트 배지 */}
-        <NavLink href="/inbox" icon={IC.inbox} label="승인 대기" current={cur("/inbox")} count={inboxCount} />
-        {/* 활동 — @멘션·답글·공유 인박스 (MD-P-2026-006 §G, 구 "알림"). 미확인 배지 */}
-        <NavLink href="/activity" icon={IC.bell} label="활동" current={cur("/activity")}
-          count={notif > 0 ? notif : undefined} dot={notif === 0 && sysNotif > 0} />
-        <NavLink href="/assistant" icon={IC.bot} label="내 에이전트" current={cur("/assistant")} />
-      </nav>
-
-      <details className="grp" open>
-        <summary>
-          <SecIcon d={SEC.work} tone="work" />
-          <span className="gname">업무 영역</span>
-          <Chevron />
-        </summary>
-        {/* 영역 7종 나열, 각 영역 아래 소속 프로젝트를 들여쓰기로 표시 (is_active=false 는 서버에서 제외) */}
-        {areas.map((area) =>
-          area.kind === "link_only" ? (
-            // link_only — 업무 공간 없이 Notion 링크만 (파트 0). 새 탭.
-            <a
-              key={area.id}
-              className="arealink"
-              href={area.notion_url ?? "#"}
-              target="_blank"
-              rel="noreferrer"
-              aria-disabled={area.notion_url ? undefined : true}
-              title={area.notion_url ? "Notion에서 열기" : "링크 미설정"}
-            >
-              <span className={`pjdot ${area.color_key ?? "team"}`} />
-              <span>{area.name} <em className="ext-tag">(링크)</em></span>
-              <svg className="ext-ic" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M14 4h6v6" />
-                <path d="M20 4 12 12" />
-                <path d="M19 13v6a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6" />
-              </svg>
-            </a>
-          ) : (
-            (() => {
-              const hasSub = visibleProjects(area).length > 0;
-              const open = !!openAreas[area.id];
-              return (
-                <div key={area.id} className="area-grp">
-                  <div className="area-row">
-                    <Link
-                      className="area-link"
-                      href={`/areas/${area.id}`}
-                      aria-current={pathname === `/areas/${area.id}` ? "page" : undefined}
-                    >
-                      <span className={`pjdot ${area.color_key ?? "team"}`} />
-                      <span>{area.name}</span>
-                    </Link>
-                    {hasSub && (
-                      <button
-                        className={`area-cv${open ? " open" : ""}`}
-                        onClick={() => toggleArea(area.id)}
-                        aria-label={open ? "하위 접기" : "하위 펼치기"}
-                        aria-expanded={open}
-                      >
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
-                      </button>
-                    )}
-                  </div>
-                  {hasSub && open && visibleProjects(area).map((project) => (
-                    <Link
-                      key={project.id}
-                      className={`subproj${project.status === "archived" ? " arch" : ""}`}
-                      href={`/projects/${project.id}`}
-                      aria-current={cur(`/projects/${project.id}`) ? "page" : undefined}
-                      title={project.status === "archived" ? "보관됨" : undefined}
-                    >
-                      <span className={`pjdot ${project.color_key ?? "team"}`} />
-                      <span>{project.name}</span>
-                      {(project.open_discussions ?? 0) > 0 && (
-                        <span className="subproj-n">{project.open_discussions}</span>
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              );
-            })()
-          )
+        {/* 타임라인 — 업무 일정을 보는 팀 기능이다 (B1-b). 캘린더 옆이 자리다.
+            토큰이 없으면 서버가 "/" 로 튕기므로 **메뉴 자체를 그리지 않는다** —
+            눌러도 홈으로 돌아오는 링크를 남기지 않는다. */}
+        {notionConnected && (
+          <NavLink href="/timeline" icon={IC.external} label="타임라인" current={cur("/timeline")} />
         )}
-        {hasArchived && (
-          <button className="arch-toggle" onClick={() => setShowArchived((v) => !v)} aria-pressed={showArchived}>
-            {showArchived ? "보관됨 숨기기" : "보관됨 보기"}
-          </button>
-        )}
-        <Link className="moreln" href="/projects">
-          전체 프로젝트 →
-        </Link>
-      </details>
-
-      <details className="grp" open>
-        <summary>
-          <SecIcon d={SEC.goal} tone="goal" />
-          <span className="gname">성과</span>
-          <Chevron />
-        </summary>
-        {/* 목표는 §A1 에서 "내 목표"(내 공간)와 "목표"(팀)로 갈라 위로 올렸다. */}
-        {/* 성과 리포트는 전원 조회 가능 (MD-P-2026-010 §F) — 승인 보고서 탭만 팀장 전용 */}
-        <NavLink href="/reports" icon={IC.report} label="월간 보고" current={cur("/reports")} />
-      </details>
-
-      <details className="grp" open>
-        <summary>
-          <SecIcon d={SEC.collab} tone="collab" />
-          <span className="gname">협업</span>
-          <Chevron />
-        </summary>
-        {/* 시그널 → 표기만 "논의·결정" (코드/테이블은 signal 유지) */}
         <NavLink href="/signals" icon={IC.signal} label="논의·결정" current={cur("/signals")} />
         <NavLink href="/huddle" icon={IC.huddle} label="허들룸" current={cur("/huddle")} />
-        <NavLink href="/handover" icon={IC.handover} label="인수인계" current={cur("/handover")} />
-      </details>
+        {/* 활동 — @멘션·답글·공유 인박스. 미확인 배지 */}
+        <NavLink href="/activity" icon={IC.bell} label="활동" current={cur("/activity")}
+          count={notif > 0 ? notif : undefined} dot={notif === 0 && sysNotif > 0} />
+        {/* 승인 대기 — 사람/에이전트 공간의 유일한 통로 */}
+        <NavLink href="/inbox" icon={IC.inbox} label="승인 대기" current={cur("/inbox")} count={inboxCount} />
+        <NavLink href="/reports" icon={IC.report} label="월간 보고" current={cur("/reports")} />
+      </nav>
 
-      {isLead && (
-        <details className="grp">
-          <summary>
-            <SecIcon d={SEC.admin} tone="admin" />
-            <span className="gname">관리</span>
-            <Chevron />
-          </summary>
-          <NavLink href="/status" icon={IC.status} label="업무 현황" current={cur("/status")} />
-          <NavLink href="/members" icon={IC.members} label="구성원" current={cur("/members")} />
-          <NavLink href="/settings" icon={IC.settings} label="설정" current={cur("/settings")} />
-          {/* Notion 타임라인 — 미연결이면 숨김 (파트 Z) */}
-          {notionConnected && (
-            <NavLink
-              href="/timeline"
-              icon={IC.external}
-              label="Notion 타임라인"
-              current={cur("/timeline")}
-            />
-          )}
-        </details>
-      )}
+      {/* ── 관리 (기본 접힘) ─────────────────────────────────────────
+          매일 쓰는 것이 아니다. 펼쳐 두면 위 두 묶음이 밀린다. */}
+      <details className="grp">
+        <summary>
+          <SecIcon d={SEC.admin} tone="admin" />
+          <span className="gname">관리</span>
+          <Chevron />
+        </summary>
+        {isLead && (
+          <>
+            <NavLink href="/members" icon={IC.members} label="구성원" current={cur("/members")} />
+            <NavLink href="/status" icon={IC.status} label="업무 현황" current={cur("/status")} />
+          </>
+        )}
+        <NavLink href="/handover" icon={IC.handover} label="인수인계" current={cur("/handover")} />
+        <NavLink href="/assistant" icon={IC.bot} label="내 에이전트" current={cur("/assistant")} />
+      </details>
 
       <div className="sp" />
 
-      {/* 계정 블록 클릭 → 개별 프로필 (로그아웃은 프로필 화면 상단) */}
-      <Link className="acct" href="/profile" aria-current={cur("/profile") ? "page" : undefined} title="내 프로필">
-        <span className="av">{user.name.slice(0, 1)}</span>
-        <div>
-          <b>{user.name}</b>
-          <span>{user.role === "lead" ? "LEAD" : user.role.toUpperCase()} · 프로필</span>
+      {/* 계정 블록 — 이름 · 프로필 · 설정 · 로그아웃 한 덩어리 (B1-a).
+          설정은 팀장 전용이 아니다. 「관리」가 기본 접힘이라 거기 있으면 팀원이 못 찾는다.
+          개인에 관한 것은 개인 자리에 둔다. */}
+      <div className="acctblk">
+        <Link className="acct" href="/profile" aria-current={cur("/profile") ? "page" : undefined} title="내 프로필">
+          <span className="av">{user.name.slice(0, 1)}</span>
+          <div>
+            <b>{user.name}</b>
+            <span>{user.role === "lead" ? "LEAD" : user.role.toUpperCase()}</span>
+          </div>
+        </Link>
+        <div className="acct-a">
+          <Link className="acct-l" href="/profile" aria-current={cur("/profile") ? "page" : undefined}>프로필</Link>
+          <Link className="acct-l" href="/settings" aria-current={cur("/settings") ? "page" : undefined}>설정</Link>
+          <button className="acct-l" onClick={logout}>로그아웃</button>
         </div>
-      </Link>
+      </div>
     </aside>
   );
 }

@@ -4,6 +4,8 @@
 import { useCallback, useEffect, useState } from "react";
 import PageShell from "./PageShell";
 import type { SessionUser } from "@/lib/types";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
 
 interface Member {
   id: number;
@@ -83,7 +85,7 @@ function NewMemberForm({ onCreated }: { onCreated: (tempPw: string, email: strin
           </select>
         </div>
       </div>
-      {error && <p className="gerr">{error}</p>}
+      {error && <ErrorNote message={error} />}
       <div className="tform-a">
         <button className="gbtn" disabled={busy || !displayName.trim() || !email.trim()} onClick={submit}>
           계정 발급 · 에이전트 생성
@@ -153,14 +155,14 @@ export default function MemberManager({ user }: { user: SessionUser }) {
           </section>
         )}
 
-        {error && <p className="gerr">{error}</p>}
+        {error && <ErrorNote message={error} onRetry={load} />}
 
         <section className="card">
           <div className="ch">
             <h2>구성원 목록</h2>
             <span className="sub">{members.length}명</span>
           </div>
-          {loading && <p className="gempty">불러오는 중...</p>}
+          {loading && <Skeleton variant="list" />}
           <table>
             <colgroup>
               <col style={{ width: "24%" }} />

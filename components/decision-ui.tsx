@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "@/lib/quick";
 import { openPanel } from "@/lib/side-panel";
+import SectionEmpty from "./SectionEmpty";
 
 export interface Decision {
   id: number;
@@ -109,7 +110,7 @@ export function DecisionConfirm({
         <div className="dcf-f">
           <span>연결 업무 <em>선택</em></span>
           <div className="dcf-tasks">
-            {tasks.length === 0 && <p className="dcf-none">연결할 업무가 없어요.</p>}
+            {tasks.length === 0 && <SectionEmpty text="연결할 업무가 없어요" />}
             {tasks.map((t) => (
               <label key={t.id} className={`dcf-task${taskIds.includes(t.id) ? " on" : ""}`}>
                 <input type="checkbox" checked={taskIds.includes(t.id)}

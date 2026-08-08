@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "id": "01-filters",
+      "note": "URL ?area=1,2 로 진입 — 켜진 영역 칩 \"R&D · 플랫폼\""
+    },
+    {
+      "id": "02-pinned",
+      "note": "저장 후 사이드바 핀 \"실측 뷰 A · 실측 뷰 B\""
+    },
+    {
+      "id": "03-restored",
+      "note": "핀 클릭 → /tasks?area=1%2C2&done=1&assignee=1 · 켜진 칩 \"\""
+    },
+    {
+      "id": "04-reordered",
+      "note": "순서 변경 후 핀 \"실측 뷰 B · 실측 뷰 A\" (변경 전 \"실측 뷰 A · 실측 뷰 B\")"
+    }
+  ],
+  "jsErrors": []
+}

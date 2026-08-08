@@ -5,6 +5,8 @@
 // 확정(lead) → 논의·결정(signal) 레코드 자동 생성. 실시간 반영은 4초 폴링(허들룸 채널 재사용).
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionUser } from "@/lib/types";
+import { AttachButton, DropZone } from "./Attach";
+import { pfill } from "@/lib/progress-bar";
 
 interface ReviewComment { id: number; author: string; body: string; createdAt: string }
 interface Item {
@@ -38,7 +40,7 @@ function ImageSlot({
 
   const handleFile = useCallback(async (file: File) => {
     setBusy(true); setErr("");
-    try { onSet(await uploadImage(file)); }
+    try { onSet(await uploadImage(file)); setErr(""); }
     catch (e) { setErr(e instanceof Error ? e.message : "업로드 실패"); }
     finally { setBusy(false); }
   }, [onSet]);
@@ -60,34 +62,40 @@ function ImageSlot({
   return (
     <div className="rv-slot">
       <div className="rv-slot-h">{label}</div>
-      <div
-        className={`rv-drop${url ? " has" : ""}`}
-        tabIndex={canEdit ? 0 : -1}
-        onPaste={onPaste}
-        onDragOver={(e) => canEdit && e.preventDefault()}
-        onDrop={onDrop}
-        onClick={() => url && onZoom(url)}
-        role={url ? "button" : undefined}
-        title={url ? "클릭하면 확대" : undefined}
-      >
-        {busy ? (
-          <span className="rv-drop-hint">업로드 중…</span>
-        ) : url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt={label} />
-        ) : (
-          <span className="rv-drop-hint">{canEdit ? "⌘/Ctrl+V · 드롭 · 파일" : "이미지 없음"}</span>
-        )}
-      </div>
+      <DropZone onFile={handleFile} disabled={!canEdit}>
+        <div
+          className={`rv-drop${url ? " has" : ""}`}
+          tabIndex={canEdit ? 0 : -1}
+          onPaste={onPaste}
+          onClick={() => url && onZoom(url)}
+          role={url ? "button" : undefined}
+          title={url ? "클릭하면 확대" : undefined}
+        >
+          {busy ? (
+            // 업로드 중 = 정적 스켈레톤 (§B-2). "업로드 중…" 글자를 쓰지 않는다
+            <span className="rv-drop-skel" role="status" aria-label="업로드 중" />
+          ) : url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt={label} />
+          ) : (
+            <span className="rv-drop-hint">{canEdit ? "붙여넣기 · 드롭 · 파일" : "이미지 없음"}</span>
+          )}
+        </div>
+      </DropZone>
       {canEdit && (
         <div className="rv-slot-a">
-          <button className="btn small" onClick={() => fileRef.current?.click()} disabled={busy}>파일</button>
+          <AttachButton onFile={handleFile} busy={busy} />
           {url && <button className="btn small" onClick={() => onSet(null)} disabled={busy}>지우기</button>}
-          <input ref={fileRef} type="file" accept="image/*" hidden
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
         </div>
       )}
-      {err && <span className="rv-err">{err}</span>}
+      {err && (
+        <div className="atc atc-err" role="alert">
+          <p>이미지를 올리지 못했어요.<em> {err}</em></p>
+          <button className="err-retry" type="button" onClick={() => fileRef.current?.click()}>다시 시도</button>
+        </div>
+      )}
+      <input ref={fileRef} type="file" accept="image/*" hidden
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
     </div>
   );
 }
@@ -180,7 +188,7 @@ export default function ReviewSession({
           <b>{d?.title ?? "불러오는 중…"}</b>
           {d && <span className="rv-st">확정 {d.progress.done}/{d.progress.total}</span>}
         </div>
-        <div className="rv-prog"><i style={{ width: `${pct}%` }} /></div>
+        <div className="rv-prog"><i style={pfill(pct)} /></div>
         <button className="btn" onClick={onClose}>세션 종료</button>
       </div>
 

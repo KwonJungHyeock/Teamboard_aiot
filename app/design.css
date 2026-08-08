@@ -35,7 +35,7 @@
 /* 필터 칩 26px */
 .pg-chip { height: 26px; padding: 0 10px; border-radius: 4px; border: 1px solid var(--line);
   background: var(--surface); color: var(--ink2); font-family: inherit; font-size: 11.5px; font-weight: 600;
-  cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: background .12s ease, border-color .12s ease; }
+  cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out); }
 .pg-chip:hover { background: var(--surface-2); }
 .pg-chip.on { border-color: var(--coral); color: var(--coral-text); background: var(--coral-bg); }
 .pg-filters select, .pg-filters input { height: 26px; border-radius: 4px; border: 1px solid var(--line);
@@ -47,8 +47,62 @@
 .btn-primary:hover { background: var(--coral); }
 .btn-ghost { height: 30px; padding: 0 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface);
   color: var(--ink2); font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
-  transition: background .12s ease; }
+  transition: background-color var(--dur-1) var(--ease-out); }
 .btn-ghost:hover { background: var(--surface-2); }
+
+/* ── §B-1 버튼·컨트롤 규격 통일 (MD-P-2026-026) ──
+   레거시 `.hv` 층(app/home.css)에 라운드 6/8/10/14/18 · 글자 11/12px 이 남아 있었다.
+   지금까지의 규격 덮어쓰기는 전부 `.pg-body` 안으로 스코프돼 있어서,
+   PageShell 을 쓰지 않는 화면(/areas/{id} 등)은 규격 밖 값을 그대로 그렸다.
+   여기서는 **레거시 스코프까지 함께** 잡는다 — 같은 무게(0,2,x)에 design.css 가 뒤에 실린다. */
+/* 텍스트 링크 버튼 — 클래스는 있는데 스타일이 `.hv` 안에만 있어서
+   PageShell 화면에서는 **브라우저 기본 회색 각진 박스**로 그려지고 있었다.
+   /projects/1 "＋ 링크" · /signals 결정 "원본 논의 →" · /activity "저장" 여섯 자리. */
+.lk, :is(.hv, .pg-body, .pg-head, .pg-filters, .tdp, .gpanel, .doc) .lk {
+  background: 0; border: 0; padding: 0; cursor: pointer; font-family: inherit;
+  font-size: 11.5px; font-weight: 600; color: var(--edu-text); }
+.lk:hover { text-decoration: underline; }
+.lk:disabled { opacity: .5; cursor: default; text-decoration: none; }
+a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
+.drow-link { font-size: 12.5px; }
+
+/* 세그먼트 (보기 전환) — `.lk` 와 같은 문제였다. 스타일이 `.hv` 안에만 있어서
+   PageShell 화면(/activity 등)에서는 브라우저 기본 버튼 두 개가 떠 있었다. */
+.seg, :is(.hv, .pg-body) .seg {
+  display: inline-flex; align-items: center; gap: 2px; padding: 2px;
+  border-radius: 9px; background: var(--surface-2); border: 1px solid var(--line); }
+.seg button, :is(.hv, .pg-body) .seg button {
+  height: 22px; padding: 0 10px; border: 0; background: 0; cursor: pointer;
+  border-radius: 7px; font-family: inherit; font-size: 11.5px; font-weight: 600;
+  color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
+.seg button[aria-pressed="true"], :is(.hv, .pg-body) .seg button[aria-pressed="true"] {
+  background: var(--surface); color: var(--ink); box-shadow: var(--e1); }
+
+/* 보조 버튼 — r6 · 12px · h28 → 7 · 12.5px · h30 (.btn-ghost 와 같은 치수) */
+:is(.hv, .pg-body) .gbtn { height: 30px; border-radius: 7px; font-size: 12.5px; }
+:is(.hv, .pg-body) :is(.gedit select, .gedit input) { border-radius: 7px; font-size: 12.5px; height: 30px; }
+
+/* 영역 화면 탭 — r18 · 11px 은 어느 규격에도 없다. 필터 칩(.pg-chip)과 같은 치수로. */
+:is(.hv, .pg-body) .tab { border-radius: 4px; font-size: 11.5px; padding: 0 10px; height: 26px;
+  display: inline-flex; align-items: center; gap: 5px; }
+:is(.hv, .pg-body) .tab .n { font-size: 10.5px; margin-left: 0; }
+
+/* 전역 .btn — globals.css 가 r6 · 14px 로 잡고 있다. §G 는 r7 · 12.5px(작은 것은 11.5). */
+.btn, :is(.hv, .pg-body) .btn { border-radius: 7px; font-size: 12.5px; }
+.btn.small, :is(.hv, .pg-body) .btn.small { border-radius: 7px; font-size: 11.5px; }
+.btn-brand, .btn-outline, :is(.hv, .pg-body) :is(.btn-brand, .btn-outline) {
+  border-radius: 7px; font-size: 12.5px; }
+
+/* 결정 로그의 "원본 논의 →" — 색·굵기만 주고 배경·테두리를 안 껐다.
+   그래서 브라우저 기본 버튼(회색 각진 박스)이 그대로 보였다. */
+.drow-link { background: 0; border: 0; padding: 0; cursor: pointer; font-family: inherit; }
+.drow-link:hover { text-decoration: underline; }
+
+/* 허들룸 — r14/r8/r10 → 9/7/9, 11px → 11.5px */
+:is(.hv, .pg-body) .hud-card { border-radius: 9px; }
+:is(.hv, .pg-body) .hud-act { border-radius: 7px; }
+:is(.hv, .pg-body) .hud-add { border-radius: 9px; }
+:is(.hv, .pg-body) .hud-st { font-size: 11.5px; border-radius: 4px; }
 
 /* ── §C 목록 = 행 ── */
 .dl { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; box-shadow: var(--e1); }
@@ -57,7 +111,7 @@
   font-size: 10.5px; font-weight: 800; color: var(--muted); letter-spacing: .02em; }
 .dl-row { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 13px;
   border-bottom: 1px solid var(--hair); font-size: 12.5px; color: var(--ink);
-  transition: background .12s ease; position: relative; }
+  transition: background-color var(--dur-1) var(--ease-out); position: relative; }
 .dl-row:last-child { border-bottom: 0; }
 .dl-row.click { cursor: pointer; }
 .dl-row.click:hover { background: var(--surface-2); }
@@ -67,8 +121,6 @@
 .dl-c.num { font-family: var(--f-d); font-variant-numeric: tabular-nums; text-align: right; }
 .dl-head .dl-c.num { text-align: right; }
 
-.dl-led { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.dl-led i { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
 
 .dl-bar { display: inline-flex; align-items: center; gap: 7px; justify-content: flex-end; width: 100%; }
 .dl-bar i { display: block; width: 52px; height: 4px; border-radius: 999px; background: var(--track-bg); flex: 0 0 52px; overflow: hidden; }
@@ -76,14 +128,141 @@
 .dl-bar em { font-family: var(--f-d); font-variant-numeric: tabular-nums; font-size: 11.5px; font-style: normal; color: var(--ink2); min-width: 30px; text-align: right; }
 .dl-bar-na { color: var(--muted); }
 
-.dl-empty { padding: 32px 16px; text-align: center; }
-.dl-empty p { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
+/* ══════════════════════════════════════════════════════════════
+   §A 빈 상태 · 로딩 · 오류 (MD-P-2026-026)
 
-.dl-skel { padding: 0; }
-.dl-skel span { display: block; height: 38px; border-bottom: 1px solid var(--hair);
-  background: linear-gradient(90deg, var(--surface-2) 25%, var(--hair) 37%, var(--surface-2) 63%);
-  background-size: 400% 100%; animation: dlskel 1.2s ease infinite; }
-@keyframes dlskel { from { background-position: 100% 50%; } to { background-position: 0 50%; } }
+   셋은 **다른 상태**다. 예전에는 셋 다 `.gempty` 회색 한 줄이어서
+   "없다" · "아직이다" · "실패했다" 가 화면에서 구별되지 않았다.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 전체 빈 상태 — 화면 본문 전체가 비었을 때만 ──
+   §G: 아이콘 88px + 제목 + 설명 + CTA 4요소. 세로 가운데. 위아래 최소 48px. */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 6px; padding: 48px 20px; min-height: 320px;
+}
+.empty-state .es-illust { width: 88px; height: 88px; flex: 0 0 88px;
+  object-fit: contain; opacity: .85; margin-bottom: 6px; }
+.empty-state .es-title { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); }
+.empty-state .es-hint { margin: 0; font-size: 12.5px; color: var(--muted); max-width: 360px; line-height: 1.6; }
+.empty-state .es-action { margin-top: 10px; }
+/* 빈 상태 안에 놓인 생성기(연·월 선택 + 버튼) — 좁은 폭을 물려받아 글자가 잘리지 않게 한다.
+   /reports 에서 연도 select 가 "2026" 을 잘라 먹는 것을 캡처에서 발견했다. */
+.empty-state .es-action .rp-gen { display: flex; align-items: center; gap: 6px; }
+.empty-state .es-action select { height: 30px; width: auto; min-width: 84px; padding: 0 8px;
+  border: 1px solid var(--line); border-radius: 7px; background: var(--surface);
+  color: var(--ink2); font-family: inherit; font-size: 12.5px; }
+
+/* ── 섹션 빈 상태 — 화면의 한 블록만 비었을 때 ──
+   §G(확정 B-7): 아이콘 없음 · 한 줄 · 12.5px · var(--muted) · 38~56px · 텍스트 링크 하나 · 버튼 금지. */
+.sec-empty {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  min-height: 38px; padding: 10px 13px;
+  font-size: 12.5px; color: var(--muted); line-height: 1.5;
+}
+.sec-empty p { margin: 0; }
+.sec-empty-a {
+  background: 0; border: 0; padding: 0; margin: 0; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; font-weight: 600;
+  color: var(--ink2); text-decoration: underline; text-underline-offset: 2px;
+}
+.sec-empty-a:hover { color: var(--ink); }
+/* 목록 컨테이너 안에서는 행처럼 가운데 정렬 */
+.dl > .sec-empty { justify-content: center; }
+
+/* ── 로딩 = 정적 스켈레톤 (§A-4) ──
+   텍스트 금지 · 스피너 금지 · shimmer 금지. 움직이는 뼈대는 "곧 온다"가 아니라 "뭔가 돌고 있다"로 읽힌다. */
+.sk { display: block; }
+/* 도착할 목록은 카드 안에 들어온다 — 뼈대도 같은 껍데기를 써야 도착하는 순간 화면이 안 튄다 */
+.sk .sk-rows { display: flex; flex-direction: column; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 9px; box-shadow: var(--e1); }
+/* 이미 .dl 껍데기 안에 들어간 경우에는 껍데기를 두 번 그리지 않는다 */
+.dl .sk .sk-rows { border: 0; border-radius: 0; box-shadow: none; }
+.sk .sk-row { display: block; height: 38px; border-bottom: 1px solid var(--hair); background: var(--surface-2); }
+.sk .sk-row:last-child { border-bottom: 0; }
+.sk .sk-title { display: block; width: 180px; height: 19px; border-radius: 4px;
+  background: var(--surface-2); margin: 0 0 12px; }
+.sk .sk-block { display: block; width: 100%; min-height: 76px; border-radius: 9px; background: var(--surface-2); }
+/* 목록 껍데기(.dl) 안에 들어가면 테두리·라운드는 껍데기가 이미 갖고 있다 */
+.dl > .sk-list { margin: 0; }
+
+/* ── 오류 (§A-5) ──
+   아이콘 없음 · 한 문장 + "다시 시도" 텍스트 버튼. */
+.err-note { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  min-height: 38px; padding: 10px 13px; font-size: 12.5px; color: var(--ink2); }
+.err-note p { margin: 0; }
+.err-note em { font-style: normal; color: var(--muted); }
+.err-retry { background: 0; border: 0; padding: 0; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--coral-text);
+  text-decoration: underline; text-underline-offset: 2px; }
+.err-retry:hover { color: var(--coral-d); }
+
+/* ── §B-2 첨부 (MD-P-2026-026) ──
+   버튼·드롭 영역·업로드 중·실패를 한 벌로. 여섯 곳이 여섯 가지로 생겼던 것을 모은다. */
+
+/* 드롭 영역 — 평소엔 조용하다. 드래그가 들어와야 보인다. */
+.dz { position: relative; }
+.dz.on { outline: 2px dashed var(--coral); outline-offset: -2px; border-radius: 9px; }
+/* 덮개는 **반투명**이다. 불투명하게 덮으면 무엇 위에 놓는 중인지 안 보인다.
+   문구는 위쪽에 붙인다 — 드롭 영역이 길면 가운데는 화면 밖으로 나간다. */
+.dz-hint { position: absolute; inset: 0; z-index: 3; display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 20px; border-radius: 9px; pointer-events: none;
+  background: color-mix(in srgb, var(--coral-bg) 72%, transparent); }
+.dz-hint-l { background: var(--coral-d); color: #fff; font-size: 11.5px; font-weight: 700;
+  border-radius: 999px; padding: 5px 12px; box-shadow: var(--e2); }
+
+/* 진행·실패 한 줄 */
+.atc { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 8px 0; font-size: 12.5px; }
+.atc p { margin: 0; color: var(--ink2); }
+.atc em { font-style: normal; color: var(--muted); }
+.atc-name { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 업로드 중 = 정적 스켈레톤 타일. 스피너·shimmer 금지 (§A-4 와 같은 규칙) */
+.atc-skel { display: block; width: 56px; height: 38px; flex: 0 0 56px;
+  border-radius: 7px; background: var(--surface-2); border: 1px solid var(--hair); }
+.atc-x { margin-left: auto; width: 22px; height: 22px; border: 0; border-radius: 4px; background: 0;
+  color: var(--muted); cursor: pointer; font-size: 10.5px; }
+.atc-x:hover { background: var(--surface-2); color: var(--ink2); }
+/* 리뷰 세션 슬롯의 업로드 중 자리 — 도착할 이미지와 같은 크기의 정적 뼈대 */
+.rv-drop-skel { display: block; width: 100%; height: 100%; background: var(--surface-2); }
+/* 문서형 본문·캔버스의 이미지 자리 — 도착할 이미지와 같은 크기의 정적 뼈대 */
+:is(.doc-img-ph, .pcv-img-ph):not(.off) { display: block; min-height: 120px; border-radius: 7px;
+  background: var(--surface-2); border: 1px solid var(--hair); }
+
+/* ── §B2 영역 필터 칩 (MD-P-2026-027) ──
+   사이드바에서 내려온 영역 7개. 색 점은 사이드바에서 쓰던 영역 색 그대로다. */
+.pg-chip.area-chip { gap: 6px; }
+.tv-savefilter { margin-left: 4px; }
+/* 영역 칩 줄 — 상태 세그먼트와 다른 줄에 둔다 (프로젝트 화면은 PageShell 을 안 쓴다) */
+.areafilter-row { border-bottom: 0; padding: 0 0 10px; background: 0; }
+.pg-chip.area-chip .pjdot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
+
+/* ── §B3 저장된 뷰 핀 (사이드바 「내 공간」 아래) ──
+   다크 표면 위라 색은 사이드바 토큰을 따른다. */
+.side .pinviews { display: flex; flex-direction: column; gap: 1px; margin: 2px 0 0 26px; }
+.side .pinview a { display: flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 8px;
+  border-radius: 4px; color: var(--sb-ink2); font-size: 11.5px; text-decoration: none; }
+.side .pinview a:hover { background: rgba(255, 255, 255, .06); color: var(--sb-ink); }
+.side .pinview[draggable="true"] { cursor: grab; }
+.side .pinview.dragging { opacity: .5; }
+.side .pinview-t { flex: 0 0 auto; font-size: 10.5px; font-weight: 700; color: var(--sb-ink2);
+  background: rgba(255, 255, 255, .08); border-radius: 4px; padding: 1px 5px; }
+.side .pinview-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── 사이드바 하단 계정 블록 (MD-P-2026-027 §B 회신 B1-a) ──
+   이름 · 프로필 · 설정 · 로그아웃 한 덩어리. 개인에 관한 것은 개인 자리에 둔다. */
+.side .acctblk { display: flex; flex-direction: column; gap: 2px; }
+.side .acct-a { display: flex; align-items: center; gap: 2px; padding: 0 4px 2px; }
+.side .acct-l { flex: 1; min-width: 0; height: 26px; padding: 0 6px; border: 0; border-radius: 4px;
+  background: 0; cursor: pointer; font-family: inherit; font-size: 11.5px; font-weight: 600;
+  color: var(--sb-ink2); text-decoration: none; display: inline-flex; align-items: center;
+  justify-content: center; white-space: nowrap; }
+.side .acct-l:hover { background: rgba(255, 255, 255, .08); color: var(--sb-ink); }
+.side .acct-l[aria-current="page"] { background: rgba(255, 255, 255, .12); color: var(--sb-ink); }
+
+/* 화면에는 안 보이고 스크린리더에만 읽히는 문구 */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
 
 /* ── §G 공통 ── */
 /* 포커스 링 — 모든 인터랙티브 요소 */
@@ -93,8 +272,8 @@
   outline: 2px solid var(--coral); outline-offset: 2px; border-radius: 4px;
 }
 @media (prefers-reduced-motion: reduce) {
-  .pg-chip, .btn-ghost, .dl-row { transition: none; }
-  .dl-skel span { animation: none; background: var(--surface-2); }
+  .pg-chip, .btn-ghost, .dl-row { transition: none var(--dur-1) var(--ease-out); }
+  /* .sk 는 원래 정적이라 여기서 끌 애니메이션이 없다 (§A-4) */
 }
 
 /* ── §F 업무 상세 = 문서형 ── */
@@ -111,7 +290,7 @@
 .doc-blocks { display: flex; flex-direction: column; gap: 4px; }
 .doc-b { position: relative; padding-right: 20px; }
 .doc-bx { position: absolute; right: 0; top: 4px; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 4px;
-  background: 0; color: var(--muted); cursor: pointer; opacity: 0; font-size: 10.5px; transition: opacity .12s ease; }
+  background: 0; color: var(--muted); cursor: pointer; opacity: 0; font-size: 10.5px; transition: opacity var(--dur-1) var(--ease-out); }
 .doc-b:hover .doc-bx, .doc-b:focus-within .doc-bx { opacity: 1; }
 .doc-bx:hover { background: var(--surface-2); color: var(--ink2); }
 
@@ -163,15 +342,11 @@
 .doc-add-k { font-size: 10.5px; }
 .doc-empty { padding: 28px 16px; text-align: center; border: 1px dashed var(--line); border-radius: 9px; background: var(--surface-2); }
 .doc-empty p { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
-.doc-skel { display: flex; flex-direction: column; gap: 8px; }
-.doc-skel span { height: 16px; border-radius: 4px; background: var(--surface-2); }
-.doc-skel span:nth-child(2) { width: 80%; }
-.doc-skel span:nth-child(3) { width: 55%; }
 
 /* ── §F1 속성 블록 ── */
 .prop { display: flex; flex-direction: column; }
 .prop-row { display: flex; align-items: center; gap: 8px; min-height: 30px; position: relative;
-  border-radius: 4px; padding: 0 6px; margin: 0 -6px; transition: background .12s ease; }
+  border-radius: 4px; padding: 0 6px; margin: 0 -6px; transition: background-color var(--dur-1) var(--ease-out); }
 .prop-row:hover, .prop-row.open { background: var(--surface-2); }
 .prop-l { width: 88px; flex: 0 0 88px; font-size: 11.5px; color: var(--muted); }
 .prop-v { flex: 1; min-width: 0; text-align: left; background: 0; border: 0; padding: 4px 0; cursor: pointer;
@@ -209,7 +384,7 @@
 .prop-more { align-self: flex-start; background: 0; border: 0; padding: 6px 0; cursor: pointer;
   font-family: inherit; font-size: 11.5px; color: var(--muted); }
 .prop-more:hover { color: var(--ink2); }
-@media (prefers-reduced-motion: reduce) { .prop-row, .doc-bx { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .prop-row, .doc-bx { transition: none var(--dur-1) var(--ease-out); } }
 
 /* 업무 상세 안에서의 문서 영역 — 패널 폭에 맞춘 최소 보정만 (레이아웃은 기존 유지) */
 .tdp-doc .doc { gap: 12px; }
@@ -239,11 +414,11 @@
   border-bottom: 1px solid var(--line); font-size: 10.5px; font-weight: 800; color: var(--muted); text-align: left; }
 .pg-body table tbody td { height: 38px; padding: 0 13px; border-bottom: 1px solid var(--hair);
   font-size: 12.5px; color: var(--ink); }
-.pg-body table tbody tr { transition: background .12s ease; }
+.pg-body table tbody tr { transition: background-color var(--dur-1) var(--ease-out); }
 .pg-body table tbody tr:hover { background: var(--surface-2); }
 .pg-body table .num, .pg-body table .tt-dday, .pg-body table .tt-prog-n {
   font-family: var(--f-d); font-variant-numeric: tabular-nums; }
-@media (prefers-reduced-motion: reduce) { .pg-body table tbody tr { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .pg-body table tbody tr { transition: none var(--dur-1) var(--ease-out); } }
 
 /* §G 스케일 정합 — 뼈대 안에 들어온 기존 요소를 6단 폰트·3종 라운드로 맞춘다.
    마크업은 건드리지 않고 여기서 규격만 강제한다. */
@@ -343,7 +518,11 @@
 .hm-hero .gt2-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
 .hm-hero :is(.gt2-hint, .gt2-c) { font-size: 10.5px; color: rgba(255, 255, 255, .45); }
 .hm-hero .gt2-c { margin-left: auto; }
-.hm-hero .gt2-empty { grid-column: 1 / -1; font-size: 11.5px; color: rgba(255, 255, 255, .45); padding: 12px 0; }
+/* 히어로 타임라인의 섹션 빈 상태 — 컴포넌트는 공용 SectionEmpty 하나이고,
+   여기서는 **놓일 자리**만 정한다 (grid 전폭 + 어두운 배경용 글자색).
+   span 을 안 주면 76px 이름칸에 끼어 세로로 189px 까지 늘어난다 — 실측으로 잡았다. */
+.hm-hero .gt-grid > .sec-empty { grid-column: 1 / -1; color: rgba(255, 255, 255, .68); padding: 12px 0; }
+.hm-hero .gt-grid > .sec-empty .sec-empty-a { color: #fff; }
 
 /* ── §D2-2 2열 그리드 ── */
 .hm-g2 { display: grid; grid-template-columns: 1fr 300px; gap: 12px; align-items: start; }
@@ -363,7 +542,7 @@
 .hm-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
   padding: 8px 13px; border: 0; border-bottom: 1px solid var(--hair); background: 0;
   font-family: inherit; font-size: 12.5px; color: var(--ink); text-decoration: none;
-  cursor: pointer; transition: background .12s ease; }
+  cursor: pointer; transition: background-color var(--dur-1) var(--ease-out); }
 .hm-row:last-child { border-bottom: 0; }
 .hm-row:hover { background: var(--surface-2); }
 .hm-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
@@ -425,13 +604,11 @@
 .hm-foot b { color: var(--ink); }
 .hm-agent-n { margin-left: auto; font-size: 10.5px; }
 
-.hm-empty { padding: 20px 13px; text-align: center; }
-.hm-empty p { font-size: 11.5px; color: var(--muted); margin: 0 0 8px; }
 
 /* 필터바 NOW */
 .hm-now { font-family: var(--f-d); font-variant-numeric: tabular-nums; font-size: 11.5px; color: var(--muted); }
 
-@media (prefers-reduced-motion: reduce) { .hm-row { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .hm-row { transition: none var(--dur-1) var(--ease-out); } }
 
 /* .hv 스코프 밖(페이지 뼈대 안)에서도 히어로 그리드가 서도록 구조 규칙을 여기 둔다.
    기존 .hv .gt2 규칙과 중복 구현이 아니라, 뼈대용 단일 정의다. */
@@ -488,7 +665,7 @@
 .lr-list { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
 .lr-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 8px 10px;
   border: 0; border-bottom: 1px solid var(--hair); background: var(--surface); cursor: pointer;
-  font-family: inherit; text-decoration: none; transition: background .12s ease; }
+  font-family: inherit; text-decoration: none; transition: background-color var(--dur-1) var(--ease-out); }
 .lr-row:last-child { border-bottom: 0; }
 .lr-row:hover { background: var(--surface-2); }
 .lr-mark { width: 20px; height: 20px; flex: 0 0 20px; border-radius: 4px; display: inline-flex;
@@ -503,7 +680,7 @@
 .lr-m { font-size: 10.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lr-from { font-size: 10.5px; color: var(--muted); flex: 0 0 auto; }
 .lr-note { font-size: 10.5px; color: var(--muted); margin: 8px 0 0; }
-@media (prefers-reduced-motion: reduce) { .lr-row { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .lr-row { transition: none var(--dur-1) var(--ease-out); } }
 .lr .tdp-sec-h, .lr .tdp-sec-h em { font-size: 12.5px; }
 
 /* ── Private Blob 이미지 (MD-P-2026-014a §C) ── */
@@ -534,7 +711,6 @@
 .cmt-tools { display: flex; gap: 8px; margin-bottom: 8px; }
 
 /* ── §A2 논의·결정 — 목록 행 규격에 맞춘 최소 보정 (MD-P-2026-022) ── */
-.dl-empty-sub { font-size: 11.5px; color: var(--muted); margin: 0; }
 .dl-row .sig-ty { font-size: 10.5px; font-weight: 800; border-radius: 4px; padding: 1px 5px; }
 .dl-row .atag { font-size: 10.5px; margin-right: 5px; }
 .dl-c.sig-meta { font-size: 11.5px; color: var(--muted); }
@@ -566,7 +742,7 @@
    행(.grow-h) 을 38px / 12.5px 로 맞추고, 깊이는 들여쓰기(margin-left)로 표현한다. */
 .pg-body .grow { margin: 0 0 0 22px; padding: 0; border: 0; border-radius: 0; }
 .pg-body .grow-h { height: 38px; padding: 0 13px; gap: 8px; font-size: 12.5px;
-  border-bottom: 1px solid var(--hair); transition: background .12s ease; }
+  border-bottom: 1px solid var(--hair); transition: background-color var(--dur-1) var(--ease-out); }
 .pg-body .grow-h:hover { background: var(--surface-2); }
 /* 제목이 들여쓰기로 좁아지면 말줄임 */
 .pg-body .grow-h .gtitle, .pg-body .grow-h a { min-width: 0; overflow: hidden;
@@ -656,7 +832,6 @@
 .utp-bulk select { height: 26px; border-radius: 4px; border: 1px solid var(--line);
   background: var(--surface); color: var(--ink2); font-size: 11.5px; padding: 0 8px; }
 .utp-n { font-size: 11.5px; font-weight: 700; color: var(--muted); }
-.utp-none { font-size: 11.5px; color: var(--muted); margin: 0; }
 .utp-g { display: flex; flex-direction: column; gap: 4px; }
 .utp-gh { display: flex; align-items: center; gap: 8px; }
 .utp-fold { background: 0; border: 0; padding: 0; cursor: pointer; font: inherit;
@@ -687,7 +862,7 @@
   background: var(--surface-2);
   border: 0; border-left: 1px solid var(--line); border-radius: 0 4px 4px 0;
   padding: 10px 13px; cursor: pointer; font-family: inherit; font-size: 12.5px; color: var(--ink2);
-  transition: background .12s ease; margin-bottom: 12px;
+  transition: background-color var(--dur-1) var(--ease-out); margin-bottom: 12px;
 }
 .ulbanner:hover, .pg .glink-banner:hover { background: var(--surface); }
 .ulbanner b, .pg .glink-banner b { font-size: 12.5px; font-weight: 700; color: var(--ink); }
@@ -704,7 +879,7 @@
   color: var(--ink2); text-decoration: underline; text-underline-offset: 2px;
 }
 .pg .glink-banner em { display: block; margin-top: 2px; }
-@media (prefers-reduced-motion: reduce) { .ulbanner, .pg .glink-banner { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .ulbanner, .pg .glink-banner { transition: none var(--dur-1) var(--ease-out); } }
 
 /* ── 목표 트리 시각 정리 (MD-P-2026-024 회신 8 지시 17-2 · 17-3) ──────
  *
@@ -712,13 +887,13 @@
  *      opacity 로만 감춘다 — display:none 이면 키보드로 닿을 수 없다.
  *      hover 든 키보드 포커스든 똑같이 드러나야 한다.
  */
-.gedit-b { opacity: 0; transition: opacity .12s ease; }
+.gedit-b { opacity: 0; transition: opacity var(--dur-1) var(--ease-out); }
 .grow:hover .gedit-b,
 .grow:focus-within .gedit-b,
 .gnode > summary:hover .gedit-b,
 .gnode > summary:focus-within .gedit-b,
 .gedit-b:focus-visible { opacity: 1; }
-@media (prefers-reduced-motion: reduce) { .gedit-b { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .gedit-b { transition: none var(--dur-1) var(--ease-out); } }
 /* 터치 기기에는 hover 가 없다 — 항상 보여야 편집이 가능하다 */
 @media (hover: none) { .gedit-b { opacity: 1; } }
 
@@ -826,11 +1001,11 @@
 /* 삭제는 행 hover 에서만 — 목록마다 ✕ 가 떠 있으면 지우라고 조르는 화면이 된다 */
 .nt-del {
   flex: 0 0 auto; background: 0; border: 0; padding: 0 4px; cursor: pointer;
-  font-size: 11.5px; color: var(--muted); opacity: 0; transition: opacity .12s ease;
+  font-size: 11.5px; color: var(--muted); opacity: 0; transition: opacity var(--dur-1) var(--ease-out);
 }
 .nt-row:hover .nt-del, .nt-del:focus-visible { opacity: 1; }
 .nt-del:hover { color: var(--coral-d); }
-@media (prefers-reduced-motion: reduce) { .nt-del { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .nt-del { transition: none var(--dur-1) var(--ease-out); } }
 @media (hover: none) { .nt-del { opacity: 1; } }
 
 .nt-edit {
@@ -869,4 +1044,333 @@
 .agf-fab .agf-ring { border-radius: 12px; }   /* 링은 버튼보다 3px 바깥 */
 .agf-badge, .agf-notif {
   border-radius: 9px; font-size: 10.5px; background: var(--ink); color: var(--surface);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * MD-P-2026-027 §C · §D — 업무 등록 모달 · 프로젝트 연결
+ * ══════════════════════════════════════════════════════════════════════ */
+
+/* ── §C1 등록 모달 — 720 × 560, 최대 90vh ───────────────────────────
+ *
+ * 만드는 자리와 고치는 자리를 나눈 결과다. 420px 패널에 생성 폼을 욱여넣던 때는
+ * 설명이 4줄 textarea 였고 목표 연결은 "만든 뒤 상세에서" 로 미뤄져 있었다.
+ * 왼쪽은 쓰는 자리(제목·본문), 오른쪽 220px 은 고르는 자리(속성)다.
+ * 모션은 §H 토큰만 쓴다 — 모달은 --dur-3.
+ */
+.ntm-bg {
+  position: fixed; inset: 0; z-index: 70;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--scrim); padding: 24px;
+}
+.ntm {
+  width: 720px; max-width: 100%; height: 560px; max-height: 90vh;
+  display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 9px; box-shadow: var(--e3); overflow: hidden;
+}
+.ntm-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px; border-bottom: 1px solid var(--line); flex: 0 0 auto;
+}
+.ntm-crumb { font-size: 12.5px; color: var(--muted); }
+.ntm-made { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+.ntm-x {
+  margin-left: auto; width: 26px; height: 26px; border: 1px solid var(--line);
+  border-radius: 7px; background: var(--surface); color: var(--muted); cursor: pointer;
+}
+.ntm-made + .ntm-x { margin-left: 8px; }
+.ntm-x:hover { background: var(--surface-2); color: var(--ink); }
+
+.ntm-body { display: flex; min-height: 0; flex: 1 1 auto; }
+.ntm-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; padding: 16px; gap: 10px; }
+.ntm-side {
+  flex: 0 0 220px; width: 220px; border-left: 1px solid var(--line);
+  padding: 12px; overflow-y: auto; background: var(--surface-2);
+}
+/* 속성 블록은 상세 패널과 같은 규격(라벨 88px + 값)을 그대로 쓴다.
+   220px 안에서는 라벨을 줄여야 값이 읽힌다. */
+.ntm-side .prop-row { grid-template-columns: 66px 1fr; }
+.ntm-side .prop-l { font-size: 11.5px; }
+.ntm-side .prop-v { font-size: 12.5px; }
+.ntm-off { color: var(--muted); font-size: 11.5px; }
+
+.ntm-title {
+  font-size: 19px; font-weight: 600; line-height: 1.35; color: var(--ink);
+  border: 0; border-bottom: 1px solid transparent; background: transparent;
+  padding: 2px 0; width: 100%;
+}
+.ntm-title:focus { outline: none; border-bottom-color: var(--line-hi); }
+.ntm-title::placeholder { color: var(--muted); font-weight: 400; }
+
+.ntm-note { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.ntm-tools { display: flex; gap: 4px; padding-bottom: 6px; }
+.ntm-tool {
+  min-width: 26px; height: 24px; padding: 0 6px;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface); color: var(--muted);
+  font-size: 11.5px; cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+.ntm-tool:hover { background: var(--surface-2); color: var(--ink); }
+.ntm-desc {
+  flex: 1 1 auto; min-height: 0; resize: none; width: 100%;
+  border: 1px solid var(--line); border-radius: 7px; padding: 10px 12px;
+  font: inherit; font-size: 13px; line-height: 1.6; color: var(--ink);
+  background: var(--surface);
+}
+.ntm-desc:focus { outline: none; border-color: var(--line-hi); }
+
+.ntm-err { padding: 0 16px 8px; }
+.ntm-foot {
+  display: flex; align-items: center; gap: 10px; flex: 0 0 auto;
+  padding: 12px 14px; border-top: 1px solid var(--line); background: var(--surface);
+}
+.ntm-keep { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink2); cursor: pointer; }
+.ntm-keep input { width: 15px; height: 15px; accent-color: var(--brand); }
+.ntm-kbd { margin-left: 7px; font-style: normal; font-size: 10.5px; opacity: .75; }
+
+/* ── §D1 프로젝트 검색형 콤보박스 ─────────────────────────────────── */
+.pcb { position: relative; }
+.pcb-v {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+  border: 1px solid transparent; border-radius: 4px; background: transparent;
+  padding: 1px 4px; font: inherit; font-size: 12.5px; color: var(--ink); cursor: pointer;
+  text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pcb-v:hover { background: var(--surface-2); }
+.pcb-v.empty { color: var(--muted); }
+.pcb-off { font-size: 11.5px; color: var(--muted); }
+
+.pcb-pop {
+  position: absolute; z-index: 5; top: calc(100% + 4px); left: 0;
+  width: 248px; max-width: 78vw;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 7px; box-shadow: var(--e2); padding: 6px;
+}
+.pcb-q {
+  width: 100%; border: 1px solid var(--line); border-radius: 4px;
+  padding: 5px 8px; font: inherit; font-size: 12.5px; color: var(--ink); background: var(--surface);
+}
+.pcb-q:focus { outline: none; border-color: var(--line-hi); }
+.pcb-list { max-height: 232px; overflow-y: auto; margin-top: 5px; }
+.pcb-o {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  border: 0; border-radius: 4px; background: transparent;
+  padding: 5px 7px; font: inherit; font-size: 12.5px; color: var(--ink);
+  cursor: pointer; text-align: left;
+}
+.pcb-o.cur { background: var(--surface-2); }
+.pcb-o.on { font-weight: 600; }
+.pcb-o-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcb-rec { margin-left: auto; font-style: normal; font-size: 10.5px; color: var(--muted); }
+.pcb-none { padding: 8px 7px; font-size: 11.5px; color: var(--muted); }
+/* 만들기 줄은 목록과 선으로 나눈다 — 고르는 것과 만드는 것은 다른 행동이다 */
+.pcb-new { margin-top: 4px; border-top: 1px solid var(--line); padding-top: 7px; color: var(--brand); }
+.pcb-err { margin-top: 5px; font-size: 11.5px; color: var(--danger); }
+
+/* ── §C3 · §D2 한 줄 업무 입력 ────────────────────────────────────── */
+.iti {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--line); border-radius: 7px;
+  background: var(--surface); padding: 0 10px; height: 38px; margin-bottom: 8px;
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+.iti:focus-within { border-color: var(--line-hi); }
+.iti.err { border-color: var(--danger); }
+.iti-p { color: var(--muted); font-size: 12.5px; }
+.iti-q {
+  flex: 1 1 auto; min-width: 0; border: 0; background: transparent;
+  font: inherit; font-size: 12.5px; color: var(--ink); height: 100%;
+}
+.iti-q:focus { outline: none; }
+.iti-q::placeholder { color: var(--muted); }
+.iti-e { font-size: 11.5px; color: var(--danger); }
+/* 표 **아래**에 붙는 자리 (§D2) — 여백이 반대로 붙는다 */
+.iti.under { margin-top: 8px; margin-bottom: 0; }
+
+/* ── §D3 일괄 지정 (BulkBar 재사용) ───────────────────────────────── */
+.tv-bulk-l { font-size: 11.5px; color: var(--muted); }
+.col-chk { width: 34px; text-align: center; }
+.col-chk input { width: 15px; height: 15px; accent-color: var(--brand); cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .ntm-tool, .iti { transition: none var(--dur-1) var(--ease-out); } }
+
+/* ══════════════════════════════════════════════════════════════════════
+ * MD-P-2026-027 §H — 모션 구현 (H3 기능적 모션 14건)
+ *
+ * 시간·곡선·간격은 **전부 H1 토큰 참조**다. 이 블록에 원시 숫자는 없다.
+ * 허용 속성은 transform · opacity · background-color · border-color ·
+ * box-shadow · stroke-dashoffset 뿐이다 (H2).
+ * ══════════════════════════════════════════════════════════════════════ */
+
+/* ── H3-① 진척 바 값 변경 — scaleX, origin left, --dur-4 ─────────────
+ * width 를 움직이면 매 프레임 레이아웃이 다시 계산된다. 채움은 항상 100% 로
+ * 앉아 있고 --p(0~1) 가 보이는 길이를 정한다 (lib/progress-bar.ts).
+ */
+.hv .bar > i,
+.gdp-prog .bar i, .gdp-contrib .bar i,
+.hv .tt-prog > i,
+.hv .tb-bar > i,
+.pws-prog-track > i,
+.rv-prog > i,
+.hv .prep-track > i,
+.prop-prog i > b,
+.dl-bar i > b {
+  width: 100%;
+  transform: scaleX(var(--p, 0));
+  transform-origin: left;
+  transition: transform var(--dur-4) var(--ease-out);
+}
+
+/* ── H3-② 진척 숫자 변경 — tabular-nums 카운트업 ─────────────────────
+ * 실제 카운트업은 lib/motion.ts 의 useCountUp 이 한다. CSS 는 자릿수가
+ * 흔들리지 않게만 잡는다 — 숫자가 굴러가는데 폭까지 들썩이면 옆 칸이 같이 흔들린다.
+ */
+.num, .tt-prog-n, .gpv, .prop-prog em, .pws-prog b { font-variant-numeric: tabular-nums; }
+
+/* ── H3-③ 업무 완료 체크 — stroke-dashoffset 그리기, --dur-stroke ──── */
+.chk-draw { width: 13px; height: 13px; display: block; }
+.chk-draw path {
+  fill: none; stroke: currentColor; stroke-width: 2.4;
+  stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 22; stroke-dashoffset: 22;
+}
+.chk-draw.on path { stroke-dashoffset: 0; transition: stroke-dashoffset var(--dur-stroke) var(--ease-out); }
+
+/* ── H3-④ 완료된 행 텍스트 — opacity 1 → .55, --dur-1 ───────────────
+ * 기존 .done-opt 는 .5 / .3s 하드코딩이었다. §H 값으로 맞춘다.
+ */
+.hv tr.done-opt { opacity: .55; transition: opacity var(--dur-1) var(--ease-out); }
+
+/* ── H3-⑤ 목록 필터·정렬 변경 — FLIP (lib/motion.ts useFlip), --dur-3 ─
+ * transform 은 JS 가 넣고 뺀다. 여기서는 걸릴 자리만 표시해 둔다.
+ */
+[data-flip] { will-change: auto; }
+
+/* ── H3-⑥ 행 제거 — opacity + translateY(-4px), --dur-2 ────────────── */
+@keyframes row-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-4px); }
+}
+.row-out { animation: row-out var(--dur-2) var(--ease-in-out) forwards; }
+
+/* ── H3-⑦ 값이 바뀐 칸 — 400ms 유지 후 400ms 페이드 ─────────────────
+ * 유지·페이드 비율이 곧 이 모션의 뜻이다. "바뀌었다"를 먼저 붙잡아 두고,
+ * 그 다음에 조용히 사라진다. 총 800ms 는 lib/motion.ts 의 타이머와 같아야 한다.
+ */
+@keyframes hl-cell {
+  0%, 50%  { background-color: color-mix(in srgb, var(--brand) 12%, transparent); }
+  100%     { background-color: transparent; }
+}
+.hl { animation: hl-cell calc(var(--dur-hl) * 2) var(--ease-out); }
+
+/* ── H3-⑧ 패널 열림 — translateX + 스크림 페이드, --dur-2 ───────────── */
+@keyframes panel-in { from { transform: translateX(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
+/* 우측 패널 셋(업무 상세·목표 상세·범용)은 전부 .tdp 셸을 쓴다.
+   **스크림은 없다** — 전역 패널 규칙이 "열린 상태에서 좌측 목록 계속 조작(배경 차단 없음)"이다.
+   그래서 여기서 페이드시킬 스크림도 없다. 모달(.ntm-bg)만 스크림을 갖는다. */
+.tdp { animation: panel-in var(--dur-2) var(--ease-out); }
+
+/* ── H3-⑨⑩ 모달 열림 scale .96→1 (--dur-3) · 닫힘 역방향 (--dur-2) ── */
+@keyframes modal-in { from { transform: scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes modal-out { from { transform: none; opacity: 1; } to { transform: scale(.96); opacity: 0; } }
+.ntm { animation: modal-in var(--dur-3) var(--ease-out); }
+.ntm-bg { animation: scrim-in var(--dur-2) var(--ease-out); }
+.ntm-bg.closing { animation: scrim-in var(--dur-2) var(--ease-in-out) reverse forwards; }
+.ntm-bg.closing .ntm { animation: modal-out var(--dur-2) var(--ease-in-out) forwards; }
+
+/* ── H3-⑪ 탭 전환 — 활성 밑줄이 미끄러진다, --dur-2 ─────────────────
+ * 밑줄을 각 탭이 따로 그리면 켜지고 꺼질 뿐 움직이지 않는다.
+ * 탭 줄에 밑줄 **하나**를 두고 --x/--w 로 옮긴다 (components/PageShell).
+ */
+.pg-tabs { position: relative; }
+/* 탭마다 그리던 밑줄은 끈다 — 미끄러지는 하나만 남는다 */
+.pg-tab.on::after { content: none; }
+.pg-tabs .tabline {
+  position: absolute; left: 0; bottom: 0; height: 2px; width: 1px;
+  background: var(--brand); transform: translateX(var(--x, 0)) scaleX(var(--w, 0));
+  transform-origin: left;
+  transition: transform var(--dur-2) var(--ease-in-out);
+}
+
+/* ── H3-⑫ 카드 hover — --e1 → --e2, --dur-1 ────────────────────────── */
+.pcard, .pg-body .card, .hv .card {
+  transition: box-shadow var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+a.pcard:hover, .pcard.clickable:hover { box-shadow: var(--e2); }
+
+/* ── H3-⑬ 저장됨 표시 — opacity + translateY 4px, 2초 뒤 페이드 ────── */
+@keyframes saved-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.tdp-save.saved { animation: saved-in var(--dur-2) var(--ease-out); }
+
+/* ── H3-⑭ 로딩 — 스켈레톤 shimmer (무한 반복은 여기 하나뿐) ──────────
+ * 026 §A-4 는 "shimmer 금지 — 움직임은 후속 모션 규격에서" 였다.
+ * 그 후속이 §H 이고, 스켈레톤 한 곳에만 허용한다.
+ * background-position 만 움직인다. reduce 에서는 정지 + --surface-2 단색.
+ */
+@keyframes sk-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.sk-row, .sk-block {
+  background-image: linear-gradient(90deg, var(--surface-2) 0%, color-mix(in srgb, var(--ink) 5%, var(--surface-2)) 50%, var(--surface-2) 100%);
+  background-size: 200% 100%;
+  animation: sk-shimmer 1.2s linear infinite;
+}
+
+/* ── 접근성 — 없애는 것이 아니라 줄이는 것 (§H2) ─────────────────────
+ * transform 애니메이션을 뺀다. opacity 는 남긴다 — 상태가 바뀌었다는 신호까지
+ * 지우면 무슨 일이 일어났는지 알 수 없다. duration 은 전부 --dur-1 로 줄인다.
+ */
+@media (prefers-reduced-motion: reduce) {
+  /* transform 을 움직이는 트랜지션은 **전부** 끈다.
+     화면마다 하나씩 예외를 적으면 반드시 빠뜨린다 — 실제로 .agf-fab 하나가
+     21경로 전부에서 살아남아 32-f 를 21/21 로 떨어뜨렸다. 규칙을 전역으로 둔다.
+     opacity·색은 남는다 (§H2 "없애는 것이 아니라 줄이는 것"). */
+  /* `*` 는 특이도 0 이라 .agf-fab 같은 클래스 규칙을 못 이긴다 —
+     처음엔 !important 없이 썼고, 그래서 21경로 전부에서 .agf-fab 의
+     transform 트랜지션이 살아남았다. 접근성 차단은 이길 수 있어야 한다. */
+  *, *::before, *::after {
+    transition-property: opacity, background-color, border-color, box-shadow !important;
+  }
+  .hv .bar > i, .gdp-prog .bar i, .gdp-contrib .bar i, .hv .tt-prog > i,
+  .hv .tb-bar > i, .pws-prog-track > i, .rv-prog > i, .hv .prep-track > i,
+  .prop-prog i > b, .dl-bar i > b { transition: none var(--dur-1) var(--ease-out); }
+  .chk-draw.on path { transition: none var(--dur-1) var(--ease-out); }
+  .hv tr.done-opt { transition-duration: var(--dur-1); }
+  .pg-tabs .tabline { transition: none var(--dur-1) var(--ease-out); }
+  .pcard, .pg-body .card, .hv .card { transition-duration: var(--dur-1); }
+  /* transform 이 섞인 애니메이션은 opacity 만 남긴 판으로 갈아 끼운다 */
+  @keyframes fade-only { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fade-out-only { from { opacity: 1; } to { opacity: 0; } }
+  .tdp, .ntm, .tdp-save.saved { animation: fade-only var(--dur-1) var(--ease-out); }
+  .ntm-bg.closing .ntm, .row-out { animation: fade-out-only var(--dur-1) var(--ease-out) forwards; }
+  .ntm-bg { animation: fade-only var(--dur-1) var(--ease-out); }
+  .hl { animation: none; }
+  /* shimmer 는 멈추고 단색으로 (026 §A-4 의 정적 스켈레톤 그대로) */
+  .sk-row, .sk-block { animation: none; background-image: none; background: var(--surface-2); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * MD-P-2026-027 §H4 — 시그니처 2곳. 여기만 공을 들인다.
+ * ══════════════════════════════════════════════════════════════════════ */
+
+/* ── H4-① 홈 다크 히어로 타임라인 — 바가 왼쪽에서 자란다 ──────────────
+ * scaleX(0→1) · origin left · stagger --stagger-1 · 최대 6개 (JS 가 6개만 클래스를 붙인다).
+ * 세션당 1회. 재생이 끝나면 JS 가 클래스를 떼므로 여기 남는 상태는 없다.
+ */
+@keyframes hero-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.gt2-bar.hero-grow {
+  transform-origin: left;
+  animation: hero-grow var(--dur-4) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger-1));
+}
+
+/* ── H4-② 목표 트리 연쇄 ────────────────────────────────────────────
+ * 숫자와 바가 함께 오른다. 숫자는 lib/motion.ts 의 useGoalChainCountUp 이,
+ * 바는 그 값을 받아 §H3-① 의 scaleX 트랜지션(--dur-4)이 그린다.
+ * 층 간격(--stagger-2)은 JS 가 층 번호로 계산한다 — CSS 는 순서를 모른다.
+ * 자릿수가 흔들리면 옆 칸이 같이 흔들리므로 폭을 고정한다.
+ */
+.gpv { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gt2-bar.hero-grow { animation: none; }
 }

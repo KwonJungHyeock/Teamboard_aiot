@@ -6,19 +6,25 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "./Markdown";
 import { decTime, type Decision } from "./decision-ui";
-import { uploadImage, blobSrc } from "@/lib/upload";
+import { blobSrc } from "@/lib/upload";
+import { AttachButton, AttachStatus, DropZone, useAttach } from "./Attach";
 import { openPanel } from "@/lib/side-panel";
 import DocEditor, { type DocBlock } from "./DocEditor";
 import PropertyBlock, { type PropRow } from "./PropertyBlock";
 import LinkedResources from "./LinkedResources";
 import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution } from "@/lib/progress";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
+import ProjectCombo, { type ComboProject } from "./ProjectCombo";
+import { notifyGoalChain } from "@/lib/goal-chain";
+import type { SessionUser } from "@/lib/types";
+import { pfill } from "@/lib/progress-bar";
 import {
   TASK_PANEL_EVENT,
   currentTaskRef,
   closeTaskPanel,
   notifyTaskUpdated,
   openTaskPanel,
-  type NewTaskPrefill,
 } from "@/lib/task-panel";
 
 interface TaskDetail {
@@ -54,23 +60,22 @@ const STATUS = [["todo", "대기"], ["doing", "진행"], ["review", "리뷰"], [
 const PRIORITY = [["high", "높음"], ["mid", "보통"], ["low", "낮음"]] as const;
 const WORKTYPE = [["team", "팀업무"], ["personal", "개인업무"], ["routine", "상시업무"]] as const;
 
+/**
+ * §H4-② — 이 필드들이 바뀌면 목표 집계가 실제로 움직인다.
+ * 제목·담당·설명이 바뀌었다고 목표가 오르지는 않는다. 그때 연쇄가 재생되면 거짓말이 된다.
+ */
+const CHAIN_FIELDS = ["progress", "status", "resolution", "goalIds", "goalSource", "projectId"];
+
 function fmt(iso: string): string {
   const d = new Date(iso);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-interface Draft {
-  title: string; areaId: number; projectId: number; assigneeId: number;
-  visibility: "team" | "private";
-  priority: string; workType: string; startDate: string; dueDate: string; description: string;
-}
-
-export default function TaskDetailPanel() {
-  const [openId, setOpenId] = useState<number | "new" | null>(null);
-  const [prefill, setPrefill] = useState<NewTaskPrefill>({});
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [creating, setCreating] = useState(false);
+export default function TaskDetailPanel({ user }: { user: SessionUser }) {
+  // 이 패널은 **이미 있는 업무를 보고 고치는 용도로만** 남는다 (MD-P-2026-027 §C4).
+  // 새 업무 생성은 NewTaskModal 이 맡는다. 만드는 자리가 둘이면 필드가 갈라진다.
+  const [openId, setOpenId] = useState<number | null>(null);
   const [t, setT] = useState<TaskDetail | null>(null);
   const [sel, setSel] = useState<Selectors | null>(null);
   const [comments, setComments] = useState<Cmt[]>([]);
@@ -85,7 +90,6 @@ export default function TaskDetailPanel() {
   const [prog, setProg] = useState(0);             // 진행률 슬라이더 로컬 상태
   const [blockReason, setBlockReason] = useState(""); // 막힘 사유 편집 버퍼
   const [blockErr, setBlockErr] = useState("");
-  const [uploading, setUploading] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);   // 팀 타임라인 공유(협업 A)
   const [shareNote, setShareNote] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
@@ -94,17 +98,15 @@ export default function TaskDetailPanel() {
   const descRef = useRef<HTMLTextAreaElement>(null);
 
   // ── 열림 상태 소스: URL ?task + 이벤트 + 뒤로가기 ──
+  // `new` 는 여기서 무시한다 — 모달이 받는다 (§C4).
   useEffect(() => {
-    const sync = () => setOpenId(currentTaskRef());
+    const sync = () => { const r = currentTaskRef(); setOpenId(typeof r === "number" ? r : null); };
     sync();
     const onEvent = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail && typeof detail === "object" && detail.mode === "new") {
-        setPrefill(detail.prefill ?? {});
-        setOpenId("new");
-      } else {
-        setOpenId(typeof detail === "number" ? detail : detail === null ? null : currentTaskRef());
-      }
+      if (typeof detail === "number") setOpenId(detail);
+      else if (detail === null) setOpenId(null);
+      else sync();
     };
     window.addEventListener(TASK_PANEL_EVENT, onEvent);
     window.addEventListener("popstate", sync);
@@ -136,62 +138,9 @@ export default function TaskDetailPanel() {
     setErr(""); setDropping(false); setDropReason("");
     // 열 때마다 셀렉트 재조회 — 세션 중 새로 만든 월 목표·프로젝트가 즉시 연결 후보로 뜨도록.
     fetch("/api/meta/selectors").then((r) => r.json()).then(setSel).catch(() => {});
-    if (openId === "new") { setT(null); return; }
     loadDetail(openId);
     loadComments(openId);
   }, [openId, loadDetail, loadComments]);
-
-  // 새 업무 초안 초기화 (진입 시 1회) + 영역 기본값은 selectors 도착 후 채움
-  useEffect(() => {
-    if (openId === "new") {
-      setDraft((d) =>
-        d ?? {
-          title: prefill.title ?? "", areaId: prefill.areaId ?? 0, projectId: prefill.projectId ?? 0,
-          assigneeId: prefill.assigneeId ?? 0, priority: "mid",
-          // §B1 — 기본값은 팀 공개. 개인은 명시적으로 고른다.
-          // 단, 메모에서 넘어온 업무는 기본이 "개인"이다 (§C C-2) — 메모에서 나온 것이니
-          // 개인이 자연스럽다. 그래도 화면에서 바꿀 수 있다.
-          visibility: prefill.visibility ?? "team",
-          workType: prefill.workType ?? "team",
-          startDate: prefill.startDate ?? "", dueDate: prefill.dueDate ?? "", description: "",
-        }
-      );
-    } else {
-      setDraft(null);
-      setCreating(false);
-    }
-  }, [openId, prefill]);
-  useEffect(() => {
-    if (openId === "new" && sel && draft && !draft.areaId) {
-      setDraft({ ...draft, areaId: sel.areas[0]?.id ?? 0 });
-    }
-  }, [openId, sel, draft]);
-
-  async function createTask() {
-    if (!draft || !draft.title.trim()) { setErr("제목을 입력하세요."); return; }
-    setCreating(true); setErr("");
-    const res = await fetch("/api/tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: draft.title.trim(),
-        areaId: draft.areaId || undefined,
-        projectId: draft.projectId || undefined,
-        assigneeId: draft.assigneeId || undefined,
-        workType: draft.workType,
-        visibility: draft.visibility,
-        priority: draft.priority,
-        startDate: draft.startDate || undefined,
-        dueDate: draft.dueDate || undefined,
-        description: draft.description,
-      }),
-    });
-    setCreating(false);
-    if (!res.ok) { setErr((await res.json()).error ?? "생성 실패"); return; }
-    const { id } = await res.json();
-    notifyTaskUpdated();
-    openTaskPanel(id); // 생성된 업무 상세로 전환
-  }
 
   // ESC 닫기
   useEffect(() => {
@@ -219,6 +168,7 @@ export default function TaskDetailPanel() {
     setTimeout(() => setSave("idle"), 1200);
     await loadDetail(openId);
     notifyTaskUpdated();
+    if (CHAIN_FIELDS.some((k) => k in fields)) notifyGoalChain();
     return true;
   }
 
@@ -244,6 +194,7 @@ export default function TaskDetailPanel() {
     setTimeout(() => setSave("idle"), 1200);
     await loadDetail(openId);
     notifyTaskUpdated();
+    if (CHAIN_FIELDS.some((k) => k in fields)) notifyGoalChain();
     return true;
   }
 
@@ -274,26 +225,30 @@ export default function TaskDetailPanel() {
     else setErr((await res.json()).error ?? "공유 실패");
   }
 
-  // 이미지 업로드(붙여넣기/드롭/파일) → Private Blob → 마크다운 삽입 (MD-P-2026-014a).
-  // 마크다운에는 공개 URL이 아니라 /api/blob 라우트 경로를 넣는다.
-  async function insertUpload(file: File, into: "desc" | "comment") {
-    if (typeof openId !== "number") return;
-    setUploading(true); setErr("");
-    try {
-      const up = await uploadImage(file, { kind: "task", id: openId });
+  // 이미지 업로드 — 공용 첨부 한 벌을 쓴다 (MD-P-2026-026 §B-2).
+  // 마크다운에는 공개 URL이 아니라 /api/blob 라우트 경로를 넣는다 (014a).
+  // 목적지(설명/코멘트)는 ref 로 들고 있는다 — 훅은 파일 하나만 알면 되고,
+  // "다시 시도" 가 원래 목적지로 돌아가야 하기 때문이다.
+  const uploadInto = useRef<"desc" | "comment">("desc");
+  const descRef2 = useRef(descText);
+  descRef2.current = descText;
+  const attach = useAttach(
+    { kind: "task", id: typeof openId === "number" ? openId : 0 },
+    async (up) => {
       const md = `![${up.name}](${blobSrc(up.pathname)})`;
-      if (into === "desc") {
-        const next = descText ? `${descText}\n${md}` : md;
+      if (uploadInto.current === "desc") {
+        const next = descRef2.current ? `${descRef2.current}\n${md}` : md;
         setDescText(next);
         await patch({ description: next });
       } else {
         setNewComment((c) => (c ? `${c} ${md}` : md));
       }
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "이미지 업로드 실패");
-    } finally {
-      setUploading(false);
     }
+  );
+  function insertUpload(file: File, into: "desc" | "comment") {
+    if (typeof openId !== "number") return;
+    uploadInto.current = into;
+    void attach.send(file);
   }
   function pasteImage(e: React.ClipboardEvent, into: "desc" | "comment") {
     const img = Array.from(e.clipboardData.items).find((i) => i.type.startsWith("image/"));
@@ -301,10 +256,6 @@ export default function TaskDetailPanel() {
       const f = img.getAsFile();
       if (f) { e.preventDefault(); insertUpload(f, into); }
     }
-  }
-  function dropImage(e: React.DragEvent, into: "desc" | "comment") {
-    const f = e.dataTransfer.files?.[0];
-    if (f && f.type.startsWith("image/")) { e.preventDefault(); insertUpload(f, into); }
   }
 
   async function softDelete() {
@@ -320,7 +271,6 @@ export default function TaskDetailPanel() {
   }
 
   if (openId == null) return null;
-  const areaProjects = sel?.projects.filter((p) => p.areaId === (t?.areaId ?? -1)) ?? [];
 
   // ── §F1 속성 블록 — 순서 고정: 상태 / 담당 / 기간 / 우선순위 / 진행률 / 프로젝트 / 목표.
   //    영역·업무유형은 기존 기능을 잃지 않도록 그 뒤에 붙인다(5개 초과 → "속성 접기"로 접힘).
@@ -400,7 +350,7 @@ export default function TaskDetailPanel() {
       key: "progress", label: "진행률",
       value: (
         <span className="prop-prog">
-          <i><b style={{ width: `${t.effectiveProgress}%` }} /></i>
+          <i><b style={pfill(t.effectiveProgress)} /></i>
           <em className="num">{t.effectiveProgress}%</em>
           {t.rolledUpFromChildren && <em className="prop-note">하위 업무로 계산 중</em>}
         </span>
@@ -421,18 +371,24 @@ export default function TaskDetailPanel() {
       ),
     },
     {
+      // §D4 — 값을 누르면 그 자리에서 바꾼다. 셀렉트가 아니라 검색형 콤보박스다(§D1).
+      // 후보를 **영역으로 좁히지 않는다** — 예전에는 t.areaId 와 같은 영역의 프로젝트만
+      // 보여서, 영역을 잘못 고른 업무는 정작 붙여야 할 프로젝트가 목록에 없었다.
       key: "project", label: "프로젝트",
       value: t.projectName, empty: !t.projectId, action: "＋ 프로젝트 연결",
-      editor: (close) => (
-        <select autoFocus value={t.projectId ?? 0}
-          onChange={(e) => {
-            const id = Number(e.target.value) || null;
-            patchOpt({ projectId: id }, { projectId: id, projectName: areaProjects.find((p) => p.id === id)?.name ?? null });
-            close();
-          }}>
-          <option value={0}>없음</option>
-          {areaProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+      editor: () => (
+        <ProjectCombo
+          value={t.projectId}
+          projects={sel?.projects ?? []}
+          areaId={t.areaId}
+          canCreate={user.role === "lead"}
+          disabled={t.visibility === "private"}
+          disabledReason={t.visibility === "private" ? "개인 업무는 프로젝트에 넣을 수 없습니다" : undefined}
+          onChange={(id) =>
+            patchOpt({ projectId: id }, { projectId: id, projectName: (sel?.projects ?? []).find((p) => p.id === id)?.name ?? null })
+          }
+          onCreated={(p: ComboProject) => setSel((s) => (s ? { ...s, projects: [...s.projects, p] } : s))}
+        />
       ),
     },
     {
@@ -541,7 +497,7 @@ export default function TaskDetailPanel() {
       <aside className="tdp" role="dialog" aria-label="업무 상세">
         <div className="tdp-head">
           <span className="tdp-crumb">
-            {openId === "new" ? "새 업무" : `업무 상세 ${t ? `· #${t.id}` : ""}`}
+            업무 상세 {t ? `· #${t.id}` : ""}
           </span>
           <span className={`tdp-save ${save}`}>
             {save === "saving" ? "저장 중…" : save === "saved" ? "저장됨" : ""}
@@ -549,81 +505,8 @@ export default function TaskDetailPanel() {
           <button className="tdp-x" onClick={() => closeTaskPanel()} aria-label="닫기">✕</button>
         </div>
 
-        {/* ── 새 업무(빈 상태) — 파트 4 ── */}
-        {openId === "new" && draft && (
-          <div className="tdp-body">
-            {err && <p className="tdp-err">{err}</p>}
-            <input
-              className="tdp-title"
-              autoFocus
-              placeholder="새 업무 제목"
-              value={draft.title}
-              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-              onKeyDown={(e) => { if (e.key === "Enter") createTask(); }}
-            />
-            <div className="tdp-grid">
-              <label>영역
-                <select value={draft.areaId} onChange={(e) => setDraft({ ...draft, areaId: Number(e.target.value), projectId: 0 })}>
-                  {sel?.areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-              </label>
-              <label>업무유형
-                <select value={draft.workType} onChange={(e) => setDraft({ ...draft, workType: e.target.value })}>
-                  {WORKTYPE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              </label>
-              {/* §B1 공개 범위 — 기본값은 팀 공개. 개인은 명시적으로 고른다. */}
-              <label>공개 범위
-                <select value={draft.visibility}
-                  onChange={(e) => {
-                    const v = e.target.value as "team" | "private";
-                    // 개인으로 바꾸면 프로젝트를 비운다 — 개인 업무는 프로젝트에 못 들어간다(§A2).
-                    setDraft({ ...draft, visibility: v, projectId: v === "private" ? 0 : draft.projectId });
-                  }}>
-                  <option value="team">팀 공개</option>
-                  <option value="private">개인 (나만 봄)</option>
-                </select>
-              </label>
-              <label>프로젝트
-                <select value={draft.projectId} disabled={draft.visibility === "private"}
-                  title={draft.visibility === "private" ? "개인 업무는 프로젝트에 넣을 수 없습니다" : undefined}
-                  onChange={(e) => setDraft({ ...draft, projectId: Number(e.target.value) })}>
-                  <option value={0}>없음</option>
-                  {sel?.projects.filter((p) => p.areaId === draft.areaId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </label>
-              <label>담당
-                <select value={draft.assigneeId} disabled={draft.visibility === "private"}
-                  title={draft.visibility === "private" ? "개인 업무는 본인 담당입니다" : undefined}
-                  onChange={(e) => setDraft({ ...draft, assigneeId: Number(e.target.value) })}>
-                  <option value={0}>미지정</option>
-                  {sel?.actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-              </label>
-              <label>우선순위
-                <select value={draft.priority} onChange={(e) => setDraft({ ...draft, priority: e.target.value })}>
-                  {PRIORITY.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              </label>
-              <label>시작일
-                <input type="date" value={draft.startDate} onChange={(e) => setDraft({ ...draft, startDate: e.target.value })} />
-              </label>
-              <label>마감일
-                <input type="date" value={draft.dueDate} onChange={(e) => setDraft({ ...draft, dueDate: e.target.value })} />
-              </label>
-            </div>
-            <div className="tdp-sec">
-              <div className="tdp-sec-h">설명 <em>(선택)</em></div>
-              <textarea className="tdp-desc" rows={4} value={draft.description}
-                placeholder="업무 설명을 입력하세요…"
-                onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
-            </div>
-            <p className="tdp-muted">만든 뒤 상세 화면에서 목표 연결·코멘트를 추가할 수 있습니다.</p>
-          </div>
-        )}
-
-        {openId !== "new" && !t && !err && <div className="tdp-body"><p className="tdp-muted">불러오는 중…</p></div>}
-        {openId !== "new" && err && !t && <div className="tdp-body"><p className="tdp-err">{err}</p></div>}
+        {!t && !err && <div className="tdp-body"><Skeleton variant="page" rows={3} /></div>}
+        {err && !t && <div className="tdp-body"><p className="tdp-err">{err}</p></div>}
 
         {t && (
           <div className="tdp-body">
@@ -719,6 +602,7 @@ export default function TaskDetailPanel() {
             {/* 기존 평문 설명 — 문서로 옮기기 전 자료가 남아 있어서 접어서 보존한다 */}
             <details className="tdp-sec tdp-legacy" open={!!descText.trim()}>
               <summary className="tdp-sec-h">설명 (기존 평문) <em>마크다운</em></summary>
+              <DropZone onFile={(f) => insertUpload(f, "desc")}>
               <textarea
                 ref={descRef}
                 className="tdp-desc" rows={4} value={descText}
@@ -726,10 +610,12 @@ export default function TaskDetailPanel() {
                 onChange={(e) => setDescText(e.target.value)}
                 onBlur={() => { if (descText !== t.description) patch({ description: descText }); }}
                 onPaste={(e) => pasteImage(e, "desc")}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => dropImage(e, "desc")}
               />
-              {uploading && <p className="tdp-muted">이미지 업로드 중…</p>}
+              </DropZone>
+              <div className="tdp-attach">
+                <AttachButton onFile={(f) => insertUpload(f, "desc")} busy={attach.busy} />
+              </div>
+              <AttachStatus state={attach.state} onRetry={attach.retry} onDismiss={attach.dismiss} />
               {descText.trim() && (
                 <div className="tdp-preview">
                   <div className="tdp-preview-h">미리보기</div>
@@ -766,7 +652,7 @@ export default function TaskDetailPanel() {
             {/* 활동 타임라인 */}
             <div className="tdp-sec">
               <div className="tdp-sec-h">활동 타임라인</div>
-              {activity.length === 0 && <p className="tdp-muted">기록된 활동이 없습니다.</p>}
+              {activity.length === 0 && <SectionEmpty text="기록된 활동이 없어요" />}
               {activity.map((a) => (
                 <div className="tdp-act" key={a.id}>
                   <span className="tdp-act-t">{fmt(a.created_at)}</span>
@@ -786,20 +672,12 @@ export default function TaskDetailPanel() {
               ))}
               <div className="tdp-cmt-new">
                 <input value={newComment} onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="코멘트… 이미지 붙여넣기 가능" onKeyDown={(e) => e.key === "Enter" && addComment()}
+                  placeholder="코멘트… 이미지를 붙여넣거나 끌어다 놓으세요" onKeyDown={(e) => e.key === "Enter" && addComment()}
                   onPaste={(e) => pasteImage(e, "comment")} />
+                <AttachButton onFile={(f) => insertUpload(f, "comment")} busy={attach.busy} />
                 <button className="btn small primary" onClick={addComment} disabled={!newComment.trim()}>등록</button>
               </div>
             </div>
-          </div>
-        )}
-
-        {openId === "new" && (
-          <div className="tdp-foot tdp-foot-new">
-            <button className="btn ghost" onClick={() => closeTaskPanel()}>취소</button>
-            <button className="tdp-create btn-brand" disabled={creating || !draft?.title.trim()} onClick={createTask}>
-              {creating ? "만드는 중…" : "＋ 만들기"}
-            </button>
           </div>
         )}
 

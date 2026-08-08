@@ -36,7 +36,13 @@ export default function LoginPage() {
         setError(data.error ?? "로그인 실패");
         return;
       }
-      router.push("/assistant");
+      // 로그인 후 첫 화면은 **홈**이다 (MD-P-2026-026 지시 30).
+      // 예전에는 /assistant 로 보냈다 — 새 팀원이 처음 보는 화면이 에이전트 콘솔이고
+      // "잔여 토큰 2,000,000" 이 먼저 보였다. 이 제품이 무엇인지 잘못 말하는 첫인상이다.
+      //
+      // 들어오려던 경로로 되돌리는 동작은 **없다.** middleware 가 /login 으로 보낼 때
+      // 원래 경로를 남기지 않는다(?next= 없음). 이번에는 만들지 않는다.
+      router.push("/");
       router.refresh();
     } catch {
       setError("서버에 연결할 수 없습니다.");

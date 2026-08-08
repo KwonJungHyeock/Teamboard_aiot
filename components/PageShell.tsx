@@ -3,7 +3,7 @@
 // 페이지 뼈대 (MD-P-2026-019 §B) — 전 화면 공통.
 // 위에서 아래로 고정 순서: 브레드크럼 → 제목+액션 → 탭 → 필터바 → 본문.
 // 화면마다 다시 짜지 않는다. 순서를 바꾸고 싶으면 여기만 고친다.
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 
 export interface ShellTab {
   key: string;
@@ -45,6 +45,18 @@ export default function PageShell({
   filterSummary?: ReactNode;
   children: ReactNode;
 }) {
+  // H3-⑪ 탭 밑줄 — 활성 탭의 x·너비를 CSS 변수로 넘긴다.
+  // 위치를 읽어 오는 것이므로 레이아웃 확정 후(useLayoutEffect) 한 번만 잰다.
+  const tabsRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const root = tabsRef.current;
+    if (!root) return;
+    const on = root.querySelector<HTMLElement>(".pg-tab.on");
+    if (!on) { root.style.setProperty("--w", "0"); return; }
+    root.style.setProperty("--x", `${on.offsetLeft}px`);
+    root.style.setProperty("--w", `${on.offsetWidth}`);
+  }, [activeTab, tabs]);
+
   return (
     <div className="pg">
       <header className="pg-head">
@@ -66,7 +78,10 @@ export default function PageShell({
         </div>
 
         {tabs && tabs.length > 0 && (
-          <div className="pg-tabs" role="tablist">
+          <div className="pg-tabs" role="tablist" ref={tabsRef}>
+            {/* H3-⑪ 활성 밑줄은 탭마다 그리지 않고 **하나**를 옮긴다.
+                각자 그리면 켜지고 꺼질 뿐 미끄러지지 않는다. */}
+            <span className="tabline" aria-hidden="true" />
             {tabs.map((t) => (
               <button
                 key={t.key}

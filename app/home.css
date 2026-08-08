@@ -1,7 +1,7 @@
 /* 홈·캘린더 화면 스타일 — docs/prototype/index.html v0.3 <style>에서 기계 추출.
    셸(사이드바·팔레트) 규칙 제외, 기존 화면과의 클래스 충돌 방지를 위해
    모든 셀렉터를 .hv 스코프로 네임스페이스. 값 수정 금지. */
-.hv .top{display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--paper);backdrop-filter:blur(14px);z-index:5}
+.hv .top{display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
 .hv .crumb{font-family:var(--f-d);font-size:11px;color:var(--lo)}
 .hv .crumb b{color:var(--mid);font-weight:400}
 .hv .top .sp{flex:1}
@@ -113,9 +113,8 @@
 .hv .sig.ag .tt{color:var(--mid)}
 .hv .atag{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-d);font-size:10.5px;color:var(--play-text);background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.3);border-radius:5px;padding:1px 6px;margin-right:6px}
 .hv .mo{width:12px;height:12px;flex:0 0 12px;display:inline-grid;place-items:center}
-.hv .mo:empty::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--play);animation:pulse 1.5s ease-in-out infinite}
+.hv .mo:empty::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--play)}
 
-@keyframes pulse{0%,100%{transform:scale(.7);opacity:.5}50%{transform:scale(1.15);opacity:1}}
 .hv .pr{margin-top:10px}
 .hv .pr:first-of-type{margin-top:0}
 .hv .pr-t{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
@@ -150,18 +149,17 @@
 
 /* 부사수 상태 점 (발주 지시 — 레인 이름 옆): working=펄스, pending=바이올렛 고정 */
 .hv .agdot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;display:inline-block}
-.hv .agdot.working{background:var(--play);animation:pulse 1.5s ease-in-out infinite}
+.hv .agdot.working{background:var(--play)}
 .hv .agdot.pending{background:var(--play)}
-@media (prefers-reduced-motion:reduce){.hv .agdot.working{animation:none}}
 
 /* ── 목표 트리 (Phase 4) — 토큰만 사용 ── */
 .hv .gtree{display:flex;flex-direction:column;gap:4px}
-.hv .gnode{border:1px solid var(--line);border-radius:var(--r-s);padding:4px 8px;margin-top:6px;background:var(--glass)}
+.hv .gnode{border:1px solid var(--line);border-radius:var(--r-s);padding:4px 8px;margin-top:6px;background:var(--surface-2)}
 .hv .gnode.q{margin-left:18px}
 .hv .gnode>summary{list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 4px;border-radius:6px}
 .hv .gnode>summary::-webkit-details-marker{display:none}
 .hv .gnode>summary:hover{background:var(--glass)}
-.hv .gnode>summary .cv{width:11px;height:11px;fill:none;stroke:var(--lo);stroke-width:2;transition:transform .18s}
+.hv .gnode>summary .cv{width:11px;height:11px;fill:none;stroke:var(--lo);stroke-width:2;transition: transform var(--dur-2) var(--ease-out)}
 .hv .gnode[open]>summary .cv{transform:rotate(90deg)}
 .hv .gtag{font-family:var(--f-d);font-size:10.5px;letter-spacing:.08em;color:var(--lo);border:1px solid var(--line);border-radius:5px;padding:1px 6px;white-space:nowrap}
 .hv .gtag.y{color:var(--hi);border-color:var(--line-hi)}
@@ -183,7 +181,6 @@
 .hv .gadd input{height:28px;font-size:12px;padding:0 9px;background:transparent;border:1px solid var(--line);border-radius:6px;color:var(--hi);max-width:280px}
 .hv .gadd select{height:28px;font-size:12px;background:var(--bg-elevated);border:1px solid var(--line);border-radius:6px;color:var(--mid);width:auto;padding:0 6px}
 .hv .gerr{color:var(--danger);font-size:11.5px}
-.hv .gempty{color:var(--lo);font-size:12.5px;padding:8px 4px}
 /* 상위 없는 목표 묶음 (MD-P-2026-013) — 안내 문구 아래에 실제 목표를 편다 */
 .hv .gtree-orphan{display:flex;flex-direction:column;gap:4px;margin-top:10px;padding-top:10px;border-top:1px solid var(--hair)}
 .hv .gtree-orphan-h{color:var(--lo);font-size:12.5px;padding:0 4px 2px}
@@ -289,7 +286,7 @@
 .hv .rp-gen select{height:30px;font-size:12px;background:var(--bg-elevated);border:1px solid var(--line);border-radius:6px;color:var(--mid);padding:0 8px}
 .hv .rp-notice{color:var(--ok);font-size:12px}
 .hv .rp-cols{display:grid;grid-template-columns:210px 1fr;gap:16px;align-items:start}
-.hv .rp-side{border:1px solid var(--line);border-radius:var(--r-s);padding:10px;background:var(--glass)}
+.hv .rp-side{border:1px solid var(--line);border-radius:var(--r-s);padding:10px;background:var(--surface-2)}
 .hv .rp-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:0;border:0;border-radius:6px;padding:8px;cursor:pointer;color:var(--mid);font-family:inherit}
 .hv .rp-item:hover{background:var(--glass)}
 .hv .rp-item.on{background:var(--glass)}
@@ -304,7 +301,6 @@
 .hv .rp-sec{margin-bottom:20px}
 .hv .rp-sec h2{font-size:14px;color:var(--hi);border-bottom:1px solid var(--line);padding-bottom:6px;margin:0 0 10px}
 .hv .rp-prose{font-size:12.5px;color:var(--mid);line-height:1.65;margin:0 0 10px;white-space:pre-wrap}
-.hv .rp-empty{font-size:12px;color:var(--lo);margin:0}
 .hv .rp-warn{font-size:12px;color:var(--coral-text);background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.35);border-radius:6px;padding:7px 10px;margin:0 0 10px}
 .hv .rp-notice-block{font-size:12.5px;color:var(--mid);background:var(--glass);border:1px solid var(--line);border-left:2px solid var(--edu);border-radius:6px;padding:9px 11px;margin:0 0 12px}
 .hv .rp-sub{font-size:12px;color:var(--lo);font-family:var(--f-d);letter-spacing:.06em;margin:12px 0 6px}
@@ -453,7 +449,6 @@
 .hv .rp-side .rp-gen{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
 .hv .rp-side .rp-gen select{flex:1 1 72px;min-width:72px;height:34px;font-size:var(--fs-meta)}
 .hv .rp-side .rp-gen .btn-brand{width:auto;flex:0 0 auto}
-.hv .rp-empty-center{min-height:340px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);border-radius:var(--r)}
 @media(max-width:900px){.hv .rp-cols{grid-template-columns:minmax(0,1fr)}}
 
 /* ── 업무 기간 바 (주·월 뷰) ── */
@@ -466,26 +461,15 @@
 .hv .cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--card-gap)}
 @media(max-width:1100px){.hv .cols{grid-template-columns:minmax(0,1fr)}}
 
-/* ── 영역 작업 공간 헤더 (파트 6) — 영역 색 액센트 ── */
-.hv .area-hd{display:flex;align-items:flex-start;gap:14px;padding:16px 18px;margin-bottom:14px;
-  border:1px solid var(--line);border-left-width:4px;border-radius:var(--r);
-  background:linear-gradient(100deg,var(--glass),transparent),var(--bg-surface);box-shadow:var(--card-shadow)}
-.hv .area-hd .area-dot{width:12px;height:12px;flex:0 0 12px;border-radius:4px;margin-top:6px}
-.hv .area-hd h1{font-size:var(--fs-page-title);line-height:1.2;margin:1px 0 2px}
-.hv .area-hd .eb{font-family:var(--f-d);font-size:var(--fs-meta);letter-spacing:.1em;color:var(--lo)}
-.hv .area-hd p{font-size:var(--fs-meta);color:var(--mid);margin-top:3px}
-.hv .area-hd.edu{border-left-color:var(--edu)} .hv .area-hd.edu .area-dot{background:var(--edu)}
-.hv .area-hd.play{border-left-color:var(--play)} .hv .area-hd.play .area-dot{background:var(--play)}
-.hv .area-hd.train{border-left-color:var(--train)} .hv .area-hd.train .area-dot{background:var(--train)}
-.hv .area-hd.team{border-left-color:var(--team)} .hv .area-hd.team .area-dot{background:var(--team)}
+/* 영역 작업 공간 헤더(.area-hd)는 MD-P-2026-027 B11 에서 화면과 함께 삭제됐다. */
 
 /* ── 타임라인 빈 칸 업무 추가 (파트 4 캘린더) ── */
 .hv .ln-n .ln-add{margin-left:auto;width:22px;height:22px;flex:0 0 22px;border:1px solid var(--line);
   background:var(--glass);color:var(--mid);border-radius:6px;cursor:pointer;font-size:13px;line-height:1;
-  opacity:0;transition:opacity .12s;display:grid;place-items:center}
+  opacity:0;transition: opacity var(--dur-1) var(--ease-out);display:grid;place-items:center}
 .hv .ln:hover .ln-n .ln-add{opacity:1}
 .hv .ln-n .ln-add:hover{border-color:var(--line-hi);color:var(--hi)}
-.hv .chip.add{cursor:pointer;border-style:dashed;color:var(--lo);background:transparent;opacity:0;transition:opacity .12s}
+.hv .chip.add{cursor:pointer;border-style:dashed;color:var(--lo);background:transparent;opacity:0;transition: opacity var(--dur-1) var(--ease-out)}
 .hv .ln:hover .chip.add{opacity:1}
 .hv .chip.add:hover{color:var(--hi);border-color:var(--line-hi)}
 
@@ -509,7 +493,7 @@
 .hv .suml{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
 .hv .suml b{font-size:var(--fs-body);color:var(--mid);font-weight:600}
 .hv .suml em{font-style:normal;font-family:var(--f-d);font-size:var(--fs-meta);color:var(--lo)}
-.hv .sumcv{width:16px;height:16px;flex:0 0 16px;fill:none;stroke:var(--lo);stroke-width:2;transition:transform .18s}
+.hv .sumcv{width:16px;height:16px;flex:0 0 16px;fill:none;stroke:var(--lo);stroke-width:2;transition: transform var(--dur-2) var(--ease-out)}
 .hv .sumcv.on{transform:rotate(180deg)}
 .hv .sumbody{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
 .hv .ring{flex:0 0 auto}
@@ -518,16 +502,8 @@
 /* ── 허들 (3순위 — 하단 저강조) ── */
 .hv .huddle-lo{align-self:start}
 
-/* ── 자료 링크 카드 (Phase 5) — 메타데이터만, 본문 없음 ── */
-.hv .acards{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
-.hv .acard{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;min-width:0}
-.hv .akind{font-family:var(--f-d);font-size:10.5px;letter-spacing:.08em;border:1px solid var(--line);border-radius:5px;padding:1px 7px;color:var(--lo);white-space:nowrap}
-.hv .akind.notion{color:var(--hi);border-color:var(--line-hi)}
-.hv .akind.github{color:var(--play)}
-.hv .akind.figma{color:var(--train)}
-.hv .acard-t{font-size:12.5px;color:var(--hi);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hv .acard-t:hover{text-decoration:underline}
-.hv .acard-u{font-style:normal;font-size:10.5px;color:var(--lo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:32%}
+/* 영역 자료 링크 카드(.acards/.acard/.akind)는 MD-P-2026-027 B11 에서 삭제됐다.
+   업무 단위 자료는 인수인계 화면이 .ho-akind 로 따로 그린다. */
 
 /* ── 인수인계 (파트 Y) — 목록 재사용(rp-*) + 문서 편집/미리보기 ── */
 .hv .ho-sec-h{display:flex;align-items:center;gap:8px;font-size:var(--fs-meta);color:var(--lo);font-family:var(--f-d);letter-spacing:.06em;margin:0 0 8px;padding:0 4px}
@@ -546,7 +522,6 @@
 .hv .ho-meta{font-family:var(--f-d);font-size:var(--fs-meta);color:var(--lo);margin:0 0 16px}
 .hv .ho-body{font-size:var(--fs-row);color:var(--mid);line-height:1.7;margin:0 0 18px;white-space:pre-wrap;font-family:inherit}
 .hv .ho-h2{font-size:15px;color:var(--hi);border-bottom:1px solid var(--line);padding-bottom:6px;margin:18px 0 10px}
-.hv .ho-empty{font-size:var(--fs-meta);color:var(--lo)}
 .hv .ho-task{padding:9px 0;border-bottom:1px solid var(--line)}
 .hv .ho-task:last-child{border-bottom:0}
 .hv .ho-task-h{display:flex;flex-direction:column;gap:2px}
@@ -561,7 +536,7 @@
 /* 인쇄(PDF) — 인수인계 문서 본문만 (사이드바·편집 UI 숨김) */
 @media print {
   .side, .tdp, .tdp-backdrop { display: none !important; }
-  .hv .ho-edit, .hv .rp-side, .hv .ho-empty { display: none !important; }
+  .hv .ho-edit, .hv .rp-side { display: none !important; }
   .hv .rp-cols { grid-template-columns: 1fr; }
   .hv .ho-doc { border: 0; padding: 0; background: #fff; color: #000; }
   .hv .ho-title, .hv .ho-h2, .hv .ho-task-h b { color: #000; }
@@ -573,16 +548,21 @@
    오버라이드. 흰 카드는 그림자로 층을 만들고 테두리는 최소화. 코랄=완료·달성·리스크. */
 
 /* ── 상단 바 · 실시간 시계 ── */
-.hv .top { background: rgba(245, 243, 237, .82); border-bottom: 1px solid var(--line); backdrop-filter: blur(12px); }
+/* 아이보리 rgba(245,243,237,.82) → --bg (§B-3).
+   backdrop-filter 도 함께 뺐다 — 배경이 불투명해져 흐릴 대상이 없는데,
+   이게 붙어 있으면 Chromium 이 페이지 전체를 합성 레이어로 올려
+   글자 안티에일리어싱이 서브픽셀 → 그레이스케일로 바뀐다.
+   그래서 `.hv` 화면만 전체가 한 톤 흐려 보였다 (사이드바 포함). */
+.hv .top { background: var(--bg); border-bottom: 1px solid var(--line); }
 .hv .iconbtn { background: var(--card); border-color: var(--line); box-shadow: var(--shadow-card); }
 .hv .iconbtn:hover { color: var(--ink); border-color: var(--line-hi); }
 .hv .head-r { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 .hv .clock { display: inline-flex; align-items: baseline; gap: 6px; font-family: var(--f-d); }
 .hv .clock-t { font-size: 20px; font-weight: 600; color: var(--ink); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
 .hv .clock-z { font-size: var(--fs-badge); color: var(--muted); letter-spacing: .1em; }
-.hv .seg { background: #EDE9DF; padding: 3px; border-radius: var(--r-s); }
-.hv .seg button { color: var(--ink-soft); }
-.hv .seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow-card); }
+/* 아이보리 #EDE9DF 제거 — 치수·색은 design.css 의 §B-1 .seg 한 벌이 정한다 */
+
+
 
 /* ── 지표 카드 5칸 ── */
 .hv .metrics { grid-template-columns: repeat(5, minmax(0, 1fr)); }
@@ -607,7 +587,7 @@
 .hv .mc.mc-stalled { border-left-color: var(--coral); }
 .hv .mc.mc-blocked { border-left-color: var(--muted); }
 /* 막힌 업무 — 자리만(placeholder). 저강조 + 점선 */
-.hv .mc.ph { background: repeating-linear-gradient(45deg, var(--surface-2) 0 8px, #F6F4EE 8px 16px); box-shadow: none; border: 1px dashed var(--line-hi); }
+.hv .mc.ph { background: repeating-linear-gradient(45deg, var(--surface-2) 0 8px, var(--hair) 8px 16px); box-shadow: none; border: 1px dashed var(--line-hi); }
 .hv .mc.ph .v { color: var(--muted); font-size: 20px; }
 .hv .ph-tag { font-family: var(--f-d); font-size: var(--fs-badge); color: var(--muted); border: 1px dashed var(--line-hi); border-radius: var(--r-s); padding: 3px 9px; white-space: nowrap; }
 
@@ -629,7 +609,7 @@
 .hv .scomment, .hv .scomments, .hv .sacts, .hv .tinbox-row, .hv .ln-n, .hv .ln-b, .hv .cf, .hv .ho-task { border-color: var(--line); }
 
 /* ── 타임라인 트랙 (다크 흰줄 → 라이트 격자) ── */
-.hv .trk { background: repeating-linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px 10%); background-color: #F1EFE8; }
+.hv .trk { background: repeating-linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px 10%); background-color: var(--surface-2); }
 
 /* ── 칩 (pill) · 배지 ── */
 .hv .chip { background: rgba(55, 67, 79, .04); border: 1px solid var(--line); color: var(--ink-soft); border-radius: var(--r-pill); }
@@ -669,7 +649,7 @@
 .hv .crumb, .hv .head .eb, .hv .seg button, .hv .mc .l, .hv .mc .d,
 .hv th, .hv .st, .hv .due, .hv .bg, .hv .atag, .hv .ch .sub, .hv .tab .n,
 .hv .areatag, .hv .wtag, .hv .gtag, .hv .gpv, .hv .gdrop, .hv .hrs, .hv .ovf,
-.hv .akind, .hv .pst, .hv .nowl::before, .hv .suml em, .hv .sig .mt {
+.hv .ho-akind, .hv .pst, .hv .nowl::before, .hv .suml em, .hv .sig .mt {
   font-family: var(--font-sans);
 }
 /* 시계는 모노 유지(로고 MISSION DECK 는 globals .brand/.login-brand 에서 모노 유지) */
@@ -773,7 +753,7 @@
 }
 
 /* 3. KPI 카드 클릭 링크 — hover 커서·미세 elevation */
-.hv a.mc { text-decoration: none; color: inherit; transition: box-shadow .12s, transform .12s; }
+.hv a.mc { text-decoration: none; color: inherit; transition: box-shadow var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out); }
 .hv a.mc.linked { cursor: pointer; }
 .hv a.mc.linked:hover { box-shadow: var(--shadow-pop); transform: translateY(-1px); }
 .hv a.mc.linked:focus-visible { outline: 2px solid var(--edu); outline-offset: 2px; }
@@ -803,7 +783,7 @@
 .hv .tlg-bar.late { border-left-color: var(--coral); background: color-mix(in srgb, var(--coral) 11%, transparent); }
 .hv .tlg-bar.st-event { border-left-color: var(--team); background: color-mix(in srgb, var(--team) 13%, transparent); color: var(--ink-soft); }
 .hv .tlg-more { align-self: flex-start; background: 0; border: 0; color: var(--ink-soft); font-family: var(--font-mono); font-size: var(--fs-badge); cursor: pointer; padding: 0 4px; }
-.hv .tlg-add { position: absolute; top: 5px; right: 5px; width: 18px; height: 18px; border: 1px dashed var(--line-hi); background: var(--card); color: var(--muted); border-radius: 5px; cursor: pointer; line-height: 1; opacity: 0; transition: opacity .12s; }
+.hv .tlg-add { position: absolute; top: 5px; right: 5px; width: 18px; height: 18px; border: 1px dashed var(--line-hi); background: var(--card); color: var(--muted); border-radius: 5px; cursor: pointer; line-height: 1; opacity: 0; transition: opacity var(--dur-1) var(--ease-out); }
 .hv .tlg-cell:hover .tlg-add { opacity: 1; }
 .hv .tlg-add:hover { border-color: var(--muted); color: var(--ink); }
 .hv .tl-legend { font-size: var(--fs-badge); color: var(--muted); }
@@ -845,7 +825,6 @@
 .hv .an-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 .hv .lg-doing { background: var(--edu); }
 .hv .lg-wait { background: var(--muted); }
-.hv .an-empty { font-size: var(--fs-meta); color: var(--muted); padding: 12px 0; }
 
 /* 3. 프로젝트별 / 목표별 진행 바 (도넛 제거) */
 .hv .prbars { display: flex; flex-direction: column; gap: 13px; }
@@ -878,10 +857,9 @@
 .hv .gt-bgcol.wknd { background: color-mix(in srgb, var(--ink-soft) 3.5%, transparent); }
 .hv .gt-todayline { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--coral); opacity: .55; z-index: 2; }
 .hv .gt-axis .gt-todayline { z-index: 3; }
-/* NOW 심박 — 앵커(팀 타임라인)에서만 허용되는 모션. 오늘 선 상단 코랄 점 pulse. */
-.hv .gt-axis .gt-todayline::before { content: ""; position: absolute; top: -3px; left: 50%; transform: translateX(-50%); width: 7px; height: 7px; border-radius: 50%; background: var(--coral); animation: nowbeat 1.8s ease-in-out infinite; }
-@keyframes nowbeat { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--coral) 55%, transparent); } 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--coral) 0%, transparent); } }
-@media (prefers-reduced-motion: reduce) { .hv .gt-axis .gt-todayline::before { animation: none; } }
+/* 오늘 선 상단 코랄 점. 심박(무한 반복)은 §H2 에서 걷어냈다 —
+   "지금"은 위치가 말해 준다. 계속 뛰면 눈이 그리로 계속 끌린다. */
+.hv .gt-axis .gt-todayline::before { content: ""; position: absolute; top: -3px; left: 50%; transform: translateX(-50%); width: 7px; height: 7px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 0 3px color-mix(in srgb, var(--coral) 22%, transparent); }
 .hv .gt-line { position: relative; height: 22px; margin: 3px 0; }
 .hv .gt-none { color: var(--muted); font-size: var(--fs-badge); padding-left: 4px; height: auto; display: flex; align-items: center; }
 .hv .gt-bar { position: absolute; top: 0; height: 22px; display: flex; align-items: center; border: 0; border-left: 3px solid var(--line-hi); border-radius: 5px; padding: 0 8px; overflow: hidden; cursor: pointer; font-family: inherit; font-size: var(--fs-badge); color: var(--ink); background: color-mix(in srgb, var(--ink-soft) 9%, transparent); min-width: 14px; z-index: 1; }
@@ -979,7 +957,7 @@
 .hv .focus-tile { padding: 18px 20px; }
 .hv .focus-tile .ft { font-size: 16px; font-weight: 800; color: var(--ink); display: flex; align-items: center; gap: 8px; }
 .hv .focus-tile .fs { font-size: 12px; color: var(--muted); font-weight: 600; margin: 3px 0 14px; }
-.hv .fi { display: flex; align-items: center; gap: 13px; padding: 12px 14px; border-radius: 14px; margin-bottom: 9px; border: 1px solid var(--line); text-decoration: none; transition: .15s; }
+.hv .fi { display: flex; align-items: center; gap: 13px; padding: 12px 14px; border-radius: 14px; margin-bottom: 9px; border: 1px solid var(--line); text-decoration: none; transition: background-color var(--dur-2) var(--ease-out); }
 .hv .fi:last-child { margin-bottom: 0; }
 .hv .fi:hover { background: var(--paper); border-color: var(--line-hi); }
 .hv .fi .n { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 17px; font-weight: 800; flex: none; color: #fff; font-family: var(--f-d); }
@@ -1022,8 +1000,6 @@
 .hv .cli .dotc { width: 7px; height: 7px; border-radius: 2px; flex: none; }
 .hv .cli .cli-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hv .cli .cli-d { margin-left: auto; font-weight: 700; font-size: 12px; font-family: var(--f-d); white-space: nowrap; flex: none; }
-.hv .collab-more { display: block; padding: 11px 20px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); text-decoration: none; border-top: 1px solid var(--line); }
-.hv .collab-more:hover { color: var(--ink); background: var(--paper); }
 
 /* ── Bento 마감 — 간트 바 솔리드 진한 색(테두리·연한 띠 제거), 흰 텍스트 대비 유지 ── */
 .hv .gt-bar { border: 0; border-left: 0; padding: 0 9px; background: var(--ink-soft); color: #fff; box-shadow: 0 1px 4px rgba(31,39,51,.16); }
@@ -1101,7 +1077,8 @@
 .hv .ma-approve { font-size: 12.5px; font-weight: 700; color: var(--coral-text); text-decoration: none; white-space: nowrap; }
 .hv .ma-approve:hover { text-decoration: underline; }
 
-.hv .ma-spin { width: 13px; height: 13px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; display: inline-block; animation: agf-rot .7s linear infinite; }
+/* 회전 스피너 제거 (§H2). 상태색 점만 남긴다. */
+.hv .ma-spin { width: 13px; height: 13px; border-radius: 50%; background: currentColor; display: inline-block; }
 
 /* 승인 대기 카드 — 자세히 토글 + 비용 실측 */
 .hv .pcard-body.open { display: block; -webkit-line-clamp: none; overflow: visible; }
@@ -1116,7 +1093,7 @@
 
 /* ① 상단 요약 카드 = 필터 (전체/결정/확인/메모/리스크 칩 + 정체 표시) */
 .hv .sig-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 14px; }
-.hv .sig-chip { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border: 1px solid var(--line-hi); background: var(--card); border-radius: 11px; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--ink-soft); cursor: pointer; transition: .14s; }
+.hv .sig-chip { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border: 1px solid var(--line-hi); background: var(--card); border-radius: 11px; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--ink-soft); cursor: pointer; transition: background-color var(--dur-1) var(--ease-out); }
 .hv .sig-chip:hover { border-color: var(--muted); color: var(--ink); }
 .hv .sig-chip .sig-chip-n { font-family: var(--f-d); font-size: 12.5px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
 .hv .sig-chip[aria-pressed="true"] { background: var(--charcoal); border-color: var(--charcoal); color: #fff; }
@@ -1127,7 +1104,7 @@
 /* ② 통일 항목 카드 — 타입 배지 + 제목·메타 + 상태 태그 + 우측 인라인 액션 */
 .hv .sig-cards { display: flex; flex-direction: column; gap: 10px; }
 .hv .sig-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; }
-.hv .sig-card.clickable { cursor: pointer; transition: .14s; }
+.hv .sig-card.clickable { cursor: pointer; transition: background-color var(--dur-1) var(--ease-out); }
 .hv .sig-card.clickable:hover { border-color: var(--line-hi); box-shadow: var(--shadow-pop); }
 .hv .sig-card.selected { border-color: var(--charcoal); }
 .hv .sig-card.em { border-left: 3px solid var(--coral); }        /* 정체·리스크 코랄 강조 */
@@ -1158,7 +1135,7 @@
 
 /* 우측 인라인 빠른 액션 — 빠른 액션 시스템과 통일(작은 아웃라인 버튼) */
 .hv .sig-card-acts { display: flex; align-items: center; gap: 6px; }
-.hv .sig-act { height: 30px; padding: 0 12px; border: 1px solid var(--line-hi); background: var(--card); border-radius: 8px; font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; cursor: pointer; transition: .14s; }
+.hv .sig-act { height: 30px; padding: 0 12px; border: 1px solid var(--line-hi); background: var(--card); border-radius: 8px; font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; cursor: pointer; transition: background-color var(--dur-1) var(--ease-out); }
 .hv .sig-act:hover { border-color: var(--muted); color: var(--ink); }
 .hv .sig-act.primary { color: #fff; background: var(--coral-d); border-color: var(--coral-d); }
 .hv .sig-act.primary:hover { filter: brightness(1.06); }
@@ -1199,7 +1176,7 @@
 .hv .cal-dowc.sun { color: var(--coral-text); }
 .hv .cal-dowc.sat { color: var(--edu-text); }
 .hv .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
-.hv .cal-cell { min-height: 104px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 6px 7px 8px; cursor: pointer; position: relative; transition: background .12s; }
+.hv .cal-cell { min-height: 104px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 6px 7px 8px; cursor: pointer; position: relative; transition: background-color var(--dur-1) var(--ease-out); }
 .hv .cal-cell:nth-child(7n) { border-right: 0; }
 .hv .cal-cell:hover { background: var(--paper); }
 .hv .cal-cell.out { background: var(--surface-2); }
@@ -1241,7 +1218,7 @@
 .hv .tt-act.c:hover { background: color-mix(in srgb, var(--green) 12%, transparent); border-color: color-mix(in srgb, var(--green) 42%, transparent); }
 .hv .tt-act.o { color: var(--ink-soft); }
 .hv .tt-act.o:hover { background: var(--glass); border-color: var(--muted); }
-.hv tr.done-opt { opacity: .5; transition: opacity .3s; }
+.hv tr.done-opt { opacity: .5; transition: opacity var(--dur-3) var(--ease-out); }
 .hv tr.done-opt td:first-child { text-decoration: line-through; }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -1262,10 +1239,9 @@
 .hv .led.s-done { background: var(--green); }
 .hv .led.s-risk, .hv .led.s-late { background: var(--coral); border-radius: 1px; transform: rotate(45deg); }
 .hv .led.s-drop { background: var(--line-hi); }
-/* 에이전트 = 발광 + pulse (모션이 곧 의미). 일상 마크와 구분되는 유일한 예외. */
+/* 에이전트 = 보라 발광. pulse 는 §H2 에서 걷어냈다 (무한 반복 금지). */
 .hv .led.agent { background: var(--play); }
-.hv .led.agent.live { animation: pulse 1.5s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .hv .led.agent.live { animation: none; } }
+.hv .led.agent.live { box-shadow: 0 0 0 3px color-mix(in srgb, var(--play) 24%, transparent); }
 
 /* ── 다크 히어로 앵커 ── 화면당 1개(홈=팀 타임라인). 그라데이션 + 미세 회로(≤7%,
    가장자리 mask 페이드) + 코랄 액센트 + NOW 심박. 타 화면 복제 금지(라이트 유지). */
@@ -1304,7 +1280,7 @@
 .hv .tb-col-l { font-size: 13px; font-weight: 700; color: var(--ink); }
 .hv .tb-col-n { font-size: 12px; color: var(--muted); font-weight: 700; }
 .hv .tb-col-body { display: flex; flex-direction: column; gap: 9px; padding: 4px 10px 12px; }
-.hv .tb-card { background: var(--card); border: 1px solid var(--line); border-radius: 11px; box-shadow: var(--shadow-card); padding: 11px 12px; cursor: pointer; transition: box-shadow .14s, border-color .14s; }
+.hv .tb-card { background: var(--card); border: 1px solid var(--line); border-radius: 11px; box-shadow: var(--shadow-card); padding: 11px 12px; cursor: pointer; transition: box-shadow var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out); }
 .hv .tb-card:hover { border-color: var(--line-hi); box-shadow: var(--shadow-pop); }
 .hv .tb-card.dragging { opacity: .5; }
 .hv .tb-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
@@ -1322,7 +1298,6 @@
 .hv .tb-bar { flex: 1; height: 5px; border-radius: 3px; background: var(--track-bg); overflow: hidden; }
 .hv .tb-bar i { display: block; height: 100%; border-radius: 3px; }
 .hv .tb-pct { font-size: 11px; color: var(--ink-soft); flex: none; min-width: 30px; text-align: right; }
-.hv .tb-empty { font-size: 12px; color: var(--muted); text-align: center; padding: 8px 0; }
 .hv .tb-add { border: 1px dashed var(--line-hi); background: transparent; border-radius: 9px; padding: 8px; font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .hv .tb-add:hover { border-color: var(--muted); color: var(--ink); background: var(--glass); }
 
@@ -1352,8 +1327,7 @@
 .hv .tg-bar { position: absolute; top: 6px; height: 22px; border-radius: 5px; border: 0; color: #fff; display: flex; align-items: center; overflow: hidden; cursor: pointer; box-shadow: 0 1px 3px rgba(31,39,51,.16); min-width: 16px; }
 .hv .tg-fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(0,0,0,.20); }
 .hv .tg-bar-t { position: relative; z-index: 1; padding: 0 8px; font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hv .tg-empty, .hv .tg-quick { font-size: 12.5px; }
-.hv .tg-empty { color: var(--muted); padding: 24px 4px; text-align: center; }
+.hv .tg-quick { font-size: 12.5px; }
 .hv .tg-quick { margin-top: 12px; border: 1px dashed var(--line-hi); background: transparent; border-radius: 9px; padding: 9px 14px; font-family: inherit; font-weight: 600; color: var(--muted); cursor: pointer; }
 .hv .tg-quick:hover { border-color: var(--muted); color: var(--ink); }
 
@@ -1392,7 +1366,7 @@
 .hv .hud-cards { display: flex; flex-direction: column; gap: 10px; }
 /* 통일 조용 카드 — 흰 표면·단일 그림자·왼쪽 띠 없음·무발광·무광택 */
 .hv .hud-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-card); padding: 14px 16px; }
-.hv .hud-card.clickable { cursor: pointer; transition: border-color .14s, box-shadow .14s; }
+.hv .hud-card.clickable { cursor: pointer; transition: border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out); }
 .hv .hud-card.clickable:hover { border-color: var(--line-hi); box-shadow: var(--shadow-pop); }
 .hv .hud-card.selected { border-color: var(--charcoal); }
 .hv .hud-card-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -1410,7 +1384,7 @@
 .hv .hud-time, .hv .hud-cmt { color: var(--muted); }
 .hv .hud-card-acts { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .hv .hud-card > .hud-card-acts { margin-top: 12px; }
-.hv .hud-act { height: 30px; padding: 0 14px; border: 1px solid var(--line-hi); background: var(--card); border-radius: 8px; font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; cursor: pointer; transition: .14s; }
+.hv .hud-act { height: 30px; padding: 0 14px; border: 1px solid var(--line-hi); background: var(--card); border-radius: 8px; font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; cursor: pointer; transition: background-color var(--dur-1) var(--ease-out); }
 .hv .hud-act:hover { border-color: var(--muted); color: var(--ink); }
 .hv .hud-act.primary { color: #fff; background: var(--coral-d); border-color: var(--coral-d); }
 .hv .hud-act.primary:hover { filter: brightness(1.06); }
@@ -1422,7 +1396,7 @@
 
 /* ═══ 인수인계 + 관리 (롤아웃 #4 — Mission Deck OS 정렬) ═══ */
 /* 인수인계 목록 = 조용한 통일 카드 (mono #ID·시각 · 담당 LED · 상태 배지, 왼쪽 띠·광택 없음) */
-.hv .ho-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-card); padding: 11px 13px; margin-bottom: 8px; cursor: pointer; transition: border-color .14s, box-shadow .14s; }
+.hv .ho-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-card); padding: 11px 13px; margin-bottom: 8px; cursor: pointer; transition: border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out); }
 .hv .ho-item:hover { border-color: var(--line-hi); box-shadow: var(--shadow-pop); }
 .hv .ho-item.on { border-color: var(--charcoal); }
 .hv .ho-item .led { width: 8px; height: 8px; flex: none; }
@@ -1494,7 +1468,7 @@
 @media (max-width: 1080px) { .hv .hrow.r13 { grid-template-columns: 1fr; } }
 
 /* 모듈 카드 — 밝은 표면 + 3단 그림자, hover 부양 */
-.hv .tile.mod { background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--e1); padding: 18px; transition: transform .15s, box-shadow .15s; }
+.hv .tile.mod { background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--e1); padding: 18px; transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
 .hv .tile.mod:hover { transform: translateY(-2px); box-shadow: var(--e2); }
 .hv .tile.mod .th { display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px; }
 .hv .tile.mod .th h3 { font: var(--text-h2); letter-spacing: var(--ls-h2); margin: 0; color: var(--ink); }
@@ -1546,7 +1520,7 @@
 /* 에이전트 상태 칩 */
 .hv .agchip { display: flex; align-items: center; gap: 9px; margin-top: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px; background: color-mix(in srgb, var(--blue) 5%, var(--card)); text-decoration: none; }
 .hv .agchip-led { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; background: var(--slate); }
-.hv .agchip-led.working { background: var(--green); box-shadow: 0 0 0 0 color-mix(in srgb, var(--green) 60%, transparent); animation: agpulse 1.6s ease-out infinite; }
+.hv .agchip-led.working { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 24%, transparent); }
 .hv .agchip-led.pending { background: var(--amber); }
 .hv .agchip-l { font-size: 13px; font-weight: 600; color: var(--ink); }
 .hv .agchip-tok { margin-left: auto; font-size: 12px; color: var(--ink2); }
@@ -1592,7 +1566,6 @@
 .hv .gt2-bar-t { font-size: 11.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hv .gt2-bar-s { font-family: var(--f-d); font-size: 10.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hv .gt2-bar.late { box-shadow: 0 0 0 1px rgba(255,122,126,.5), 0 1px 3px rgba(0,0,0,.3); }
-.hv .gt2-empty { grid-column: 1 / -1; padding: 30px 16px; text-align: center; color: #78818F; font-size: 13px; }
 .hv .gt2-foot { display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.07); }
 .hv .gt2-hint { font-size: 11.5px; color: #78818F; }
 .hv .gt2-c { margin-left: auto; font-size: 11.5px; color: #9AA3B2; }
@@ -1680,4 +1653,4 @@
 .hv .cal2-pop-i i, .hv .cal2-prio button i { width: 8px; height: 8px; border-radius: 3px; flex: 0 0 8px; }
 .hv .cal2-pop-i:hover, .hv .cal2-prio button:hover { background: color-mix(in srgb, var(--muted) 10%, var(--card)); }
 .hv .cal2-prio { min-width: 120px; }
-@media (prefers-reduced-motion: reduce) { .hv .cal2-bar { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .hv .cal2-bar { transition: none var(--dur-1) var(--ease-out); } }

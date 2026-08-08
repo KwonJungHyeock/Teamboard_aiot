@@ -7,7 +7,6 @@ import { countTasks, countedLabel, uncountedChildrenLabel } from "@/lib/progress
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
 import GoalProgress from "./GoalProgress";
-import EmptyState from "./EmptyState";
 
 // 상태 라벨 (MD-P-2026-009 §D) — 판정 불가(null)는 칩을 그리지 않는다.
 const GOAL_STATUS_KO: Record<string, string> = { ontrack: "온트랙", risk: "리스크", wait: "대기", done: "완료" };
@@ -341,6 +340,7 @@ function MonthGoalRow({
           detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
           closing={goal.closing}
           counted={goal.countedTasks}
+          periodType={goal.periodType}
         />
         {canEdit && (
           <button className="lk mu gedit-b" onClick={() => setEditing((v) => !v)}>
@@ -466,7 +466,8 @@ function BranchNode({
         <GoalProgress progress={goal.progress} colorKey={goal.colorKey}
           detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
           closing={goal.closing}
-          counted={goal.countedTasks} />
+          counted={goal.countedTasks}
+          periodType={goal.periodType} />
         {canEdit && (
           <button
             className="lk mu gedit-b"
@@ -511,18 +512,10 @@ export default function GoalTree({
   return (
     <OpenGoalCtx.Provider value={onOpenGoal ?? null}>
     <div className="gtree">
-      {years.length === 0 && (
-        <EmptyState
-          compact
-          icon="tasks"
-          title={`${year}년 목표가 아직 없어요`}
-          hint={
-            isLead
-              ? "연간 목표를 세우고 그 아래 분기·월 목표로 나누면 업무 진척이 자동으로 롤업됩니다. 아래에서 추가하세요."
-              : "팀장이 연간 목표를 세우면 여기에서 분기·월 목표와 진척을 볼 수 있어요."
-          }
-        />
-      )}
+      {/* 여기에 있던 빈 상태는 삭제했다 (MD-P-2026-026 §A).
+          GoalsView 가 tree.length === 0 이면 자체 빈 상태로 먼저 끝내므로
+          이 분기는 렌더된 적이 없었다. 같은 상황에 빈 상태를 두 개 두면
+          어느 쪽이 뜨는지 추적할 수 없고, 한쪽은 반드시 낡는다. */}
 
       {years.map((yearGoal) => (
         <BranchNode key={yearGoal.id} goal={yearGoal} user={user} onChanged={onChanged}>

@@ -2,6 +2,7 @@
 
 // 현황 분석 (파트 2) — 서버 집계값만 렌더. 경량 인라인 SVG/CSS, 토큰 색만, chartjunk 없음.
 import type { HomeSummary } from "@/lib/home";
+import SectionEmpty from "./SectionEmpty";
 
 // 주간 완료 추이 — 최근 8주 단색(green) area+line, tabular 축, 이번 주 강조
 function WeeklyTrend({ data }: { data: HomeSummary["weeklyDone"] }) {
@@ -44,7 +45,7 @@ function LoadDist({ data }: { data: HomeSummary["assigneeLoad"] }) {
     <section className="card an-card" aria-label="담당자별 부하">
       <div className="ch"><h2>담당자별 부하</h2><span className="sub">오픈 업무</span></div>
       {data.length === 0 ? (
-        <p className="an-empty">오픈 업무가 없어요</p>
+        <SectionEmpty text="오픈 업무가 없어요" />
       ) : (
         <div className="an-load">
           {data.map((d) => {

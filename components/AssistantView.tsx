@@ -9,6 +9,7 @@ import Link from "next/link";
 import { NOTION_WORK_AREAS } from "@/lib/types";
 import type { AssistantSettings, SessionUser } from "@/lib/types";
 import { computeLiveStatus, STATUS_CHIP } from "@/lib/agent-live";
+import SectionEmpty from "./SectionEmpty";
 
 type JobType = "research" | "organize";
 type JobStatus = "queued" | "running" | "done" | "failed";
@@ -173,12 +174,7 @@ export default function AssistantView({ user }: { user: SessionUser; notionConne
         {/* 작업 이력 */}
         <div className="inbox-sh" style={{ marginTop: 22 }}><h2>작업 이력</h2><span className="sub num">{jobs.length}건</span></div>
         {jobs.length === 0 ? (
-          <section className="tile inbox-empty" aria-label="작업 이력 없음">
-            <div className="empty-state">
-              <p className="es-title">아직 지시한 작업이 없어요</p>
-              <p className="es-hint">위에서 웹 자료조사나 내 업무 정리를 위임하면, 여기에 작업 이력이 쌓입니다.</p>
-            </div>
-          </section>
+          <SectionEmpty text="아직 지시한 작업이 없어요 — 위에서 웹 자료조사나 내 업무 정리를 위임하면 여기에 이력이 쌓입니다" />
         ) : (
           <div className="pcards">
             {jobs.map((j) => {

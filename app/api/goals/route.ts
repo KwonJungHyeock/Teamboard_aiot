@@ -37,9 +37,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ archived });
     }
 
+    const areaIds = (url.searchParams.get("area") ?? "")
+      .split(",").map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n > 0);
     const tree = await getGoalTree({
       year: Number.isFinite(year) ? year : undefined,
-      scope, viewerId: session.id, isLead: session.role === "lead",
+      scope, viewerId: session.id, isLead: session.role === "lead", areaIds,
     });
 
     // 폴백 유지 — 프로젝트→목표 연결은 기본 경로가 아니다 (회신 6 [확정] 연결 모델)

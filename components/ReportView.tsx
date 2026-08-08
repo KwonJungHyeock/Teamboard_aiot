@@ -2,6 +2,8 @@
 
 // 월간 보고 화면 (Phase 7) — SPEC 3.2의 6개 섹션 고정 순서.
 // 수치·목록은 서버 집계(data)에서, 서술 문단은 narration에서 온다. 화면은 계산하지 않는다.
+import SectionEmpty from "./SectionEmpty";
+
 export interface ReportData {
   year: number;
   month: number;
@@ -61,7 +63,7 @@ export default function ReportView({
         <Prose text={narration.goals} />
         <CountGuard expected={data.counts.goals} rendered={data.goals.length} label="목표" />
         {data.goals.length === 0 ? (
-          <p className="rp-empty">해당 월 목표가 없습니다.</p>
+          <SectionEmpty text="해당 월 목표가 없어요" />
         ) : (
           <table className="rp-table">
             <thead>
@@ -92,7 +94,7 @@ export default function ReportView({
         <Prose text={narration.completed} />
         <CountGuard expected={data.counts.completed} rendered={data.completed.length} label="완료 업무" />
         {data.completed.length === 0 ? (
-          <p className="rp-empty">완료한 업무가 없습니다.</p>
+          <SectionEmpty text="완료한 업무가 없어요" />
         ) : (
           <ul className="rp-list">
             {data.completed.map((t) => (
@@ -112,7 +114,7 @@ export default function ReportView({
         <CountGuard expected={data.counts.incomplete} rendered={data.incomplete.length} label="미완료" />
         <CountGuard expected={data.counts.dropped} rendered={data.dropped.length} label="중단" />
         {data.incomplete.length === 0 && data.dropped.length === 0 ? (
-          <p className="rp-empty">미달·중단 항목이 없습니다.</p>
+          <SectionEmpty text="미달·중단 항목이 없어요" />
         ) : (
           <ul className="rp-list">
             {data.incomplete.map((t) => (
@@ -136,7 +138,7 @@ export default function ReportView({
         <Prose text={narration.decisions} />
         <CountGuard expected={data.counts.decisions} rendered={data.decisions.length} label="결정" />
         {data.decisions.length === 0 ? (
-          <p className="rp-empty">결정 사항이 없습니다.</p>
+          <SectionEmpty text="결정 사항이 없어요" />
         ) : (
           <ul className="rp-list">
             {data.decisions.map((s) => (
@@ -176,7 +178,7 @@ export default function ReportView({
         <Prose text={narration.risks} />
         <CountGuard expected={data.counts.risks} rendered={data.risks.length} label="리스크" />
         {data.risks.length === 0 ? (
-          <p className="rp-empty">리스크가 없습니다.</p>
+          <SectionEmpty text="리스크가 없어요" />
         ) : (
           <ul className="rp-list">
             {data.risks.map((s) => (
@@ -211,7 +213,7 @@ export default function ReportView({
 
         <h3 className="rp-sub">예정 업무</h3>
         {data.nextTasks.length === 0 ? (
-          <p className="rp-empty">예정 업무가 없습니다.</p>
+          <SectionEmpty text="예정 업무가 없어요" />
         ) : (
           <ul className="rp-list">
             {data.nextTasks.map((t) => (

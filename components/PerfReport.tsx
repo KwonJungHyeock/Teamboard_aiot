@@ -6,6 +6,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PerfReport as PerfReportData, PerfTaskRow } from "@/lib/perf-report";
 import type { SessionUser } from "@/lib/types";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
+import { pfill } from "@/lib/progress-bar";
 
 const GOAL_STATUS: Record<string, { label: string; tone: string }> = {
   ontrack: { label: "온트랙", tone: "--green" },
@@ -23,8 +27,9 @@ function Delta({ v }: { v: number | null }) {
   return <span className={`prep-delta ${v > 0 ? "up" : "down"}`}>{v > 0 ? "▲" : "▼"}{Math.abs(v)}</span>;
 }
 
-function Empty({ text = "이번 달 해당 항목이 없습니다." }: { text?: string }) {
-  return <p className="prep-empty">{text}</p>;
+/** 보고서 항목의 빈 상태 — 공용 SectionEmpty 로 넘긴다 (MD-P-2026-026 §A). */
+function Empty({ text = "이번 달 해당 항목이 없어요" }: { text?: string }) {
+  return <SectionEmpty text={text} />;
 }
 
 /** 영역별 그룹 — 완료 업무 섹션용 */
@@ -57,7 +62,7 @@ export default function PerfReport({ user }: { user: SessionUser }) {
     const res = await fetch(`/api/reports/monthly?${q}`).catch(() => null);
     const d = res ? await res.json().catch(() => null) : null;
     setLoading(false);
-    if (!res || !res.ok) { setErr(d?.error ?? "리포트를 불러올 수 없습니다."); setData(null); return; }
+    if (!res || !res.ok) { setErr(d?.error ?? "리포트를 불러오지 못했어요"); setData(null); return; }
     setData(d.report);
     setMembers(d.members ?? []);
   }, [year, month, scope, actorId]);
@@ -105,8 +110,8 @@ export default function PerfReport({ user }: { user: SessionUser }) {
         <button className="btn-brand" onClick={() => window.print()} disabled={!data}>PDF로 저장</button>
       </div>
 
-      {err && <p className="gerr no-print">{err}</p>}
-      {loading && <p className="gempty no-print">불러오는 중...</p>}
+      {err && <div className="no-print"><ErrorNote message={err} onRetry={load} /></div>}
+      {loading && <div className="no-print"><Skeleton variant="page" /></div>}
 
       {/* ── 리포트 본체 = 출력물 ── */}
       {data && (
@@ -169,7 +174,7 @@ export default function PerfReport({ user }: { user: SessionUser }) {
           {/* 3. 목표 달성 현황 */}
           <section className="prep-sec">
             <h2>목표 달성 현황</h2>
-            {data.goals.length === 0 ? <Empty text="이번 달에 해당하는 목표가 없습니다." /> : (
+            {data.goals.length === 0 ? <Empty text="이번 달에 해당하는 목표가 없어요" /> : (
               <table className="prep-t">
                 <thead>
                   <tr>
@@ -204,7 +209,7 @@ export default function PerfReport({ user }: { user: SessionUser }) {
                           <div className="prep-prog">
                             <div className={`prep-track${g.progress === null ? " empty" : ""}`}>
                               {g.progress !== null && (
-                                <i style={{ width: `${Math.max(g.progress, 2)}%`, background: `var(${st?.tone ?? "--slate"})` }} />
+                                <i style={{ ...pfill(Math.max(g.progress, 2)), background: `var(${st?.tone ?? "--slate"})` }} />
                               )}
                             </div>
                             <span className={`prep-pct num${g.progress === null ? " none" : ""}`}>{pct(g.progress)}</span>
@@ -222,7 +227,7 @@ export default function PerfReport({ user }: { user: SessionUser }) {
           {/* 4. 완료한 업무 */}
           <section className="prep-sec">
             <h2>완료한 업무 <em className="num">{data.completedTasks.length}</em></h2>
-            {data.completedTasks.length === 0 ? <Empty text="이번 달 완료한 업무가 없습니다." /> : (
+            {data.completedTasks.length === 0 ? <Empty text="이번 달 완료한 업무가 없어요" /> : (
               groupByArea(data.completedTasks).map(([area, rows]) => (
                 <div className="prep-group" key={area}>
                   <h3>{area} <em className="num">{rows.length}</em></h3>
@@ -256,7 +261,7 @@ export default function PerfReport({ user }: { user: SessionUser }) {
           {/* 5. 진행 중 / 이월 */}
           <section className="prep-sec">
             <h2>진행 중 · 이월 <em className="num">{data.ongoingTasks.length}</em></h2>
-            {data.ongoingTasks.length === 0 ? <Empty text="진행 중인 업무가 없습니다." /> : (
+            {data.ongoingTasks.length === 0 ? <Empty text="진행 중인 업무가 없어요" /> : (
               <table className="prep-t">
                 <thead>
                   <tr>
@@ -277,7 +282,7 @@ export default function PerfReport({ user }: { user: SessionUser }) {
                       <td className="num">{t.dueDate ?? "—"}</td>
                       <td>
                         <div className="prep-prog sm">
-                          <div className="prep-track"><i style={{ width: `${Math.max(t.progress, 2)}%`, background: "var(--blue)" }} /></div>
+                          <div className="prep-track"><i style={{ ...pfill(Math.max(t.progress, 2)), background: "var(--blue)" }} /></div>
                           <span className="prep-pct num">{t.progress}%</span>
                         </div>
                       </td>
@@ -292,7 +297,7 @@ export default function PerfReport({ user }: { user: SessionUser }) {
           {/* 6. 확정된 결정 */}
           <section className="prep-sec">
             <h2>확정된 결정 <em className="num">{data.decisions.length}</em></h2>
-            {data.decisions.length === 0 ? <Empty text="이번 달 확정된 결정이 없습니다." /> : (
+            {data.decisions.length === 0 ? <Empty text="이번 달 확정된 결정이 없어요" /> : (
               <table className="prep-t">
                 <thead>
                   <tr>
@@ -323,7 +328,7 @@ export default function PerfReport({ user }: { user: SessionUser }) {
           {/* 7. 다음 달 예정 */}
           <section className="prep-sec">
             <h2>다음 달 예정 <em className="num">{data.nextTasks.length}</em></h2>
-            {data.nextTasks.length === 0 ? <Empty text="다음 달 시작 예정 업무가 없습니다." /> : (
+            {data.nextTasks.length === 0 ? <Empty text="다음 달 시작 예정 업무가 없어요" /> : (
               <table className="prep-t">
                 <thead>
                   <tr>

@@ -17,9 +17,14 @@
 //     [blob] storage error          → 인가 통과 (그 뒤 스토리지 단계)
 //
 // 검증에 쓴 데이터는 스스로 원복한다.
+//
+// **로컬 전용. 원격 DB 에서 실행 금지** (지시 32) — 아래 requireLocalDb 가 강제한다.
 
 import { execSync } from "node:child_process";
 import fs from "node:fs";
+import { requireLocalDb } from "./local-only.mjs";
+
+requireLocalDb("verify-blob-access.mjs");
 
 const BASE = "http://localhost:3411";
 const LOG = process.env.BLOB_LOG;

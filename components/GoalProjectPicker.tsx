@@ -5,6 +5,8 @@
 // 그 경우 "○○ 목표에 연결됨"을 명시해 사용자가 옮기는 것임을 알고 누르게 한다.
 import { useEffect, useState } from "react";
 import { toast } from "@/lib/quick";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
 
 interface Candidate {
   id: number;
@@ -66,8 +68,8 @@ export default function GoalProjectPicker({
         <input className="gpp-q" placeholder="프로젝트 검색" value={q} autoFocus
           onChange={(e) => setQ(e.target.value)} />
         <div className="gpp-list">
-          {loading && <p className="tdp-muted">불러오는 중…</p>}
-          {!loading && shown.length === 0 && <p className="tdp-muted">연결할 수 있는 프로젝트가 없어요.</p>}
+          {loading && <Skeleton variant="list" rows={3} />}
+          {!loading && shown.length === 0 && <SectionEmpty text="연결할 수 있는 프로젝트가 없어요" />}
           {shown.map((c) => (
             <label key={c.id} className={`gpp-row${picked.includes(c.id) ? " on" : ""}`}>
               <input type="checkbox" checked={picked.includes(c.id)}

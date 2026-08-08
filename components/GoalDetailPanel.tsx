@@ -14,6 +14,9 @@ import GoalProjectPicker from "./GoalProjectPicker";
 import GoalTrend, { type TrendPoint } from "./GoalTrend";
 import HoverActions from "./HoverActions";
 import { toast } from "@/lib/quick";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
+import { pfill } from "@/lib/progress-bar";
 
 interface Contribution { actorId: number | null; name: string; total: number; done: number; sharePct: number }
 export interface LinkedProject { id: number; name: string; colorKey: string | null; status: string; progress: number | null }
@@ -119,7 +122,7 @@ export default function GoalDetailPanel() {
           <button className="tdp-x" onClick={() => closeGoalPanel()} aria-label="닫기">✕</button>
         </div>
 
-        {!d && !err && <div className="tdp-body"><p className="tdp-muted">불러오는 중…</p></div>}
+        {!d && !err && <div className="tdp-body"><Skeleton variant="page" rows={3} /></div>}
         {err && !d && <div className="tdp-body"><p className="tdp-err">{err}</p></div>}
 
         {d && (
@@ -148,7 +151,7 @@ export default function GoalDetailPanel() {
                 {d.goal.progress != null && <em className="gdp-basis">{countedLabel(d.goal.countedTasks)}</em>}
               </div>
               <div className={`bar${d.goal.progress == null ? " empty" : ""}`}>
-                <i className="edu" style={{ width: `${Math.min(d.goal.progress ?? 0, 100)}%` }} />
+                <i className="edu" style={pfill(d.goal.progress ?? 0)} />
               </div>
               {d.goal.progress == null && (
                 <p className="gdp-nodata">
@@ -283,7 +286,7 @@ export default function GoalDetailPanel() {
                     개인 목표입니다. 진척과 집계 건수는 보이지만 업무 목록은 열리지 않습니다.
                   </p>
                 ) : d.tasks.length === 0 ? (
-                  <p className="tdp-muted">연결된 업무가 없습니다. 업무 상세의 "연결 목표"에서 이 목표를 선택하세요.</p>
+                  <SectionEmpty text={'연결된 업무가 없어요 — 업무 상세의 "연결 목표"에서 이 목표를 선택하세요'} />
                 ) : null}
                 {d.tasks.map((t) => (
                   <div className="gdp-task" key={t.id}>
@@ -303,7 +306,7 @@ export default function GoalDetailPanel() {
                   <div className="gdp-contrib" key={c.actorId ?? "none"}>
                     <span className="gdp-contrib-n">{c.name}</span>
                     <span className="gdp-contrib-m">담당 {c.total} · 완료 {c.done}</span>
-                    <div className="bar" style={{ flex: 1 }}><i className="play" style={{ width: `${c.sharePct}%` }} /></div>
+                    <div className="bar" style={{ flex: 1 }}><i className="play" style={pfill(c.sharePct)} /></div>
                     <b>{c.sharePct}%</b>
                   </div>
                 ))}

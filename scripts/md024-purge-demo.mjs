@@ -11,8 +11,13 @@
 //
 //   DATABASE_URL=... node scripts/md024-purge-demo.mjs            # 드라이런
 //   DATABASE_URL=... node scripts/md024-purge-demo.mjs --apply    # 실행
+//
+// **로컬 전용. 원격 DB 에서 실행 금지** (지시 32) — 아래 requireLocalDb 가 강제한다.
 import pg from "pg";
 import fs from "node:fs";
+import { requireLocalDb } from "./local-only.mjs";
+
+requireLocalDb("md024-purge-demo.mjs");
 
 const APPLY = process.argv.includes("--apply");
 

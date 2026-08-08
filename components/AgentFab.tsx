@@ -9,6 +9,7 @@ import type { SessionUser } from "@/lib/types";
 import { computeLiveStatus, STATUS_CHIP } from "@/lib/agent-live";
 import { TASK_PANEL_EVENT, currentTaskRef } from "@/lib/task-panel";
 import { GOAL_PANEL_EVENT, currentGoalParam } from "@/lib/goal-panel";
+import SectionEmpty from "./SectionEmpty";
 
 type JobType = "research" | "organize";
 type JobStatus = "queued" | "running" | "done" | "failed";
@@ -231,10 +232,10 @@ export default function AgentFab({ user }: { user: SessionUser }) {
           {tab === "notify" ? (
             <div className="agf-body">
               {jobs.length === 0 ? (
-                <div className="agf-empty">
-                  <p>아직 위임한 작업이 없어요.</p>
-                  <button className="lk" onClick={() => setTab("dispatch")}>지시 탭에서 위임하기 →</button>
-                </div>
+                <SectionEmpty
+                  text="아직 위임한 작업이 없어요"
+                  action={{ label: "지시 탭에서 위임하기 →", onClick: () => setTab("dispatch") }}
+                />
               ) : (
                 <ul className="agf-jobs">
                   {jobs.map((j) => (

@@ -7,6 +7,7 @@
 // 에이전트 작성물은 좌측 바이올렛 보더(.sig-card.ag) + 봇 태그(.atag)로 구분.
 import { useMemo, useState } from "react";
 import type { SignalType } from "@/lib/types";
+import EmptyState from "./EmptyState";
 
 export interface SignalPanelItem {
   id: number;
@@ -46,6 +47,7 @@ export default function SignalPanel({
   selectedId,
   onQuickAct,
   busyId,
+  onNew,
 }: {
   items: SignalPanelItem[];
   stalledCount: number;
@@ -56,6 +58,8 @@ export default function SignalPanel({
   onQuickAct?: (id: number, kind: string) => void;
   /** 처리 중인 항목 id (버튼 비활성) */
   busyId?: number | null;
+  /** 전체 빈 상태의 CTA. 없으면 버튼을 그리지 않는다 — 눌러도 소용없는 버튼을 두지 않는다. */
+  onNew?: () => void;
 }) {
   const [tab, setTab] = useState<"all" | SignalType>("all");
 
@@ -93,12 +97,16 @@ export default function SignalPanel({
 
       {/* ② 항목 = 목록 행 (§C 38px). 카드 금지 */}
       {visible.length === 0 ? (
-        <div className="dl">
-          <div className="dl-empty">
-            <p>{tab === "all" ? "아직 논의·결정이 없어요" : "이 유형의 논의·결정이 없어요"}</p>
-            <p className="dl-empty-sub">결정이 필요한 논의·확인 요청·리스크·메모를 남기면 팀 전체가 흐름을 추적할 수 있어요.</p>
-          </div>
-        </div>
+        <EmptyState
+          icon="chat"
+          title={tab === "all" ? "아직 논의·결정이 없어요" : "이 유형의 논의·결정이 없어요"}
+          hint="결정이 필요한 논의·확인 요청·리스크·메모를 남기면 팀 전체가 흐름을 추적할 수 있어요."
+          action={
+            onNew ? (
+              <button className="btn-primary" onClick={onNew}>＋ 새 논의·결정</button>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="dl">
           <div className="dl-head">

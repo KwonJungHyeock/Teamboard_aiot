@@ -5,7 +5,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { countedLabel } from "@/lib/progress";
 import Link from "next/link";
+import EmptyState from "./EmptyState";
+import AreaFilter, { useAreaChips, useAreaSelection } from "./AreaFilter";
+import Skeleton from "./Skeleton";
+import ErrorNote from "./ErrorNote";
 import type { SessionUser } from "@/lib/types";
+import { pfill } from "@/lib/progress-bar";
 
 interface ProjectCard {
   id: number;
@@ -72,10 +77,13 @@ export default function ProjectsIndexView({ user }: { user: SessionUser }) {
   const [filter, setFilter] = useState(""); // '' = 전체
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // 영역 축 — /tasks 와 같은 컴포넌트·같은 URL 형식(?area=2,3) (B11-3)
+  const areas = useAreaChips();
+  const [areaIds, toggleArea, clearAreas, areaQs] = useAreaSelection();
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/projects");
+      const res = await fetch(`/api/projects${areaQs ? `?area=${areaQs}` : ""}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "프로젝트 조회 실패");
       setProjects(data.projects ?? []);
@@ -85,7 +93,7 @@ export default function ProjectsIndexView({ user }: { user: SessionUser }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [areaQs]);
 
   useEffect(() => {
     load();
@@ -122,8 +130,28 @@ export default function ProjectsIndexView({ user }: { user: SessionUser }) {
           </div>
         </div>
 
-        {loading && <p className="gempty">불러오는 중...</p>}
-        {error && <p className="gerr">{error}</p>}
+        <div className="pg-filters areafilter-row" role="group" aria-label="영역 필터">
+          <AreaFilter areas={areas} selected={areaIds} onToggle={toggleArea} onClear={clearAreas} />
+        </div>
+
+        {loading && <Skeleton variant="block" height={120} />}
+        {error && <ErrorNote message="프로젝트를 불러오지 못했어요" cause={error} onRetry={load} />}
+
+        {!loading && !error && shown.length === 0 && (
+          <EmptyState
+            icon="tasks"
+            title={
+              areaIds.length > 0 ? "이 영역에 프로젝트가 없어요"
+                : filter ? `${STATUS_LABEL[filter] ?? filter} 상태의 프로젝트가 없어요`
+                  : "아직 프로젝트가 없어요"
+            }
+            hint={
+              areaIds.length > 0 || filter
+                ? "위 필터를 바꾸면 다른 프로젝트를 볼 수 있어요."
+                : "여러 업무를 묶어 하나의 목표로 굴릴 때 프로젝트를 만듭니다. 진행률·목표·열린 업무는 자동으로 집계됩니다."
+            }
+          />
+        )}
 
         <div className="pgrid">
           {!loading &&
@@ -141,7 +169,7 @@ export default function ProjectsIndexView({ user }: { user: SessionUser }) {
                   <div className="bar">
                     <i
                       className={p.colorKey ?? "team"}
-                      style={{ width: `${p.percent ?? 0}%` }}
+                      style={pfill(p.percent ?? 0)}
                     />
                   </div>
                   <span className="gpv">
@@ -158,9 +186,6 @@ export default function ProjectsIndexView({ user }: { user: SessionUser }) {
                 </div>
               </Link>
             ))}
-          {!loading && shown.length === 0 && (
-            <p className="gempty">해당 상태의 프로젝트가 없습니다.</p>
-          )}
         </div>
 
         {user.role === "lead" && <NewProjectForm onDone={load} />}

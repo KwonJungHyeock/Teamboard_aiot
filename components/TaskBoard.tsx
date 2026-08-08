@@ -9,6 +9,8 @@ import { openQuickCreate } from "@/lib/quick";
 import {
   type TaskItem, type BoardGroup, BOARD_STATUSES, STATUS_META, statusColor, areaColor, dday,
 } from "@/lib/task-view";
+import SectionEmpty from "./SectionEmpty";
+import { pfill } from "@/lib/progress-bar";
 
 interface Col { key: string; label: string; count: number; dot?: string; prefill: Record<string, unknown>; move: Record<string, unknown> }
 
@@ -131,13 +133,13 @@ export default function TaskBoard({
                       {d.text && <span className={`tb-dday num${overdue ? " late" : ""}`}>{d.text}</span>}
                     </div>
                     <div className="tb-card-prog">
-                      <div className="tb-bar"><i style={{ width: `${Math.max(t.progress, 2)}%`, background: statusColor(t.status) }} /></div>
+                      <div className="tb-bar"><i style={{ ...pfill(Math.max(t.progress, 2)), background: statusColor(t.status) }} /></div>
                       <span className="tb-pct num">{t.progress}%</span>
                     </div>
                   </article>
                 );
               })}
-              {items.length === 0 && <p className="tb-empty">비어 있음</p>}
+              {items.length === 0 && <SectionEmpty text="비어 있음" />}
               <button
                 className="tb-add"
                 onClick={(e) => openQuickCreate({ x: e.clientX, y: e.clientY }, col.prefill)}

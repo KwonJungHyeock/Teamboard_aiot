@@ -1,11 +1,16 @@
 // DB 초기화 + 시드 (SPEC 5장 신규 스키마 기준). 사용법: DATABASE_URL=... npm run db:init
 // 여러 번 실행해도 안전 (upsert). 구 스키마(users/assistants/app_settings) 발견 시
 // 1회에 한해 드롭 후 재생성 (SPEC 5.1: 실데이터 없는 지금이 마이그레이션 최저 비용 — D-017).
+//
+// **로컬 전용. 원격 DB 에서 실행 금지** (지시 32) — 아래 requireLocalDb 가 강제한다.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { scryptSync, randomBytes } from "node:crypto";
 import pg from "pg";
+import { requireLocalDb } from "./local-only.mjs";
+
+requireLocalDb("init-db.mjs");
 
 const here = dirname(fileURLToPath(import.meta.url));
 

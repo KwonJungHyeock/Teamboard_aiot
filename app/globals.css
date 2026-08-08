@@ -233,21 +233,9 @@ select:focus {
   background: rgba(248, 113, 113, 0.14);
 }
 
-/* 빈 상태 (파트 B) — .hv/전역 어디서든 동일. 토큰만 사용. */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 6px;
-  padding: 30px 20px;
-}
-.empty-state.es-compact { padding: 18px 16px; }
-.empty-state .es-illust { max-width: 120px; height: auto; opacity: 0.85; margin-bottom: 6px; }
-.empty-state .es-title { margin: 0; font-size: var(--fs-body); color: var(--mid); font-weight: 500; }
-.empty-state .es-hint { margin: 0; font-size: var(--fs-meta); color: var(--lo); max-width: 340px; line-height: 1.55; }
-.empty-state .es-action { margin-top: 10px; }
+/* 빈 상태 — app/design.css 의 "§A 빈 상태 · 로딩 · 오류" 한 벌로 옮겼다 (MD-P-2026-026 §A).
+   여기·563줄·1297줄 세 곳에 규칙이 흩어져 서로 덮어쓰고 있었다.
+   그 결과 아이콘이 §G 규격 88px 이 아니라 120px 로 그려졌고, 아무도 몰랐다. */
 
 .btn.small {
   /* 행 내부 액션: 컴팩트 텍스트 버튼 */
@@ -558,20 +546,7 @@ table.tl tr:hover td {
   }
 }
 
-/* 빈 상태 — 일러스트 슬롯. 파일(/assets/illust/*.png)이 없으면 onError로 이미지를 숨겨
-   깨진 이미지 없이 텍스트만 남는다 (P1-3). */
-.empty-state {
-  text-align: center;
-  padding: 20px 12px;
-}
-.empty-state img {
-  width: 88px;
-  height: 88px;
-  object-fit: contain;
-  opacity: 0.85;
-  margin: 0 auto 10px;
-  display: block;
-}
+/* (빈 상태 일러스트 슬롯 규칙은 app/design.css 로 이동 — MD-P-2026-026 §A) */
 
 .section-gap {
   margin-top: 18px;
@@ -639,14 +614,14 @@ body {
 .app {
   position: relative; z-index: 1;
   display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr);
-  min-height: 100vh; transition: grid-template-columns .2s;
+  min-height: 100vh; transition: none;
 }
 
 /* ── 사이드바 ── */
 /* 본문과 분리 — 경계선 강화(--line-hi) + 미세 그림자로 "메뉴바가 보이게" */
 .side { background: var(--bg-rail); border-right: 1px solid var(--line-hi); box-shadow: 1px 0 0 rgba(55,67,79,.03); display: flex; flex-direction: column; padding: 12px 12px; overflow: hidden; }
 /* 항목 — label 14px/600·색 --ink, 아이콘도 currentColor로 진하게 (가독성 강화) */
-.side a { display: flex; align-items: center; gap: 11px; min-height: 44px; padding: 9px 10px; border-left: 3px solid transparent; border-radius: var(--r-s); color: var(--ink); font-weight: 600; text-decoration: none; font-size: 14.5px; white-space: nowrap; transition: .15s; }
+.side a { display: flex; align-items: center; gap: 11px; min-height: 44px; padding: 9px 10px; border-left: 3px solid transparent; border-radius: var(--r-s); color: var(--ink); font-weight: 600; text-decoration: none; font-size: 14.5px; white-space: nowrap; transition: background-color var(--dur-2) var(--ease-out); }
 .side a:hover { background: var(--glass); color: var(--ink); }
 /* 활성: 좌측 3px 코랄 바 + 옅은 코랄 틴트 + 제목 굵게(700) */
 .side a[aria-current="page"] { background: var(--coral-bg); border-left-color: var(--coral); color: var(--ink); font-weight: 700; }
@@ -685,7 +660,7 @@ body {
 .grp > summary .gico svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .grp > summary .gico.g-work, .grp > summary .gico.g-goal, .grp > summary .gico.g-collab, .grp > summary .gico.g-admin { color: var(--ink-soft); }
 /* 셰브론 — 헤더 오른쪽 끝(펼침/접힘) */
-.grp > summary .cv { margin-left: auto; width: 11px; height: 11px; fill: none; stroke: var(--muted); stroke-width: 2; transition: transform .18s; }
+.grp > summary .cv { margin-left: auto; width: 11px; height: 11px; fill: none; stroke: var(--muted); stroke-width: 2; transition: transform var(--dur-2) var(--ease-out); }
 .grp[open] > summary .cv { transform: rotate(90deg); }
 .grp > summary .add { margin-left: auto; font-size: 13px; line-height: 1; opacity: .7; }
 
@@ -750,13 +725,12 @@ body.rail .acct { justify-content: center; padding: 7px; }
 
 @media (max-width: 1100px) { .app { grid-template-columns: 1fr; } .side { display: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .app, .side a, .grp > summary .cv { transition: none; }
+  .app, .side a, .grp > summary .cv { transition: none var(--dur-1) var(--ease-out); }
 }
 
 /* ═══════════════ 업무 상세 슬라이드 패널 (파트 1) ═══════════════ */
-.tdp-backdrop { position: fixed; inset: 0; background: var(--scrim); z-index: 60; animation: tdpfade .15s ease; }
-.tdp { position: fixed; top: 0; right: 0; bottom: 0; width: 480px; max-width: 94vw; background: var(--bg-elevated); border-left: 1px solid var(--line-hi); z-index: 61; display: flex; flex-direction: column; box-shadow: -12px 0 40px rgba(0,0,0,.45); animation: tdpslide .2s cubic-bezier(.4,0,.2,1); }
-@keyframes tdpslide { from { transform: translateX(34px); opacity: .3; } to { transform: none; opacity: 1; } }
+.tdp-backdrop { position: fixed; inset: 0; background: var(--scrim); z-index: 60; animation: tdpfade var(--dur-2) var(--ease-out); }
+.tdp { position: fixed; top: 0; right: 0; bottom: 0; width: 480px; max-width: 94vw; background: var(--bg-elevated); border-left: 1px solid var(--line-hi); z-index: 61; display: flex; flex-direction: column; box-shadow: -12px 0 40px rgba(0,0,0,.45); }
 @keyframes tdpfade { from { opacity: 0; } to { opacity: 1; } }
 .tdp-head { display: flex; align-items: center; gap: 10px; height: var(--panel-h); padding: 0 16px; border-bottom: 1px solid var(--line); flex: 0 0 auto; }
 .tdp-crumb { font-family: var(--f-d); font-size: var(--fs-meta); color: var(--mid); flex: 1; }
@@ -875,7 +849,7 @@ body.meeting-on .side { display: none !important; }
 .rv-badge { font-size: var(--fs-badge); color: #fff; background: linear-gradient(120deg, var(--coral), var(--amber)); padding: 3px 10px; border-radius: 6px; white-space: nowrap; }
 .rv-st { font-family: var(--font-mono); font-size: var(--fs-meta); color: var(--muted); white-space: nowrap; }
 .rv-prog { flex: 1; max-width: 320px; height: 6px; border-radius: 3px; background: var(--track-bg); overflow: hidden; }
-.rv-prog i { display: block; height: 100%; background: var(--green); transition: width .2s; }
+.rv-prog i { display: block; height: 100%; background: var(--green); transition: none; }
 .rv-errbar { padding: 8px 22px; background: var(--coral-bg); color: var(--coral-text); font-size: var(--fs-meta); }
 .rv-body { flex: 1; overflow-y: auto; padding: 20px 22px 60px; display: flex; flex-direction: column; gap: 14px; max-width: 1120px; width: 100%; margin: 0 auto; }
 .rv-item { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--line-hi); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--shadow-card); }
@@ -919,7 +893,7 @@ body.meeting-on .side { display: none !important; }
 
 /* ── 에이전트 FAB (우측 하단) ── */
 /* 상시 에이전트 진입점. 색은 신호에만: FAB=브랜드 진입, 배지=미확인, 상태칩=완료/실패/진행 */
-.agf-fab { position: fixed; right: 24px; bottom: 24px; z-index: 70; width: 54px; height: 54px; border: 0; border-radius: 16px; background: var(--coral); color: #fff; cursor: pointer; display: grid; place-items: center; box-shadow: 0 8px 22px rgba(238,76,81,.34); transition: transform .16s, filter .16s; }
+.agf-fab { position: fixed; right: 24px; bottom: 24px; z-index: 70; width: 54px; height: 54px; border: 0; border-radius: 16px; background: var(--coral); color: #fff; cursor: pointer; display: grid; place-items: center; box-shadow: 0 8px 22px rgba(238,76,81,.34); transition: transform var(--dur-2) var(--ease-out); }
 .agf-fab:hover { filter: brightness(1.06); transform: translateY(-1px); }
 .agf-fab.on { filter: brightness(.96); }
 .agf-fab svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
@@ -943,8 +917,6 @@ body.meeting-on .side { display: none !important; }
 .agf-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--coral); }
 
 .agf-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
-.agf-empty { text-align: center; padding: 24px 8px; color: var(--muted); font-size: 13px; }
-.agf-empty .lk { margin-top: 8px; }
 
 .agf-jobs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .agf-job { border: 1px solid var(--line); border-radius: var(--r-s); padding: 10px 12px; background: var(--card); }
@@ -978,8 +950,8 @@ body.meeting-on .side { display: none !important; }
 .agf-foot { display: block; padding: 11px 16px; border-top: 1px solid var(--line); font-size: 12.5px; font-weight: 600; color: var(--ink-soft); text-decoration: none; text-align: center; }
 .agf-foot:hover { color: var(--ink); background: var(--glass); }
 
-.agf-spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; display: inline-block; animation: agf-rot .7s linear infinite; }
-@keyframes agf-rot { to { transform: rotate(360deg); } }
+/* 회전 스피너는 §H2 에서 걷어냈다 (무한 반복은 스켈레톤 하나뿐). 상태색만 남긴 점. */
+.agf-spin { width: 12px; height: 12px; border-radius: 50%; background: currentColor; display: inline-block; }
 
 @media (max-width: 560px) { .agf-fab { right: 16px; bottom: 16px; } .agf-panel, .agf-toast { right: 16px; } }
 
@@ -1044,7 +1016,7 @@ body.meeting-on .side { display: none !important; }
 
 /* ── 토스트 스택 ── */
 .toaster { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 90; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
-.toast { display: flex; align-items: center; gap: 9px; padding: 11px 16px; border-radius: 11px; background: var(--charcoal); color: #fff; font-size: 13px; font-weight: 600; box-shadow: var(--shadow-pop); animation: toast-in .22s cubic-bezier(.4,0,.2,1); }
+.toast { display: flex; align-items: center; gap: 9px; padding: 11px 16px; border-radius: 11px; background: var(--charcoal); color: #fff; font-size: 13px; font-weight: 600; box-shadow: var(--shadow-pop); animation: toast-in var(--dur-3) var(--ease-in-out); }
 .toast-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .toast.t-ok .toast-dot { background: #57C98A; }
 .toast.t-err .toast-dot { background: #FF8A8E; }
@@ -1052,14 +1024,11 @@ body.meeting-on .side { display: none !important; }
 
 /* ── 에이전트 Liveness (Phase 1) — FAB 3상태 + mono 상태 칩 ── */
 /* 대기(idle): 은은한 호흡 / 작업중(working): 회전 링 + 미세 펄스 / 완료(done): 그린 + pop */
-.agf-fab.s-idle { animation: agf-breathe 3.4s ease-in-out infinite; }
-.agf-fab.s-working { animation: agf-pulse 1.6s ease-in-out infinite; }
-.agf-fab.s-done { background: var(--green); box-shadow: 0 8px 22px rgba(76,154,110,.34); animation: agf-pop .42s cubic-bezier(.34,1.56,.64,1); }
+/* 호흡·펄스는 §H5 "표현적 모션" 이라 걷어냈다. 상태는 색과 링 유무로 읽는다. */
+.agf-fab.s-working { background: var(--coral); }
+.agf-fab.s-done { background: var(--green); box-shadow: 0 8px 22px rgba(76,154,110,.34); }
 .agf-fab.s-failed { background: var(--coral); }
-.agf-fab .agf-ring { position: absolute; inset: -4px; border-radius: 20px; background: conic-gradient(from 0deg, transparent 0deg, #fff 90deg, var(--coral) 320deg, transparent 360deg); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px)); mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px)); animation: agf-rot 1s linear infinite; }
-@keyframes agf-breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
-@keyframes agf-pulse { 0%,100% { box-shadow: 0 8px 22px rgba(238,76,81,.34); } 50% { box-shadow: 0 8px 26px rgba(238,76,81,.5); } }
-@keyframes agf-pop { 0% { transform: scale(.86); } 60% { transform: scale(1.1); } 100% { transform: scale(1); } }
+.agf-fab .agf-ring { position: absolute; inset: -4px; border-radius: 20px; background: conic-gradient(from 0deg, transparent 0deg, #fff 90deg, var(--coral) 320deg, transparent 360deg); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px)); mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px)); }
 
 /* mono 상태 칩 — 색 + 텍스트 병행(색맹 대비) */
 .agf-chip-live { display: inline-flex; align-items: center; gap: 5px; font-family: var(--f-d); font-size: 11px; font-weight: 600; white-space: nowrap; }
@@ -1068,8 +1037,7 @@ body.meeting-on .side { display: none !important; }
 .agf-chip-live.s-working { color: var(--coral-text); }
 .agf-chip-live.s-done { color: var(--green-text); }
 .agf-chip-live.s-failed { color: var(--coral-text); }
-.agf-chip-live.s-working .agf-live-dot { animation: agf-blink 1.1s steps(1) infinite; }
-@keyframes agf-blink { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+/* 점멸도 무한 반복이다. 색 + 텍스트 병행으로 이미 읽히므로 움직임은 뺀다. */
 .ma-chip-live { font-size: 12px; margin-left: 12px; vertical-align: middle; }
 
 /* 접근성 — 모션 최소화 시 정적 상태색으로 대체 */
@@ -1085,8 +1053,8 @@ body.meeting-on .side { display: none !important; }
 .tdp-block.on .tdp-block-h { color: var(--amber-text); }
 .tdp-toggle { position: relative; display: inline-block; width: 38px; height: 22px; cursor: pointer; }
 .tdp-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
-.tdp-toggle-tr { position: absolute; inset: 0; background: var(--line-hi); border-radius: 999px; transition: background .16s; }
-.tdp-toggle-tr::before { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--card); box-shadow: 0 1px 3px rgba(31,39,51,.28); transition: transform .16s; }
+.tdp-toggle-tr { position: absolute; inset: 0; background: var(--line-hi); border-radius: 999px; transition: background-color var(--dur-2) var(--ease-out); }
+.tdp-toggle-tr::before { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--card); box-shadow: 0 1px 3px rgba(31,39,51,.28); transition: transform var(--dur-2) var(--ease-out); }
 .tdp-toggle input:checked + .tdp-toggle-tr { background: var(--amber); }
 .tdp-toggle input:checked + .tdp-toggle-tr::before { transform: translateX(16px); }
 .tdp-block-body { margin-top: 10px; }
@@ -1145,7 +1113,6 @@ mark.hl { background: color-mix(in srgb, var(--amber) 26%, var(--card)); color: 
 .thread-h { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
 .thread-h h3 { font-size: 14px; font-weight: 800; margin: 0; }
 .thread-h .sub { color: var(--muted); font-size: 12px; }
-.thread-empty { color: var(--muted); font-size: 13px; padding: 10px 2px; }
 .thread-list { display: flex; flex-direction: column; gap: 14px; }
 .msg { display: flex; gap: 10px; align-items: flex-start; }
 .msg-b { flex: 1; min-width: 0; }
@@ -1189,16 +1156,7 @@ mark.hl { background: color-mix(in srgb, var(--amber) 26%, var(--card)); color: 
 .n-snip { font-size: 13.5px; color: var(--ink-soft); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .n-approve { margin-top: 6px; }
 
-/* 활동 피드 (팀 타임라인 공유) */
-.afeed { display: flex; flex-direction: column; gap: 10px; }
-.acard { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--grid-line); border-radius: 14px; background: var(--card); }
-.acard-b { flex: 1; min-width: 0; }
-.acard-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.acard-top b { font-size: 13.5px; }
-.acard-t { color: var(--muted); font-size: 11.5px; margin-left: auto; }
-.a-taskchip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; background: color-mix(in srgb, var(--edu) 12%, var(--card)); color: var(--edu-text); font-size: 12px; font-weight: 600; text-decoration: none; }
-.acard-note { margin-top: 5px; font-size: 13.5px; line-height: 1.55; color: var(--ink); white-space: pre-wrap; }
-.acard-open { font-size: 12.5px; }
+/* 활동 피드의 .acard 는 ActivityFeed.tsx 와 함께 삭제됐다 (MD-P-2026-026 §A · 027 B11). */
 
 /* 타임라인 공유 토글(빠른 생성·상세) */
 .sharebox { border: 1px solid var(--grid-line); border-radius: 12px; padding: 10px 12px; background: color-mix(in srgb, var(--edu) 5%, var(--card)); }
@@ -1268,13 +1226,14 @@ mark.hl { background: color-mix(in srgb, var(--amber) 26%, var(--card)); color: 
 /* ============================================================
    보완 — 워크스페이스 배경(E) + 사이드바 아코디언(B)
    ============================================================ */
-/* E: 체크/그리드 패턴 제거 → 미세 세로 그라데이션(상단 약간 밝게). 깊이는 카드 그림자로만. */
+/* E: 페이지 캔버스는 --bg 단색이다 (MD-P-2026-026 §B-3).
+   여기 있던 `linear-gradient(#F8F6F1 → #F3F0E8)` 이 앱 전체 배경을 **아이보리**로 덮고 있었다.
+   background-color 는 --bg(중성 회색)였으므로 토큰 검사에는 잡히지 않았고,
+   그 위의 카드만 순백이라 화면마다 아이보리와 화이트가 섞여 보였다.
+   색면은 --bg · --surface · --surface-2 세 가지뿐이다. */
 body {
   background-color: var(--bg);
-  background-image: linear-gradient(180deg, #F8F6F1 0%, #F3F0E8 100%);
-  background-size: auto;
-  background-position: 0 0;
-  background-attachment: fixed;
+  background-image: none;
 }
 
 /* B: 업무 영역 아코디언 (다크 사이드바) */
@@ -1282,9 +1241,9 @@ body {
 .side .area-row .area-link { flex: 1; min-width: 0; }
 .side .area-cv { flex: 0 0 auto; width: 28px; height: 34px; display: grid; place-items: center; background: transparent; border: 0; cursor: pointer; color: var(--sb-muted); border-radius: 6px; }
 .side .area-cv:hover { color: var(--sb-ink); background: rgba(255,255,255,.05); }
-.side .area-cv svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; transition: transform .15s; }
+.side .area-cv svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; transition: transform var(--dur-2) var(--ease-out); }
 .side .area-cv.open svg { transform: rotate(90deg); }
-@media (prefers-reduced-motion: reduce) { .side .area-cv svg { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .side .area-cv svg { transition: none var(--dur-1) var(--ease-out); } }
 
 /* Eduino AI 로고 — 사이드바 브랜드(다크). 레일 접힘 시 마크만 노출. */
 .side .brand { align-items: center; gap: 10px; }
@@ -1293,13 +1252,9 @@ body {
 .side .brand .nm small { display: block; font-family: var(--f-d); font-size: 10px; font-weight: 500; letter-spacing: .08em; color: var(--sb-muted); margin-top: 3px; }
 body.rail .side .mk-logo { margin: 0 auto; }
 
-/* 빈 상태 워터마크(선택) — 밝은 카드의 큰 빈 상태에만 마크 흐리게(opacity .08) */
-.empty-state:not(.es-compact) { position: relative; }
-.empty-state:not(.es-compact)::after {
-  content: ""; position: absolute; inset: 0; margin: auto; width: 116px; height: 80px;
-  background: url(/brand/eduino_mark.png) center / contain no-repeat; opacity: .08; z-index: 0; pointer-events: none;
-}
-.empty-state > * { position: relative; z-index: 1; }
+/* 빈 상태 워터마크 제거 (MD-P-2026-026 §A).
+   §G 전체 빈 상태는 아이콘 + 제목 + 설명 + CTA 네 요소다. 뒤에 깔린 반투명 마크는
+   다섯 번째 요소였고, 아이콘과 겹쳐 둘 다 흐려 보였다. 게다가 이전 브랜드 마크였다. */
 
 /* ============================================================
    결정 로그 (MD-P-2026-004) — 확정 팝오버 · 고정 결정 카드 · 로그 목록.
@@ -1325,7 +1280,6 @@ body.rail .side .mk-logo { margin: 0 auto; }
 .dcf-task.on { background: color-mix(in srgb, var(--blue) 10%, var(--card)); }
 .dcf-task .num { color: var(--muted); font-size: 11.5px; flex: 0 0 auto; }
 .dcf-task input { width: 15px; height: 15px; accent-color: var(--brand); flex: 0 0 15px; }
-.dcf-none { font-size: 12.5px; color: var(--muted); padding: 6px 7px; }
 .dcf-err { margin: 0 0 10px; font-size: 12.5px; color: var(--coral-text); }
 .dcf-foot { display: flex; align-items: center; gap: 8px; }
 .dcf-note { flex: 1; font-size: 11.5px; color: var(--muted); }
@@ -1409,9 +1363,9 @@ body.rail .side .mk-logo { margin: 0 auto; }
 /* ============================================================
    프로젝트 워크스페이스 (MD-P-2026-005) — 헤더 · 탭 · 우측 패널 · 캔버스
    ============================================================ */
-.pws .wrap { transition: padding-right .18s; }
+.pws .wrap { transition: none; }
 .pws.panel-open .wrap { padding-right: 436px; }
-@media (prefers-reduced-motion: reduce) { .pws .wrap { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .pws .wrap { transition: none var(--dur-1) var(--ease-out); } }
 
 /* 보관 배너 */
 .pws-arch { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 10px 14px; border-radius: 11px;
@@ -1466,7 +1420,7 @@ body.rail .side .mk-logo { margin: 0 auto; }
 .pws-ov-card.wide { grid-column: 1 / -1; }
 .pws-ov-h { font-size: 13px; font-weight: 800; color: var(--ink); margin-bottom: 12px; }
 .pws-ov-h .num { color: var(--muted); font-weight: 700; margin-left: 4px; }
-.pws-ov-sub, .pws-ov-none { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+.pws-ov-sub { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
 .pws-prog { display: flex; align-items: center; gap: 12px; }
 .pws-prog-track { flex: 1; height: 10px; border-radius: 99px; background: var(--track-bg); overflow: hidden; }
 .pws-prog-track i { display: block; height: 100%; border-radius: 99px; background: var(--blue); }
@@ -1530,9 +1484,6 @@ body.rail .side .mk-logo { margin: 0 auto; }
 .pcv-add button:hover { border-color: var(--blue); color: var(--edu-text); }
 .pcv-add button.off { opacity: .5; cursor: not-allowed; }
 .pcv-add button.off:hover { border-color: var(--line); color: var(--ink-soft); }
-.pcv-empty { padding: 44px 20px; text-align: center; }
-.pcv-empty p { margin: 0 0 4px; font-size: 14px; color: var(--ink); }
-.pcv-empty p.sub { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; }
 .pcv-blocks { display: flex; flex-direction: column; }
 .pcv-b { position: relative; padding: 12px 44px 12px 16px; border-bottom: 1px solid var(--hair); }
 .pcv-b:last-child { border-bottom: 0; }
@@ -1583,9 +1534,9 @@ body.rail .side .mk-logo { margin: 0 auto; }
   background: var(--card); border-left: 1px solid var(--grid-line);
   box-shadow: -14px 0 44px rgba(23,27,34,.14);
   display: flex; flex-direction: column;
-  animation: gpanel-in .18s cubic-bezier(.4,0,.2,1);
+  animation: gpanel-in var(--dur-2) var(--ease-out);
 }
-@keyframes gpanel-in { from { transform: translateX(28px); opacity: .35; } to { transform: none; opacity: 1; } }
+@keyframes gpanel-in { from { transform: translateX(8px); opacity: 0; } to { transform: none; opacity: 1; } }
 .gpanel-h { display: flex; align-items: center; height: var(--panel-h); padding: 0 16px; border-bottom: 1px solid var(--grid-line); flex: 0 0 auto; }
 .gpanel-h b { font-size: 14px; font-weight: 800; }
 .gpanel-x { margin-left: auto; width: 28px; height: 28px; border: 0; background: transparent; border-radius: 8px; color: var(--muted); cursor: pointer; font-size: 13px; }
@@ -1593,12 +1544,11 @@ body.rail .side .mk-logo { margin: 0 auto; }
 .gpanel-b { flex: 1; overflow-y: auto; padding: 14px 16px; }
 .gpanel-b .card { border: 0; padding: 0; box-shadow: none; background: transparent; }
 /* 패널이 열리면 본문 폭을 줄인다 — 겹쳐 가리지 않으므로 목록을 계속 쓸 수 있다 */
-body.gpanel-open .main { padding-right: 420px; transition: padding-right .18s cubic-bezier(.4,0,.2,1); }
+body.gpanel-open .main { padding-right: 420px; transition: background-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out); }
 @media (max-width: 900px) { body.gpanel-open .main { padding-right: 0; } }
 
 .gpanel-sec { margin-top: 16px; border-top: 1px solid var(--grid-line); padding-top: 12px; }
 .gpanel-sec h4 { font-size: 12.5px; font-weight: 800; color: var(--ink-soft); margin: 0 0 8px; letter-spacing: .02em; }
-.gpanel-none { font-size: 13px; color: var(--muted); }
 .gpanel-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .gpanel-list li { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
 .gpanel-list li button { flex: 1; text-align: left; border: 0; background: transparent; color: var(--ink); font-size: 13.5px; padding: 5px 6px; border-radius: 7px; cursor: pointer; }
@@ -1622,7 +1572,7 @@ body.gpanel-open .main { padding-right: 420px; transition: padding-right .18s cu
   display: flex; align-items: center; gap: 2px; padding: 2px;
   background: var(--card); border: 1px solid var(--grid-line); border-radius: 9px;
   box-shadow: 0 2px 8px rgba(23,27,34,.10);
-  opacity: 0; visibility: hidden; transition: opacity .15s ease, visibility .15s ease;
+  opacity: 0; visibility: hidden; transition: opacity var(--dur-2) var(--ease-out);
 }
 .ha-host:hover > .ha,
 .ha-host:focus-within > .ha,
@@ -1709,8 +1659,8 @@ body.gpanel-open .main { padding-right: 420px; transition: padding-right .18s cu
 /* 접근성 — 움직임 최소화 설정에서는 슬라이드·페이드를 없애고 즉시 표시한다 */
 @media (prefers-reduced-motion: reduce) {
   .gpanel, .tdp { animation: none !important; }
-  body.gpanel-open .main { transition: none; }
-  .ha { transition: none; }
+  body.gpanel-open .main { transition: none var(--dur-1) var(--ease-out); }
+  .ha { transition: none var(--dur-1) var(--ease-out); }
   .ha-host:hover > .ha, .ha-host:focus-within > .ha { opacity: 1; visibility: visible; }
 }
 
@@ -1776,9 +1726,6 @@ body.gpanel-open .agf-fab { display: none; }
 .nitem.picked { background: color-mix(in srgb, var(--coral) 8%, var(--card)); }
 .actv-bundle { font-size: 11px; font-weight: 700; color: var(--coral);
   background: color-mix(in srgb, var(--coral) 12%, var(--card)); padding: 1px 7px; border-radius: 999px; }
-.actv-empty { padding: 44px 16px; text-align: center; color: var(--ink-soft); }
-.actv-empty p { font-size: 15px; font-weight: 600; }
-.actv-empty .sub { font-size: 13px; font-weight: 400; color: var(--muted); margin-top: 6px; }
 
 /* ── 음소거 (§F) ── */
 .actv-mute-wrap { position: relative; }
@@ -1945,7 +1892,6 @@ body.gpanel-open .agf-fab { display: none; }
 .prep-sec h2 em { font-style: normal; font-size: 10pt; font-weight: 600; color: #6B7480; margin-left: 6px; }
 .prep-group { margin-bottom: 14px; break-inside: avoid; }
 .prep-group h3 { font-size: 10pt; font-weight: 700; color: #3A4150; margin: 12px 0 6px; }
-.prep-empty { font-size: 9.5pt; color: #6B7480; padding: 10px 0; }
 .prep-note { margin-top: 8px; font-size: 8.6pt; color: #6B7480; }
 .prep-note b { color: #1B1F27; }
 
@@ -1963,7 +1909,7 @@ body.gpanel-open .agf-fab { display: none; }
 .prep-t thead th:first-child { border-top-left-radius: 7px; }
 .prep-t thead th:last-child { border-top-right-radius: 7px; }
 .prep-t tbody td { padding: 7px 9px; border-bottom: 1px solid #ECEFF3; vertical-align: top; }
-.prep-t tbody tr:nth-child(even) { background: #FAFBFC; }
+.prep-t tbody tr:nth-child(even) { background: var(--surface-2); }
 .prep-t tbody tr { break-inside: avoid; }
 
 .prep-lv { font-size: 8pt; font-weight: 700; padding: 1px 6px; border-radius: 999px;
@@ -2051,10 +1997,9 @@ body.gpanel-open .agf-fab { display: none; }
 .snapm-led.ok { background: var(--green); }
 .snapm-led.bad { background: var(--coral); }
 .snapm-src { font-size: 10.5px; color: var(--muted); }
-.snapm-none { padding: 8px 10px; font-size: 11.5px; color: var(--muted); }
 
 .snapm .pws-more:focus-visible, .snapm-menu button:focus-visible { outline: 2px solid var(--edu); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .gtr-line { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .gtr-line { transition: none var(--dur-1) var(--ease-out); } }
 
 /* ══════════════════════════════════════════════════════════════
    Notion 연동 (MD-P-2026-012)
@@ -2125,8 +2070,8 @@ body.gpanel-open .agf-fab { display: none; }
 /* ── 첫 사용 안내 (MD-P-2026-015 §A) ── */
 .frn-bg { position: fixed; inset: 0; z-index: 95; background: var(--scrim); display: grid; place-items: center; padding: 20px; }
 .frn { width: min(520px, 94vw); background: var(--card); border: 1px solid var(--line-hi); border-radius: 18px;
-  box-shadow: var(--e3); padding: 22px 24px 18px; animation: frnin .16s ease; }
-@keyframes frnin { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  box-shadow: var(--e3); padding: 22px 24px 18px; animation: frnin var(--dur-2) var(--ease-out); }
+@keyframes frnin { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .frn { animation: none; } }
 .frn-h { display: flex; align-items: center; margin-bottom: 12px; }
 .frn-eyebrow { font-family: var(--f-d); font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--muted); }
@@ -2143,9 +2088,9 @@ body.gpanel-open .agf-fab { display: none; }
 .frn-f { display: flex; align-items: center; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--hair); }
 .frn-dots { display: flex; gap: 6px; }
 .frn-dot { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
-  background: var(--line-hi); transition: background .12s ease; }
+  background: var(--line-hi); transition: background-color var(--dur-1) var(--ease-out); }
 .frn-dot.on { background: var(--coral-d); }
-@media (prefers-reduced-motion: reduce) { .frn-dot { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .frn-dot { transition: none var(--dur-1) var(--ease-out); } }
 .scut-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 /* 정렬·완료 포함 컨트롤 (MD-P-2026-018 §D) — 기존 lens-bar 규격을 따른다 */

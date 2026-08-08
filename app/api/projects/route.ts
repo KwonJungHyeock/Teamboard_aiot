@@ -13,9 +13,13 @@ export const dynamic = "force-dynamic";
 const PROJECT_STATUSES = ["active", "done", "hold"] as const; // 진행중 / 완료 / 보류
 const COLOR_KEYS = ["edu", "play", "train", "team"] as const;
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     requireSession();
+    // 영역 필터 — /tasks 와 같은 형식(`?area=2,3`)이다 (MD-P-2026-027 B11-3).
+    // 영역을 사이드바에서 내렸으므로 그 축을 여기서도 쓸 수 있어야 한다.
+    const areaIds = (new URL(request.url).searchParams.get("area") ?? "")
+      .split(",").map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n > 0);
     const rows = await query<{
       id: number;
       name: string;
@@ -43,7 +47,9 @@ export async function GET() {
               (SELECT count(*) FROM goal g WHERE g.project_id = p.id AND g.is_active = true) AS goal_count
        FROM project p
        WHERE p.is_active = true
-       ORDER BY p.id`
+         ${areaIds.length ? "AND p.area_id = ANY($1::int[])" : ""}
+       ORDER BY p.id`,
+      areaIds.length ? [areaIds] : []
     );
     return NextResponse.json({
       projects: rows.map((p) => ({
@@ -79,9 +85,27 @@ export async function POST(request: Request) {
       ? payload.status
       : "active";
 
+    // 영역 — 업무 등록 중 콤보박스에서 만들 때 그 업무의 영역을 물려받는다 (§D1).
+    // 영역 없는 프로젝트를 만들면 영역 필터(B11-3)에서 영원히 안 보인다.
+    //
+    // project.area_id 는 NOT NULL 인데 기본값이 없다. 이 라우트는 지금껏 area_id 를
+    // 아예 넣지 않아 **팀장이 눌러도 반드시 실패**했다 — 화면에서 프로젝트를 만들 길이
+    // 없었으므로 아무도 밟지 않았을 뿐이다. 콤보박스가 이 경로를 처음 쓰게 되므로 함께 고친다.
+    const rawArea = Number(payload.areaId);
+    const picked = Number.isInteger(rawArea) && rawArea > 0
+      ? await queryOne<{ id: number }>("SELECT id FROM area WHERE id = $1 AND is_active = true", [rawArea])
+      : null;
+    const fallback = picked
+      ? null
+      : await queryOne<{ id: number }>(
+          "SELECT id FROM area WHERE is_active = true ORDER BY sort_order, id LIMIT 1"
+        );
+    const areaId = picked?.id ?? fallback?.id ?? null;
+    if (!areaId) return NextResponse.json({ error: "업무 영역이 없습니다. 영역을 먼저 만들어 주세요." }, { status: 400 });
+
     const project = await queryOne<{ id: number }>(
-      `INSERT INTO project (name, status, color_key, notion_url) VALUES ($1,$2,$3,$4) RETURNING id`,
-      [name, status, colorKey, payload.notionUrl ? String(payload.notionUrl).slice(0, 500) : null]
+      `INSERT INTO project (name, status, color_key, notion_url, area_id) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+      [name, status, colorKey, payload.notionUrl ? String(payload.notionUrl).slice(0, 500) : null, areaId]
     );
     await logActivity({
       userId: session.id,

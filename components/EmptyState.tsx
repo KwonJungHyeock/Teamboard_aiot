@@ -1,8 +1,12 @@
 "use client";
 
-// 빈 상태 (파트 B) — 실데이터 초기의 빈 화면이 고장처럼 보이지 않게 안내 + 첫 행동 유도.
+// 전체 빈 상태 (파트 B → MD-P-2026-026 §A) — **화면 본문 전체**가 비었을 때만 쓴다.
 //
-// §G 규격: **설명 + CTA + 아이콘 3요소.**
+// §G 규격: 아이콘 88px + 제목 + 설명 + CTA. 세로 가운데. 위아래 최소 48px.
+//
+// 화면의 한 블록만 비었으면 이걸 쓰지 않는다 — SectionEmpty 를 쓴다.
+// 예전에는 `compact` 프롭 하나로 두 규격을 겸했고, 그래서 홈 위젯 하나가 비었을 뿐인데
+// 삽화와 코랄 버튼이 떴다. compact 는 제거했다 (확정 B-7).
 //
 // 예전에는 `illustration="/empty/foo.svg"` 처럼 **자유 문자열 경로**를 받았고,
 // 파일이 없으면 onError 로 슬롯을 조용히 숨겼다. 그 결과 앱 전체에 이미지가
@@ -24,17 +28,15 @@ export default function EmptyState({
   title,
   hint,
   action,
-  compact = false,
 }: {
   /** 공용 아이콘 이름. 경로를 직접 넘기지 않는다 — 없는 파일을 가리킬 수 없게 하려는 것이다. */
   icon?: EmptyIcon;
   title: string;
   hint?: string;
   action?: ReactNode;
-  compact?: boolean;
 }) {
   return (
-    <div className={`empty-state ${compact ? "es-compact" : ""}`}>
+    <div className="empty-state">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         className="es-illust"

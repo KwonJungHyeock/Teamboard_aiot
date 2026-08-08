@@ -1,7 +1,12 @@
 // 데모 데이터 시드 (Phase 3 완료 기준 검증용) — 프로토타입 v0.3 데모 내용을 재현.
 // 운영 시드(init-db.mjs)와 분리. 사용법: DATABASE_URL=... npm run db:seed-demo
 // 중복 방지: config.demo_seeded 마커. 재실행 시 건너뜀.
+//
+// **로컬 전용. 원격 DB 에서 실행 금지** (지시 32) — 아래 requireLocalDb 가 강제한다.
 import pg from "pg";
+import { requireLocalDb } from "./local-only.mjs";
+
+requireLocalDb("seed-demo.mjs");
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {

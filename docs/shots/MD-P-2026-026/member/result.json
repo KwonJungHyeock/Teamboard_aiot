@@ -1,0 +1,126 @@
+{
+  "rows": [
+    {
+      "id": "members-issue",
+      "path": "/members",
+      "what": "계정 발급 폼",
+      "lead": true,
+      "member": false,
+      "ok": true,
+      "why": ""
+    },
+    {
+      "id": "settings-demo",
+      "path": "/settings",
+      "what": "데모 시드 주입 · 데모 데이터 비우기",
+      "lead": true,
+      "member": false,
+      "ok": true,
+      "why": ""
+    },
+    {
+      "id": "reports-approval",
+      "path": "/reports",
+      "what": "승인 보고서 탭",
+      "lead": true,
+      "member": false,
+      "ok": true,
+      "why": ""
+    },
+    {
+      "id": "projects-new",
+      "path": "/projects",
+      "what": "새 프로젝트 만들기 폼",
+      "lead": true,
+      "member": false,
+      "ok": true,
+      "why": ""
+    },
+    {
+      "id": "goals-snapshot",
+      "path": "/goals",
+      "what": "스냅샷 메뉴 (목표 적립)",
+      "lead": true,
+      "member": false,
+      "ok": true,
+      "why": ""
+    },
+    {
+      "id": "goals-team-scope",
+      "path": "/goals",
+      "what": "새 목표 모달의 '팀 목표' 범위 선택",
+      "lead": true,
+      "member": false,
+      "ok": true,
+      "why": ""
+    },
+    {
+      "id": "combo-new-project",
+      "path": "/tasks?panel=task:new",
+      "what": "프로젝트 콤보박스의 '새 프로젝트로 만들기'",
+      "lead": true,
+      "member": false,
+      "ok": true,
+      "why": ""
+    },
+    {
+      "id": "huddle-review",
+      "path": "/huddle",
+      "what": "새 리뷰 세션 시작",
+      "lead": true,
+      "member": false,
+      "ok": true,
+      "why": ""
+    }
+  ],
+  "apiRows": [
+    {
+      "id": "api-seed-demo",
+      "method": "POST",
+      "url": "/api/admin/seed-demo",
+      "what": "데모 시드 주입",
+      "status": 403,
+      "msg": "팀장만 데모 시드를 주입할 수 있습니다.",
+      "blocked": true
+    },
+    {
+      "id": "api-clear-demo",
+      "method": "POST",
+      "url": "/api/admin/clear-demo",
+      "what": "데모 데이터 비우기",
+      "status": 403,
+      "msg": "팀장만 데모 데이터를 비울 수 있습니다.",
+      "blocked": true
+    },
+    {
+      "id": "api-members-post",
+      "method": "POST",
+      "url": "/api/members",
+      "what": "계정 발급",
+      "body": {
+        "displayName": "무단생성",
+        "email": "x@x.test",
+        "role": "member"
+      },
+      "status": 403,
+      "msg": "팀장만 접근할 수 있습니다.",
+      "blocked": true
+    },
+    {
+      "id": "api-projects-post",
+      "method": "POST",
+      "url": "/api/projects",
+      "what": "프로젝트 생성",
+      "body": {
+        "name": "무단 프로젝트"
+      },
+      "status": 403,
+      "msg": "팀장만 접근할 수 있습니다.",
+      "blocked": true
+    }
+  ],
+  "sideEffects": {
+    "project": 0,
+    "account": 0
+  }
+}

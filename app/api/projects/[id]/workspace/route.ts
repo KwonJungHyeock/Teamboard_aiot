@@ -98,12 +98,10 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       [projectId]
     );
 
-    // 자료(기존 탭 데이터 유지)
-    const artifacts = await query<{ id: number; kind: string; title: string; url: string; created_at: string }>(
-      `SELECT id, kind, title, url, created_at::text FROM artifact
-       WHERE project_id = $1 AND is_active = true ORDER BY created_at DESC`,
-      [projectId]
-    ).catch(() => []);
+    // 영역 단위 자료 축은 MD-P-2026-027 B11 에서 폐기했다.
+    // 여기서 artifacts 를 실어 보냈지만 ProjectWorkspace 가 한 번도 읽지 않았다 —
+    // 쿼리 한 번을 매 요청마다 헛돌리고, 읽는 곳이 있는 것처럼 보이게 했다.
+    // 프로젝트 자료는 캔버스의 링크와 Notion 이 담당한다.
 
     return NextResponse.json({
       project: {
@@ -121,7 +119,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         } : null,
       },
       members: members.map((m) => ({ id: m.id, name: m.display_name, avatarUrl: m.avatar_url })),
-      tasks, discussions, openDiscussions, decisions, upcoming, activity, artifacts,
+      tasks, discussions, openDiscussions, decisions, upcoming, activity,
       today,
       canEdit: session.role === "lead" || project.owner_id === session.id,
     });

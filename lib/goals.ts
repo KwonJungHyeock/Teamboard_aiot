@@ -310,6 +310,8 @@ export async function getGoalTree(opts: {
   viewerId?: number;
   /** 팀장은 개인 목표도 조회할 수 있다 (§E) */
   isLead?: boolean;
+  /** 영역 필터 (MD-P-2026-027 B11-3). 빈 배열이면 전체. */
+  areaIds?: number[];
 } = {}): Promise<GoalNode[]> {
   await ensureGoalsBackfilled();
   const today = kstToday();
@@ -319,6 +321,18 @@ export async function getGoalTree(opts: {
   const params: unknown[] = [today];
   const pToday = params.length; // = 1
   if (year) { params.push(year); filters.push(`EXTRACT(YEAR FROM g.period_start) = $${params.length}`); }
+  // 영역 필터 — 트리는 상위/하위가 이어져야 하므로 **자기 또는 자손이 그 영역이면** 남긴다.
+  // 월 목표만 영역을 갖는 경우가 많아, 단순히 g.area_id 로 자르면 상위가 통째로 사라진다.
+  if (opts.areaIds && opts.areaIds.length > 0) {
+    params.push(opts.areaIds);
+    const p = `$${params.length}`;
+    filters.push(`(g.area_id = ANY(${p}::int[]) OR EXISTS (
+       WITH RECURSIVE sub AS (
+         SELECT id, area_id FROM goal WHERE parent_id = g.id AND is_active = true
+         UNION ALL
+         SELECT c.id, c.area_id FROM goal c JOIN sub ON c.parent_id = sub.id WHERE c.is_active = true
+       ) SELECT 1 FROM sub WHERE sub.area_id = ANY(${p}::int[])))`);
+  }
   if (scope === "team") {
     filters.push(`g.scope = 'team'`);
   } else if (scope === "personal") {

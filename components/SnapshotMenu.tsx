@@ -4,6 +4,7 @@
 // 같은 날 다시 실행하면 덮어쓴다(upsert) — 행이 늘지 않는다.
 import { useEffect, useRef, useState } from "react";
 import { toast } from "@/lib/quick";
+import SectionEmpty from "./SectionEmpty";
 
 interface RunRow {
   id: number; run_date: string; source: string; ok: boolean;
@@ -57,7 +58,7 @@ export default function SnapshotMenu({ onSaved }: { onSaved?: () => void }) {
 
           {runs && (
             <div className="snapm-runs">
-              {runs.length === 0 && <p className="snapm-none">기록된 실행이 없습니다.</p>}
+              {runs.length === 0 && <SectionEmpty text="기록된 실행이 없어요" />}
               {runs.map((r) => (
                 <div className={`snapm-run${r.ok ? "" : " bad"}`} key={r.id}>
                   <span className={`snapm-led ${r.ok ? "ok" : "bad"}`} aria-hidden="true" />

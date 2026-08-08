@@ -13,6 +13,9 @@ import { openTaskPanel } from "@/lib/task-panel";
 import { useRouter } from "next/navigation";
 import { uploadImage } from "@/lib/upload";
 import BlobImage from "./BlobImage";
+import { DropZone } from "./Attach";
+import SectionEmpty from "./SectionEmpty";
+import Skeleton from "./Skeleton";
 
 type BlockType = "text" | "checklist" | "link" | "image";
 interface CheckItem { id: string; text: string; done: boolean }
@@ -218,7 +221,7 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
     // 실패(4xx/5xx) 시에는 아무것도 덮어쓰지 않는다 — 원본 링크 텍스트가 그대로 남는다.
   }
 
-  if (loading) return <p className="gempty">불러오는 중...</p>;
+  if (loading) return <Skeleton variant="block" height={160} />;
 
   return (
     <section
@@ -226,11 +229,6 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
       aria-label="프로젝트 캔버스"
       onPaste={(e) => {
         const f = Array.from(e.clipboardData.files ?? []).find((x) => x.type.startsWith("image/"));
-        if (f) { e.preventDefault(); void insertImage(f); }
-      }}
-      onDragOver={(e) => { if (!readOnly && blobReady) e.preventDefault(); }}
-      onDrop={(e) => {
-        const f = Array.from(e.dataTransfer.files ?? []).find((x) => x.type.startsWith("image/"));
         if (f) { e.preventDefault(); void insertImage(f); }
       }}
     >
@@ -255,13 +253,12 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
       </div>
 
       {blocks.length === 0 ? (
-        <div className="pcv-empty">
-          <p>이 프로젝트의 설계·자료조사를 여기에 기록하세요.</p>
-          <p className="sub">Figma 링크를 붙여넣으면 카드로 표시됩니다.</p>
-          {!readOnly && <button className="btn-brand" onClick={() => addBlock("text")}>＋ 첫 블록 추가</button>}
-        </div>
+        <SectionEmpty
+          text="이 프로젝트의 설계·자료조사를 여기에 기록하세요 — Figma 링크를 붙여넣으면 카드로 표시됩니다"
+          action={!readOnly ? { label: "첫 블록 추가 →", onClick: () => addBlock("text") } : undefined}
+        />
       ) : (
-        <div className="pcv-blocks">
+        <DropZone className="pcv-blocks" onFile={(f) => void insertImage(f)} disabled={readOnly || !blobReady}>
           {blocks.map((b) => (
             <div className="pcv-b" key={b.id}>
               {b.type === "text" && (
@@ -297,7 +294,7 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
               {b.type === "image" && (
                 b.pathname
                   ? <BlobImage value={b.pathname} name={b.name} alt={b.name ?? "첨부 이미지"} className="pcv-img" />
-                  : <div className="pcv-img-ph">이미지 올리는 중…</div>
+                  : <div className="pcv-img-ph" role="status" aria-label={`${b.name ?? "이미지"} 올리는 중`} />
               )}
 
               {b.type === "link" && b.internal && (
@@ -328,7 +325,7 @@ export default function ProjectCanvas({ projectId, readOnly = false }: { project
               )}
             </div>
           ))}
-        </div>
+        </DropZone>
       )}
     </section>
   );

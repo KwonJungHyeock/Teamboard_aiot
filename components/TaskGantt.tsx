@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { openTaskPanel } from "@/lib/task-panel";
 import { openQuickCreate } from "@/lib/quick";
 import { type TaskItem, statusColor, STATUS_META, taskDays, dateAddDays as addDays, dateDiffDays as diffDays } from "@/lib/task-view";
+import SectionEmpty from "./SectionEmpty";
 
 function ymd(d: string) { return d.slice(0, 10); }
 function monthStart(a: string) { return a.slice(0, 8) + "01"; }
@@ -79,7 +80,7 @@ export default function TaskGantt({
       </div>
 
       {lanes.length === 0 ? (
-        <p className="tg-empty">이 달에 기간이 걸친 업무가 없어요. 시트·보드에서 마감일을 지정하면 여기에 나타납니다.</p>
+        <SectionEmpty text="이 달에 기간이 걸친 업무가 없어요 — 시트·보드에서 마감일을 지정하면 여기에 나타납니다" />
       ) : (
         <div className="tg-body">
           {/* 날짜 축 (주 단위 눈금) */}
