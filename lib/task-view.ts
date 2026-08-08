@@ -27,6 +27,9 @@ export interface TaskItem {
   /** 완료 시각 — 완료 업무는 D+ 대신 이 날짜를 보여준다 (MD-P-2026-018 §E) */
   completedAt?: string | null;
   createdAt?: string | null;
+  /** §A3 계층 (MD-P-2026-028) — 목록이 접기/펼치기를 그릴 재료 */
+  parentTaskId?: number | null;
+  childCount?: number;
 }
 
 export type TaskLens = "sheet" | "board" | "calendar" | "timeline";

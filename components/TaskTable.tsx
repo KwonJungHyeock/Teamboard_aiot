@@ -28,6 +28,9 @@ export interface TaskTableRow {
   blockedReason?: string | null;
   /** MD-P-2026-025 §B2 — 개인 업무 표시. 없으면 팀 공개로 본다. */
   visibility?: "team" | "private";
+  /** §A3 계층 — 없으면 평면 목록으로 그린다(홈 등 compact 사용처는 안 보낸다). */
+  parentTaskId?: number | null;
+  childCount?: number;
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -101,7 +104,34 @@ export default function TaskTable({
   // 목록에서 빠진 행은 한 사이클 붙잡아 두고 사라진다(--dur-2).
   const bodyRef = useRef<HTMLTableSectionElement>(null);
   const { rows: shown, exiting } = useExiting(rows);
-  useFlip(bodyRef as unknown as React.RefObject<HTMLElement>, rows.map((r) => r.id).join(","), "tr[data-flip]");
+
+  // ── §A3 하위 업무 계층 ────────────────────────────────────────────
+  //
+  // 서버가 상위·하위를 **한 목록**으로 준다(§A3 재귀 처리). 여기서 계층으로 접는다.
+  //   · 기본은 접힘. 펼친 상위의 하위만 뒤에 끼워 넣는다.
+  //   · 하위가 있는 상위만 캐럿을 갖는다.
+  //   · 상위가 목록에 없는 하위(필터로 상위만 빠진 경우)는 제자리에 그대로 둔다 —
+  //     숨기면 "검색했는데 안 나온다"가 된다.
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const toggleOpen = (id: number) =>
+    setExpanded((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
+  const childrenOf = new Map<number, TaskTableRow[]>();
+  for (const r of shown) {
+    const p = r.parentTaskId ?? null;
+    if (p === null) continue;
+    childrenOf.set(p, [...(childrenOf.get(p) ?? []), r]);
+  }
+  const present = new Set(shown.map((r) => r.id));
+  const nested: TaskTableRow[] = [];
+  for (const r of shown) {
+    const p = r.parentTaskId ?? null;
+    if (p !== null && present.has(p)) continue;   // 펼칠 때 상위 뒤에 끼워 넣는다
+    nested.push(r);
+    if (expanded.has(r.id)) nested.push(...(childrenOf.get(r.id) ?? []));
+  }
+
+  useFlip(bodyRef as unknown as React.RefObject<HTMLElement>, nested.map((r) => r.id).join(","), "tr[data-flip]");
   const [hot, flash] = useHighlight();
   const on = (id: number) => !!checked?.has(id);
   const allOn = selectable && rows.length > 0 && rows.every((r) => on(r.id));
@@ -186,8 +216,11 @@ export default function TaskTable({
               </td>
             </tr>
           )}
-          {shown.map((t) => {
+          {nested.map((t) => {
             const status = STATUS_LABEL[t.status] ?? { label: t.status, cls: "todo" };
+            const kids = childrenOf.get(t.id) ?? [];
+            const isChild = (t.parentTaskId ?? null) !== null;
+            const openHere = expanded.has(t.id);
             const dueCls = t.overdue
               ? "bad"
               : t.dday === "D-DAY" || t.dday === "D-1" || t.dday === "D-2"
@@ -201,7 +234,9 @@ export default function TaskTable({
                 onClick={onRowClick ? () => onRowClick(t.id) : undefined}
                 className={
                   [onRowClick ? "clickable" : "", selectedId === t.id ? "selected" : "",
-                   doneLocal.has(t.id) ? "done-opt" : "", exiting.has(t.id) ? "row-out" : ""]
+                   doneLocal.has(t.id) ? "done-opt" : "", exiting.has(t.id) ? "row-out" : "",
+                   // §A3 — 하위 행은 들여쓰기 + 나타날 때만 움직인다. 높이는 애니메이트하지 않는다.
+                   isChild ? "sub-row" : ""]
                     .filter(Boolean)
                     .join(" ") || undefined
                 }
@@ -212,7 +247,20 @@ export default function TaskTable({
                       aria-label={`${t.title} 선택`} />
                   </td>
                 )}
-                <td>
+                <td className={isChild ? "sub-cell" : undefined}>
+                  {/* §A3 — 하위가 있는 행의 **왼쪽에만** 캐럿. 없는 행은 자리만 비운다.
+                      캐럿을 모든 행에 그리면 무엇이 열리는지 알 수 없다. */}
+                  {kids.length > 0 ? (
+                    <button
+                      className={`sub-cv${openHere ? " on" : ""}`}
+                      aria-expanded={openHere}
+                      aria-label={`${t.title} 하위 업무 ${openHere ? "접기" : "펼치기"}`}
+                      onClick={(e) => { e.stopPropagation(); toggleOpen(t.id); }}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+                      <span className="num">{kids.length}</span>
+                    </button>
+                  ) : null}
                   {t.blocked && (
                     <span className="blk-mark" title={t.blockedReason ? `막힘: ${t.blockedReason}` : "막힘"} aria-label="막힘">
                       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>

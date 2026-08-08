@@ -1340,7 +1340,8 @@ a.pcard:hover, .pcard.clickable:hover { box-shadow: var(--e2); }
   /* transform 이 섞인 애니메이션은 opacity 만 남긴 판으로 갈아 끼운다 */
   @keyframes fade-only { from { opacity: 0; } to { opacity: 1; } }
   @keyframes fade-out-only { from { opacity: 1; } to { opacity: 0; } }
-  .tdp, .ntm, .tdp-save.saved { animation: fade-only var(--dur-1) var(--ease-out); }
+  .tdp, .ntm, .tdp-save.saved, tr.sub-row { animation: fade-only var(--dur-1) var(--ease-out); }
+  .sub-cv svg { transition: none var(--dur-1) var(--ease-out); }
   .ntm-bg.closing .ntm, .row-out { animation: fade-out-only var(--dur-1) var(--ease-out) forwards; }
   .ntm-bg { animation: fade-only var(--dur-1) var(--ease-out); }
   .hl { animation: none; }
@@ -1580,3 +1581,62 @@ a.pcard:hover, .pcard.clickable:hover { box-shadow: var(--e2); }
    `.none`(집계 없음)과 색은 같지만 뜻이 다르므로 클래스를 나눠 둔다 —
    합치면 "값이 없다"와 "값이 흐리다"가 코드에서 구별되지 않는다. */
 .gpv.low, .ycard-p.low { color: var(--muted); }
+
+/* ── MD-P-2026-028 §A1 하위 업무 섹션 (업무 상세) ──────────────────────
+   §C 목록 규격(38px 행 · 12.5px)을 그대로 쓴다. 새 시각 토큰을 만들지 않는다. */
+.stx-done { font-style: normal; font-size: 11.5px; color: var(--muted); font-weight: 400; }
+.stx-list { border-top: 1px solid var(--hair); }
+.stx-row { display: flex; align-items: center; gap: 8px; height: 38px;
+  border-bottom: 1px solid var(--hair); font-size: 12.5px; color: var(--ink2); }
+.stx-chk { flex: 0 0 auto; width: 14px; height: 14px; margin: 0; cursor: pointer; }
+.stx-t { flex: 1; min-width: 0; text-align: left; border: 0; background: 0; padding: 0;
+  font: inherit; color: var(--ink); cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stx-t:hover { text-decoration: underline; }
+.stx-a { flex: 0 0 66px; color: var(--muted); font-size: 11.5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stx-d { flex: 0 0 44px; color: var(--muted); font-size: 11.5px; }
+.stx-p { flex: 0 0 76px; display: flex; align-items: center; gap: 6px; }
+.stx-p i { flex: 1; height: 4px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.stx-p i b { display: block; height: 100%; border-radius: 999px; background: var(--edu);
+  transform-origin: left center; transform: scaleX(var(--p, 0)); }
+.stx-p em { flex: 0 0 auto; font-style: normal; font-size: 11.5px; color: var(--muted); }
+/* 완료 행 — 취소선이 아니라 흐리게. 취소선은 "잘못됐다"로 읽힌다 */
+.stx-row.done .stx-t { color: var(--muted); }
+
+/* ── §A4 상위 업무 지정 (속성 블록 안 팝오버) ─────────────────────── */
+.ppk { display: flex; flex-direction: column; gap: 6px; min-width: 260px; }
+.ppk-q { width: 100%; }
+.ppk-list { display: flex; flex-direction: column; max-height: 220px; overflow-y: auto; }
+.ppk-o { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 7px;
+  border: 0; border-radius: 4px; background: 0; cursor: pointer; text-align: left;
+  font: inherit; font-size: 12.5px; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: background-color var(--dur-1) var(--ease-out); }
+.ppk-o:hover, .ppk-o.on { background: var(--surface-2); }
+.ppk-o.none { color: var(--muted); }
+.ppk-o em { font-style: normal; font-size: 11.5px; color: var(--muted); }
+.ppk-id { flex: 0 0 auto; font-size: 11.5px; color: var(--muted); }
+.ppk-none { padding: 7px; font-size: 11.5px; color: var(--muted); }
+.ppk-n { margin: 0; font-size: 11.5px; color: var(--muted); }
+
+/* ── §A3 목록의 하위 업무 행 ──────────────────────────────────────────
+   들여쓰기 22px — 목표 트리(.pg-body .grow)와 **같은 값**이다. 새로 정하지 않는다.
+   높이를 애니메이트하지 않는다(§H2 금지 속성). 펼침 자체는 즉시 일어나고,
+   나타나는 행에만 opacity + translateY 를 --dur-2 로 준다. */
+/* 캐럿은 **일반 흐름**에 둔다. absolute 로 칸 밖에 걸었더니 사이드바 아래로 들어가
+   클릭이 통째로 가로채였다 — 실측에서 잡혔다. 위치를 계산하지 말고 그냥 앞에 놓는다. */
+.pg-body table tbody td.sub-cell { padding-left: 22px; }
+.sub-cv { display: inline-flex; align-items: center; gap: 2px; height: 18px; padding: 0 3px;
+  margin-right: 4px; vertical-align: middle;
+  border: 0; border-radius: 4px; background: 0; cursor: pointer;
+  color: var(--muted); font: inherit; font-size: 10.5px;
+  transition: background-color var(--dur-1) var(--ease-out); }
+.sub-cv:hover { background: var(--surface-2); }
+.sub-cv svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2;
+  transition: transform var(--dur-2) var(--ease-out); }
+.sub-cv.on svg { transform: rotate(90deg); }
+@keyframes sub-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+tr.sub-row { animation: sub-in var(--dur-2) var(--ease-out); }
+tr.sub-row > td:first-child { color: var(--ink2); }
+

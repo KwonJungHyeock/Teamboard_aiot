@@ -48,6 +48,8 @@ export default function InlineTaskInput({
         assigneeId: prefill.assigneeId,
         visibility: prefill.visibility,
         status: prefill.status,
+        // 상위가 있으면 프로젝트·영역·공개 범위는 서버가 상위 값으로 덮는다 (§A2).
+        parentTaskId: prefill.parentTaskId,
       }),
     }).catch(() => null);
     const body = res ? await res.json().catch(() => null) : null;
@@ -56,7 +58,7 @@ export default function InlineTaskInput({
     setTitle("");
     notifyTaskUpdated();
     onCreated?.(body.id);
-    toast("업무를 만들었어요");
+    toast(prefill.parentTaskId ? "하위 업무를 만들었어요" : "업무를 만들었어요");
     ref.current?.focus();   // 연달아 넣는 흐름이다 — 포커스를 뺏지 않는다
   }
 

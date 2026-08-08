@@ -30,6 +30,9 @@ export type NewTaskPrefill = {
   description?: string;
   /** 상태 프리셋 — 보드 상태 컬럼에서 만들 때 */
   status?: string;
+  /** 상위 업무 — 여기서 만들면 하위 업무가 된다 (MD-P-2026-028 §A1).
+   *  프로젝트·영역·공개 범위는 서버가 상위에서 물려준다(§A2). 여기 값은 무시된다. */
+  parentTaskId?: number;
   /** 우선순위 프리셋 */
   priority?: string;
 };

@@ -372,14 +372,26 @@ export default function TasksView({ user }: { user: SessionUser }) {
   // 검색·완료필터·정렬이 적용된 업무 목록 — 모든 렌즈가 공유 (MD-P-2026-018 §D)
   const filteredTasks = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const out = tasks.filter(
-      (t) =>
-        (showDone || (t.status !== "done" && t.status !== "dropped")) &&
-        (!q ||
-          t.title.toLowerCase().includes(q) ||
-          (t.projectName ?? "").toLowerCase().includes(q) ||
-          (t.assigneeName ?? "").toLowerCase().includes(q))
-    );
+    const match = (t: TaskItem) =>
+      (showDone || (t.status !== "done" && t.status !== "dropped")) &&
+      (!q ||
+        t.title.toLowerCase().includes(q) ||
+        (t.projectName ?? "").toLowerCase().includes(q) ||
+        (t.assigneeName ?? "").toLowerCase().includes(q));
+
+    // §A3 — **하위 행은 필터·정렬의 대상이 아니다.**
+    //   상위가 걸리면 따라 나오고, 하위만 걸리면 상위를 살려서 보여준다.
+    //   서버가 목록 필터에 대해 같은 처리를 하고(재귀), 여기서는 화면 쪽 필터
+    //   (검색어·완료 숨김)에 대해 같은 규칙을 적용한다. 한쪽만 하면 규칙이 갈린다.
+    //   완료한 하위를 숨기면 "2건 중 1건 완료"인데 펼치면 1건만 보인다.
+    const hit = new Set(tasks.filter(match).map((t) => t.id));
+    const keep = new Set(hit);
+    for (const t of tasks) {
+      const p = t.parentTaskId ?? null;
+      if (p !== null && hit.has(p)) keep.add(t.id);   // 상위가 걸림 → 하위도 남긴다
+      if (p !== null && hit.has(t.id)) keep.add(p);   // 하위만 걸림 → 상위를 살린다
+    }
+    const out = tasks.filter((t) => keep.has(t.id));
 
     const prio = (t: TaskItem) => PRIORITY_RANK[t.priority] ?? 1;
     // 기한 없는 항목은 항상 맨 뒤 — 날짜 비교에 끌어들이면 순서가 뒤죽박죽이 된다
@@ -429,6 +441,8 @@ export default function TasksView({ user }: { user: SessionUser }) {
           status: t.status,
           priority: t.priority,
           areaName: t.areaName,
+          // 28-a — 서버가 이미 taskProgress() 를 통과시킨 **실효 진척**을 준다.
+          //   여기서 다시 셈하지 않는다. 두 번 셈하면 계산기가 둘이 된다.
           progress: t.progress,
           goalNames: t.goalIds.map(goalTitleOf).filter((x): x is string => !!x),
           dday: d.text,
@@ -436,6 +450,8 @@ export default function TasksView({ user }: { user: SessionUser }) {
           blocked: t.blocked,
           blockedReason: t.blockedReason,
           visibility: t.visibility,   // §B2 "개인" 칩
+          parentTaskId: t.parentTaskId ?? null,   // §A3 계층
+          childCount: t.childCount ?? 0,
         };
       });
   }, [filteredTasks, today, goalTitleOf]);

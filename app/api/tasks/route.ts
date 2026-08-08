@@ -3,12 +3,14 @@
 // /tasks 인박스에서만 노출된다 (CHANGE-GUIDE Phase 5-1).
 import { NextResponse } from "next/server";
 import { NEW_TASK_GOAL_SOURCE } from "@/lib/goal-inherit";
+import { checkParent } from "@/lib/subtask";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
 import { kstToday } from "@/lib/home";
 import { visibleTaskSql, isVisibility } from "@/lib/visibility";
+import { countableSql, doneSql, taskProgress } from "@/lib/progress";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,6 +42,9 @@ export interface TaskListRow {
   blocked: boolean;
   blockedReason: string | null;
   visibility: "team" | "private";
+  /** §A3 계층 — 목록이 접기/펼치기를 그릴 재료 */
+  parentTaskId: number | null;
+  childCount: number;
 }
 
 export async function GET(request: Request) {
@@ -53,17 +58,24 @@ export async function GET(request: Request) {
     const due = url.searchParams.get("due"); // overdue | 7d | 30d | none
     const blocked = url.searchParams.get("blocked"); // "1" → 막힌 업무만
 
-    const where: string[] = ["t.is_active = true"];
+    // 필터 절은 **별칭을 바꿔 두 번** 쓴다 (MD-P-2026-028 §A3).
+    //   하위 행은 필터·정렬의 대상이 아니다. 상위가 걸리면 따라 나오고,
+    //   하위만 걸리면 상위를 살려서 보여준다 — 목표 트리의 재귀 CTE 와 같은 처리다.
+    // 그래서 조건을 `t.` 로 적고, 필요할 때 `c.`(하위) · `p.`(상위) 로 갈아 끼운다.
+    const where: string[] = [];
     const params: unknown[] = [];
     const add = (clause: string, value: unknown) => {
       params.push(value);
       where.push(clause.replace("?", `$${params.length}`));
     };
+    /** 같은 조건을 다른 별칭으로. `t.` 로만 적은 절이라 치환이 안전하다. */
+    const clauses = () => (where.length ? where.join(" AND ") : "true");
+    const asAlias = (a: string) => clauses().replace(/\bt\./g, `${a}.`);
 
     // ① 업무 목록 — 남의 개인 업무는 목록에 오르지 않는다 (§A3).
     //    화면에서 거르지 않는다. 쿼리에서 빠진다.
     params.push(session.id);
-    where.push(visibleTaskSql(`$${params.length}`));
+    const viewerParam = `$${params.length}`;
 
     if (status && (STATUSES as readonly string[]).includes(status)) {
       add("t.status = ?", status);
@@ -119,6 +131,11 @@ export async function GET(request: Request) {
       blocked: boolean;
       blocked_reason: string | null;
       visibility: "team" | "private";
+      resolution: string | null;
+      parent_task_id: number | null;
+      child_count: number;
+      child_counted: number;
+      child_done: number;
       completed_at: string | null;
       created_at: string;
     }>(
@@ -130,7 +147,19 @@ export async function GET(request: Request) {
               array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
               t.progress,
               c.display_name AS created_by_name,
-              t.blocked, t.blocked_reason, t.visibility,
+              t.blocked, t.blocked_reason, t.visibility, t.resolution,
+              t.parent_task_id,
+              (SELECT count(*)::int FROM task ck
+                WHERE ck.parent_task_id = t.id AND ck.is_active = true) AS child_count,
+              -- 진척은 목록에서도 **계산기 하나**를 통과해야 한다 (28-a).
+              -- t.progress 를 그대로 내보내면 하위를 가진 업무가 목록에서는 0%,
+              -- 상세에서는 50% 로 뜬다 — 같은 업무가 화면마다 다른 말을 한다.
+              -- 여기서는 재료(집계 대상 하위 수 · 완료 수)만 싣고, 셈은 taskProgress() 가 한다.
+              (SELECT count(*)::int FROM task ck
+                WHERE ck.parent_task_id = t.id AND ${countableSql("ck")}) AS child_counted,
+              (SELECT count(*)::int FROM task ck
+                WHERE ck.parent_task_id = t.id AND ${countableSql("ck")}
+                  AND ${doneSql("ck")}) AS child_done,
               t.completed_at::text, t.created_at::text
        FROM task t
        LEFT JOIN project p ON p.id = t.project_id
@@ -138,7 +167,16 @@ export async function GET(request: Request) {
        LEFT JOIN actor a ON a.id = t.assignee_id
        LEFT JOIN actor c ON c.id = t.created_by
        LEFT JOIN goal_task gt ON gt.task_id = t.id
-       WHERE ${where.join(" AND ")}
+       WHERE t.is_active = true AND ${visibleTaskSql(viewerParam)}
+         AND ( (${clauses()})
+            -- 하위만 조건에 걸렸으면 **상위를 살려서** 보여준다 (§A3)
+            OR EXISTS (SELECT 1 FROM task ch
+                        WHERE ch.parent_task_id = t.id AND ch.is_active = true
+                          AND ${visibleTaskSql(viewerParam, "ch")} AND (${asAlias("ch")}))
+            -- 상위가 걸렸으면 하위가 따라 나온다 (§A3)
+            OR EXISTS (SELECT 1 FROM task pa
+                        WHERE pa.id = t.parent_task_id AND pa.is_active = true
+                          AND ${visibleTaskSql(viewerParam, "pa")} AND (${asAlias("pa")})) )
        GROUP BY t.id, p.name, p.color_key, ar.name, a.display_name, c.display_name
        ORDER BY t.due_date ASC NULLS LAST, t.id DESC
        LIMIT 300`,
@@ -190,11 +228,19 @@ export async function GET(request: Request) {
       startDate: r.start_date,
       dueDate: r.due_date,
       goalIds: r.goal_ids ?? [],
-      progress: r.progress ?? 0,
+      // 28-a — **실효 진척**을 내보낸다. 하위가 있으면 하위 완료율이 이긴다.
+      //   raw 값을 내보내면 목록은 0%, 상세는 50% 가 된다 — 같은 업무가 화면마다 다른 말을 한다.
+      //   셈은 lib/progress.ts 의 taskProgress() 가 한다. 여기서 공식을 새로 쓰지 않는다.
+      progress: taskProgress({
+        status: r.status, progress: r.progress ?? 0, resolution: r.resolution,
+        childCounted: r.child_counted, childDone: r.child_done,
+      }),
       blocked: r.blocked ?? false,
       blockedReason: r.blocked_reason,
       visibility: r.visibility,
       createdByName: r.created_by_name,
+      parentTaskId: r.parent_task_id,
+      childCount: r.child_count,
       completedAt: r.completed_at,
       createdAt: r.created_at,
     }));
@@ -261,8 +307,21 @@ export async function POST(request: Request) {
     // 실수로 개인이 되면 팀이 못 보고, 실수로 팀이 되면 남이 본다.
     // 후자가 되돌릴 수 없는 쪽이지만, 기본을 개인으로 두면 팀 업무가 조용히 사라진다.
     // 지시서가 팀 공개를 기본으로 정했고 그게 맞다 — 대신 화면에서 선택을 분명히 보인다.
-    const visibility = isVisibility(payload.visibility) ? payload.visibility : "team";
-    const projectId = payload.projectId ? Number(payload.projectId) : null;
+    let visibility = isVisibility(payload.visibility) ? payload.visibility : "team";
+    let projectId = payload.projectId ? Number(payload.projectId) : null;
+
+    // ── §A2 하위 업무는 상위에서 물려받는다 ──────────────────────────
+    // 프로젝트·영역·공개 범위를 따로 고르게 하지 않는다. 골라 보내와도 상위 값이 이긴다 —
+    // 두 값이 다르면 "상위는 A 프로젝트인데 하위는 B" 라는 상태가 만들어지고,
+    // 그때부터 어느 쪽이 맞는지 아무도 모른다.
+    const parentTaskId = payload.parentTaskId ? Number(payload.parentTaskId) : null;
+    if (parentTaskId !== null) {
+      const chk = await checkParent(parentTaskId, null);
+      if (chk.error) return NextResponse.json({ error: chk.error }, { status: 400 });
+      projectId = chk.inherit!.projectId;
+      areaId = chk.inherit!.areaId;
+      visibility = chk.inherit!.visibility as typeof visibility;
+    }
 
     // 개인 업무는 프로젝트에 속할 수 없다 (§A2). DB CHECK 가 최종 방어선이지만
     // 여기서 먼저 잡아 **사유를 사람 말로** 돌려준다 — 500 이 아니라 400 이어야 한다.
@@ -284,8 +343,8 @@ export async function POST(request: Request) {
     const task = await queryOne<{ id: number }>(
       // goal_source 를 **명시**한다. 컬럼 기본값은 아직 'inherited' 이고(§A5 — 컬럼은 안 건드린다),
       // 상속이 사라진 뒤로 새 업무가 그 역사적 값을 갖게 두면 안 된다 (MD-P-2026-030 §A4).
-      `INSERT INTO task (project_id, area_id, work_type, title, description, status, assignee_id, start_date, due_date, priority, origin, created_by, visibility, goal_source)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'human',$11,$12,$13) RETURNING id`,
+      `INSERT INTO task (project_id, area_id, work_type, title, description, status, assignee_id, start_date, due_date, priority, origin, created_by, visibility, goal_source, parent_task_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'human',$11,$12,$13,$14) RETURNING id`,
       [
         projectId,
         areaId,
@@ -300,6 +359,7 @@ export async function POST(request: Request) {
         session.id,
         visibility,
         NEW_TASK_GOAL_SOURCE,
+        parentTaskId,
       ]
     );
     // 프로젝트를 골라도 목표는 따라 붙지 않는다 (§A4 — 상속 폐지).

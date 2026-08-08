@@ -10,6 +10,7 @@ import { blobSrc } from "@/lib/upload";
 import { AttachButton, AttachStatus, DropZone, useAttach } from "./Attach";
 import { openPanel } from "@/lib/side-panel";
 import DocEditor, { type DocBlock } from "./DocEditor";
+import SubtaskSection, { type SubtaskRow } from "./SubtaskSection";
 import PropertyBlock, { type PropRow } from "./PropertyBlock";
 import LinkedResources from "./LinkedResources";
 import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution } from "@/lib/progress";
@@ -39,6 +40,8 @@ interface TaskDetail {
   resolution: string | null;
   parentTaskId: number | null; parentTitle: string | null;
   blockedByTitle: string | null; childCount: number;
+  /** §A1 하위 업무 목록. 자기가 하위면 항상 빈 배열이다(깊이 2단). */
+  children: SubtaskRow[];
   goalSource: "inherited" | "manual" | "none";   // inherited 는 역사적 값(= 미지정). 새로 안 생긴다.
   visibility: "team" | "private";
   effectiveProgress: number; rolledUpFromChildren: boolean;
@@ -417,13 +420,24 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
         </div>
       ),
     },
-    // ── MD-P-2026-024 §6-1 — 읽기 전용 2줄. 값이 없으면 줄 자체를 만들지 않는다.
-    ...(t.parentTaskId !== null ? [{
+    // ── §A4 승격·강등 — 여기서 상위를 비우면 최상위가 되고, 지정하면 하위가 된다.
+    //    예전에는 읽기 전용 링크였고 값이 없으면 줄 자체가 없었다. 줄이 없으면
+    //    **승격도 강등도 화면에서 할 수 없다.** 하위를 가진 업무는 하위가 될 수 없으므로
+    //    (깊이 2단) 그때는 줄을 그리지 않는다 — 눌러도 안 되는 것을 보이지 않게 한다.
+    ...(t.parentTaskId !== null || t.childCount === 0 ? [{
       key: "parent", label: "상위 업무",
-      value: (
+      value: t.parentTaskId === null ? null : (
         <button className="prop-link" onClick={() => openTaskPanel(t.parentTaskId!)}>
           #{t.parentTaskId} {t.parentTitle ?? ""}
         </button>
+      ),
+      empty: t.parentTaskId === null, action: "＋ 상위 지정",
+      editor: (close: () => void) => (
+        <ParentPicker
+          taskId={t.id}
+          current={t.parentTaskId}
+          onDone={(msg) => { close(); if (msg) setErr(msg); else { notifyTaskUpdated(); void loadDetail(t.id); } }}
+        />
       ),
     } as PropRow] : []),
     ...(t.blockedBy !== null ? [{
@@ -517,6 +531,18 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
 
             {/* 속성 블록 (MD-P-2026-020 §F1) — 폼이 아니라 문서 속성. 값 클릭 → 그 자리 편집 */}
             <PropertyBlock rows={propRows} collapseAfter={5} />
+
+            {/* §A1 하위 업무 — 속성 블록 아래, 자유 본문 위.
+                §A2 — **하위 업무의 상세에는 이 섹션 자체를 그리지 않는다.** 깊이 2단이라
+                눌러도 안 되는 것을 보여줄 이유가 없다. */}
+            {t.parentTaskId === null && (
+              <SubtaskSection
+                parentId={t.id}
+                children={t.children ?? []}
+                prefill={{ areaId: t.areaId, projectId: t.projectId ?? undefined, visibility: t.visibility }}
+                onChanged={() => { notifyTaskUpdated(); void loadDetail(t.id); }}
+              />
+            )}
 
             {/* 막힘 표시 — 상태와 별개인 진행 불가 신호. 표시 시 사유 필수. */}
             <div className={`tdp-sec tdp-block${t.blocked ? " on" : ""}`}>
@@ -697,5 +723,74 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
         )}
       </aside>
     </>
+  );
+}
+
+/**
+ * §A4 상위 업무 지정·해제.
+ *
+ * 후보를 화면에서 거르지 않는다 — 서버(`checkParent`)가 같은 규칙으로 다시 본다.
+ * 여기서 미리 거르면 규칙이 두 벌이 되고, 반드시 한쪽이 낡는다(030 에서 겪은 것).
+ * 대신 거절 사유를 **그대로 받아 화면에 띄운다.**
+ */
+function ParentPicker({
+  taskId, current, onDone,
+}: {
+  taskId: number;
+  current: number | null;
+  onDone: (errorMessage?: string) => void;
+}) {
+  const [q, setQ] = useState("");
+  const [rows, setRows] = useState<{ id: number; title: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/tasks")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive && d) setRows((d.tasks ?? []).filter((x: { id: number }) => x.id !== taskId)); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [taskId]);
+
+  const hit = q.trim()
+    ? rows.filter((r) => r.title.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 8)
+    : rows.slice(0, 8);
+
+  async function pick(id: number | null) {
+    if (busy) return;
+    setBusy(true);
+    const res = await fetch(`/api/tasks/${taskId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ parentTaskId: id }),
+    }).catch(() => null);
+    setBusy(false);
+    if (!res || !res.ok) {
+      onDone((res && (await res.json().catch(() => ({})))?.error) || "상위 업무를 바꾸지 못했어요");
+      return;
+    }
+    onDone();
+  }
+
+  return (
+    <div className="ppk">
+      <input className="ppk-q" autoFocus value={q} placeholder="업무 제목 검색…"
+        onChange={(e) => setQ(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter" && hit[0]) { e.preventDefault(); void pick(hit[0].id); } }} />
+      <div className="ppk-list" role="listbox">
+        {current !== null && (
+          <button className="ppk-o none" onClick={() => pick(null)} disabled={busy}>
+            상위 없음 <em>최상위 업무로 올립니다</em>
+          </button>
+        )}
+        {hit.length === 0 && <span className="ppk-none">맞는 업무가 없어요.</span>}
+        {hit.map((r) => (
+          <button key={r.id} className={`ppk-o${r.id === current ? " on" : ""}`} onClick={() => pick(r.id)} disabled={busy}>
+            <span className="ppk-id num">#{r.id}</span>{r.title}
+          </button>
+        ))}
+      </div>
+      <p className="ppk-n">하위가 되면 프로젝트·영역·공개 범위를 상위에서 물려받습니다.</p>
+    </div>
   );
 }
