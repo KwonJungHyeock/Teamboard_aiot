@@ -1395,3 +1395,152 @@ a.pcard:hover, .pcard.clickable:hover { box-shadow: var(--e2); }
   font: inherit; font-size: 12.5px; color: var(--ink); background: var(--surface);
 }
 .gadd-ptitle:focus { outline: none; border-color: var(--line-hi); }
+
+/* ══════════════════════════════════════════════════════════════════════
+ * MD-P-2026-029 §B — 목표 화면 위계
+ *
+ * 연간·분기·월이 배지 크기 차이로만 구분돼서 새로 온 사람이 층을 못 읽었다.
+ * 층마다 **형태**가 다르다: 연간=카드 · 분기=섹션 · 월=행.
+ * ══════════════════════════════════════════════════════════════════════ */
+
+/* ── B-1 연간 요약 카드 ─────────────────────────────────────────────
+ * 셋까지는 나란히, 넘으면 가로 스크롤. 세로로 쌓으면 "올해"가 화면을 다 먹는다.
+ * 가로 스크롤은 컨테이너 안에서만 — 본문이 좌우로 밀리지 않는다.
+ */
+.ycards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.ycards.scroll { display: flex; overflow-x: auto; padding-bottom: 6px; }
+.ycards.scroll .ycard { flex: 0 0 300px; }
+.ycard {
+  border: 1px solid var(--line); border-radius: 9px; background: var(--surface);
+  padding: 14px 16px 12px; box-shadow: var(--e1); min-width: 0;
+}
+.ycard-h { display: flex; align-items: center; gap: 8px; }
+.ycard-d { font-size: 11.5px; color: var(--muted); }
+ /* `.pg-body :is(h3, …)` 가 14px 로 잡고 있다 — 특이도가 더 높아 이긴다.
+    한 단계 올려 이기게 한다. 그 규칙을 고치면 다른 화면의 h3 가 전부 흔들린다. */
+.ycards .ycard-t {
+  font-size: 19px; font-weight: 600; line-height: 1.3; color: var(--ink);
+  margin: 8px 0 10px; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.ycards .ycard-t:hover { text-decoration: underline; }
+.ycard-bar .bar { height: 6px; border-radius: 3px; background: var(--track-bg); overflow: hidden; }
+.ycard-bar .bar.empty { background: var(--track-bg); }
+.ycard-m { display: flex; align-items: baseline; gap: 8px; margin-top: 7px; }
+.ycard-p { font-size: 14px; font-weight: 700; color: var(--ink); }
+.ycard-m em { font-style: normal; font-size: 11.5px; color: var(--muted); }
+.ycard .gadd { margin-top: 10px; }
+.ycard-e { margin-top: 6px; }
+
+/* ── B-2 분기 섹션 ─────────────────────────────────────────────────
+ * 헤더 14px 굵게 + 좌측 3px 색 바. 접혀 있어도 진척은 보인다 —
+ * 접었다는 이유로 숫자가 사라지면 접을 이유가 없어진다.
+ */
+.qsec { margin-bottom: 14px; }
+.qsec-h {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px 9px 13px; border-left: 3px solid var(--edu);
+  background: var(--surface-2); border-radius: 0 7px 7px 0;
+}
+.qsec-h.play { border-left-color: var(--play); }
+.qsec-h.train { border-left-color: var(--train); }
+.qsec-h.team { border-left-color: var(--team); }
+.qsec-fold {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  border: 0; background: 0; padding: 0; cursor: pointer; font: inherit; text-align: left;
+}
+.qsec-fold .cv {
+  width: 12px; height: 12px; flex: 0 0 12px; fill: none; stroke: var(--muted); stroke-width: 2;
+  transition: transform var(--dur-2) var(--ease-out);
+}
+.qsec.open .qsec-fold .cv { transform: rotate(90deg); }
+.qsec-q { font-size: 11.5px; font-weight: 700; color: var(--muted); font-family: var(--f-d); }
+.qsec-h .gtitle, .qsec-h .gtitle-b { font-size: 14px; font-weight: 700; color: var(--ink); }
+.qsec-b { padding: 4px 0 0 0; }
+
+/* ── B-3 월 행 — 38px · 12.5px · 들여쓰기 22px ──────────────────────
+ * 현재 월은 좌측 코랄 점 하나. **배경을 칠하지 않는다** —
+ * 칠하면 그 행이 "선택된 것"으로 읽히고, 실제 선택과 구별이 안 된다.
+ */
+.qsec-b .grow { padding-left: 22px; position: relative; }
+.qsec-b .grow-h { min-height: 38px; font-size: 12.5px; }
+.qsec-b .grow.now::before {
+  content: ""; position: absolute; left: 8px; top: 18px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--coral);
+}
+.grow-n { font-size: 11.5px; white-space: nowrap; }
+
+/* B-5 기간이 상위 분기 밖 — 오류가 아니므로 코랄을 쓰지 않는다.
+   막지 않고 알리기만 하는 표시라 앰버 틴트가 맞다. */
+.gout {
+  font-size: 10.5px; font-family: var(--f-d); white-space: nowrap;
+  color: var(--amber-text);
+  background: color-mix(in srgb, var(--amber) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 38%, transparent);
+  border-radius: 5px; padding: 1px 6px; margin-left: 6px; cursor: help;
+}
+.gout:focus-visible { outline: 2px solid var(--line-hi); outline-offset: 1px; }
+
+/* ══════════════════════════════════════════════════════════════════════
+ * MD-P-2026-029 §C · §D — 목표 상세 열람과 편집 확정
+ * ══════════════════════════════════════════════════════════════════════ */
+
+/* ── §C1 패널 420 → 560px ──────────────────────────────────────────
+ * 420px 에서는 진행률 슬라이더의 트랙이 너무 짧아 손으로 잡히지 않았다.
+ * 화면이 좁아 정보를 눌러 담은 것이 문제의 절반이었다.
+ */
+/* 업무 상세와 목표 상세가 같은 셸(.tdp)을 쓴다. 둘 다 넓어져야 한다 —
+   진행률 슬라이더는 업무 패널에 있고, 그게 안 잡히던 자리다. */
+.pg-body .tdp, .hv .tdp, .tdp { width: 560px; max-width: 94vw; }
+.gdp { width: 560px; max-width: 94vw; }
+
+/* ── §C2 확대 모달 880px — 컨테이너만 바뀐다 ───────────────────────
+ * 내용은 같은 컴포넌트 하나다. 복제하면 한쪽이 반드시 낡는다.
+ * 모달을 닫으면 패널로 돌아가지 않고 그대로 닫힌다.
+ */
+.tdp-backdrop.full { background: var(--scrim-strong); }
+.gdp.gdp-full {
+  position: fixed; inset: 0; margin: auto;
+  width: 880px; max-width: 94vw; height: min(720px, 88vh);
+  border: 1px solid var(--line); border-left-width: 1px; border-radius: 9px;
+  box-shadow: var(--e3);
+}
+.gdp-zoom { font-size: 15px; }
+/* §D1 닫기 — 항상 있고, 전보다 크고 눈에 띈다. Esc·바깥 클릭도 그대로 둔다. */
+.gdp-close { width: 30px; height: 30px; font-size: 15px; border-color: var(--line-hi); }
+.gdp-close:hover { background: var(--surface-2); color: var(--ink); }
+
+/* ── §C3 속성 대비만 벌린다. 전면 재디자인 아님. 새 색 없음. ────────── */
+.gdp .tdp-grid label, .gdp-adv-l { font-size: 11.5px; color: var(--muted); }
+.gdp .tdp-grid .gdp-ro, .gdp .tdp-grid select, .gdp .tdp-grid input { font-size: 12.5px; color: var(--ink); }
+.gdp .prop-empty, .gdp .gdp-add { color: var(--ink2); }
+
+/* ── §D2 저장 상태 — 상시 표시 ───────────────────────────────────── */
+.tdp-save { font-size: 11.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 7px; }
+.tdp-save.failed { color: var(--danger); }
+.gdp-retry { font-size: 11.5px; }
+
+/* ── §D3 인라인 편집 확정·취소 ───────────────────────────────────── */
+.gdp-inline { display: flex; align-items: center; gap: 6px; }
+.gdp-inline .tdp-title { flex: 1 1 auto; min-width: 0; }
+.gdp-ic { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+.gdp-ok, .gdp-no {
+  width: 24px; height: 24px; border: 1px solid var(--line-hi); border-radius: 4px;
+  background: var(--surface); cursor: pointer; font-size: 12px; line-height: 1;
+  transition: background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+.gdp-ok { color: var(--green-text); }
+.gdp-no { color: var(--muted); }
+.gdp-ok:hover { background: var(--surface-2); border-color: var(--green); }
+.gdp-no:hover { background: var(--surface-2); border-color: var(--muted); }
+
+/* ── §A5 「고급」 접힘 — 기본 닫힘 ────────────────────────────────── */
+.gdp-adv { margin: 10px 0 4px; border-top: 1px solid var(--line); padding-top: 10px; }
+.gdp-adv > summary { font-size: 11.5px; color: var(--muted); cursor: pointer; list-style: none; }
+.gdp-adv > summary::-webkit-details-marker { display: none; }
+.gdp-adv > summary::before { content: "▸ "; }
+.gdp-adv[open] > summary::before { content: "▾ "; }
+.gdp-adv-b { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 2px; }
+.gdp-adv-n { font-size: 11.5px; color: var(--muted); margin: 0; }
+
+@media (prefers-reduced-motion: reduce) { .gdp-ok, .gdp-no { transition: none; } }

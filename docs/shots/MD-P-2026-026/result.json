@@ -115,7 +115,7 @@
     "id": "sec-goals-archive",
     "scope": "section",
     "status": "OK",
-    "detail": ".sec-empty × 1",
+    "detail": ".sec-empty × 1 · JS오류 1건: console: Warning: In HTML, %s cannot be a descendant of <%s>.\nThis will cause a ",
     "shot": "docs/shots/MD-P-2026-026/sec-goals-archive.png",
     "path": "/goals"
   },
@@ -171,7 +171,7 @@
     "id": "err-tasks",
     "scope": "error",
     "status": "OK",
-    "detail": ".err-note × 1 · 아이콘 없음 · 다시시도 ○ · \"업무를 불러오지 못했어요 테스트용 500 다시 시도\" · JS오류 3건: console: Failed to load resource: the server responded with a status of 500 (Int",
+    "detail": ".err-note × 1 · 아이콘 없음 · 다시시도 ○ · \"업무를 불러오지 못했어요 테스트용 500 다시 시도\" · JS오류 4건: console: Warning: In HTML, %s cannot be a descendant of <%s>.\nThis will cause a ",
     "shot": "docs/shots/MD-P-2026-026/err-tasks.png",
     "path": "/tasks"
   },

@@ -30,7 +30,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       status_manual: GoalStatus | null;
       scope: string; owner_actor_id: number | null; owner_name: string | null;
       area_id: number | null; area_name: string | null; project_id: number | null; project_name: string | null;
-      parent_id: number | null; parent_title: string | null;
+      parent_id: number | null; parent_title: string | null; goal_parent_source: string;
     }>(
       `SELECT g.id, g.title, g.description, g.period_type, g.period_start::text, g.period_end::text,
               g.progress_mode, g.progress::text, g.progress_auto::text, g.progress_manual::text,
@@ -38,7 +38,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
               g.status_manual,
               g.scope, g.owner_actor_id, o.display_name AS owner_name,
               g.area_id, ar.name AS area_name, g.project_id, p.name AS project_name,
-              g.parent_id, pg.title AS parent_title
+              g.parent_id, pg.title AS parent_title, g.goal_parent_source
        FROM goal g
        LEFT JOIN goal pg ON pg.id = g.parent_id
        LEFT JOIN actor o ON o.id = g.owner_actor_id
@@ -125,6 +125,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         tasksHidden,
         parentId: g.parent_id,
         parentTitle: g.parent_title,
+        // §A5 「고급」 이 "왜 이 상위인가"를 사람 말로 보여주려면 출처가 필요하다.
+        parentSource: g.goal_parent_source,
       },
       parentCandidates: parentCandidates.map((c) => ({
         id: c.id, title: c.title, periodStart: c.period_start,

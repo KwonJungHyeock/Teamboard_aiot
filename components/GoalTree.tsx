@@ -8,6 +8,8 @@ import { countTasks, countedLabel, uncountedChildrenLabel } from "@/lib/progress
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
 import GoalProgress from "./GoalProgress";
+import SectionEmpty from "./SectionEmpty";
+import { pfill } from "@/lib/progress-bar";
 
 // 상태 라벨 (MD-P-2026-009 §D) — 판정 불가(null)는 칩을 그리지 않는다.
 const GOAL_STATUS_KO: Record<string, string> = { ontrack: "온트랙", risk: "리스크", wait: "대기", done: "완료" };
@@ -147,6 +149,52 @@ function NodeEditPanel({
       )}
     </div>
   );
+}
+
+
+/** 오늘이 그 달인가. 현재 월 표시(B-3)에 쓴다. */
+function isCurrentMonth(periodStart: string): boolean {
+  const now = new Date();
+  return periodStart.slice(0, 7) === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** 오늘이 그 분기인가. 현재 분기만 기본 펼침(B-2). */
+function isCurrentQuarter(periodStart: string, periodEnd: string): boolean {
+  const t = new Date().toISOString().slice(0, 10);
+  return periodStart <= t && t <= periodEnd;
+}
+
+/** 남은 기간 D-n. 이미 지났으면 "기간 종료". */
+function dday(periodEnd: string): string {
+  const end = new Date(`${periodEnd}T00:00:00Z`).getTime();
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const d = Math.round((end - today) / 86400000);
+  return d < 0 ? "기간 종료" : d === 0 ? "D-DAY" : `D-${d}`;
+}
+
+/**
+ * B-5 — 월 목표의 기간이 상위 분기 밖인가.
+ *
+ * 대부분의 목표가 placed 라 기간을 바꿔도 상위가 따라가지 않는다(A-신1-6). 그게 맞는 동작이다.
+ * 다만 Q3 섹션 안에 12월 배지를 단 행이 생기면 보는 사람이 멈춘다.
+ * **오류가 아니므로 막지 않는다. 알리기만 한다.**
+ */
+function outsideParentPeriod(
+  goal: GoalNode,
+  parent?: { start: string; end: string; label: string; title?: string } | null
+): { label: string; hint: string } | null {
+  if (!parent) return null;
+  if (goal.periodStart >= parent.start && goal.periodStart <= parent.end) return null;
+  return {
+    label: parent.label,
+    hint: `이 목표는 "${parent.title ?? parent.label}" 아래에 있지만 기간은 ${Number(goal.periodStart.slice(5, 7))}월입니다`,
+  };
+}
+
+/** 분기 라벨 — "Q3". 화면마다 다시 조립하지 않는다. */
+function quarterLabel(periodStart: string): string {
+  return `Q${Math.floor((Number(periodStart.slice(5, 7)) - 1) / 3) + 1}`;
 }
 
 /** 오늘이 속한 칸. 다른 해를 보고 있으면 첫 칸으로 둔다 (지시 17-3). */
@@ -373,11 +421,14 @@ function MonthGoalRow({
   goal,
   user,
   linkableTasks,
+  parentPeriod,
   onChanged,
 }: {
   goal: GoalNode;
   user: SessionUser;
   linkableTasks: LinkableTask[];
+  /** 상위 분기의 기간. B-5 안내 칩 판정에 쓴다. 없으면 판정하지 않는다. */
+  parentPeriod?: { start: string; end: string; label: string; title?: string } | null;
   onChanged: () => void;
 }) {
   const canEdit = user.role === "lead" || goal.ownerActorId === user.id;
@@ -401,15 +452,31 @@ function MonthGoalRow({
   // 분모·완료 판정은 lib/progress.ts 하나만 쓴다 (MD-P-2026-024 §3). 화면에서 세지 않는다.
   const { excluded: droppedCount } = countTasks(goal.tasks.map((t) => ({ ...t, progress: 0 })));
 
+  // B-3 — 연결 업무 칩은 기본으로 숨긴다. 늘 펼쳐져 있으면 행이 목록이 아니라 문단이 된다.
+  const [showTasks, setShowTasks] = useState(false);
+  // B-5 — 기간이 상위 분기 밖인가. placed 라 일부러 그럴 수 있으므로 **오류가 아니다**.
+  // 막지 않고 알리기만 한다 — 보는 사람이 "왜 Q3 안에 12월이 있지" 하고 멈추지 않게.
+  const outside = outsideParentPeriod(goal, parentPeriod);
+
   return (
-    <div className="grow">
+    <div className={`grow${isCurrentMonth(goal.periodStart) ? " now" : ""}`}>
       <div className="grow-h">
         <span className="gtag">{goal.periodStart.slice(5, 7)}월</span>
         <GoalTitle goal={goal} />
         {goal.progressManual !== null && <span className="gtag mu">수동</span>}
         {goal.status && <span className={`gstatus st-${goal.status}`}>{GOAL_STATUS_KO[goal.status]}</span>}
+        {outside && (
+          <span className="gout" tabIndex={0} title={outside.hint} aria-label={outside.hint}>
+            기간이 {outside.label} 밖
+          </span>
+        )}
         <span className="gsp" />
         {droppedCount > 0 && <em className="gdrop">중단 {droppedCount}건</em>}
+        {goal.tasks.length > 0 && (
+          <button className="lk mu grow-n" aria-expanded={showTasks} onClick={() => setShowTasks((v) => !v)}>
+            업무 {goal.tasks.length}건
+          </button>
+        )}
         <GoalProgress
           progress={goal.progress}
           colorKey={goal.colorKey}
@@ -426,7 +493,7 @@ function MonthGoalRow({
         )}
       </div>
 
-      {goal.tasks.length > 0 && !editing && (
+      {goal.tasks.length > 0 && !editing && showTasks && (
         <div className="gtasks">
           {goal.tasks.map((task) => (
             <span
@@ -506,6 +573,108 @@ function MonthGoalRow({
         <ArchiveDialog goal={goal} onClose={() => setConfirming(false)} onArchived={onChanged} />
       )}
     </div>
+  );
+}
+
+
+/**
+ * B-1 연간 요약 카드 — 연간은 트리에서 뺀다.
+ *
+ * 연간·분기·월이 배지 크기 차이로만 구분돼서 새로 온 사람이 층을 못 읽었다.
+ * 연간은 "올해 무엇을 하는가"라 트리 안의 한 줄이 아니라 **화면 위의 카드**여야 한다.
+ */
+function YearCard({
+  goal, user, year, scope, canAdd, onChanged,
+}: {
+  goal: GoalNode; user: SessionUser; year: number;
+  scope: "team" | "personal"; canAdd: boolean; onChanged: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const canEdit = user.role === "lead" || goal.ownerActorId === user.id;
+  const open = useContext(OpenGoalCtx);
+  return (
+    <section className="ycard" aria-label={`연간 목표 ${goal.title}`}>
+      <div className="ycard-h">
+        <span className="gtag y">연간</span>
+        <span className="gsp" />
+        <span className="ycard-d num">{dday(goal.periodEnd)}</span>
+      </div>
+      <h3 className="ycard-t" onClick={open ? () => open(goal.id) : undefined}>{goal.title}</h3>
+      <div className="ycard-bar">
+        <div className={`bar${goal.progress === null ? " empty" : ""}`}>
+          {goal.progress !== null && <i className={goal.colorKey ?? "edu"} style={pfill(goal.progress)} />}
+        </div>
+      </div>
+      <div className="ycard-m">
+        <span className="ycard-p num">{goal.progress === null ? "집계 없음" : `${goal.progress}%`}</span>
+        {goal.progress !== null && <em>{countedLabel(goal.countedTasks)}</em>}
+      </div>
+      {canAdd && (
+        // B-1 · A-신1-2 — 여기서 만들면 상위는 이 연간이다. 묻지 않는다.
+        <AddGoalForm periodType="quarter" year={year} scope={scope} placedParent={goal} onDone={onChanged} />
+      )}
+      {canEdit && (
+        <button className="lk mu ycard-e" onClick={() => setEditing((v) => !v)}>{editing ? "닫기" : "편집"}</button>
+      )}
+      {editing && <NodeEditPanel goal={goal} isLead={user.role === "lead"} onChanged={onChanged} />}
+    </section>
+  );
+}
+
+/**
+ * B-2 분기 섹션 — 분기는 "큰 과제"다.
+ *
+ * 현재 분기만 기본 펼침. 접혀 있어도 진척은 보인다 —
+ * 접었다는 이유로 숫자가 사라지면 접을 이유가 없어진다.
+ */
+function QuarterSection({
+  goal, user, year, scope, canAdd, linkableTasks, onChanged,
+}: {
+  goal: GoalNode; user: SessionUser; year: number;
+  scope: "team" | "personal"; canAdd: boolean;
+  linkableTasks: LinkableTask[]; onChanged: () => void;
+}) {
+  const [open, setOpen] = useState(() => isCurrentQuarter(goal.periodStart, goal.periodEnd));
+  const [editing, setEditing] = useState(false);
+  const canEdit = user.role === "lead" || goal.ownerActorId === user.id;
+  const parentPeriod = { start: goal.periodStart, end: goal.periodEnd, label: quarterLabel(goal.periodStart), title: goal.title };
+
+  return (
+    <section className={`qsec${open ? " open" : ""}`} aria-label={`분기 목표 ${goal.title}`}>
+      <div className={`qsec-h ${goal.colorKey ?? "edu"}`}>
+        <button className="qsec-fold" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+          <svg className="cv" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></svg>
+          <span className="qsec-q">{quarterLabel(goal.periodStart)}</span>
+          <GoalTitle goal={goal} />
+        </button>
+        <span className="gsp" />
+        {/* 접힌 헤더에도 진척은 보인다 */}
+        <GoalProgress progress={goal.progress} colorKey={goal.colorKey}
+          detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
+          closing={goal.closing} counted={goal.countedTasks} periodType={goal.periodType} />
+        {canEdit && (
+          <button className="lk mu gedit-b" onClick={() => setEditing((v) => !v)}>{editing ? "닫기" : "편집"}</button>
+        )}
+      </div>
+      {editing && <NodeEditPanel goal={goal} isLead={user.role === "lead"} onChanged={onChanged} />}
+      {open && (
+        <div className="qsec-b">
+          {goal.children.length === 0 ? (
+            // B-4 — 한 줄. 삽화도 버튼도 두지 않는다 (§G 섹션 빈 상태 규격).
+            <SectionEmpty text="이 분기에 월 목표가 없어요" />
+          ) : (
+            goal.children.map((m) => (
+              <MonthGoalRow key={m.id} goal={m} user={user} linkableTasks={linkableTasks}
+                parentPeriod={parentPeriod} onChanged={onChanged} />
+            ))
+          )}
+          {/* B-2 · A-신1-1 — 섹션 하단에 한 번만. 분기마다 반복하지 않는다. */}
+          {canAdd && (
+            <AddGoalForm periodType="month" year={year} scope={scope} placedParent={goal} onDone={onChanged} />
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -594,28 +763,19 @@ export default function GoalTree({
           이 분기는 렌더된 적이 없었다. 같은 상황에 빈 상태를 두 개 두면
           어느 쪽이 뜨는지 추적할 수 없고, 한쪽은 반드시 낡는다. */}
 
-      {years.map((yearGoal) => (
-        <BranchNode key={yearGoal.id} goal={yearGoal} user={user} onChanged={onChanged}>
-          {yearGoal.children.map((quarter) => (
-            <BranchNode key={quarter.id} goal={quarter} user={user} onChanged={onChanged}>
-              {quarter.children.map((month) => (
-                <MonthGoalRow
-                  key={month.id}
-                  goal={month}
-                  user={user}
-                  linkableTasks={linkableTasks}
-                  onChanged={onChanged}
-                />
-              ))}
-              {canAdd && (
-                <AddGoalForm periodType="month" year={year} scope={scope} placedParent={quarter} onDone={onChanged} />
-              )}
-            </BranchNode>
+      {/* B-1 — 연간은 트리에서 빼고 화면 상단 요약 카드로. 셋을 넘으면 가로 스크롤. */}
+      {years.length > 0 && (
+        <div className={`ycards${years.length > 3 ? " scroll" : ""}`}>
+          {years.map((y) => (
+            <YearCard key={y.id} goal={y} user={user} year={year} scope={scope} canAdd={canAdd} onChanged={onChanged} />
           ))}
-          {canAdd && (
-            <AddGoalForm periodType="quarter" year={year} scope={scope} placedParent={yearGoal} onDone={onChanged} />
-          )}
-        </BranchNode>
+        </div>
+      )}
+
+      {/* B-2 — 분기는 섹션. 연간에 매달린 순서 그대로 편다. */}
+      {years.flatMap((y) => y.children).map((quarter) => (
+        <QuarterSection key={quarter.id} goal={quarter} user={user} year={year} scope={scope}
+          canAdd={canAdd} linkableTasks={linkableTasks} onChanged={onChanged} />
       ))}
 
       {/* 상위 없는 목표도 화면에 띄운다 — 예전엔 건수만 세고 렌더하지 않아 열 방법이 없었다
