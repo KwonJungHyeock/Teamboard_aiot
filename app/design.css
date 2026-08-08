@@ -1544,3 +1544,9 @@ a.pcard:hover, .pcard.clickable:hover { box-shadow: var(--e2); }
 .gdp-adv-n { font-size: 11.5px; color: var(--muted); margin: 0; }
 
 @media (prefers-reduced-motion: reduce) { .gdp-ok, .gdp-no { transition: none; } }
+
+/* ── MD-P-2026-030 §A1 — 집계 없음 안내의 다음 행동 ──────────────────
+   예전에는 여기에 "프로젝트를 연결하세요 →" 링크가 있었다. 그 경로를 없앴으므로
+   누를 것이 아니라 **어디로 가야 하는지**를 말한다 — 링크가 아니니 링크처럼 그리지 않는다. */
+.gdp-nodata-h { display: block; margin-top: 3px; color: var(--muted); }
+.gdp-nodata-h b { color: var(--ink-soft); font-weight: 700; }

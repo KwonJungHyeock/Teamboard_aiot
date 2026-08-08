@@ -14,7 +14,6 @@ import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import ErrorNote from "./ErrorNote";
 import NewGoalModal from "./NewGoalModal";
-import GoalLinkBanner from "./GoalLinkBanner";
 import UnlinkedTaskPanel, { type UnlinkedTask, type MonthGoalOption } from "./UnlinkedTaskPanel";
 import SnapshotMenu from "./SnapshotMenu";
 import { GOAL_UPDATED_EVENT, openGoalPanel } from "@/lib/goal-panel";
@@ -23,7 +22,6 @@ import { TASK_UPDATED_EVENT } from "@/lib/task-panel";
 type Tab = "team" | "personal";
 const YEARS = [2025, 2026] as const;
 
-interface UnlinkedProject { id: number; name: string; color_key: string | null; status: string }
 
 interface ArchivedGoal {
   id: number;
@@ -42,7 +40,6 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
   const [tab, setTab] = useState<Tab>(initialTab);
   const [tree, setTree] = useState<GoalNode[]>([]);
   const [linkableTasks, setLinkableTasks] = useState<LinkableTask[]>([]);
-  const [unlinked, setUnlinked] = useState<UnlinkedProject[]>([]);
   const [unlinkedTasks, setUnlinkedTasks] = useState<UnlinkedTask[]>([]);
   const [monthGoals, setMonthGoals] = useState<MonthGoalOption[]>([]);
   const [showUnlinked, setShowUnlinked] = useState(false);
@@ -70,7 +67,6 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
       if (!res.ok) throw new Error(data.error ?? "목표 조회 실패");
       setTree(data.tree ?? []);
       setLinkableTasks(data.linkableTasks ?? []);
-      setUnlinked(data.unlinkedProjects ?? []);
       setUnlinkedTasks(data.unlinkedTasks ?? []);
       setMonthGoals(data.monthGoals ?? []);
       setError("");
@@ -171,8 +167,9 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
     {/* 본문 CSS 가 home.css 에 `.hv …` 로 스코프돼 있다 — 래퍼를 지우면 트리 스타일이 통째로 죽는다.
         (MD-P-2026-022 §A 1~4 에서 이 래퍼가 빠져 목표 트리가 깨져 있었다) */}
     <div className="hv pg-legacy">
-      {/* §B3 — 목표에 안 붙은 프로젝트가 있으면 여기서 한 번에 연결한다 */}
-      {/* 지시 22 — 진짜 문제는 목표에 안 붙은 "업무"다. 프로젝트가 아니다.
+      {/* 미연결 배너 (MD-P-2026-030 §B) — 이 숫자는 아래 일괄 연결 화면의 행 수와
+          **같은 배열**에서 나온다. 조건은 lib/progress.ts 의 unlinkedTaskSql 하나뿐이고,
+          그 조건은 진척 계산기가 세는 집계 대상과 같다.
           0건이면 배너를 그리지 않는다. 코랄을 쓰지 않는다(중립 톤). */}
       {tab === "team" && unlinkedTasks.length > 0 && (
         <button className="ulbanner" onClick={() => setShowUnlinked((v) => !v)} aria-expanded={showUnlinked}>
@@ -185,10 +182,8 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
       {tab === "team" && showUnlinked && (
         <UnlinkedTaskPanel tasks={unlinkedTasks} monthGoals={monthGoals} onChanged={load} />
       )}
-      {/* 프로젝트→목표 연결은 폴백으로 남긴다 (회신 6 [확정] 연결 모델) */}
-      {tab === "team" && unlinkedTasks.length === 0 && (
-        <GoalLinkBanner projects={unlinked} tree={tree} onLinked={load} />
-      )}
+      {/* 프로젝트→목표 연결 배너는 MD-P-2026-030 §A1 에서 없앴다.
+          목표에 붙는 것은 업무뿐이므로 붙일 것이 없는 프로젝트라는 개념 자체가 없다. */}
 
       {loading && <Skeleton variant="list" />}
       {error && <ErrorNote message="목표를 불러오지 못했어요" cause={error} onRetry={load} />}

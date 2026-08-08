@@ -4,7 +4,7 @@
 // 진척 수치는 서버(lib/goals.ts) 계산 결과만 표시한다.
 import { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "@/lib/quick";
-import { countTasks, countedLabel, uncountedChildrenLabel } from "@/lib/progress";
+import { countTasks, basisLabel, uncountedChildrenLabel } from "@/lib/progress";
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
 import GoalProgress from "./GoalProgress";
@@ -481,7 +481,7 @@ function MonthGoalRow({
           progress={goal.progress}
           colorKey={goal.colorKey}
           // 진척 근거를 옆에 붙인다 — 정의가 바뀌었으니 분모가 보여야 한다 (지시 1)
-          detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
+          detail={goal.progress === null ? undefined : basisLabel(goal.countedTasks)}
           closing={goal.closing}
           counted={goal.countedTasks}
           periodType={goal.periodType}
@@ -607,7 +607,7 @@ function YearCard({
       </div>
       <div className="ycard-m">
         <span className="ycard-p num">{goal.progress === null ? "집계 없음" : `${goal.progress}%`}</span>
-        {goal.progress !== null && <em>{countedLabel(goal.countedTasks)}</em>}
+        {goal.progress !== null && <em>{basisLabel(goal.countedTasks)}</em>}
       </div>
       {canAdd && (
         // B-1 · A-신1-2 — 여기서 만들면 상위는 이 연간이다. 묻지 않는다.
@@ -650,7 +650,7 @@ function QuarterSection({
         <span className="gsp" />
         {/* 접힌 헤더에도 진척은 보인다 */}
         <GoalProgress progress={goal.progress} colorKey={goal.colorKey}
-          detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
+          detail={goal.progress === null ? undefined : basisLabel(goal.countedTasks)}
           closing={goal.closing} counted={goal.countedTasks} periodType={goal.periodType} />
         {canEdit && (
           <button className="lk mu gedit-b" onClick={() => setEditing((v) => !v)}>{editing ? "닫기" : "편집"}</button>
@@ -710,7 +710,7 @@ function BranchNode({
         <GoalTitle goal={goal} />
         <span className="gsp" />
         <GoalProgress progress={goal.progress} colorKey={goal.colorKey}
-          detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
+          detail={goal.progress === null ? undefined : basisLabel(goal.countedTasks)}
           closing={goal.closing}
           counted={goal.countedTasks}
           periodType={goal.periodType} />

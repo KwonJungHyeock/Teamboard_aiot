@@ -27,7 +27,7 @@ SELECT
   (SELECT count(*) FROM task t
     WHERE t.project_id = p.id AND t.is_active AND t.status <> 'proposed'
       AND t.work_type <> 'routine' AND t.status <> 'dropped'
-      AND (t.resolution IS NULL OR t.resolution <> 'deferred')) AS "프로젝트의 집계대상 업무"
+      AND (t.resolution IS NULL OR t.resolution NOT IN ('canceled','duplicate'))) AS "프로젝트의 집계대상 업무"
 FROM project p
 JOIN goal g ON g.id = p.goal_id
 WHERE p.is_active = true AND g.is_active = true
@@ -65,7 +65,7 @@ countable AS (
     FROM task t
    WHERE t.is_active AND t.parent_task_id IS NULL AND t.status <> 'proposed'
      AND t.work_type <> 'routine' AND t.status <> 'dropped'
-     AND (t.resolution IS NULL OR t.resolution <> 'deferred')
+     AND (t.resolution IS NULL OR t.resolution NOT IN ('canceled','duplicate'))
 ),
 -- 전: 직접 연결 OR 프로젝트 경유
 with_p AS (
@@ -113,17 +113,21 @@ ORDER BY
 -- ════════════════════════════════════════════════════════════════════
 -- ③ §B 기준 차이 — 배너와 진척이 서로 다른 집합을 본다
 -- ════════════════════════════════════════════════════════════════════
+-- 조건은 lib/progress.ts 의 unlinkedTaskSql 과 글자 그대로 같아야 합니다.
+-- (parent_task_id IS NULL 이 빠져 있어 하위 업무까지 세던 것을 바로잡았습니다)
 SELECT
   (SELECT count(*) FROM task t
-    WHERE t.is_active AND t.status <> 'proposed' AND t.work_type <> 'routine'
-      AND t.status <> 'dropped' AND (t.resolution IS NULL OR t.resolution <> 'deferred')
+    WHERE t.parent_task_id IS NULL
+      AND t.is_active AND t.status <> 'proposed' AND t.work_type <> 'routine'
+      AND t.status <> 'dropped' AND (t.resolution IS NULL OR t.resolution NOT IN ('canceled','duplicate'))
       AND t.visibility = 'team'
       AND NOT EXISTS (SELECT 1 FROM goal_task gt WHERE gt.task_id = t.id)
       AND t.goal_source <> 'none')                            AS "배너가 세는 미연결",
   (SELECT count(*) FROM task t
      JOIN project p ON p.id = t.project_id AND p.goal_id IS NOT NULL
-    WHERE t.is_active AND t.status <> 'proposed' AND t.work_type <> 'routine'
-      AND t.status <> 'dropped' AND (t.resolution IS NULL OR t.resolution <> 'deferred')
+    WHERE t.parent_task_id IS NULL
+      AND t.is_active AND t.status <> 'proposed' AND t.work_type <> 'routine'
+      AND t.status <> 'dropped' AND (t.resolution IS NULL OR t.resolution NOT IN ('canceled','duplicate'))
       AND t.visibility = 'team'
       AND NOT EXISTS (SELECT 1 FROM goal_task gt WHERE gt.task_id = t.id))
                                                               AS "그중 프로젝트 경유로 진척엔 잡히던 것";
@@ -136,7 +140,7 @@ SELECT p.goal_id AS "목표id", g.title AS "목표", count(*) AS "분모에 섞�
   JOIN goal g ON g.id = p.goal_id
  WHERE t.is_active AND t.parent_task_id IS NULL AND t.status <> 'proposed'
    AND t.work_type <> 'routine' AND t.status <> 'dropped'
-   AND (t.resolution IS NULL OR t.resolution <> 'deferred')
+   AND (t.resolution IS NULL OR t.resolution NOT IN ('canceled','duplicate'))
    AND NOT EXISTS (SELECT 1 FROM goal_task gt WHERE gt.task_id = t.id AND gt.goal_id = p.goal_id)
  GROUP BY p.goal_id, g.title
  ORDER BY p.goal_id;

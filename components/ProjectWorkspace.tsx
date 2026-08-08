@@ -47,7 +47,6 @@ interface WorkspaceData {
     archivedAt: string | null; ownerId: number | null; ownerName: string | null;
     progress: number | null;
     countedTasks: number;
-    goal: { id: number; title: string; periodType: string; periodStart: string; progress: number | null; manual: boolean } | null;
   };
   members: Member[];
   tasks: { id: number; title: string; status: string; dueDate: string | null }[];
@@ -58,13 +57,6 @@ interface WorkspaceData {
   activity: { id: number; message: string; created_at: string; user_name: string | null }[];
   today: string;
   canEdit: boolean;
-}
-
-function goalLabel(g: NonNullable<WorkspaceData["project"]["goal"]>): string {
-  const y = g.periodStart?.slice(0, 4) ?? "";
-  const q = g.periodType === "quarter" ? ` Q${Math.floor((Number(g.periodStart?.slice(5, 7) ?? 1) - 1) / 3) + 1}`
-    : g.periodType === "month" ? ` ${Number(g.periodStart?.slice(5, 7) ?? 1)}월` : "";
-  return `${y}${q} · ${g.title}`;
 }
 
 export default function ProjectWorkspace({ projectId, user }: { projectId: number; user: SessionUser }) {
@@ -78,8 +70,6 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
   const [more, setMore] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [renaming, setRenaming] = useState(false);
-  const [goalPick, setGoalPick] = useState(false);
-  const [goals, setGoals] = useState<{ id: number; title: string; level: string; period: string; scope: string }[]>([]);
   const [linkCount, setLinkCount] = useState(0);
 
   // URL ?tab= 반영 (공유 가능) — 초기 진입 시 읽고, 전환 시 replaceState
@@ -121,11 +111,6 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
     window.addEventListener(TASK_UPDATED_EVENT, on);
     return () => window.removeEventListener(TASK_UPDATED_EVENT, on);
   }, [load, loadTasks]);
-  useEffect(() => {
-    if (!goalPick) return;
-    // 연간·분기·월 전부 후보 (§B2) — 월 목표만 뜨던 문제 수정
-    fetch("/api/meta/selectors").then((r) => r.json()).then((d) => setGoals(d.linkGoals ?? [])).catch(() => {});
-  }, [goalPick]);
   // 전역 패널 상태 추종 (Esc·URL·뒤로가기는 전역 규칙이 처리)
   useEffect(() => {
     const sync = () => setPanel(currentPanel());
@@ -187,30 +172,10 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
         <span className="pws-sub">
           {p.areaName && <span className="pws-chip"><i className={`pjdot ${p.areaColor ?? "team"}`} />{p.areaName}</span>}
           <span className="pws-chip" style={{ color: STATUS_TONE[p.status] }}>{STATUS_LABEL[p.status] ?? p.status}</span>
-          {p.goal ? (
-            <>
-              <Link className="lk pws-goal-l" href={`/goals?goal=${p.goal.id}`}>→ {goalLabel(p.goal)}</Link>
-              <span className={`pws-goal-p num${p.goal.progress === null ? " none" : ""}`}>
-                {p.goal.progress === null ? "집계 없음" : `${p.goal.progress}%`}
-              </span>
-              {p.goal.manual && <span className="pws-manual">수동</span>}
-            </>
-          ) : !readOnly ? (
-            <span className="pws-goal-pick">
-              <button className="lk" onClick={() => setGoalPick((v) => !v)}>＋ 목표 연결</button>
-              {goalPick && (
-                <span className="pws-goal-menu" role="menu">
-                  {goals.length === 0 && <span className="pws-goal-none">연결할 목표가 없어요.</span>}
-                  {goals.map((g) => (
-                    <button key={g.id} onClick={async () => { setGoalPick(false); await patchProject({ goalId: g.id }, "목표를 연결했어요"); }}>
-                      <span className="pws-goal-lv">{g.level}</span>{g.title}
-                      <em>{g.period}{g.scope === "personal" ? " · 개인" : ""}</em>
-                    </button>
-                  ))}
-                </span>
-              )}
-            </span>
-          ) : <span className="pws-goal-none">연결된 목표 없음</span>}
+          {/* MD-P-2026-030 §A2 — 프로젝트는 목표에 연결하지 않는다.
+              목표에 붙는 것은 업무뿐이다. 자리를 그냥 비우면 "연결이 사라졌다"로 읽히므로
+              어디서 붙이는지를 한 줄로 말해 준다. */}
+          <span className="pws-goal-none">목표 연결은 업무 단위 — 업무 상세의 「목표」에서</span>
         </span>
       }
       actions={

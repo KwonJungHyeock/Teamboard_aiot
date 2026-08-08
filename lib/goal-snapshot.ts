@@ -31,6 +31,10 @@ export async function captureGoalSnapshots(
     id: number; progress: string | null; status_manual: GoalStatus | null;
     period_start: string; period_end: string; project_count: number;
   }>(
+    // linked_project_count 는 goal_snapshot 의 **역사 컬럼**이다.
+    // 프로젝트→목표 연결은 MD-P-2026-030 §A 에서 진척 계산에서 빠졌지만,
+    // project.goal_id 데이터 자체는 보존한다(§A5). 그래서 여기서도 있는 그대로 계속 찍는다 —
+    // 0 으로 덮으면 지나간 달의 기록까지 거짓이 된다. 다만 이 값은 이제 진척과 무관하다.
     `SELECT g.id, g.progress::text, g.status_manual,
             g.period_start::text, g.period_end::text,
             (SELECT count(*)::int FROM project pj

@@ -194,9 +194,11 @@ export default function PerfReport({ user }: { user: SessionUser }) {
                         <td>
                           {g.title}
                           {g.manual && <span className="prep-tag">수동</span>}
-                          {/* "프로젝트 미연결"은 현재 상태다 — 과거 월 리포트에 오늘 사정을 섞지 않는다 */}
-                          {!data.missingSnapshot && g.progress === null && g.projectCount === 0 && (
-                            <span className="prep-tag warn">프로젝트 미연결</span>
+                          {/* "업무 미연결"은 현재 상태다 — 과거 월 리포트에 오늘 사정을 섞지 않는다.
+                              집계값이 null 이면 이 목표에 붙은 집계 대상 업무가 0건이라는 뜻이다
+                              (MD-P-2026-030 §A3 — 목표에 붙는 것은 업무뿐이다). */}
+                          {!data.missingSnapshot && g.progress === null && (
+                            <span className="prep-tag warn">업무 미연결</span>
                           )}
                         </td>
                         <td className="num">{g.period}</td>

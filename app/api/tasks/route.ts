@@ -2,8 +2,7 @@
 // status='proposed'는 에이전트 제안 상태 — 홈·캘린더·타임라인 집계에서 제외되고
 // /tasks 인박스에서만 노출된다 (CHANGE-GUIDE Phase 5-1).
 import { NextResponse } from "next/server";
-import { recomputeGoalChain } from "@/lib/goals";
-import { applyInheritance } from "@/lib/goal-inherit";
+import { NEW_TASK_GOAL_SOURCE } from "@/lib/goal-inherit";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
@@ -283,8 +282,10 @@ export async function POST(request: Request) {
     }
 
     const task = await queryOne<{ id: number }>(
-      `INSERT INTO task (project_id, area_id, work_type, title, description, status, assignee_id, start_date, due_date, priority, origin, created_by, visibility)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'human',$11,$12) RETURNING id`,
+      // goal_source 를 **명시**한다. 컬럼 기본값은 아직 'inherited' 이고(§A5 — 컬럼은 안 건드린다),
+      // 상속이 사라진 뒤로 새 업무가 그 역사적 값을 갖게 두면 안 된다 (MD-P-2026-030 §A4).
+      `INSERT INTO task (project_id, area_id, work_type, title, description, status, assignee_id, start_date, due_date, priority, origin, created_by, visibility, goal_source)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'human',$11,$12,$13) RETURNING id`,
       [
         projectId,
         areaId,
@@ -298,10 +299,11 @@ export async function POST(request: Request) {
         priority,
         session.id,
         visibility,
+        NEW_TASK_GOAL_SOURCE,
       ]
     );
-    // 프로젝트만 골라도 그 프로젝트의 목표를 자동으로 따라간다 (§4 — goal_source 기본값 inherited).
-    for (const gid of await applyInheritance(task!.id)) await recomputeGoalChain(gid);
+    // 프로젝트를 골라도 목표는 따라 붙지 않는다 (§A4 — 상속 폐지).
+    // 목표는 사람이 직접 고른다. 안 고른 업무는 목표 화면의 미연결 배너에 오른다.
 
     // 개인 업무는 **제목을 로그에 남기지 않는다** (§A3 ③).
     // task_id 로 걸러내긴 하지만, 문구 자체에 제목이 없어야 예전 로그·다른 경로에서도 안 샌다.

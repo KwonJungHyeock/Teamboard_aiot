@@ -106,15 +106,18 @@ try {
 
   // ── §B 배너와 진척 계산기의 기준 차이 ────────────────────────────
   // 지금 배너가 세는 것과, 진척 계산기가 세는 것이 다르다. 그 차이를 숫자로 낸다.
+  // lib/progress.ts 의 unlinkedTaskSql 과 **글자 그대로 같은 조건**이어야 한다.
+  //   parent_task_id IS NULL 이 빠져 있어서 이 표만 하위 업무를 함께 세고 있었다 —
+  //   실제 배너보다 큰 수가 나온다. 표가 화면과 다른 말을 하면 표를 믿을 수 없다.
   const bannerNow = (await sql(`
     SELECT count(*) AS n FROM task t
-     WHERE ${COUNTABLE("t")} AND t.visibility = 'team'
+     WHERE t.parent_task_id IS NULL AND ${COUNTABLE("t")} AND t.visibility = 'team'
        AND NOT EXISTS (SELECT 1 FROM goal_task gt WHERE gt.task_id = t.id)
        AND t.goal_source <> 'none'`))[0].n;
   const viaProject = (await sql(`
     SELECT count(*) AS n FROM task t
      JOIN project p ON p.id = t.project_id AND p.goal_id IS NOT NULL
-     WHERE ${COUNTABLE("t")} AND t.visibility = 'team'
+     WHERE t.parent_task_id IS NULL AND ${COUNTABLE("t")} AND t.visibility = 'team'
        AND NOT EXISTS (SELECT 1 FROM goal_task gt WHERE gt.task_id = t.id)`))[0].n;
   // 프로젝트 경유가 만드는 진짜 왜곡 — "남의 목표에 붙은 업무가 이 목표 분모에 섞인다".
   // 프로젝트가 8월 목표를 가리키면, 그 프로젝트의 7월 업무까지 8월 분모에 들어간다.
