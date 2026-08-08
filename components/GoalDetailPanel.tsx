@@ -3,18 +3,15 @@
 // 목표 상세 슬라이드 패널 (파트 C) — 우측 480px. 업무 상세 패널과 동일 UX.
 // 제목·기간·영역·소유·진척모드·연결업무·기여현황·진척바. 편집 권한은 서버가 판단(canEdit).
 import { useCallback, useEffect, useState } from "react";
-import { countedLabel } from "@/lib/progress";
+import { basisLabel } from "@/lib/progress";
 import { GOAL_PANEL_EVENT, closeGoalPanel, currentGoalRef, notifyGoalUpdated, openGoalFull } from "@/lib/goal-panel";
-import GoalProjectPicker from "./GoalProjectPicker";
 import GoalTrend, { type TrendPoint } from "./GoalTrend";
-import HoverActions from "./HoverActions";
 import { toast } from "@/lib/quick";
 import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import { pfill } from "@/lib/progress-bar";
 
 interface Contribution { actorId: number | null; name: string; total: number; done: number; sharePct: number }
-export interface LinkedProject { id: number; name: string; colorKey: string | null; status: string; progress: number | null }
 interface GoalDetail {
   goal: {
     id: number; title: string; description: string; periodType: string; periodStart: string; periodEnd: string;
@@ -33,7 +30,6 @@ interface GoalDetail {
   /** 지시 27-2 — 고를 수 있는 상위 목표. 서버가 주기·스코프·순환을 이미 걸러서 준다. */
   parentCandidates?: { id: number; title: string; periodStart: string }[];
   tasks: { id: number; title: string; status: string; assigneeName: string | null; dueDate: string | null }[];
-  linkedProjects: LinkedProject[];
   childCount: number;
   trend: TrendPoint[];
   contribution: Contribution[];
@@ -57,7 +53,6 @@ export default function GoalDetailPanel() {
   const [lastFields, setLastFields] = useState<Record<string, unknown> | null>(null);
   const [manualVal, setManualVal] = useState("");
   const [areas, setAreas] = useState<{ id: number; name: string }[]>([]);
-  const [picking, setPicking] = useState(false);   // 프로젝트 연결 팝오버 (§B1)
 
   useEffect(() => {
     fetch("/api/meta/selectors").then((r) => r.json()).then((s) => setAreas(s.areas ?? [])).catch(() => {});
@@ -183,7 +178,7 @@ export default function GoalDetailPanel() {
                 <span className="gsp" style={{ flex: 1 }} />
                 <b>{d.goal.progress == null ? "집계 없음" : `${d.goal.progress}%`}</b>
                 {/* 진척 근거 — 분모를 옆에 붙인다 (MD-P-2026-024 지시 1) */}
-                {d.goal.progress != null && <em className="gdp-basis">{countedLabel(d.goal.countedTasks)}</em>}
+                {d.goal.progress != null && <em className="gdp-basis">{basisLabel(d.goal.countedTasks)}</em>}
               </div>
               <div className={`bar${d.goal.progress == null ? " empty" : ""}`}>
                 <i className="edu" style={pfill(d.goal.progress ?? 0)} />
@@ -191,7 +186,14 @@ export default function GoalDetailPanel() {
               {d.goal.progress == null && (
                 <p className="gdp-nodata">
                   집계할 대상이 없어요 — 0%가 아니라 <b>데이터 없음</b>입니다.
-                  {d.canEdit && <button className="lk" onClick={() => setPicking(true)}>프로젝트를 연결하세요 →</button>}
+                  {/* MD-P-2026-030 §A1 — 목표에 붙는 것은 업무뿐이다.
+                      예전에는 여기서 "프로젝트를 연결하세요"라고 했다. 그 경로는 없앴다. */}
+                  {d.canEdit && d.goal.periodType === "month" && (
+                    <span className="gdp-nodata-h">아래 <b>연결 업무</b>에서 이 목표에 업무를 붙이세요.</span>
+                  )}
+                  {d.canEdit && d.goal.periodType !== "month" && (
+                    <span className="gdp-nodata-h">하위 월 목표에 업무를 붙이면 여기로 모입니다.</span>
+                  )}
                 </p>
               )}
               {d.goal.progressManual != null && d.goal.progressAuto != null && (
@@ -211,7 +213,7 @@ export default function GoalDetailPanel() {
               <label>진척 방식
                 {d.canEdit ? (
                   <select value={d.goal.progressMode} onChange={(e) => patch({ progressMode: e.target.value })}>
-                    <option value="auto">자동(프로젝트·업무 집계)</option>
+                    <option value="auto">자동 (연결된 업무 집계)</option>
                     <option value="manual">수동 입력(집계보다 우선)</option>
                   </select>
                 ) : <div className="gdp-ro">{d.goal.progressMode === "manual" ? "수동" : "자동"}</div>}
@@ -241,8 +243,8 @@ export default function GoalDetailPanel() {
                   ) : <div className="gdp-ro">{d.goal.parentTitle ?? "—"}</div>}
                 </label>
               )}
-              <label>연결 프로젝트
-                <div className="gdp-ro num">{d.linkedProjects.length}개</div>
+              <label>집계 대상 업무
+                <div className="gdp-ro num">{d.goal.countedTasks}건</div>
               </label>
             </div>
 
@@ -264,53 +266,17 @@ export default function GoalDetailPanel() {
               <GoalTrend points={d.trend ?? []} />
             </div>
 
-            {/* 연결된 프로젝트 (§B1) — 여기 진척이 곧 목표 진척의 재료다 */}
-            <div className="tdp-sec">
-              <div className="tdp-sec-h">
-                연결된 프로젝트 <em>({d.linkedProjects.length})</em>
-                {d.canEdit && (
-                  <button className="lk gdp-addp" onClick={() => setPicking(true)}>＋ 프로젝트 연결</button>
-                )}
-              </div>
-              {d.linkedProjects.length === 0 ? (
-                <p className="tdp-muted">
-                  연결된 프로젝트가 없습니다. 연결하면 프로젝트 진척(업무 기간 가중 평균)이 이 목표로 모입니다.
-                </p>
-              ) : (
-                d.linkedProjects.map((p) => (
-                  <div className="gdp-proj ha-host" key={p.id}>
-                    <span className={`pjdot ${p.colorKey ?? "team"}`} />
-                    <span className="gdp-proj-t">{p.name}</span>
-                    <span className={`gdp-proj-p num${p.progress === null ? " none" : ""}`}>
-                      {p.progress === null ? "–" : `${p.progress}%`}
-                    </span>
-                    {d.canEdit && (
-                      <HoverActions more={[{
-                        label: "연결 해제", danger: true,
-                        onClick: async () => {
-                          const res = await fetch(`/api/goals/${d.goal.id}/projects?projectId=${p.id}`, { method: "DELETE" }).catch(() => null);
-                          if (!res || !res.ok) { toast("해제에 실패했어요", "err"); return; }
-                          toast("연결을 해제했어요");
-                          await load(d.goal.id);
-                          notifyGoalUpdated();
-                        },
-                      }]} />
-                    )}
-                  </div>
-                ))
-              )}
-              {d.linkedProjects.some((p) => p.progress === null) && (
-                <p className="tdp-muted" style={{ marginTop: 6 }}>
-                  진척이 “–”인 프로젝트는 업무가 없어 평균 분모에서 빠집니다.
-                </p>
-              )}
-              {d.childCount > 0 && d.linkedProjects.length > 0 && (
-                <p className="gdp-warn">
-                  이 목표에는 하위 목표가 {d.childCount}개 있어 진척은 <b>하위 평균</b>으로 계산됩니다.
-                  위 프로젝트는 집계에 반영되지 않습니다.
-                </p>
-              )}
-            </div>
+            {/* 연결된 프로젝트 섹션은 MD-P-2026-030 §A1 에서 없앴다.
+                목표에 붙는 것은 업무뿐이다 — 경로가 둘이면 같은 질문에 두 답이 나온다. */}
+
+            {/* 하위 목표가 있으면 진척이 어디서 오는지 한 줄로 밝힌다.
+                "월 목표에 업무를 붙였는데 왜 분기에 안 뜨지?"를 여기서 막는다. */}
+            {d.childCount > 0 && (
+              <p className="gdp-warn">
+                이 목표에는 하위 목표가 {d.childCount}개 있습니다.
+                진척은 하위 목표까지 포함한 <b>서브트리 전체의 연결 업무</b> 평균입니다.
+              </p>
+            )}
 
             {/* 연결 업무 (월 목표) */}
             {d.goal.periodType === "month" && (
@@ -366,13 +332,6 @@ export default function GoalDetailPanel() {
               )}
             </div>
           </div>
-        )}
-        {picking && d && (
-          <GoalProjectPicker
-            goalId={d.goal.id}
-            onClose={() => setPicking(false)}
-            onLinked={async () => { setPicking(false); await load(d.goal.id); notifyGoalUpdated(); }}
-          />
         )}
       </aside>
     </>

@@ -1,7 +1,7 @@
 // 업무 수정 (Phase 5) — 속성 수정 · 상태 전이 · 인박스 승인/기각 · 목표 연결(다중, 선택).
 // 삭제는 소프트만: isActive=false. 하드 삭제 핸들러는 의도적으로 없다 (검수 포인트 4).
 import { NextResponse } from "next/server";
-import { applyInheritance, markGoalManual, markGoalNone, markGoalInherited, goalLinkInfo } from "@/lib/goal-inherit";
+import { markGoalManual, markGoalNone, clearGoalNone, goalLinkInfo } from "@/lib/goal-inherit";
 import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution, countableSql, doneSql, taskProgress } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
@@ -326,14 +326,22 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     // "목표 없음" 명시 (지시 23-1) — 미지정(아직 안 정함)과 구분되는 정식 상태다.
     // goalIds 보다 먼저 본다. 둘 다 오면 goalSource 가 이긴다.
-    if (payload.goalSource === "none" || payload.goalSource === "inherited") {
+    //
+    // 'inherited' 는 더 이상 **받지 않는다** (MD-P-2026-030 §A4). 상속이 없어졌으므로
+    // 되돌아갈 곳도 없다. "목표 없음"을 푸는 요청은 'manual'(미지정)로 온다.
+    if (payload.goalSource === "none" || payload.goalSource === "manual") {
       if (payload.goalSource === "none") {
         for (const g of await markGoalNone(taskId)) affectedGoalsPre.add(g);
         extraLogs.push(`${session.name}이(가) 목표 없음으로 지정 — "${task.title}"`);
       } else {
-        for (const g of await markGoalInherited(taskId)) affectedGoalsPre.add(g);
-        extraLogs.push(`${session.name}이(가) 목표 연결을 프로젝트 상속으로 되돌림 — "${task.title}"`);
+        await clearGoalNone(taskId);
+        extraLogs.push(`${session.name}이(가) 목표 없음을 해제 — "${task.title}"`);
       }
+    } else if (payload.goalSource === "inherited") {
+      return NextResponse.json(
+        { error: "목표 상속은 더 이상 지원하지 않습니다. 목표를 직접 고르거나 '목표 없음'을 선택하세요." },
+        { status: 400 }
+      );
     } else if (Array.isArray(payload.goalIds)) {
       const priorLinks = await query<{ goal_id: number }>(
         "SELECT goal_id FROM goal_task WHERE task_id = $1",
@@ -366,10 +374,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       }
     }
 
-    // 프로젝트가 바뀌었으면 상속 연결을 다시 맞춘다 (§4). manual 이면 applyInheritance 가 그냥 지나간다.
-    if (payload.projectId !== undefined) {
-      for (const g of await applyInheritance(taskId)) affectedGoals.add(g);
-    }
+    // 프로젝트를 바꿔도 목표 연결은 움직이지 않는다 (MD-P-2026-030 §A4 — 상속 폐지).
 
     // 현재(변경 후) 연결 목표 — 상태 변경 시에도 재계산 대상.
     //
@@ -377,8 +382,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     //    목표 진척은 소속 업무의 taskProgress 평균이고(§3 규칙 4), taskProgress 는
     //    task.progress 를 그대로 쓴다. 그런데 진행률만 바꾸면 여기 조건에 안 걸려
     //    **직접 연결된 목표가 재계산되지 않았다.** 상태를 건드릴 때까지 옛 숫자가 남았다.
-    //    (프로젝트 경유 목표는 아래 rollupChanged 가 이미 progress 를 보고 있었다 —
-    //     직접 연결만 빠져 있었다.)
+    //    (예전에는 프로젝트 경유 목표만 progress 를 보고 있었고 직접 연결이 빠져 있었다.
+    //     030 §A3 에서 프로젝트 경유가 사라졌으니, 이 한 곳이 유일한 경로다.)
     if (statusChanged || Array.isArray(payload.goalIds) || payload.progress !== undefined) {
       const nowLinks = await query<{ goal_id: number }>(
         "SELECT goal_id FROM goal_task WHERE task_id = $1",
@@ -386,21 +391,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       );
       nowLinks.forEach((l) => affectedGoals.add(l.goal_id));
     }
-    // MD-P-2026-005 §E — 업무는 소속 프로젝트를 통해서도 목표에 기여한다.
-    // 진척·기간·상태가 바뀌면 프로젝트 롤업이 달라지므로 연결 목표도 재계산 대상에 넣는다.
-    const rollupChanged = statusChanged
-      || payload.progress !== undefined
-      || payload.startDate !== undefined
-      || payload.dueDate !== undefined
-      || payload.projectId !== undefined;
-    if (rollupChanged) {
-      const viaProject = await query<{ goal_id: number }>(
-        `SELECT p.goal_id FROM task t JOIN project p ON p.id = t.project_id
-         WHERE t.id = $1 AND p.goal_id IS NOT NULL`,
-        [taskId]
-      );
-      viaProject.forEach((r) => affectedGoals.add(r.goal_id));
-    }
+    // 프로젝트 경유 재계산은 없앴다 (§A3) — 프로젝트는 목표 집계의 재료가 아니다.
     // 연결 체인(월→분기→연간) 즉시 재계산 — 홈·목표 화면에 바로 반영 (파트 B)
     for (const gid of Array.from(affectedGoals)) await recomputeGoalChain(gid);
 

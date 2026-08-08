@@ -1,14 +1,13 @@
 // 목표 트리 조회·저장. **진척 계산 자체는 lib/progress.ts 하나뿐이다** (MD-P-2026-024 §3).
 //
-// 진척 정의(회신 ④ 확정):
-//   "목표 진척은 그 목표에 속한 업무 전체의 평균이다.
-//    프로젝트는 그룹핑 단위이며 계산 단위가 아니다.
-//    프로젝트를 통해 이미 세어진 업무는 직접 연결에서 제외한다."
+// 진척 정의 (MD-P-2026-030 §A 로 갱신):
+//   "목표 진척은 그 목표(와 하위 목표)에 **직접 연결된** 업무 전체의 평균이다.
+//    업무만 목표에 붙는다. 프로젝트도 하위 목표도 계산 단위가 아니다."
 //   월·분기·연간을 나누지 않는다 — 어느 층이든 자기 서브트리의 업무를 모아 평균한다.
 //   집계 대상 0건이면 null (0% 아님) → 화면은 "집계 없음".
 //
 // 진척은 이벤트 기반으로 goal.progress 에 저장(캐시)한다. 조회 시 재계산하지 않고 저장값을 읽는다.
-// 재계산 트리거: 업무 상태·진척 변경, 삭제·복구, 목표-업무/목표-프로젝트 연결 변경 → recomputeGoalChain.
+// 재계산 트리거: 업무 상태·진척 변경, 삭제·복구, 목표-업무 연결 변경 → recomputeGoalChain.
 import { query, queryOne } from "./db";
 import type { GoalPeriodType } from "./types";
 import { goalSubtreeTaskInput } from "./projects";
@@ -47,8 +46,6 @@ export interface GoalNode {
   status: GoalStatus | null;
   /** 상태가 수동 지정인지 */
   statusManual: boolean;
-  /** 연결된 프로젝트 수 — 0이면 "프로젝트를 연결하세요" CTA */
-  projectCount: number;
   /** 이 목표에 속한 집계 대상 업무 수 — 화면의 "업무 N건 기준" 분모 (MD-P-2026-024 지시 1) */
   countedTasks: number;
   /** 기간이 끝난 목표의 마감 기록 (회신 3 지시 7). 진행 중이면 ended=false */
@@ -96,14 +93,12 @@ export const rollup = rollupGoals;
 export const MAX_GOAL_DEPTH = 3;
 
 /**
- * 목표 자체의 집계값 — 확정 정의 한 줄이 전부다 (MD-P-2026-024 회신 ④).
+ * 목표 자체의 집계값 — 정의 한 줄이 전부다 (MD-P-2026-030 §A).
  *
- *   "목표 진척은 그 목표에 속한 업무 전체의 평균이다.
- *    프로젝트는 그룹핑 단위이며 계산 단위가 아니다.
- *    프로젝트를 통해 이미 세어진 업무는 직접 연결에서 제외한다."
+ *   "목표 진척은 그 목표(와 하위 목표)에 직접 연결된 업무 전체의 평균이다.
+ *    업무만 목표에 붙는다. 프로젝트도 하위 목표도 계산 단위가 아니다."
  *
  * 월·분기·연간을 나누지 않는다. 어느 층이든 자기 서브트리의 업무를 모아 평균한다.
- * 하위 목표도 프로젝트와 마찬가지로 그룹핑 단위이지 계산 단위가 아니다 —
  * 하위 목표 %의 평균을 쓰면 업무 12건짜리와 1건짜리가 같은 무게가 되고,
  * 화면에 띄우는 "업무 N건 기준" 분모와도 어긋난다.
  */
@@ -222,30 +217,15 @@ export async function recomputeGoalChain(goalId: number): Promise<void> {
   }
 }
 
-/** 프로젝트-목표 연결이 바뀌었을 때 — 새 목표와 이전 목표를 모두 재계산한다. */
-export async function recomputeGoalsForProject(projectId: number, alsoGoalIds: (number | null)[] = []): Promise<void> {
-  const linked = await query<{ goal_id: number | null }>(
-    `SELECT goal_id FROM project WHERE id = $1`, [projectId]
-  );
-  const ids = new Set<number>();
-  for (const r of linked) if (r.goal_id) ids.add(r.goal_id);
-  for (const g of alsoGoalIds) if (g) ids.add(g);
-  for (const id of Array.from(ids)) await recomputeGoalChain(id);
-}
+// recomputeGoalsForProject() 는 MD-P-2026-030 §A3 에서 없앴다.
+// 프로젝트 변경이 목표 진척을 바꾸던 경로 자체가 사라졌다 — 재계산할 것이 없다.
 
 /** 특정 업무에 연결된 모든 목표 체인을 재계산 (업무 상태 변경 훅에서 사용). */
 export async function recomputeGoalsForTask(taskId: number): Promise<void> {
+  // 경로는 goal_task 하나뿐이다 (§A3). 예전에는 소속 프로젝트의 목표도 함께 훑었다 —
+  // 그 경로가 "이 목표에 붙지도 않은 업무가 분모에 섞이는" 증상의 원인이었다.
   const links = await query<{ goal_id: number }>(`SELECT goal_id FROM goal_task WHERE task_id = $1`, [taskId]);
-  const goalIds = new Set<number>(links.map((l) => l.goal_id));
-  // MD-P-2026-005 §E — 업무는 소속 프로젝트를 통해서도 목표에 기여한다.
-  // (업무 진척 → 프로젝트 롤업 → 연결 목표) 경로도 함께 재계산.
-  const viaProject = await query<{ goal_id: number }>(
-    `SELECT p.goal_id FROM task t JOIN project p ON p.id = t.project_id
-     WHERE t.id = $1 AND p.goal_id IS NOT NULL`,
-    [taskId]
-  );
-  for (const r of viaProject) goalIds.add(r.goal_id);
-  for (const gid of Array.from(goalIds)) await recomputeGoalChain(gid);
+  for (const gid of Array.from(new Set(links.map((l) => l.goal_id)))) await recomputeGoalChain(gid);
 }
 
 /** 전체 목표 진척 백필 — 최초 1회. 월→분기→연간 순으로 저장값을 채운다. */
@@ -364,7 +344,6 @@ export async function getGoalTree(opts: {
     progress_auto: string | null;
     progress_manual: string | null;
     status_manual: GoalStatus | null;
-    project_count: number;
     counted_tasks: number;
     uncounted_children: number;
     period_ended: boolean;
@@ -382,8 +361,6 @@ export async function getGoalTree(opts: {
             g.title, g.description, g.target_metric, g.target_value::text, g.current_value::text,
             g.progress_mode, g.progress::text, g.progress_auto::text, g.progress_manual::text,
             g.status_manual,
-            (SELECT count(*)::int FROM project pj
-              WHERE pj.goal_id = g.id AND pj.is_active = true AND pj.status <> 'archived') AS project_count,
             ${goalCountedSql("g.id")}::int AS counted_tasks,
             (SELECT count(*) FROM goal c
               WHERE c.parent_id = g.id AND c.is_active = true
@@ -469,7 +446,6 @@ export async function getGoalTree(opts: {
           row.period_start, row.period_end, today, Number(row.counted_tasks ?? 0)
         ),
       statusManual: row.status_manual !== null,
-      projectCount: row.project_count,
       ownerActorId: row.owner_actor_id,
       ownerName: row.owner_name,
       projectId: row.project_id,

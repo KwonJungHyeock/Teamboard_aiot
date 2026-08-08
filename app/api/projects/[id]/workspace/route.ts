@@ -25,20 +25,14 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       id: number; name: string; status: string; color_key: string | null;
       start_date: string | null; end_date: string | null; notion_url: string | null;
       area_id: number | null; area_name: string | null; area_color: string | null;
-      goal_id: number | null; goal_title: string | null; goal_period_type: string | null;
-      goal_period_start: string | null; goal_progress: string | null; goal_mode: string | null;
       archived_at: string | null; owner_id: number | null; owner_name: string | null;
       member_ids: number[] | null;
     }>(
       `SELECT p.id, p.name, p.status, p.color_key, p.start_date::text, p.end_date::text, p.notion_url,
               p.area_id, ar.name AS area_name, ar.color_key AS area_color,
-              p.goal_id, g.title AS goal_title, g.period_type AS goal_period_type,
-              g.period_start::text AS goal_period_start, g.progress::text AS goal_progress,
-              g.progress_mode AS goal_mode,
               p.archived_at::text, p.owner_id, o.display_name AS owner_name, p.member_ids
        FROM project p
        LEFT JOIN area ar ON ar.id = p.area_id
-       LEFT JOIN goal g ON g.id = p.goal_id
        LEFT JOIN actor o ON o.id = p.owner_id
        WHERE p.id = $1 AND p.is_active = true`,
       [projectId]
@@ -111,12 +105,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         archivedAt: project.archived_at, ownerId: project.owner_id, ownerName: project.owner_name,
         progress,
         countedTasks,
-        goal: project.goal_id ? {
-          id: project.goal_id, title: project.goal_title,
-          periodType: project.goal_period_type, periodStart: project.goal_period_start,
-          progress: project.goal_progress === null ? null : Math.round(Number(project.goal_progress)),
-          manual: project.goal_mode === "manual",
-        } : null,
+        // goal 필드는 MD-P-2026-030 §A2 에서 내렸다 — 프로젝트는 목표에 연결되지 않는다.
+        // project.goal_id 컬럼은 그대로 남아 있다(§A5). 읽지 않을 뿐이다.
       },
       members: members.map((m) => ({ id: m.id, name: m.display_name, avatarUrl: m.avatar_url })),
       tasks, discussions, openDiscussions, decisions, upcoming, activity,

@@ -39,12 +39,11 @@ interface TaskDetail {
   resolution: string | null;
   parentTaskId: number | null; parentTitle: string | null;
   blockedByTitle: string | null; childCount: number;
-  goalSource: "inherited" | "manual" | "none";
+  goalSource: "inherited" | "manual" | "none";   // inherited 는 역사적 값(= 미지정). 새로 안 생긴다.
   visibility: "team" | "private";
   effectiveProgress: number; rolledUpFromChildren: boolean;
   goalLink: {
-    projectHasNoGoal: boolean; projectId: number | null; projectName: string | null;
-    projectGoalId: number | null; projectGoalTitle: string | null;
+    projectId: number | null; projectName: string | null;
   };
 }
 interface Selectors {
@@ -282,16 +281,11 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
     : "";
   const linkedGoals = t ? (sel?.monthGoals ?? []).filter((g) => t.goalIds.includes(g.id)) : [];
 
-  // 목표 후보 순서 (MD-P-2026-024 회신 6 지시 20-2) —
-  // 소속 프로젝트가 붙어 있는 월 목표를 맨 앞에 둔다. 그 뒤는 서버가 준 순서
-  // (이번 달 우선 · 최근 사용 순, 지시 20-1)를 그대로 쓴다.
-  const goalOptions = (() => {
-    const all = sel?.monthGoals ?? [];
-    const sug = t?.goalLink.projectGoalId ?? null;
-    if (sug === null) return all;
-    const hit = all.find((g) => g.id === sug);
-    return hit ? [hit, ...all.filter((g) => g.id !== sug)] : all;
-  })();
+  // 목표 후보 순서 — 서버가 준 순서(이번 달 우선 · 최근 사용 순, 지시 20-1) 그대로.
+  //
+  // 예전에는 "소속 프로젝트가 붙어 있는 월 목표"를 맨 앞에 두고 「제안」을 달았다.
+  // 프로젝트→목표 연결이 사라졌으므로(MD-P-2026-030 §A2) 그 제안의 근거도 사라졌다.
+  const goalOptions = sel?.monthGoals ?? [];
 
   const propRows: PropRow[] = !t ? [] : [
     {
@@ -407,17 +401,17 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
                   patchOpt({ goalIds: next }, { goalIds: next });
                 }} />
               {g.title}
-              {/* 소속 프로젝트가 붙어 있는 목표를 맨 앞에 두고 표시한다 (지시 20-2) */}
-              {g.id === t.goalLink.projectGoalId && <b className="prop-sug">제안</b>}
               <em>{g.month}</em>
             </label>
           ))}
           {/* 확정 23-3 — "목표 없음"은 여기서도 고를 수 있어야 한다. 일괄 화면에서만 되면 안 된다. */}
           <label className="prop-gnone">
+            {/* 해제하면 '미지정'으로 돌아간다 — 상속으로 돌아가지 않는다 (§A4).
+                다시 미연결 배너에 올라오고, 목표는 사람이 고른다. */}
             <input type="checkbox" checked={t.goalSource === "none"}
               onChange={(e) =>
-                patchOpt({ goalSource: e.target.checked ? "none" : "inherited" },
-                         { goalSource: e.target.checked ? "none" : "inherited" })} />
+                patchOpt({ goalSource: e.target.checked ? "none" : "manual" },
+                         { goalSource: e.target.checked ? "none" : "manual" })} />
             목표 없음 <em>성과 집계 대상 아님 · 수행한 업무로는 남습니다</em>
           </label>
         </div>

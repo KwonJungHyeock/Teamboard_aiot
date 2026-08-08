@@ -140,8 +140,6 @@ export interface HomeSummary {
     /** 자동 판정(수동 지정 우선). 판정 불가 시 null — 분기 목표와 같은 규칙 */
     status: "ontrack" | "risk" | "wait" | "done" | null;
     colorKey: string | null;
-    /** 연결 프로젝트 수 — 0이면 "-" + [프로젝트 연결] CTA (MD-P-2026-009 §F) */
-    projectCount: number;
   }[];
   annualLabel: string; // 예: 2026
   quarterGoals: {
@@ -151,7 +149,6 @@ export interface HomeSummary {
     /** 자동 판정(수동 지정 우선). 판정 불가 시 null */
     status: "ontrack" | "risk" | "wait" | "done" | null;
     colorKey: string | null;
-    projectCount: number;
     /** 레벨 태그 표기 (Q1~Q4) — §D4 1열 */
     periodLabel: string;
     /** 오늘이 이 분기 안인가 — 필터칩 "이번 분기" 판별 (§D1) */
@@ -754,12 +751,10 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   const quarterRows = await query<{
     id: number; title: string; progress: string | null; color_key: string | null;
     status_manual: "ontrack" | "risk" | "wait" | "done" | null;
-    period_start_d: string; period_end_d: string; project_count: number;
+    period_start_d: string; period_end_d: string;
   }>(
     `SELECT g.id, g.title, g.progress::text, p.color_key, g.status_manual,
-            g.period_start::text AS period_start_d, g.period_end::text AS period_end_d,
-            (SELECT count(*)::int FROM project pj
-              WHERE pj.goal_id = g.id AND pj.is_active = true AND pj.status <> 'archived') AS project_count
+            g.period_start::text AS period_start_d, g.period_end::text AS period_end_d
      FROM goal g LEFT JOIN project p ON p.id = g.project_id
      WHERE g.is_active = true AND g.period_type = 'quarter' AND g.scope = 'team'
        AND g.period_start <= $1::date AND g.period_end >= $2::date
@@ -773,7 +768,6 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       id: g.id, title: g.title, progress: prog,
       status: g.status_manual ?? judgeGoalStatus(prog, g.period_start_d, g.period_end_d, today),
       colorKey: g.color_key,
-      projectCount: g.project_count,
       // §D4 레벨 태그 + 필터칩(이번 분기 ⇄ 전체 기간) 판별용
       periodLabel: `Q${Math.floor((Number(g.period_start_d.slice(5, 7)) - 1) / 3) + 1}`,
       current: g.period_start_d <= today && g.period_end_d >= today,
@@ -787,14 +781,12 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
 
   // §C: 연간 목표 (level=annual, 올해 커버) — 상단 큰 게이지
   const annualRows = await query<{
-    id: number; title: string; progress: string | null; color_key: string | null; project_count: number;
+    id: number; title: string; progress: string | null; color_key: string | null;
     status_manual: "ontrack" | "risk" | "wait" | "done" | null;
     period_start_d: string; period_end_d: string;
   }>(
     `SELECT g.id, g.title, g.progress::text, p.color_key, g.status_manual,
-            g.period_start::text AS period_start_d, g.period_end::text AS period_end_d,
-            (SELECT count(*)::int FROM project pj
-              WHERE pj.goal_id = g.id AND pj.is_active = true AND pj.status <> 'archived') AS project_count
+            g.period_start::text AS period_start_d, g.period_end::text AS period_end_d
      FROM goal g LEFT JOIN project p ON p.id = g.project_id
      WHERE g.is_active = true AND g.scope = 'team'
        AND (g.level = 'annual' OR g.period_type = 'year')
@@ -811,7 +803,6 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       progress: prog,
       status: g.status_manual ?? judgeGoalStatus(prog, g.period_start_d, g.period_end_d, today),
       colorKey: g.color_key,
-      projectCount: g.project_count,
     };
   });
 

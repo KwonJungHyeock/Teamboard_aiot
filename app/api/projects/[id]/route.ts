@@ -1,11 +1,10 @@
 // 프로젝트 상세 API (Phase 5) — GET: 개요·목표·업무·자료, PUT: 수정(lead).
 // 목표 진척은 lib/goals.ts 계산 결과를 그대로 사용한다 (단일 소스).
 import { NextResponse } from "next/server";
-import { applyInheritanceForProject } from "@/lib/goal-inherit";
 import { countableSql, doneSql } from "@/lib/progress";
 import { requireLead, requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
-import { getGoalTree, recomputeGoalChain, type GoalNode } from "@/lib/goals";
+import { getGoalTree, type GoalNode } from "@/lib/goals";
 import { kstToday } from "@/lib/home";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
@@ -118,8 +117,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const projectId = Number(params.id);
     const payload = await request.json();
 
-    const project = await queryOne<{ id: number; name: string; goal_id: number | null }>(
-      "SELECT id, name, goal_id FROM project WHERE id = $1 AND is_active = true",
+    const project = await queryOne<{ id: number; name: string }>(
+      "SELECT id, name FROM project WHERE id = $1 AND is_active = true",
       [projectId]
     );
     if (!project) return NextResponse.json({ error: "프로젝트를 찾을 수 없습니다." }, { status: 404 });
@@ -136,9 +135,13 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (payload.notionUrl !== undefined) {
       set("notion_url", payload.notionUrl ? String(payload.notionUrl).slice(0, 500) : null);
     }
-    // MD-P-2026-005 — 목표 연결 / 보관 / 소유·멤버
+    // MD-P-2026-030 §A2 — 프로젝트의 목표 연결은 없앴다. goalId 는 받지 않는다.
+    // 컬럼과 기존 값은 그대로 둔다(§A5). 쓰지 않을 뿐이다.
     if (payload.goalId !== undefined) {
-      set("goal_id", payload.goalId ? Number(payload.goalId) : null);
+      return NextResponse.json(
+        { error: "프로젝트는 목표에 연결하지 않습니다. 업무를 목표에 직접 연결하세요." },
+        { status: 400 }
+      );
     }
     if (payload.status === "archived") set("archived_at", new Date().toISOString());
     else if (payload.status !== undefined) set("archived_at", null); // 보관 해제
@@ -156,16 +159,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
           ? `${session.name}이(가) 프로젝트 보관 — "${project.name}"`
           : `${session.name}이(가) 프로젝트 수정 — "${project.name}"`,
       });
-      // §E — 연결 목표(이전·현재) 진척 재계산
-      const goalIds = new Set<number>();
-      if (project.goal_id) goalIds.add(project.goal_id);
-      if (payload.goalId) goalIds.add(Number(payload.goalId));
-      // MD-P-2026-024 §4 — 프로젝트 목표가 바뀌면 inherited 업무만 따라 움직인다.
-      // manual 로 직접 고른 업무는 건드리지 않는다.
-      if (payload.goalId !== undefined) {
-        for (const g of await applyInheritanceForProject(projectId)) goalIds.add(g);
-      }
-      for (const gid of Array.from(goalIds)) await recomputeGoalChain(gid);
+      // MD-P-2026-030 §A3 — 프로젝트 변경은 목표 진척에 영향을 주지 않는다.
+      // 목표는 goal_task 로 붙은 업무만 센다. 재계산할 것이 없다.
     }
     return NextResponse.json({ ok: true });
   } catch (error) {

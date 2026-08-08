@@ -6,7 +6,7 @@
 "use client";
 
 import { useRef } from "react";
-import { closingLabel, canShowBar, countedLabel, type GoalClosing } from "@/lib/progress";
+import { closingLabel, progressDisplay, type GoalClosing } from "@/lib/progress";
 import { pfill } from "@/lib/progress-bar";
 import { useGoalChainCountUp } from "@/lib/motion";
 
@@ -36,10 +36,10 @@ export default function GoalProgress({
   const ended = closing?.ended === true;
   const shown = ended ? closing!.progress : progress;
   const label = ended ? closingLabel(closing!) : null;
-  // 표본 가드 — 업무 1~2건으로는 %를 단정하지 않는다. 막대도 그리지 않는다 (지시 16).
-  // 기간이 끝난 목표의 마감 기록은 실제 기록이므로 이 가드를 적용하지 않는다.
-  const thin = !ended && counted !== undefined && !canShowBar(counted);
-  const drawBar = shown !== null && !thin;
+  // 표시 결정은 lib/progress.ts 한 곳에서 나온다 (지시 30-5) — 연간 카드와 같은 함수다.
+  // 기간이 끝난 목표의 마감 기록은 실제 기록이므로 표본 가드를 적용하지 않는다.
+  const d = progressDisplay(shown, ended ? undefined : counted);
+  const drawBar = d.drawBar;
 
   // 사용자가 업무 값을 바꿨을 때만, 그리고 이 행이 화면에 보일 때만 굴러간다 (§H4-②).
   // 그 밖에는 늘 최종값 그대로다 — 재진입·폴링·필터 변경에서 숫자가 뛰면 서사가 아니라 소음이다.
@@ -53,9 +53,11 @@ export default function GoalProgress({
           <i className={colorKey ?? "edu"} style={pfill(live ?? shown!)} />
         )}
       </div>
-      <span className={`gpv${drawBar ? "" : " none"}`}>
-        {ended ? label : thin ? countedLabel(counted!) : shown === null ? "집계 없음" : `${live ?? shown}%`}
-        {!ended && !thin && detail && <em>{detail}</em>}
+      <span className={`gpv${d.hasValue ? (d.lowConfidence ? " low" : "") : " none"}`}>
+        {ended ? label : d.hasValue ? `${live ?? shown}%` : "집계 없음"}
+        {/* 30-1 — 표본 부족이어도 값을 감추지 않는다. 근거를 옆에 붙여 신뢰도를 말한다:
+            "100% · 업무 1건 — 표본 부족". 값을 감추면 상세를 열어야 확인이 된다. */}
+        {!ended && d.hasValue && (d.lowConfidence ? <em>{d.basis}</em> : detail && <em>{detail}</em>)}
       </span>
     </div>
   );

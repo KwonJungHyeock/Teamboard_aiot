@@ -11,11 +11,15 @@
 //     상위에 수동 진척값이 남아 있어도 무시한다.
 //  3. 이중 계산 금지 — 프로젝트 진척은 최상위 업무만 대상으로 한다.
 //     하위 업무는 상위를 통해 이미 반영됐다.
-//  4. 목표 진척 (MD-P-2026-024 회신 확정 문장 — 이 문장이 정의다):
+//  4. 목표 진척 (MD-P-2026-030 §A 로 갱신된 정의 — 이 문장이 정의다):
 //
-//       "목표 진척은 그 목표에 속한 업무 전체의 평균이다.
-//        프로젝트는 그룹핑 단위이며 계산 단위가 아니다.
-//        프로젝트를 통해 이미 세어진 업무는 직접 연결에서 제외한다."
+//       "목표 진척은 그 목표(와 하위 목표)에 **직접 연결된** 업무 전체의 평균이다.
+//        업무만 목표에 붙는다. 프로젝트도 하위 목표도 그룹핑 단위이며 계산 단위가 아니다."
+//
+//     예전 정의에는 "프로젝트를 통해 세어진 업무"라는 두 번째 경로가 있었다.
+//     경로가 둘이면 같은 질문에 두 답이 나온다 — 배너는 "미연결"이라 하고
+//     진척은 "집계됨"이라 하는 상태가 실제로 있었고, 프로젝트가 8월 목표를 가리키면
+//     그 프로젝트의 7월 업무까지 8월 분모에 섞였다. 경로를 하나로 줄여 없앤다.
 //
 //  5. 집계 대상 0건이면 null 이다. 0% 도 100% 도 아니다 → 화면은 "집계 없음".
 //     (실제로 났던 결함이다. null 을 0 으로 접지 말 것.)
@@ -101,28 +105,9 @@ export function countTasks(tasks: (ProgressTask & { workType?: string | null })[
   };
 }
 
-/**
- * 목표 진척(규칙 4) — 연결 프로젝트들의 진척 + 목표에 직접 연결된 업무를 함께 본다.
- * 프로젝트 1개와 업무 1건을 같은 무게로 두지 않는다:
- * 프로젝트는 그 안의 집계 대상 업무 수만큼 무게를 갖는다.
- * 양쪽 다 비면 null(규칙 5).
- */
-export function aggregateGoal(input: {
-  projects: { progress: number | null; countedTasks: number }[];
-  directTasks: (ProgressTask & { workType?: string | null })[];
-}): number | null {
-  let wsum = 0, psum = 0;
-  for (const p of input.projects) {
-    if (p.progress === null) continue;
-    const w = Math.max(1, p.countedTasks);
-    wsum += w; psum += p.progress * w;
-  }
-  for (const t of input.directTasks.filter(isCountable)) {
-    wsum += 1; psum += taskProgress(t);
-  }
-  if (wsum === 0) return null;
-  return Math.round(psum / wsum);
-}
+// aggregateGoal(프로젝트 가중 평균)은 MD-P-2026-030 §A3 에서 없앴다.
+// 프로젝트가 계산 단위였을 때만 필요한 함수였고, 남겨 두면 "계산기는 하나"가 다시 깨진다.
+// 목표 집계는 goalSubtreeTaskInput() → aggregateTasks() 한 경로뿐이다.
 
 /** 상위 목표 = 하위 목표들의 평균. 전부 null 이면 null. */
 export function rollupGoals(children: (number | null)[]): number | null {
@@ -224,25 +209,54 @@ export const projectCountedSql = (projectIdExpr: string) => `
   (SELECT count(*) FROM task t
     WHERE t.project_id = ${projectIdExpr} AND t.parent_task_id IS NULL AND ${countableSql("t")})`;
 
+// ── 목표 연결 판정 — 경로는 하나뿐이다 (MD-P-2026-030 §A·§B) ─────────
+//
+// **목표에 붙는 것은 업무뿐이고, 붙는 방법은 goal_task 하나뿐이다.**
+// 이 두 조각(연결됨 / 미연결)이 진척 계산기·분모·배너가 함께 읽는 유일한 정의다.
+// 한쪽만 고치면 배너와 진척이 다시 다른 말을 한다 — 그것이 030 이 고친 결함이다.
+
+/** 이 업무가 **어떤** 목표에든 직접 연결돼 있는가. */
+export const goalLinkedSql = (t = "t") =>
+  `EXISTS (SELECT 1 FROM goal_task gt WHERE gt.task_id = ${t}.id)`;
+
+/** 이 업무가 주어진 목표 집합(보통 서브트리) 중 하나에 직접 연결돼 있는가. */
+export const goalLinkedInSql = (t: string, goalIdsSelect: string) =>
+  `EXISTS (SELECT 1 FROM goal_task gt
+            WHERE gt.task_id = ${t}.id AND gt.goal_id IN (${goalIdsSelect}))`;
+
+/** 목표 서브트리 CTE — 이 목표와 살아 있는 모든 자손. 이름은 항상 `sub`. */
+export const goalSubtreeCte = (goalIdExpr: string) => `
+  WITH RECURSIVE sub AS (
+    SELECT id FROM goal WHERE id = ${goalIdExpr} AND is_active = true
+    UNION ALL
+    SELECT g.id FROM goal g JOIN sub ON g.parent_id = sub.id WHERE g.is_active = true
+  )`;
+
+/**
+ * 미연결 업무 (§B1·§B2) — 목표 화면 배너와 일괄 연결 화면이 **같은 이 조건**을 쓴다.
+ *
+ *   미연결 = 집계 대상 · 최상위 업무 · 직접 연결 없음 · goal_source <> 'none'
+ *
+ * "목표 없음"(none)은 사람이 정한 상태지 미연결이 아니다 (지시 23-2).
+ * 집계 대상 조건이 진척 계산기와 같아야 "미연결인데 진척엔 잡힌다"가 생기지 않는다.
+ */
+export const unlinkedTaskSql = (t = "t") =>
+  `${t}.parent_task_id IS NULL AND ${countableSql(t)}
+   AND NOT ${goalLinkedSql(t)}
+   AND ${t}.goal_source <> 'none'`;
+
 /**
  * 목표에 **속한 업무 수** — 화면의 "업무 N건 기준" 보조 텍스트가 쓰는 분모.
  *
- * 확정 정의 그대로다: 목표에 속한 업무 = (그 목표에 연결된 프로젝트의 업무) ∪ (직접 연결된 업무).
- * 같은 업무가 양쪽에 걸쳐도 `count(DISTINCT)` 로 한 번만 센다 — 진척 계산의 이중 계산 배제와 같은 규칙.
+ * 정의 그대로다: 목표에 속한 업무 = 그 목표(또는 하위 목표)에 직접 연결된 업무.
  * 하위 목표가 있는 상위 목표(분기·연간)는 서브트리 전체를 훑는다.
+ * 이 수는 `goalSubtreeTaskInput()` 이 돌려주는 행 수와 **반드시** 같아야 한다.
  */
 export const goalCountedSql = (goalIdExpr: string) => `
-  (WITH RECURSIVE sub AS (
-     SELECT id FROM goal WHERE id = ${goalIdExpr} AND is_active = true
-     UNION ALL
-     SELECT g.id FROM goal g JOIN sub ON g.parent_id = sub.id WHERE g.is_active = true
-   )
-   SELECT count(DISTINCT t.id) FROM task t
-     LEFT JOIN project p ON p.id = t.project_id AND p.is_active = true AND p.status <> 'archived'
+  (${goalSubtreeCte(goalIdExpr)}
+   SELECT count(*) FROM task t
     WHERE t.parent_task_id IS NULL AND ${countableSql("t")}
-      AND ( p.goal_id IN (SELECT id FROM sub)
-         OR EXISTS (SELECT 1 FROM goal_task gt
-                     WHERE gt.task_id = t.id AND gt.goal_id IN (SELECT id FROM sub)) ))`;
+      AND ${goalLinkedInSql("t", "SELECT id FROM sub")})`;
 
 // ── 표본 가드 (MD-P-2026-024 회신 6 지시 16) ──────────────────
 //
@@ -274,6 +288,56 @@ export function countedLabel(counted: number): string {
   if (counted === 0) return "집계 없음";
   if (isUnderSampled(counted)) return `업무 ${counted}건 — 표본 부족`;
   return `업무 ${counted}건 기준`;
+}
+
+/**
+ * **값이 이미 화면에 떠 있을 때** 그 옆에 붙는 근거 문구.
+ *
+ * countedLabel() 과 나눠 둔 이유 — 0건일 때 뜻이 다르다.
+ *   countedLabel(0) = "집계 없음"  … 값 자체가 없다
+ *   basisLabel(0)  = "집계 대상 업무 0건" … 값은 있는데(수동값 등) 셀 업무가 없다
+ * 둘을 같은 문구로 두면 화면에 **"50% · 집계 없음"** 이 나란히 뜬다.
+ * 실제로 그렇게 떠 있었고, 캡처를 열어 보고서야 발견했다 (MD-P-2026-030 §A3 검증).
+ */
+export function basisLabel(counted: number): string {
+  if (counted === 0) return "집계 대상 업무 0건";
+  return countedLabel(counted);
+}
+
+/**
+ * 진척을 **어떻게 보여줄지** 한 곳에서 정한다 (MD-P-2026-030 지시 30-5).
+ *
+ * 이 함수가 없어서 갈라졌던 일. 연간 카드가 막대를 직접 그리느라 canShowBar() 를 안 불렀고,
+ * 집계 대상 1건짜리 연간 목표가 **100% 초록 막대**로 떴다. 지시 16 이 막으려던 장면이다.
+ * 판정만 공유해도 라벨 조립이 또 갈라지므로, **표시 결정 전체**를 여기서 낸다.
+ *
+ * 표본 부족의 뜻 (지시 30 [확정]):
+ *   "값이 없다"가 아니라 **"값의 신뢰도가 낮다"** 는 뜻이다.
+ *   값은 보이고 막대는 그리지 않는다 — 과잉 확신을 만드는 것은 숫자가 아니라 막대다.
+ *   숫자는 읽어야 보이지만 막대는 훑어도 보인다.
+ */
+export interface ProgressDisplay {
+  /** 채운 막대를 그리는가. 표본 부족이면 빈 트랙만 남는다 (30-3). */
+  drawBar: boolean;
+  /** 보여줄 값이 있는가. 없으면 "집계 없음". */
+  hasValue: boolean;
+  /** 값 옆에 붙는 근거. "업무 14건 기준" / "업무 1건 — 표본 부족" */
+  basis: string | null;
+  /** 표본 부족 — 숫자를 흐리게 낮춘다 (30-2). */
+  lowConfidence: boolean;
+}
+
+export function progressDisplay(progress: number | null, counted?: number): ProgressDisplay {
+  const low = counted !== undefined && isUnderSampled(counted);
+  if (progress === null) {
+    return { drawBar: false, hasValue: false, basis: null, lowConfidence: false };
+  }
+  return {
+    drawBar: counted === undefined || canShowBar(counted),
+    hasValue: true,
+    basis: counted === undefined ? null : basisLabel(counted),
+    lowConfidence: low,
+  };
 }
 
 /** "미집계 하위 3개" — 집계 대상이 0건인 하위 목표 수를 알린다(지시 16). */

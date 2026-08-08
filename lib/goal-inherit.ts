@@ -1,88 +1,41 @@
-// 목표 상속 (MD-P-2026-024 §4) — 손으로 세 번 잇지 않게 한다.
+// 업무의 목표 연결 출처 (task.goal_source).
 //
-// 업무의 목표 연결은 두 가지 중 하나다:
-//   inherited — 소속 프로젝트의 연결 목표를 그대로 따라간다. 프로젝트가 목표를 바꾸면 같이 움직인다.
-//   manual    — 사용자가 직접 고른 값. 프로젝트가 바뀌어도 건드리지 않는다.
+// ⚠️ 이 파일의 이름은 낡았다. **목표 상속은 MD-P-2026-030 §A4 에서 없앴다.**
+//    파일 이름 정리는 goal_source 값 이름 정리(BACKLOG B-11)와 같이 한다 —
+//    지금 옮기면 import 만 흔들리고 얻는 게 없다.
 //
-// 연결 자체는 기존 goal_task(M:N) 를 그대로 쓴다. task.goal_source 는
-// "이 업무의 목표 연결이 프로젝트를 따라가는가"를 나타내는 플래그다.
+// ── 지금의 연결 모델 (MD-P-2026-030 §A) ────────────────────────────
+//
+//   목표에 붙는 것은 **업무뿐**이고, 붙는 방법은 goal_task 하나뿐이다.
+//   프로젝트를 통해 따라 붙는 경로는 사라졌다.
+//
+// 그래서 goal_source 가 구분하는 것은 이제 두 가지뿐이다:
+//
+//   none      — 사용자가 "목표 없음"을 **명시적으로** 골랐다.
+//               성과 집계 대상이 아니지만 수행한 업무로는 남는다(월간 보고).
+//               미연결 배너에 오르지 않는다 — 이미 사람이 정한 상태다.
+//   그 외      — 그냥 "붙일 수 있는 업무". 링크가 없으면 미지정이고, 미연결 배너에 오른다.
+//
+// 그 외에 해당하는 값이 지금 둘이다:
+//   manual    — 새로 만들어지는 값. 사용자가 목표를 고를 수 있는 보통 상태다.
+//   inherited — **역사적 값이다.** 상속이 있던 시절 "프로젝트를 따라간다"는 뜻이었고,
+//               지금은 '미지정'을 뜻한다. 새로 만들어지지 않는다.
+//               CHECK 는 좁히지 않았다 — 기존 19건의 값을 그대로 보존하기 위해서다.
+//               이름 정리(inherited → unset)는 BACKLOG B-11.
 import { query, queryOne } from "./db";
 
 export type GoalSource = "inherited" | "manual" | "none";
 
-// 세 값의 뜻 (MD-P-2026-024 회신 7 지시 20-3 · 23-1)
-//   inherited — 프로젝트에서 따라온 것. 링크가 없으면 "아직 안 정함(미지정)"이다.
-//   manual    — 사용자가 목표를 직접 고른 것. 프로젝트가 바뀌어도 안 움직인다.
-//   none      — 사용자가 "목표 없음"을 명시적으로 고른 것.
-//               성과 집계 대상이 아니지만 수행한 업무로는 남는다(월간 보고).
-
-/** 월 목표만 업무에 연결할 수 있다 (SPEC 2.2). 프로젝트 목표가 월이 아니면 상속하지 않는다. */
-const MONTH_GOAL = `is_active = true AND period_type = 'month'`;
-
-/** 이 업무가 상속해야 할 목표 — 소속 프로젝트의 연결 목표. 없으면 null. */
-export async function inheritedGoalFor(taskId: number): Promise<number | null> {
-  const row = await queryOne<{ goal_id: number | null }>(
-    `SELECT p.goal_id
-       FROM task t JOIN project p ON p.id = t.project_id
-      WHERE t.id = $1 AND p.is_active = true
-        AND EXISTS (SELECT 1 FROM goal g WHERE g.id = p.goal_id AND ${MONTH_GOAL})`,
-    [taskId]
-  );
-  return row?.goal_id ?? null;
-}
-
 /**
- * 업무 1건의 상속 연결을 다시 맞춘다. goal_source='manual' 이면 아무것도 하지 않는다.
- * 돌려주는 값은 재계산이 필요한 목표 id 들(이전 연결 + 새 연결).
+ * 새로 만드는 업무의 goal_source.
+ *
+ * DB 기본값은 아직 'inherited' 다(컬럼은 §A5 에 따라 건드리지 않았다).
+ * 그래서 **INSERT 마다 이 값을 명시**해야 새 업무가 역사적 값을 물려받지 않는다.
+ * 이 상수를 쓰지 않고 INSERT 하는 경로가 생기면 inherited 가 다시 늘어난다.
  */
-export async function applyInheritance(taskId: number): Promise<number[]> {
-  const t = await queryOne<{ goal_source: string }>(
-    `SELECT goal_source FROM task WHERE id = $1`, [taskId]
-  );
-  // manual·none 은 따라 움직이지 않는다. none 은 사용자가 "붙이지 않겠다"고 정한 것이다.
-  if (!t || t.goal_source !== "inherited") return [];
+export const NEW_TASK_GOAL_SOURCE = "manual" as const;
 
-  const prior = await query<{ goal_id: number }>(
-    `SELECT goal_id FROM goal_task WHERE task_id = $1`, [taskId]
-  );
-  const target = await inheritedGoalFor(taskId);
-  const priorIds = prior.map((r) => r.goal_id);
-
-  // 이미 맞으면 건드리지 않는다 (불필요한 재계산·활동로그 방지)
-  if (priorIds.length === (target === null ? 0 : 1) && (target === null || priorIds[0] === target)) {
-    return [];
-  }
-
-  await query(`DELETE FROM goal_task WHERE task_id = $1`, [taskId]);
-  if (target !== null) {
-    await query(
-      `INSERT INTO goal_task (goal_id, task_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-      [target, taskId]
-    );
-  }
-  const affected = new Set<number>(priorIds);
-  if (target !== null) affected.add(target);
-  return Array.from(affected);
-}
-
-/**
- * 프로젝트의 연결 목표가 바뀌었을 때 — inherited 업무만 따라 움직인다.
- * manual 업무는 손대지 않는다. 재계산이 필요한 목표 id 들을 돌려준다.
- */
-export async function applyInheritanceForProject(projectId: number): Promise<number[]> {
-  const tasks = await query<{ id: number }>(
-    `SELECT id FROM task
-      WHERE project_id = $1 AND is_active = true AND goal_source = 'inherited'`,
-    [projectId]
-  );
-  const affected = new Set<number>();
-  for (const t of tasks) {
-    for (const g of await applyInheritance(t.id)) affected.add(g);
-  }
-  return Array.from(affected);
-}
-
-/** 사용자가 목표를 직접 골랐다 → 이후로는 프로젝트를 따라가지 않는다. */
+/** 사용자가 목표를 직접 골랐다. */
 export async function markGoalManual(taskId: number): Promise<void> {
   await query(`UPDATE task SET goal_source = 'manual' WHERE id = $1`, [taskId]);
 }
@@ -90,7 +43,7 @@ export async function markGoalManual(taskId: number): Promise<void> {
 /**
  * "목표 없음" — 성과 집계 대상이 아니라고 사용자가 정한 것 (지시 23-1).
  * 미지정(아직 안 정함)과 구분된다. 기존 목표 연결이 있으면 끊는다.
- * 되돌리려면 markGoalInherited() 를 쓴다.
+ * 되돌리려면 clearGoalNone() 을 쓴다.
  */
 export async function markGoalNone(taskId: number): Promise<number[]> {
   const prior = await query<{ goal_id: number }>(
@@ -101,45 +54,38 @@ export async function markGoalNone(taskId: number): Promise<number[]> {
   return prior.map((r) => r.goal_id);
 }
 
-/** 상속으로 되돌린다 — 프로젝트 목표를 다시 따라가게 한다. */
-export async function markGoalInherited(taskId: number): Promise<number[]> {
-  await query(`UPDATE task SET goal_source = 'inherited' WHERE id = $1`, [taskId]);
-  return applyInheritance(taskId);
+/**
+ * "목표 없음"을 푼다 — 다시 미지정 상태로 돌린다.
+ *
+ * 예전 이름은 markGoalInherited() 였고 "프로젝트 상속으로 되돌린다"는 뜻이었다.
+ * 상속이 사라졌으니 되돌아갈 곳도 없다. 링크는 만들지 않는다 —
+ * 이 업무는 이제 미연결 배너에 다시 올라오고, 사람이 목표를 고르면 된다.
+ */
+export async function clearGoalNone(taskId: number): Promise<void> {
+  await query(`UPDATE task SET goal_source = 'manual' WHERE id = $1 AND goal_source = 'none'`, [taskId]);
 }
 
 export interface GoalLinkInfo {
   goalSource: GoalSource;
-  /** 소속 프로젝트가 목표에 연결돼 있지 않다 → 상세 화면에 안내 + 연결 링크 */
-  projectHasNoGoal: boolean;
   projectId: number | null;
   projectName: string | null;
-  /** 소속 프로젝트가 붙어 있는 월 목표 — 목표 고를 때 첫 번째 제안 (지시 20-2) */
-  projectGoalId: number | null;
-  projectGoalTitle: string | null;
 }
 
-/** 업무 상세 화면이 "이 프로젝트는 목표에 연결되어 있지 않습니다"를 띄울지 판단할 재료. */
+/** 업무 상세 화면이 목표 항목을 그릴 때 쓰는 재료. */
 export async function goalLinkInfo(taskId: number): Promise<GoalLinkInfo> {
   const row = await queryOne<{
     goal_source: string; project_id: number | null; project_name: string | null;
-    project_goal: number | null; project_goal_title: string | null;
   }>(
-    `SELECT t.goal_source, t.project_id, p.name AS project_name,
-            g.id AS project_goal, g.title AS project_goal_title
+    `SELECT t.goal_source, t.project_id, p.name AS project_name
        FROM task t
        LEFT JOIN project p ON p.id = t.project_id AND p.is_active = true
-       LEFT JOIN goal g ON g.id = p.goal_id
-                       AND g.is_active = true AND g.period_type = 'month'
       WHERE t.id = $1`,
     [taskId]
   );
   return {
-    goalSource: (row?.goal_source as GoalSource) ?? "inherited",
-    // 프로젝트가 아예 없으면(개인 업무) 안내하지 않는다 — 프로젝트를 강요하지 않기 위해서다.
-    projectHasNoGoal: !!row?.project_id && row.project_goal === null,
+    // 값이 없을 때의 기본은 '미지정' 쪽이다 — 'none'(사람이 정함)으로 접으면 안 된다.
+    goalSource: (row?.goal_source as GoalSource) ?? "manual",
     projectId: row?.project_id ?? null,
     projectName: row?.project_name ?? null,
-    projectGoalId: row?.project_goal ?? null,
-    projectGoalTitle: row?.project_goal_title ?? null,
   };
 }

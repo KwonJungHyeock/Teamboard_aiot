@@ -111,8 +111,12 @@ try {
   chk("D1-만들기줄", createRow.includes(PJ), `일치 0건일 때 맨 아래 "${createRow}"`);
 
   await page.locator(".pcb-new").click();
-  await page.waitForTimeout(1400);
-  const picked = await page.locator('.ntm-side .prop-row:has(.prop-l:text-is("프로젝트")) .pcb-v').innerText();
+  // 고정 대기(1400ms)를 쓰면 안 된다. dev 서버가 /api/projects 를 처음 컴파일하는 회차에는
+  // 이 POST 가 2.1초 걸렸고(따뜻할 때는 36ms), 그 회차마다 이 검사가 통째로 무너졌다.
+  // **끝났는지를 보고 기다린다** — 시간이 아니라 조건이다.
+  const pickedCell = page.locator('.ntm-side .prop-row:has(.prop-l:text-is("프로젝트")) .pcb-v');
+  await pickedCell.filter({ hasText: PJ }).waitFor({ timeout: 15000 }).catch(() => {});
+  const picked = await pickedCell.innerText();
   const pjRow = await sql(`SELECT id, area_id FROM project WHERE name=$1 AND is_active`, [PJ]);
   await shot("D1-created");
   chk("D1-생성", pjRow.length === 1 && picked.includes(PJ),
@@ -192,6 +196,11 @@ try {
     `일괄 지정 후 이 프로젝트의 실측 업무 ${assigned}건 (선택한 ${visible}건과 같아야 한다)`);
 
   // ══ §D2 프로젝트 상세 맨 아래 한 줄 입력 ═════════════════════════════
+  // 앞 단계가 실패했으면 여기서 TypeError 로 죽지 말고 **왜 못 했는지**를 남긴다.
+  if (pjRow.length === 0) {
+    bad("D2-건너뜀", "D1 에서 프로젝트가 안 만들어져 §D2·§D4 를 실행하지 못했다");
+    throw new Error("D1 실패 — 이후 단계 중단");
+  }
   await page.goto(`${BASE}/projects/${pjRow[0].id}?tab=tasks`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1300);
   const tableBox = await box("table");

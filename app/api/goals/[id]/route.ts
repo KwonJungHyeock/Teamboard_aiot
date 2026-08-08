@@ -9,7 +9,6 @@ import type { GoalPeriodType } from "@/lib/types";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { recomputeGoalChain, judgeGoalStatus, kstTodayForGoals as kstToday, type GoalStatus } from "@/lib/goals";
-import { projectsForGoal } from "@/lib/projects";
 import { goalTrend } from "@/lib/goal-snapshot";
 import { jsonError } from "@/lib/api";
 import { periodEndOf, reparentByPeriod, type GoalPeriod } from "@/lib/goal-hierarchy";
@@ -75,10 +74,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         );
     const { getGoalContribution } = await import("@/lib/goals");
     const contribution = g.scope === "team" ? await getGoalContribution(goalId) : [];
-    // 연결된 프로젝트 + 각 진척 (§B1)
-    const linkedProjects = await projectsForGoal(goalId);
-    // 하위 목표가 있으면 집계는 하위 평균이 우선한다(§C4) — 화면에서 그 사실을 알려야
-    // "프로젝트를 붙였는데 왜 반영이 안 되지?"가 생기지 않는다.
+    // 연결된 프로젝트 섹션은 MD-P-2026-030 §A1 에서 없앴다 — 목표에 붙는 것은 업무뿐이다.
     const childRow = await queryOne<{ n: string }>(
       `SELECT count(*) AS n FROM goal WHERE parent_id = $1 AND is_active = true`, [goalId]
     );
@@ -131,7 +127,6 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       parentCandidates: parentCandidates.map((c) => ({
         id: c.id, title: c.title, periodStart: c.period_start,
       })),
-      linkedProjects,
       childCount,
       trend,
       tasks: tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, assigneeName: t.assignee_name, dueDate: t.due_date })),

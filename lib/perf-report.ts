@@ -25,7 +25,6 @@ export interface PerfGoalRow {
   delta: number | null;
   status: GoalStatus | null;
   manual: boolean;
-  projectCount: number;
 }
 
 export interface PerfTaskRow {
@@ -128,14 +127,12 @@ export async function buildPerfReport(opts: {
   const goalRows = await query<{
     id: number; level: string | null; period_type: string; title: string; period: string | null;
     period_start: string; period_end: string; progress: string | null; progress_manual: string | null;
-    status_manual: GoalStatus | null; project_count: number;
+    status_manual: GoalStatus | null;
     prev: string | null; snap: string | null; has_snap: boolean; snap_status: GoalStatus | null;
   }>(
     `SELECT g.id, g.level, g.period_type, g.title, g.period,
             g.period_start::text, g.period_end::text, g.progress::text, g.progress_manual::text,
             g.status_manual,
-            (SELECT count(*)::int FROM project pj
-              WHERE pj.goal_id = g.id AND pj.is_active = true AND pj.status <> 'archived') AS project_count,
             (SELECT s.progress::text FROM goal_snapshot s
               WHERE s.goal_id = g.id AND to_char(s.snapshot_date, 'YYYY-MM') = $3
               ORDER BY s.snapshot_date DESC LIMIT 1) AS prev,
@@ -190,7 +187,6 @@ export async function buildPerfReport(opts: {
         ? (r.status_manual ?? judgeGoalStatus(progress, r.period_start, r.period_end, today))
         : (r.snap_status ?? (r.has_snap ? judgeGoalStatus(progress, r.period_start, r.period_end, b.endDate) : null)),
       manual: r.progress_manual !== null,
-      projectCount: r.project_count,
     };
   });
 

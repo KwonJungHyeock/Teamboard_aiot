@@ -4,7 +4,7 @@
 // 진척 수치는 서버(lib/goals.ts) 계산 결과만 표시한다.
 import { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "@/lib/quick";
-import { countTasks, countedLabel, uncountedChildrenLabel } from "@/lib/progress";
+import { countTasks, basisLabel, progressDisplay, uncountedChildrenLabel } from "@/lib/progress";
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
 import GoalProgress from "./GoalProgress";
@@ -481,7 +481,7 @@ function MonthGoalRow({
           progress={goal.progress}
           colorKey={goal.colorKey}
           // 진척 근거를 옆에 붙인다 — 정의가 바뀌었으니 분모가 보여야 한다 (지시 1)
-          detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
+          detail={goal.progress === null ? undefined : basisLabel(goal.countedTasks)}
           closing={goal.closing}
           counted={goal.countedTasks}
           periodType={goal.periodType}
@@ -592,6 +592,9 @@ function YearCard({
   const [editing, setEditing] = useState(false);
   const canEdit = user.role === "lead" || goal.ownerActorId === user.id;
   const open = useContext(OpenGoalCtx);
+  // 표시 결정은 GoalProgress 와 **같은 함수**에서 나온다 (지시 30-5).
+  // 판정만 공유하면 라벨 조립이 또 갈라진다 — 실제로 그렇게 갈라졌다.
+  const d = progressDisplay(goal.progress, goal.countedTasks);
   return (
     <section className="ycard" aria-label={`연간 목표 ${goal.title}`}>
       <div className="ycard-h">
@@ -600,14 +603,20 @@ function YearCard({
         <span className="ycard-d num">{dday(goal.periodEnd)}</span>
       </div>
       <h3 className="ycard-t" onClick={open ? () => open(goal.id) : undefined}>{goal.title}</h3>
+      {/* 표본 가드 (지시 16) — 집계 대상이 1~2건이면 **막대를 그리지 않는다.**
+          이 카드는 GoalProgress 를 쓰지 않고 직접 그려서 가드가 빠져 있었다.
+          업무 1건짜리 연간 목표가 100% 초록 막대로 뜨는 것이 지시 16 이 막으려던 바로 그 장면이다.
+          030 §A3 로 프로젝트 경유가 빠지면서 실제로 그 상태에 닿는 목표가 생겼다. */}
       <div className="ycard-bar">
-        <div className={`bar${goal.progress === null ? " empty" : ""}`}>
-          {goal.progress !== null && <i className={goal.colorKey ?? "edu"} style={pfill(goal.progress)} />}
+        <div className={`bar${d.drawBar ? "" : " empty"}`}>
+          {d.drawBar && <i className={goal.colorKey ?? "edu"} style={pfill(goal.progress!)} />}
         </div>
       </div>
       <div className="ycard-m">
-        <span className="ycard-p num">{goal.progress === null ? "집계 없음" : `${goal.progress}%`}</span>
-        {goal.progress !== null && <em>{countedLabel(goal.countedTasks)}</em>}
+        <span className={`ycard-p num${d.hasValue ? (d.lowConfidence ? " low" : "") : " none"}`}>
+          {d.hasValue ? `${goal.progress}%` : "집계 없음"}
+        </span>
+        {d.basis && <em>{d.basis}</em>}
       </div>
       {canAdd && (
         // B-1 · A-신1-2 — 여기서 만들면 상위는 이 연간이다. 묻지 않는다.
@@ -650,7 +659,7 @@ function QuarterSection({
         <span className="gsp" />
         {/* 접힌 헤더에도 진척은 보인다 */}
         <GoalProgress progress={goal.progress} colorKey={goal.colorKey}
-          detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
+          detail={goal.progress === null ? undefined : basisLabel(goal.countedTasks)}
           closing={goal.closing} counted={goal.countedTasks} periodType={goal.periodType} />
         {canEdit && (
           <button className="lk mu gedit-b" onClick={() => setEditing((v) => !v)}>{editing ? "닫기" : "편집"}</button>
@@ -710,7 +719,7 @@ function BranchNode({
         <GoalTitle goal={goal} />
         <span className="gsp" />
         <GoalProgress progress={goal.progress} colorKey={goal.colorKey}
-          detail={goal.progress === null ? undefined : countedLabel(goal.countedTasks)}
+          detail={goal.progress === null ? undefined : basisLabel(goal.countedTasks)}
           closing={goal.closing}
           counted={goal.countedTasks}
           periodType={goal.periodType} />

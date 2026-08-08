@@ -10,6 +10,7 @@ import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
 import { reactionsFor } from "@/lib/reactions";
 import { decisionsForDiscussion } from "@/lib/decisions";
+import { NEW_TASK_GOAL_SOURCE } from "@/lib/goal-inherit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -237,14 +238,16 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         //   ② 없으면 만든 사람의 기본 영역
         //   ③ 그것도 없으면 첫 워크스페이스 영역 — area_id 는 NOT NULL 이다
         const [task] = await q<{ id: number }>(
-          `INSERT INTO task (project_id, area_id, title, description, status, assignee_id, due_date, origin, created_by)
+          // goal_source 를 명시한다 — 컬럼 기본값 'inherited' 는 역사적 값이고
+          // 상속이 사라진 뒤로 새로 만들면 안 된다 (MD-P-2026-030 §A4).
+          `INSERT INTO task (project_id, area_id, title, description, status, assignee_id, due_date, origin, created_by, goal_source)
            VALUES ($1,
                    COALESCE(
                      (SELECT area_id FROM project WHERE id = $1),
                      (SELECT area_id FROM actor_area WHERE actor_id = $6 ORDER BY sort_order, area_id LIMIT 1),
                      (SELECT id FROM area WHERE is_active = true AND kind = 'workspace' ORDER BY sort_order, id LIMIT 1)
                    ),
-                   $2,$3,'todo',$4,$5,'human',$6) RETURNING id`,
+                   $2,$3,'todo',$4,$5,'human',$6,$7) RETURNING id`,
           [
             signal.project_id,
             title,
@@ -254,6 +257,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
               ? payload.dueDate
               : null,
             session.id,
+            NEW_TASK_GOAL_SOURCE,
           ]
         );
         // createTask 성공 시에만 resolved 전환 (A-1)
