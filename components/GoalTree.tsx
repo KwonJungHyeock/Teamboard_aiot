@@ -175,18 +175,44 @@ interface ParentInfo {
  * 후보가 하나면 묻지 않는다 (§A3) — 고를 것이 없는 선택지는 질문이 아니라 장애물이다.
  */
 function AddGoalForm({
-  periodType,
+  periodType: periodTypeProp,
   year,
   scope = "team",
+  placedParent = null,
   onDone,
 }: {
-  periodType: "year" | "quarter" | "month";
+  /** "any" = 전역 "+ 새 목표" — 주기까지 고르게 한다 (A-신1-3). */
+  periodType: "year" | "quarter" | "month" | "any";
   year: number;
   scope?: "team" | "personal";
+  /**
+   * **만든 자리**의 상위 (A-신1-1 · A-신1-2).
+   * 분기 섹션의 "+ 월 목표" 면 그 분기, 연간 카드의 "+ 분기 목표" 면 그 연간.
+   * 있으면 상위를 묻지 않는다 — 누른 사람은 이미 어디에 만들지 알고 있다.
+   * null 이면 전역 "+ 새 목표" 다. 그때만 고르게 한다 (A-신1-3).
+   */
+  placedParent?: GoalNode | null;
   onDone: () => void;
 }) {
+  // 전역 진입점은 주기부터 고른다. 자리에서 만든 것은 주기가 이미 정해져 있다.
+  const [pt, setPt] = useState<"year" | "quarter" | "month">(
+    periodTypeProp === "any" ? "month" : periodTypeProp);
+  const periodType = periodTypeProp === "any" ? pt : periodTypeProp;
   const [title, setTitle] = useState("");
-  const [slot, setSlot] = useState(() => defaultSlot(periodType, year));
+  // A-신1-5 — 만든 자리가 기간 기본값을 제안한다. 분기 섹션이면 그 분기의 현재 월,
+  // 연간 카드면 현재 분기. 사용자가 바꿀 수 있고, 바꿔도 상위는 따라가지 않는다.
+  const [slot, setSlot] = useState(() => {
+    if (!placedParent) return defaultSlot(periodTypeProp === "any" ? "month" : periodTypeProp, year);
+    const pm = Number(placedParent.periodStart.slice(5, 7));
+    const now = new Date();
+    if (periodType === "month") {
+      const cur = now.getMonth() + 1;
+      // 이 분기 안에 현재 월이 있으면 그것, 아니면 분기 첫 달
+      return cur >= pm && cur <= pm + 2 && now.getFullYear() === year ? cur : pm;
+    }
+    if (periodType === "quarter") return defaultSlot("quarter", year);
+    return 1;
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -204,7 +230,12 @@ function AddGoalForm({
   // 기간이 정해지는 순간 상위를 미리 확인한다 — 저장한 뒤에 알려주면
   // 이미 만들어진 뒤라 "함께 만들까요?" 가 성립하지 않는다.
   useEffect(() => {
-    if (!open || periodType === "year") { setParent(null); return; }
+    if (periodTypeProp === "any") setSlot(defaultSlot(pt, year));
+  }, [pt, periodTypeProp, year]);
+
+  useEffect(() => {
+    // 만든 자리가 정했으면 물어볼 것이 없다 (A-신1-1 · A-신1-2).
+    if (!open || periodType === "year" || placedParent) { setParent(null); return; }
     let alive = true;
     fetch(`/api/goals/parent?periodType=${periodType}&periodStart=${periodStart}&scope=${scope}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -217,7 +248,7 @@ function AddGoalForm({
       })
       .catch(() => {});
     return () => { alive = false; };
-  }, [open, periodType, periodStart, scope]);
+  }, [open, periodType, periodStart, scope, placedParent]);
 
   async function submit() {
     if (!title.trim()) return;
@@ -228,6 +259,8 @@ function AddGoalForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         periodType, title, periodStart, scope,
+        // 만든 자리가 있으면 그게 이긴다 (A-신1).
+        placedParentId: placedParent?.id ?? undefined,
         // 후보가 여럿일 때만 의미가 있다. 하나면 서버가 알아서 고른다.
         preferredParentId: pick || undefined,
         createParent: alsoMake && parentTitle.trim() ? { title: parentTitle.trim() } : undefined,
@@ -246,18 +279,25 @@ function AddGoalForm({
     return (
       <div className="gadd gadd-shut">
         <button className="lk gadd-open" onClick={() => { setSlot(defaultSlot(periodType, year)); setOpen(true); }}>
-          + {PERIOD_LABEL[periodType]} 목표
+          {periodTypeProp === "any" ? "＋ 새 목표" : `+ ${PERIOD_LABEL[periodType]} 목표`}
         </button>
       </div>
     );
   }
 
-  const noParent = periodType !== "year" && parent && parent.candidates.length === 0 && parent.spec;
+  const noParent = !placedParent && periodType !== "year" && parent && parent.candidates.length === 0 && parent.spec;
   const manyParents = parent && parent.candidates.length > 1;
 
   return (
     <div className="gadd">
       <div className="gadd-row">
+        {periodTypeProp === "any" && (
+          <select value={pt} onChange={(e) => setPt(e.target.value as typeof pt)} aria-label="주기">
+            <option value="month">월 목표</option>
+            <option value="quarter">분기 목표</option>
+            <option value="year">연간 목표</option>
+          </select>
+        )}
         {periodType === "quarter" && (
           <select value={slot} onChange={(e) => setSlot(Number(e.target.value))} aria-label="분기">
             {[1, 2, 3, 4].map((q) => <option key={q} value={q}>Q{q}</option>)}
@@ -280,8 +320,13 @@ function AddGoalForm({
         <button className="lk mu" onClick={() => { setOpen(false); setTitle(""); setError(""); }}>취소</button>
       </div>
 
+      {/* 만든 자리가 정한 경우 — 묻지 않되 어디로 들어가는지는 보인다 (A-신1-1·2). */}
+      {placedParent && (
+        <p className="gadd-where">→ <b>{placedParent.title}</b> 아래로 들어갑니다</p>
+      )}
+
       {/* 어디로 들어가는지 항상 보인다. 고르게 하지는 않되 숨기지도 않는다. */}
-      {periodType !== "year" && parent?.spec && !noParent && !manyParents && (
+      {!placedParent && periodType !== "year" && parent?.spec && !noParent && !manyParents && (
         <p className="gadd-where">
           {parent.candidates.length === 1
             ? <>→ <b>{parent.candidates[0].title}</b> 아래로 들어갑니다</>
@@ -289,8 +334,8 @@ function AddGoalForm({
         </p>
       )}
 
-      {/* §A3 — 후보가 둘 이상일 때만 고르게 한다 */}
-      {manyParents && (
+      {/* §A3 · A-신1-3 — 전역 "+ 새 목표" 에서 후보가 둘 이상일 때만 고르게 한다 */}
+      {!placedParent && manyParents && (
         <p className="gadd-where">
           → 어느 {parent!.spec!.label} 아래인가요?{" "}
           <select value={pick} onChange={(e) => setPick(Number(e.target.value))} aria-label="상위 목표">
@@ -301,7 +346,7 @@ function AddGoalForm({
       )}
 
       {/* §A2 — 없으면 묻는다. 체크하지 않으면 상위 없이 만든다. */}
-      {noParent && (
+      {!placedParent && noParent && (
         <div className="gadd-mkparent">
           <label>
             <input type="checkbox" checked={alsoMake} onChange={(e) => setAlsoMake(e.target.checked)} />
@@ -563,12 +608,12 @@ export default function GoalTree({
                 />
               ))}
               {canAdd && (
-                <AddGoalForm periodType="month" year={year} scope={scope} onDone={onChanged} />
+                <AddGoalForm periodType="month" year={year} scope={scope} placedParent={quarter} onDone={onChanged} />
               )}
             </BranchNode>
           ))}
           {canAdd && (
-            <AddGoalForm periodType="quarter" year={year} scope={scope} onDone={onChanged} />
+            <AddGoalForm periodType="quarter" year={year} scope={scope} placedParent={yearGoal} onDone={onChanged} />
           )}
         </BranchNode>
       ))}
@@ -600,7 +645,9 @@ export default function GoalTree({
         </div>
       )}
 
-      {canAdd && <AddGoalForm periodType="year" year={year} scope={scope} onDone={onChanged} />}
+      {/* 전역 진입점 (A-신1-3) — 주기까지 고르고, 상위는 기간으로 좁힌 후보에서 고른다.
+          자리에서 만드는 것과 달리 여기는 "어디에 만들지"가 정해져 있지 않다. */}
+      {canAdd && <AddGoalForm periodType="any" year={year} scope={scope} onDone={onChanged} />}
     </div>
     </OpenGoalCtx.Provider>
   );

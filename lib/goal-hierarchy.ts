@@ -85,7 +85,9 @@ export async function resolveParentId(opts: {
 /**
  * 기간이 바뀐 뒤 상위를 다시 맞춘다 (§A4).
  *
- * `goal_parent_source = 'manual'` 이면 손대지 않는다 — 사람이 정한 것이다 (§A5).
+ * **`derived` 일 때만 따라간다** (A-신1-6).
+ * `placed` 는 만든 자리가 정한 것이고 `manual` 은 사람이 지정한 것이다 —
+ * 둘 다 기간보다 강한 근거이므로 기간이 바뀌었다고 옮기지 않는다.
  * 옮겨졌으면 **떠난 쪽과 새로 붙은 쪽 양쪽**을 재계산한다. 한쪽만 하면
  * 떠난 상위에 옛 숫자가 남는다 (지시 27 에서 같은 실수를 한 번 했다).
  */
@@ -103,7 +105,7 @@ export async function reparentByPeriod(goalId: number): Promise<{
   );
   const none = { moved: false, fromId: null, toId: null, fromTitle: null, toTitle: null };
   if (!g) return none;
-  if (g.goal_parent_source === "manual") return none;    // 사람이 정한 연결은 따라가지 않는다
+  if (g.goal_parent_source !== "derived") return none;   // placed · manual 은 따라가지 않는다
 
   const { parentId } = await resolveParentId({
     periodType: g.period_type, periodStart: g.period_start,

@@ -8,9 +8,9 @@
 DO $$
 DECLARE n INTEGER;
 BEGIN
-  SELECT count(*) INTO n FROM goal WHERE goal_parent_source = 'manual';
+  SELECT count(*) INTO n FROM goal WHERE goal_parent_source IN ('manual', 'placed');
   IF n > 0 THEN
-    RAISE EXCEPTION '수동 지정된 목표가 %건 있습니다. 롤백하면 그 지정이 사라지고 다음 저장에서 기간 기준으로 옮겨집니다. 먼저 정리하세요.', n;
+    RAISE EXCEPTION '사람이 정한(manual) 또는 만든 자리가 정한(placed) 목표가 %건 있습니다. 롤백하면 그 사실이 사라지고 다음 저장에서 기간 기준으로 옮겨집니다. 먼저 정리하세요.', n;
   END IF;
 END $$;
 

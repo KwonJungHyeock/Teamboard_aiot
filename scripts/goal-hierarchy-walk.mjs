@@ -59,18 +59,19 @@ try {
   await page.waitForTimeout(1400);
   await page.locator(".frn-x").first().click().catch(() => {});
 
-  // ══ A-1 · A-2 — 상위 선택 없음 + Q3 가 없을 때 묻는다 ═══════════════
-  await page.locator(".gadd-open", { hasText: "월 목표" }).first().click();
+  // ══ A-1 · A-2 — 전역 "＋ 새 목표" 에서: 상위 셀렉트 없음 + 없으면 묻는다 ═══
+  // 분기 섹션의 "+ 월 목표" 는 이제 만든 자리가 상위를 정하므로(A-신1-1) 묻지 않는다.
+  // 묻는 화면은 **전역 진입점**에서만 뜬다.
+  await page.locator(".gadd-open", { hasText: "＋ 새 목표" }).first().click();
   await page.waitForTimeout(400);
   // 2월 — 그 분기(Q1)가 없는 경우
   await page.locator(".gadd select[aria-label='월']").selectOption("2");
   await page.waitForTimeout(1000);
 
-  const selects = await page.locator(".gadd select").count();
   const labels = await page.locator(".gadd select").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
   await page.screenshot({ path: `${OUT}/A1-상위선택없음.png` });
-  chk("A1-상위선택없음", selects === 1 && labels[0] === "월",
-    `폼 안의 셀렉트 ${selects}개 [${labels.join(", ")}] (월 하나뿐 — 상위 셀렉트가 없어야 한다)`);
+  chk("A1-상위선택없음", !labels.includes("상위 목표"),
+    `전역 폼의 셀렉트 [${labels.join(", ")}] — 후보가 0이라 "상위 목표" 셀렉트가 없다`);
 
   const askText = await page.locator(".gadd-mkparent label").innerText().catch(() => "(없음)");
   await page.screenshot({ path: `${OUT}/A2-묻는화면.png` });
@@ -99,7 +100,7 @@ try {
   // 8월 — 그 분기(Q3)가 **둘**인 경우: 화면이 고르게 한다 (§A3)
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(1400);
-  await page.locator(".gadd-open", { hasText: "월 목표" }).first().click();
+  await page.locator(".gadd-open", { hasText: "＋ 새 목표" }).first().click();
   await page.waitForTimeout(400);
   await page.locator(".gadd select[aria-label='월']").selectOption("8");
   await page.waitForTimeout(1000);
@@ -107,17 +108,34 @@ try {
   const pickOpts = await page.locator(".gadd select[aria-label='상위 목표'] option").allTextContents().catch(() => []);
   await page.screenshot({ path: `${OUT}/A3-고르게함.png` });
   chk("A3-화면이고르게함", pickSel === 1,
-    `${UI_YEAR}년 8월 선택 → Q3 후보가 둘이라 상위 셀렉트 ${pickSel}개 등장 [${pickOpts.join(", ")}]`);
+    `전역 "＋ 새 목표" 에서 ${UI_YEAR}년 8월 선택 → Q3 후보가 둘이라 상위 셀렉트 ${pickSel}개 등장 [${pickOpts.join(", ")}]`);
+
+  // A-신1-1 — 분기 섹션의 "+ 월 목표" 에서는 **묻지 않는다**. 짝이 되는 부재 단언.
+  await page.locator(".gadd .lk", { hasText: "취소" }).first().click();
+  await page.locator(".gadd-open", { hasText: "+ 월 목표" }).first().click();
+  await page.waitForTimeout(900);
+  const inSection = await page.locator(".gadd select").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+  const whereTxt = await page.locator(".gadd-where").first().innerText().catch(() => "(없음)");
+  await page.screenshot({ path: `${OUT}/A신1-자리에서만들면안묻는다.png` });
+  chk("A신1-자리는안묻음", !inSection.includes("상위 목표") && /아래로 들어갑니다/.test(whereTxt),
+    `분기 섹션의 "+ 월 목표" — 셀렉트 [${inSection.join(", ")}] · 안내 "${whereTxt.replace(/\n+/g, " ")}" (같은 8월인데 여기선 묻지 않는다)`);
   await page.locator(".gadd .lk", { hasText: "취소" }).first().click();
 
-  // API 검사는 빈 해(2027)에서 — 실데이터를 건드리지 않는다
+  // API 검사는 빈 해(2027)에서 — 실데이터를 건드리지 않는다.
+  // 먼저 Q3 를 함께 만들고(§A2 경로), 그다음 **같은 8월 목표를 하나 더** 만든다.
+  // 두 번째 것은 후보가 정확히 하나라 자동 귀속되고 출처가 derived 다 (A-신1-4).
+  // §A4 는 derived 일 때만 따라가므로, 검사 대상은 이 두 번째 것이어야 한다.
+  await api("/api/goals", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ periodType: "month", title: `${MARK} 8월 목표(placed)`, periodStart: `${YEAR}-08-01`, scope: "team",
+                           createParent: { title: `${MARK} ${YEAR} Q3` } }) });
   const madeRes = (await api("/api/goals", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ periodType: "month", title: `${MARK} 8월 목표`, periodStart: `${YEAR}-08-01`, scope: "team",
-                           createParent: { title: `${MARK} ${YEAR} Q3` } }) })).body;
+    body: JSON.stringify({ periodType: "month", title: `${MARK} 8월 목표`, periodStart: `${YEAR}-08-01`, scope: "team" }) })).body;
   const made = (await sql(
     `SELECT g.id, g.period_start::text AS ps, g.parent_id, g.goal_parent_source,
             p.title AS ptitle, p.period_type AS ptype, p.period_start::text AS pps
        FROM goal g LEFT JOIN goal p ON p.id = g.parent_id WHERE g.id = $1`, [madeRes.goal.id]))[0];
+  chk("A신1-4-폴백", made.goal_parent_source === "derived" && made.ptype === "quarter",
+    `후보가 정확히 하나일 때만 기간 자동 귀속 — 상위 "${made.ptitle}" · 출처 ${made.goal_parent_source}`);
 
   // ══ A-3 — 연간이 1개면 묻지 않고, 2개면 고르게 한다 ══════════════════
   const y1 = (await api("/api/goals", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -179,6 +197,33 @@ try {
        FROM goal g LEFT JOIN goal p ON p.id = g.parent_id WHERE g.id = $1`, [made.id]))[0];
   chk("A5-되돌리면따라감", back.goal_parent_source === "derived" && back.parent_id === q4.goal.id,
     `「고급」에서 자동으로 되돌림 → 출처 ${back.goal_parent_source} · 상위 "${back.ptitle}" (11월이 속한 Q4 로 이동)`);
+
+  // ══ A-신1 — 위치가 상위를 결정한다 ═══════════════════════════════
+  // 기간만으로는 못 정하는 상황(같은 분기에 목표 둘)을 일부러 만들고,
+  // 그 상황에서 "만든 자리"가 이기는지 본다. 여기가 이번 정정의 핵심이다.
+  const qA = (await api("/api/goals", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ periodType: "quarter", title: `${MARK} ${YEAR} Q2 큰과제 A`, periodStart: `${YEAR}-04-01`, scope: "team" }) })).body;
+  const qB = (await api("/api/goals", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ periodType: "quarter", title: `${MARK} ${YEAR} Q2 큰과제 B`, periodStart: `${YEAR}-04-01`, scope: "team" }) })).body;
+  const cand2 = (await api(`/api/goals/parent?periodType=month&periodStart=${YEAR}-05-01&scope=team`)).body;
+
+  const placed = (await api("/api/goals", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ periodType: "month", title: `${MARK} 5월 세부과제`, periodStart: `${YEAR}-05-01`, scope: "team",
+                           placedParentId: qB.goal.id }) })).body;
+  const placedRow = (await sql(
+    `SELECT g.parent_id, g.goal_parent_source, p.title AS ptitle
+       FROM goal g LEFT JOIN goal p ON p.id = g.parent_id WHERE g.id = $1`, [placed.goal.id]))[0];
+  chk("A신1-위치가이김", placedRow.parent_id === qB.goal.id && placedRow.goal_parent_source === "placed",
+    `같은 분기에 목표가 ${cand2.candidates.length}개라 기간으론 못 정하는 상황 — "큰과제 B" 섹션에서 만드니 상위 "${placedRow.ptitle}" · 출처 ${placedRow.goal_parent_source} (묻지 않았다)`);
+
+  // A-신1-5 · A-신1-6 — placed 는 기간을 바꿔도 따라가지 않는다
+  await api(`/api/goals/${placed.goal.id}`, { method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ periodStart: `${YEAR}-08-01` }) });
+  const stillB = (await sql(
+    `SELECT g.period_start::text AS ps, g.parent_id, g.goal_parent_source, p.title AS ptitle
+       FROM goal g LEFT JOIN goal p ON p.id = g.parent_id WHERE g.id = $1`, [placed.goal.id]))[0];
+  chk("A신1-placed안따라감", stillB.parent_id === qB.goal.id && stillB.ps === `${YEAR}-08-01`,
+    `기간을 5월 → ${stillB.ps} 로 바꿔도 상위는 "${stillB.ptitle}" 그대로 (8월이면 Q3 지만 placed 라 따라가지 않는다) · 출처 ${stillB.goal_parent_source}`);
 
   console.log(`\nJS 오류 ${errs.length}건`);
   const pass = rows.filter((r) => r.pass).length;
