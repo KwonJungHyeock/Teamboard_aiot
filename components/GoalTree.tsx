@@ -2,7 +2,8 @@
 
 // 목표 트리 (Phase 4) — 연간 > 분기 > 월 3단, <details> 접기.
 // 진척 수치는 서버(lib/goals.ts) 계산 결과만 표시한다.
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { toast } from "@/lib/quick";
 import { countTasks, countedLabel, uncountedChildrenLabel } from "@/lib/progress";
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
@@ -148,145 +149,176 @@ function NodeEditPanel({
   );
 }
 
-/**
- * 셀렉트 기본값 (지시 17-3) — 하드코딩된 첫 칸이 아니라 **오늘이 속한 칸**.
- * 다른 해를 보고 있으면 현재 월이 의미 없으므로 첫 칸으로 둔다.
- */
-function defaultSlot(
-  periodType: "year" | "quarter" | "month",
-  parent: GoalNode | null,
-  year: number
-): number {
+/** 오늘이 속한 칸. 다른 해를 보고 있으면 첫 칸으로 둔다 (지시 17-3). */
+function defaultSlot(periodType: "year" | "quarter" | "month", year: number): number {
   const now = new Date();
   if (now.getFullYear() !== year) return 1;
   const month = now.getMonth() + 1;
   if (periodType === "quarter") return Math.floor((month - 1) / 3) + 1;
-  if (periodType === "month") {
-    const quarterStart = parent ? Number(parent.periodStart.slice(5, 7)) : 1;
-    const idx = month - quarterStart + 1;       // 이 분기 안에서 몇 번째 달인가
-    return idx >= 1 && idx <= 3 ? idx : 1;      // 현재 월이 이 분기 밖이면 첫 달
-  }
+  if (periodType === "month") return month;
   return 1;
 }
 
+interface ParentInfo {
+  spec: { periodType: string; periodStart: string; label: string } | null;
+  candidates: { id: number; title: string }[];
+}
+
+/**
+ * 목표 만들기 (MD-P-2026-029 §A1~§A3).
+ *
+ * **상위 선택이 없다.** 사용자는 주기와 기간만 고른다.
+ * 8월 목표는 무조건 Q3 아래로 들어간다 — 기간이 이미 계층을 정하는데
+ * 셀렉트로 물어보고 있었고, 그래서 #13·#15 가 월과 분기에 중복으로 생겼다.
+ *
+ * 상위가 없을 때 **조용히 만들지 않는다** (§A2). 물어보고, 체크했을 때만 함께 만든다.
+ * 후보가 하나면 묻지 않는다 (§A3) — 고를 것이 없는 선택지는 질문이 아니라 장애물이다.
+ */
 function AddGoalForm({
   periodType,
-  parent,
   year,
   scope = "team",
   onDone,
 }: {
   periodType: "year" | "quarter" | "month";
-  parent: GoalNode | null;
   year: number;
   scope?: "team" | "personal";
   onDone: () => void;
 }) {
   const [title, setTitle] = useState("");
-  // 월 셀렉트 기본값은 **현재 월**이다 (지시 17-3). 상위 분기의 첫 달로 고정하면
-  // 8월에 목표를 만들려는 사람이 매번 7월을 고쳐 잡아야 한다.
-  const [slot, setSlot] = useState(() => defaultSlot(periodType, parent, year));
+  const [slot, setSlot] = useState(() => defaultSlot(periodType, year));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  // 평소에는 "+ 목표" 버튼만 둔다. 폼이 상시 펼쳐져 있으면 트리보다 눈에 띈다 (지시 17-3).
   const [open, setOpen] = useState(false);
+  const [parent, setParent] = useState<ParentInfo | null>(null);
+  const [pick, setPick] = useState<number | 0>(0);        // 후보 여럿일 때 고른 것
+  const [alsoMake, setAlsoMake] = useState(false);        // "함께 만들까요?" 체크
+  const [parentTitle, setParentTitle] = useState("");
 
-  function periods(): { periodStart: string; periodEnd: string } {
-    const pad = (n: number) => String(n).padStart(2, "0");
-    if (periodType === "year") {
-      return { periodStart: `${year}-01-01`, periodEnd: `${year}-12-31` };
-    }
-    if (periodType === "quarter") {
-      const startMonth = (slot - 1) * 3 + 1;
-      const endMonth = startMonth + 2;
-      const lastDay = new Date(Date.UTC(year, endMonth, 0)).getUTCDate();
-      return {
-        periodStart: `${year}-${pad(startMonth)}-01`,
-        periodEnd: `${year}-${pad(endMonth)}-${lastDay}`,
-      };
-    }
-    // month: 상위 분기의 1~3번째 달
-    const quarterStart = parent ? Number(parent.periodStart.slice(5, 7)) : 1;
-    const month = quarterStart + (slot - 1);
-    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-    return {
-      periodStart: `${year}-${pad(month)}-01`,
-      periodEnd: `${year}-${pad(month)}-${lastDay}`,
-    };
-  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const periodStart =
+    periodType === "year" ? `${year}-01-01`
+    : periodType === "quarter" ? `${year}-${pad((slot - 1) * 3 + 1)}-01`
+    : `${year}-${pad(slot)}-01`;
+
+  // 기간이 정해지는 순간 상위를 미리 확인한다 — 저장한 뒤에 알려주면
+  // 이미 만들어진 뒤라 "함께 만들까요?" 가 성립하지 않는다.
+  useEffect(() => {
+    if (!open || periodType === "year") { setParent(null); return; }
+    let alive = true;
+    fetch(`/api/goals/parent?periodType=${periodType}&periodStart=${periodStart}&scope=${scope}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!alive || !d) return;
+        setParent(d);
+        setPick(d.candidates.length === 1 ? d.candidates[0].id : 0);
+        setParentTitle(d.candidates.length === 0 && d.spec ? `${d.spec.label} 목표` : "");
+        setAlsoMake(false);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [open, periodType, periodStart, scope]);
 
   async function submit() {
     if (!title.trim()) return;
     setBusy(true);
     setError("");
-    const { periodStart, periodEnd } = periods();
     const res = await fetch("/api/goals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        periodType,
-        parentId: parent?.id ?? null,
-        title,
-        periodStart,
-        periodEnd,
-        scope,
+        periodType, title, periodStart, scope,
+        // 후보가 여럿일 때만 의미가 있다. 하나면 서버가 알아서 고른다.
+        preferredParentId: pick || undefined,
+        createParent: alsoMake && parentTitle.trim() ? { title: parentTitle.trim() } : undefined,
       }),
     });
+    const body = await res.json().catch(() => null);
     setBusy(false);
-    if (!res.ok) {
-      setError((await res.json()).error ?? "생성 실패");
-      return;
-    }
-    setTitle("");
-    setOpen(false);   // 추가하면 다시 접는다 — 평소 상태는 버튼 하나다 (지시 17-3)
+    if (!res.ok) { setError(body?.error ?? "생성 실패"); return; }
+    if (body?.createdParent) toast(`상위 목표 "${body.createdParent.title}" 도 함께 만들었어요`);
+    else if (body?.parentId == null && periodType !== "year") toast("상위 없이 만들었어요");
+    setTitle(""); setOpen(false);
     onDone();
   }
 
-  const quarterStart = parent ? Number(parent.periodStart.slice(5, 7)) : 1;
-
-  // 접힌 상태 — 텍스트 버튼 하나. 이게 기본이다.
   if (!open) {
     return (
       <div className="gadd gadd-shut">
-        <button className="lk gadd-open" onClick={() => { setSlot(defaultSlot(periodType, parent, year)); setOpen(true); }}>
+        <button className="lk gadd-open" onClick={() => { setSlot(defaultSlot(periodType, year)); setOpen(true); }}>
           + {PERIOD_LABEL[periodType]} 목표
         </button>
       </div>
     );
   }
 
+  const noParent = periodType !== "year" && parent && parent.candidates.length === 0 && parent.spec;
+  const manyParents = parent && parent.candidates.length > 1;
+
   return (
     <div className="gadd">
-      {periodType === "quarter" && (
-        <select value={slot} onChange={(e) => setSlot(Number(e.target.value))}>
-          {[1, 2, 3, 4].map((q) => (
-            <option key={q} value={q}>
-              Q{q}
-            </option>
-          ))}
-        </select>
+      <div className="gadd-row">
+        {periodType === "quarter" && (
+          <select value={slot} onChange={(e) => setSlot(Number(e.target.value))} aria-label="분기">
+            {[1, 2, 3, 4].map((q) => <option key={q} value={q}>Q{q}</option>)}
+          </select>
+        )}
+        {periodType === "month" && (
+          // 상위 분기에 매이지 않는다 — 12개월 전부 고를 수 있고, 고른 달이 분기를 정한다.
+          <select value={slot} onChange={(e) => setSlot(Number(e.target.value))} aria-label="월">
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{m}월</option>)}
+          </select>
+        )}
+        <input
+          placeholder={`${PERIOD_LABEL[periodType]} 목표 제목`}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && !noParent && submit()}
+          autoFocus
+        />
+        <button className="lk" onClick={submit} disabled={busy || !title.trim()}>추가</button>
+        <button className="lk mu" onClick={() => { setOpen(false); setTitle(""); setError(""); }}>취소</button>
+      </div>
+
+      {/* 어디로 들어가는지 항상 보인다. 고르게 하지는 않되 숨기지도 않는다. */}
+      {periodType !== "year" && parent?.spec && !noParent && !manyParents && (
+        <p className="gadd-where">
+          {parent.candidates.length === 1
+            ? <>→ <b>{parent.candidates[0].title}</b> 아래로 들어갑니다</>
+            : <>→ 상위 없음</>}
+        </p>
       )}
-      {periodType === "month" && (
-        <select value={slot} onChange={(e) => setSlot(Number(e.target.value))}>
-          {[0, 1, 2].map((i) => (
-            <option key={i} value={i + 1}>
-              {quarterStart + i}월
-            </option>
-          ))}
-        </select>
+
+      {/* §A3 — 후보가 둘 이상일 때만 고르게 한다 */}
+      {manyParents && (
+        <p className="gadd-where">
+          → 어느 {parent!.spec!.label} 아래인가요?{" "}
+          <select value={pick} onChange={(e) => setPick(Number(e.target.value))} aria-label="상위 목표">
+            <option value={0}>상위 없음</option>
+            {parent!.candidates.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+          </select>
+        </p>
       )}
-      <input
-        placeholder={`${PERIOD_LABEL[periodType]} 목표 제목`}
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-      />
-      <button className="lk" onClick={submit} disabled={busy || !title.trim()}>
-        추가
-      </button>
-      <button className="lk mu" onClick={() => { setOpen(false); setTitle(""); setError(""); }}>
-        취소
-      </button>
+
+      {/* §A2 — 없으면 묻는다. 체크하지 않으면 상위 없이 만든다. */}
+      {noParent && (
+        <div className="gadd-mkparent">
+          <label>
+            <input type="checkbox" checked={alsoMake} onChange={(e) => setAlsoMake(e.target.checked)} />
+            {parent!.spec!.label} 목표가 없습니다. 함께 만들까요?
+          </label>
+          {alsoMake && (
+            <input
+              className="gadd-ptitle"
+              value={parentTitle}
+              onChange={(e) => setParentTitle(e.target.value)}
+              placeholder={`${parent!.spec!.label} 목표 제목`}
+              onKeyDown={(e) => e.key === "Enter" && submit()}
+            />
+          )}
+        </div>
+      )}
+
       {error && <span className="gerr">{error}</span>}
     </div>
   );
@@ -531,12 +563,12 @@ export default function GoalTree({
                 />
               ))}
               {canAdd && (
-                <AddGoalForm periodType="month" parent={quarter} year={year} scope={scope} onDone={onChanged} />
+                <AddGoalForm periodType="month" year={year} scope={scope} onDone={onChanged} />
               )}
             </BranchNode>
           ))}
           {canAdd && (
-            <AddGoalForm periodType="quarter" parent={yearGoal} year={year} scope={scope} onDone={onChanged} />
+            <AddGoalForm periodType="quarter" year={year} scope={scope} onDone={onChanged} />
           )}
         </BranchNode>
       ))}
@@ -568,7 +600,7 @@ export default function GoalTree({
         </div>
       )}
 
-      {canAdd && <AddGoalForm periodType="year" parent={null} year={year} scope={scope} onDone={onChanged} />}
+      {canAdd && <AddGoalForm periodType="year" year={year} scope={scope} onDone={onChanged} />}
     </div>
     </OpenGoalCtx.Provider>
   );
