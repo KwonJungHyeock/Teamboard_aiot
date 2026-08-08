@@ -132,8 +132,13 @@
     "route": "/goals",
     "status": 200,
     "shot": "docs/shots/MD-P-2026-030/sweep/goals.png",
-    "scrollHeight": 1150,
+    "scrollHeight": 1250,
     "biggest": [
+      {
+        "el": "aside.lmn",
+        "w": 1108,
+        "h": 88
+      },
       {
         "el": "button.ulbanner",
         "w": 1108,
@@ -143,14 +148,9 @@
         "el": "div.gtree",
         "w": 1108,
         "h": 811
-      },
-      {
-        "el": "div.ycards",
-        "w": 1108,
-        "h": 193
       }
     ],
-    "btnCount": 46,
+    "btnCount": 47,
     "misaligned": [],
     "coralFill": [],
     "boxy": [],
@@ -181,7 +181,7 @@
       {
         "bg": "rgb(251, 252, 252)",
         "token": "--surface-2",
-        "n": 5,
+        "n": 6,
         "sample": "div.pg-filters"
       }
     ],

@@ -4,7 +4,7 @@
 // 진척 수치는 서버(lib/goals.ts) 계산 결과만 표시한다.
 import { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "@/lib/quick";
-import { countTasks, basisLabel, uncountedChildrenLabel } from "@/lib/progress";
+import { countTasks, basisLabel, canShowBar, uncountedChildrenLabel } from "@/lib/progress";
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
 import GoalProgress from "./GoalProgress";
@@ -592,6 +592,8 @@ function YearCard({
   const [editing, setEditing] = useState(false);
   const canEdit = user.role === "lead" || goal.ownerActorId === user.id;
   const open = useContext(OpenGoalCtx);
+  // 막대를 그려도 되는가 — GoalProgress 와 **같은 판정 함수**를 쓴다 (지시 16).
+  const drawBar = goal.progress !== null && canShowBar(goal.countedTasks);
   return (
     <section className="ycard" aria-label={`연간 목표 ${goal.title}`}>
       <div className="ycard-h">
@@ -600,13 +602,19 @@ function YearCard({
         <span className="ycard-d num">{dday(goal.periodEnd)}</span>
       </div>
       <h3 className="ycard-t" onClick={open ? () => open(goal.id) : undefined}>{goal.title}</h3>
+      {/* 표본 가드 (지시 16) — 집계 대상이 1~2건이면 **막대를 그리지 않는다.**
+          이 카드는 GoalProgress 를 쓰지 않고 직접 그려서 가드가 빠져 있었다.
+          업무 1건짜리 연간 목표가 100% 초록 막대로 뜨는 것이 지시 16 이 막으려던 바로 그 장면이다.
+          030 §A3 로 프로젝트 경유가 빠지면서 실제로 그 상태에 닿는 목표가 생겼다. */}
       <div className="ycard-bar">
-        <div className={`bar${goal.progress === null ? " empty" : ""}`}>
-          {goal.progress !== null && <i className={goal.colorKey ?? "edu"} style={pfill(goal.progress)} />}
+        <div className={`bar${drawBar ? "" : " empty"}`}>
+          {drawBar && <i className={goal.colorKey ?? "edu"} style={pfill(goal.progress!)} />}
         </div>
       </div>
       <div className="ycard-m">
-        <span className="ycard-p num">{goal.progress === null ? "집계 없음" : `${goal.progress}%`}</span>
+        <span className={`ycard-p num${drawBar ? "" : " none"}`}>
+          {goal.progress === null ? "집계 없음" : `${goal.progress}%`}
+        </span>
         {goal.progress !== null && <em>{basisLabel(goal.countedTasks)}</em>}
       </div>
       {canAdd && (

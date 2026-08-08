@@ -1550,3 +1550,26 @@ a.pcard:hover, .pcard.clickable:hover { box-shadow: var(--e2); }
    누를 것이 아니라 **어디로 가야 하는지**를 말한다 — 링크가 아니니 링크처럼 그리지 않는다. */
 .gdp-nodata-h { display: block; margin-top: 3px; color: var(--muted); }
 .gdp-nodata-h b { color: var(--ink-soft); font-weight: 700; }
+
+/* ── MD-P-2026-030 §C3 — 연결 모델 변경 1회 안내 ──────────────────────
+   .ulbanner 와 같은 규격을 쓴다. 새 시각 언어를 만들지 않는다.
+   다른 점은 둘뿐이다: 여러 줄이라 align-items 가 flex-start 이고, 닫기 버튼이 있다.
+   코랄 금지 — 사고가 아니라 안내다. 앰버도 쓰지 않는다: 경고가 아니다. */
+.lmn {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%;
+  background: var(--surface-2);
+  border-left: 1px solid var(--line); border-radius: 0 4px 4px 0;
+  padding: 11px 13px; margin-bottom: 12px;
+}
+.lmn-b { flex: 1; min-width: 0; }
+.lmn-t { margin: 0; font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.lmn-d { margin: 3px 0 0; font-size: 12.5px; color: var(--ink2); }
+.lmn-x {
+  flex: 0 0 auto; width: 24px; height: 24px; display: grid; place-items: center;
+  border: 0; border-radius: 4px; background: transparent; cursor: pointer;
+  color: var(--muted); font-size: 11.5px; font-family: inherit;
+  /* color 는 §H2 허용 속성이 아니다 — 배경만 넘긴다. 정적 검사가 잡아 줬다. */
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+.lmn-x:hover { background: var(--surface); color: var(--ink); }
+.lmn-x:focus-visible { outline: 2px solid var(--edu); outline-offset: 2px; }

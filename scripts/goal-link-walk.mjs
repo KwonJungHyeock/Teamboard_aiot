@@ -8,6 +8,9 @@
 //   §A3 프로젝트 경유가 진척에서 빠졌다 — **직접 붙지 않은 업무를 만들어 값을 움직여 본다**
 //   §A4 새 업무의 goal_source 가 inherited 가 아니다 · 상속 요청은 거부된다
 //   §A5 테이블·컬럼은 살아 있다
+//   §C2 연결 **데이터**도 살아 있다 — 코드가 도는 동안 한 건도 줄지 않는다
+//   §C3 1회 안내가 뜨고, 닫으면 다시 뜨지 않는다
+//   표본 가드 — 업무 1건짜리 연간 목표가 100% 막대로 뜨지 않는다 (지시 16)
 //   §B  배너 숫자 = 일괄 연결 화면 행 수 = 서버 판정, 셋이 같은 수다
 //   서버 경로도 함께 닫혔는지 — 화면에서 버튼만 지우면 경로는 남는다
 //
@@ -41,7 +44,7 @@ const chk = (id, c, n) => (c ? ok(id, n) : bad(id, n));
 const MARK = "MD030실측";
 
 let browser;
-const made = { taskIds: [], projectId: null, goalId: null, projectGoalWas: undefined };
+const made = { taskIds: [], projectId: null, goalId: null, extraGoalIds: [] };
 try {
   browser = await chromium.launch({
     executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
@@ -52,6 +55,16 @@ try {
   await ctx.addCookies([cookie]);
   const page = await ctx.newPage();
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
+
+  // §C2 — "연결 데이터를 삭제하지 마세요". 시작 시점의 실물 개수를 떠 둔다.
+  // 이 검사가 만든 행은 뒤에서 빼고 비교한다.
+  const census = async () => ({
+    projGoal: (await one(`SELECT count(*)::int AS n FROM project WHERE goal_id IS NOT NULL`)).n,
+    goalTask: (await one(`SELECT count(*)::int AS n FROM goal_task`)).n,
+    inherited: (await one(`SELECT count(*)::int AS n FROM task WHERE goal_source = 'inherited'`)).n,
+    none: (await one(`SELECT count(*)::int AS n FROM task WHERE goal_source = 'none'`)).n,
+  });
+  const before = await census();
 
   // ── 준비: 이번 검사가 쓸 목표·프로젝트·업무를 직접 만든다 ─────────────
   //
@@ -245,6 +258,102 @@ try {
   chk("B1-미연결은집계밖", ids.length > 0 && leaked.length === 0,
     `배너가 센 ${ids.length}건 중 어떤 목표 서브트리에라도 잡히는 것 ${leaked.length}건`);
 
+  // ── §C3 1회 안내 ────────────────────────────────────────────────
+  // 이 브라우저 컨텍스트는 매번 새로 뜨므로 localStorage 가 비어 있다 = 첫 방문 상태.
+  await page.goto(`${BASE}/goals`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(1200);
+  const noticeText = (await page.locator(".lmn").innerText().catch(() => "")).replace(/\n/g, " ");
+  const noticeCoral = await page.locator(".lmn").evaluate((el) => {
+    const bg = getComputedStyle(el).backgroundColor + getComputedStyle(el).borderLeftColor;
+    return bg;
+  }).catch(() => "(없음)");
+  await page.screenshot({ path: `${OUT}/C3-안내.png` });
+  chk("C3-안내가뜬다",
+    noticeText.includes("프로젝트를 목표에 연결하는 방식이 없어졌습니다")
+      && noticeText.includes("21건") && noticeText.includes("1건만 남습니다")
+      && noticeText.includes("미연결 업무에서 한 번에"),
+    `"${noticeText}"`);
+
+  await page.locator(".lmn-x").click();
+  await page.waitForTimeout(400);
+  const goneNow = await page.locator(".lmn").count();
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(1400);
+  const goneAfter = await page.locator(".lmn").count();
+  // 짝이 되는 존재 단언 — 저장소를 비우면 **다시 떠야** 한다. 안 그러면 위 0건은
+  // "안내가 애초에 안 그려졌다"와 구별되지 않는다 (지시 28-2).
+  await page.evaluate(() => localStorage.removeItem("tb:notice:link-model-030"));
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(1400);
+  const backAgain = await page.locator(".lmn").count();
+  chk("C3-닫으면안뜬다", goneNow === 0 && goneAfter === 0 && backAgain === 1,
+    `닫은 직후 ${goneNow}개 · 새로고침 후 ${goneAfter}개 · 저장소를 비우면 ${backAgain}개(다시 떠야 한다)`);
+
+  // ── 표본 가드 — 업무 1건짜리 연간 목표 (지시 16) ────────────────────
+  // 030 §A3 로 프로젝트 경유가 빠지면서 실제로 이 상태에 닿는 연간 목표가 생긴다.
+  // 프로덕션 #8 이 업무 21건 → 1건이 된다.
+  const yg = await one(
+    `INSERT INTO goal (period_type, period_start, period_end, title, scope, goal_parent_source)
+     VALUES ('year','2029-01-01','2029-12-31',$1,'team','manual') RETURNING id`, [`${MARK} 연간`]);
+  const qg = await one(
+    `INSERT INTO goal (parent_id, period_type, period_start, period_end, title, scope, goal_parent_source)
+     VALUES ($1,'quarter','2029-01-01','2029-03-31',$2,'team','manual') RETURNING id`, [yg.id, `${MARK} Q1`]);
+  const mg = await one(
+    `INSERT INTO goal (parent_id, period_type, period_start, period_end, title, scope, goal_parent_source)
+     VALUES ($1,'month','2029-01-01','2029-01-31',$2,'team','manual') RETURNING id`, [qg.id, `${MARK} 1월`]);
+  made.extraGoalIds = [yg.id, qg.id, mg.id];
+  const only = await one(
+    `INSERT INTO task (area_id, work_type, title, status, assignee_id, priority, origin, created_by, visibility, progress, goal_source)
+     VALUES ($1,'team',$2,'done',1,'mid','human',1,'team',100,'manual') RETURNING id`,
+    [area.id, `${MARK} 유일한 업무`]);
+  made.taskIds.push(only.id);
+  await page.request.put(`${BASE}/api/goals/${mg.id}`, { data: { taskIds: [only.id] } });
+
+  await page.goto(`${BASE}/goals`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(1000);
+  await page.getByRole("button", { name: "전체", exact: true }).first().click();   // 2029 는 연도 칩에 없다
+  await page.waitForTimeout(1800);
+  const ycard = page.locator(".ycard", { hasText: MARK }).first();
+  const ytext = (await ycard.innerText()).replace(/\n/g, " · ");
+  const yfill = await ycard.locator(".ycard-bar .bar i").count();
+  const yempty = await ycard.locator(".ycard-bar .bar.empty").count();
+  await ycard.screenshot({ path: `${OUT}/표본가드-연간1건.png` });
+  chk("표본가드-막대없음", yfill === 0 && yempty === 1 && ytext.includes("업무 1건 — 표본 부족"),
+    `연간 카드 "${ytext}" · 채운 막대 ${yfill}개(0이어야 한다) · 빈 막대 ${yempty}개`);
+
+  // 짝이 되는 존재 단언 — 3건이면 막대가 **그려져야** 한다. 안 그러면 위 0건은
+  // "이 카드는 막대를 아예 안 그린다"와 구별되지 않는다.
+  for (const t of ["둘", "셋"]) {
+    const r = await one(
+      `INSERT INTO task (area_id, work_type, title, status, assignee_id, priority, origin, created_by, visibility, progress, goal_source)
+       VALUES ($1,'team',$2,'done',1,'mid','human',1,'team',100,'manual') RETURNING id`,
+      [area.id, `${MARK} 업무 ${t}`]);
+    made.taskIds.push(r.id);
+  }
+  await page.request.put(`${BASE}/api/goals/${mg.id}`,
+    { data: { taskIds: made.taskIds.slice(-3) } });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(1000);
+  await page.getByRole("button", { name: "전체", exact: true }).first().click();
+  await page.waitForTimeout(1800);
+  const ycard3 = page.locator(".ycard", { hasText: MARK }).first();
+  const ytext3 = (await ycard3.innerText()).replace(/\n/g, " · ");
+  const yfill3 = await ycard3.locator(".ycard-bar .bar i").count();
+  chk("표본가드-3건이면그린다", yfill3 === 1 && ytext3.includes("업무 3건 기준"),
+    `업무 3건으로 늘리니 "${ytext3}" · 채운 막대 ${yfill3}개(1이어야 한다)`);
+
+  // ── §C2 연결 데이터는 한 건도 안 지웠다 ─────────────────────────────
+  // 이 검사가 만든 것만 빼고 비교한다. 실측 프로젝트 1건이 목표를 가리키고,
+  // 방금 월 목표에 업무 3건을 붙였다.
+  const now = await census();
+  chk("C2-연결데이터보존",
+    now.projGoal === before.projGoal + 1 && now.goalTask === before.goalTask + 3
+      && now.inherited === before.inherited && now.none === before.none,
+    `project.goal_id ${before.projGoal}→${now.projGoal}(실측 +1) · ` +
+    `goal_task ${before.goalTask}→${now.goalTask}(실측 +3) · ` +
+    `goal_source inherited ${before.inherited}→${now.inherited}(그대로) · ` +
+    `none ${before.none}→${now.none}(그대로)`);
+
   console.log(`\nJS 오류 ${errs.length}건${errs.length ? " — " + errs.join(" / ") : ""}`);
   const pass = rows.filter((r) => r.pass).length;
   console.log(`합계 ${rows.length} · 통과 ${pass} · 실패 ${rows.length - pass}`);
@@ -259,12 +368,14 @@ try {
   await sql(`DELETE FROM activity_log WHERE task_id = ANY($1::int[])`, [made.taskIds]);
   await sql(`DELETE FROM task WHERE id = ANY($1::int[])`, [made.taskIds]);
   if (made.projectId) await sql(`DELETE FROM project WHERE id = $1`, [made.projectId]);
-  if (made.goalId) {
-    await sql(`DELETE FROM goal_snapshot WHERE goal_id = $1`, [made.goalId]);
-    await sql(`DELETE FROM goal WHERE id = $1`, [made.goalId]);
+  const allGoals = [made.goalId, ...made.extraGoalIds].filter(Boolean);
+  if (allGoals.length) {
+    await sql(`DELETE FROM goal_snapshot WHERE goal_id = ANY($1::int[])`, [allGoals]);
+    await sql(`UPDATE goal SET parent_id = NULL WHERE id = ANY($1::int[])`, [allGoals]);   // 자식 먼저 끊는다
+    await sql(`DELETE FROM goal WHERE id = ANY($1::int[])`, [allGoals]);
   }
   await sql(`DELETE FROM activity_log WHERE message LIKE $1`, [`%${MARK}%`]);
-  console.log(`정리 — 목표 1 · 프로젝트 1 · 업무 ${made.taskIds.length}건 삭제`);
+  console.log(`정리 — 목표 ${allGoals.length} · 프로젝트 1 · 업무 ${made.taskIds.length}건 삭제`);
   await browser?.close();
   await pool.end();
 }
