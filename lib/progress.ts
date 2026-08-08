@@ -304,6 +304,42 @@ export function basisLabel(counted: number): string {
   return countedLabel(counted);
 }
 
+/**
+ * 진척을 **어떻게 보여줄지** 한 곳에서 정한다 (MD-P-2026-030 지시 30-5).
+ *
+ * 이 함수가 없어서 갈라졌던 일. 연간 카드가 막대를 직접 그리느라 canShowBar() 를 안 불렀고,
+ * 집계 대상 1건짜리 연간 목표가 **100% 초록 막대**로 떴다. 지시 16 이 막으려던 장면이다.
+ * 판정만 공유해도 라벨 조립이 또 갈라지므로, **표시 결정 전체**를 여기서 낸다.
+ *
+ * 표본 부족의 뜻 (지시 30 [확정]):
+ *   "값이 없다"가 아니라 **"값의 신뢰도가 낮다"** 는 뜻이다.
+ *   값은 보이고 막대는 그리지 않는다 — 과잉 확신을 만드는 것은 숫자가 아니라 막대다.
+ *   숫자는 읽어야 보이지만 막대는 훑어도 보인다.
+ */
+export interface ProgressDisplay {
+  /** 채운 막대를 그리는가. 표본 부족이면 빈 트랙만 남는다 (30-3). */
+  drawBar: boolean;
+  /** 보여줄 값이 있는가. 없으면 "집계 없음". */
+  hasValue: boolean;
+  /** 값 옆에 붙는 근거. "업무 14건 기준" / "업무 1건 — 표본 부족" */
+  basis: string | null;
+  /** 표본 부족 — 숫자를 흐리게 낮춘다 (30-2). */
+  lowConfidence: boolean;
+}
+
+export function progressDisplay(progress: number | null, counted?: number): ProgressDisplay {
+  const low = counted !== undefined && isUnderSampled(counted);
+  if (progress === null) {
+    return { drawBar: false, hasValue: false, basis: null, lowConfidence: false };
+  }
+  return {
+    drawBar: counted === undefined || canShowBar(counted),
+    hasValue: true,
+    basis: counted === undefined ? null : basisLabel(counted),
+    lowConfidence: low,
+  };
+}
+
 /** "미집계 하위 3개" — 집계 대상이 0건인 하위 목표 수를 알린다(지시 16). */
 export function uncountedChildrenLabel(n: number): string | null {
   return n > 0 ? `미집계 하위 ${n}개` : null;

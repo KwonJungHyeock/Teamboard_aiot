@@ -4,7 +4,7 @@
 // 진척 수치는 서버(lib/goals.ts) 계산 결과만 표시한다.
 import { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "@/lib/quick";
-import { countTasks, basisLabel, canShowBar, uncountedChildrenLabel } from "@/lib/progress";
+import { countTasks, basisLabel, progressDisplay, uncountedChildrenLabel } from "@/lib/progress";
 import type { GoalNode } from "@/lib/goals";
 import type { SessionUser } from "@/lib/types";
 import GoalProgress from "./GoalProgress";
@@ -592,8 +592,9 @@ function YearCard({
   const [editing, setEditing] = useState(false);
   const canEdit = user.role === "lead" || goal.ownerActorId === user.id;
   const open = useContext(OpenGoalCtx);
-  // 막대를 그려도 되는가 — GoalProgress 와 **같은 판정 함수**를 쓴다 (지시 16).
-  const drawBar = goal.progress !== null && canShowBar(goal.countedTasks);
+  // 표시 결정은 GoalProgress 와 **같은 함수**에서 나온다 (지시 30-5).
+  // 판정만 공유하면 라벨 조립이 또 갈라진다 — 실제로 그렇게 갈라졌다.
+  const d = progressDisplay(goal.progress, goal.countedTasks);
   return (
     <section className="ycard" aria-label={`연간 목표 ${goal.title}`}>
       <div className="ycard-h">
@@ -607,15 +608,15 @@ function YearCard({
           업무 1건짜리 연간 목표가 100% 초록 막대로 뜨는 것이 지시 16 이 막으려던 바로 그 장면이다.
           030 §A3 로 프로젝트 경유가 빠지면서 실제로 그 상태에 닿는 목표가 생겼다. */}
       <div className="ycard-bar">
-        <div className={`bar${drawBar ? "" : " empty"}`}>
-          {drawBar && <i className={goal.colorKey ?? "edu"} style={pfill(goal.progress!)} />}
+        <div className={`bar${d.drawBar ? "" : " empty"}`}>
+          {d.drawBar && <i className={goal.colorKey ?? "edu"} style={pfill(goal.progress!)} />}
         </div>
       </div>
       <div className="ycard-m">
-        <span className={`ycard-p num${drawBar ? "" : " none"}`}>
-          {goal.progress === null ? "집계 없음" : `${goal.progress}%`}
+        <span className={`ycard-p num${d.hasValue ? (d.lowConfidence ? " low" : "") : " none"}`}>
+          {d.hasValue ? `${goal.progress}%` : "집계 없음"}
         </span>
-        {goal.progress !== null && <em>{basisLabel(goal.countedTasks)}</em>}
+        {d.basis && <em>{d.basis}</em>}
       </div>
       {canAdd && (
         // B-1 · A-신1-2 — 여기서 만들면 상위는 이 연간이다. 묻지 않는다.

@@ -321,6 +321,48 @@ try {
   chk("표본가드-막대없음", yfill === 0 && yempty === 1 && ytext.includes("업무 1건 — 표본 부족"),
     `연간 카드 "${ytext}" · 채운 막대 ${yfill}개(0이어야 한다) · 빈 막대 ${yempty}개`);
 
+  // 30-1 — 값을 감추지 않는다. 표본 부족이어도 %가 보인다.
+  // 30-2 — 대신 숫자를 --muted 로 낮춘다. 확정값(--ink)과 색으로 구분된다.
+  const ypct = ycard.locator(".ycard-p");
+  const ypctText = (await ypct.innerText()).trim();
+  const ypctColor = await ypct.evaluate((el) => getComputedStyle(el).color);
+  const mutedRgb = await page.evaluate(() => {
+    const probe = document.createElement("span");
+    probe.style.color = "var(--muted)";
+    document.body.appendChild(probe);
+    const c = getComputedStyle(probe).color;
+    probe.remove();
+    return c;
+  });
+  chk("30-1·2 값은보이고흐리다", ypctText === "100%" && ypctColor === mutedRgb,
+    `연간 카드 진척 숫자 "${ypctText}" (감추지 않는다) · 색 ${ypctColor} = var(--muted) ${mutedRgb}`);
+
+  // 2029 Q1 은 현재 분기가 아니라 기본이 접혀 있다 — 월 행을 보려면 펼친다.
+  const openQuarter = async () => {
+    const sec = page.locator(".qsec", { hasText: `${MARK} Q1` }).first();
+    if ((await sec.getAttribute("class"))?.includes("open")) return;
+    await sec.locator(".qsec-fold .qsec-q").click();
+    await page.waitForTimeout(700);
+    if (await page.locator(".tdp-backdrop").count()) {   // 혹시 패널이 열렸으면 닫고 간다
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(400);
+    }
+  };
+
+  // 30-5 — 두 화면이 **같은 함수**에서 나오는지. 코드가 아니라 화면에서 대조한다.
+  //        같은 상태(집계 1건)의 월 목표 행과 연간 카드가 같은 말을 해야 한다.
+  await openQuarter();
+  const mrow = page.locator(".grow", { hasText: `${MARK} 1월` }).first();
+  const mprog = mrow.locator(".gprog");
+  const mText = (await mprog.locator(".gpv").innerText()).replace(/\n/g, " ").trim();
+  const mFill = await mprog.locator(".bar i").count();
+  const mLow = await mprog.locator(".gpv.low").count();
+  const yNorm = ytext.split(" · ").filter((x) => x.includes("%") || x.includes("표본 부족")).join(" ");
+  chk("30-5 두화면이같은말을한다",
+    mFill === 0 && mLow === 1 && mText.includes("100%") && mText.includes("업무 1건 — 표본 부족"),
+    `연간 카드 "${yNorm}" · 월 행 "${mText}" · 월 채운 막대 ${mFill}개 · 월 .gpv.low ${mLow}개 ` +
+    `— 둘 다 progressDisplay() 한 함수에서 나온다`);
+
   // 짝이 되는 존재 단언 — 3건이면 막대가 **그려져야** 한다. 안 그러면 위 0건은
   // "이 카드는 막대를 아예 안 그린다"와 구별되지 않는다.
   for (const t of ["둘", "셋"]) {
@@ -339,8 +381,15 @@ try {
   const ycard3 = page.locator(".ycard", { hasText: MARK }).first();
   const ytext3 = (await ycard3.innerText()).replace(/\n/g, " · ");
   const yfill3 = await ycard3.locator(".ycard-bar .bar i").count();
-  chk("표본가드-3건이면그린다", yfill3 === 1 && ytext3.includes("업무 3건 기준"),
-    `업무 3건으로 늘리니 "${ytext3}" · 채운 막대 ${yfill3}개(1이어야 한다)`);
+  const ylow3 = await ycard3.locator(".ycard-p.low").count();
+  await openQuarter();
+  const mrow3 = page.locator(".grow", { hasText: `${MARK} 1월` }).first().locator(".gprog");
+  const mFill3 = await mrow3.locator(".bar i").count();
+  const mLow3 = await mrow3.locator(".gpv.low").count();
+  chk("표본가드-3건이면그린다",
+    yfill3 === 1 && ylow3 === 0 && ytext3.includes("업무 3건 기준") && mFill3 === 1 && mLow3 === 0,
+    `업무 3건으로 늘리니 연간 "${ytext3}" · 채운 막대 ${yfill3}개 · 흐림 ${ylow3}개(0이어야 한다) · ` +
+    `월 행 채운 막대 ${mFill3}개 · 흐림 ${mLow3}개 — 두 화면이 함께 확정값으로 돌아온다`);
 
   // ── §C2 연결 데이터는 한 건도 안 지웠다 ─────────────────────────────
   // 이 검사가 만든 것만 빼고 비교한다. 실측 프로젝트 1건이 목표를 가리키고,
