@@ -4,12 +4,7 @@
 // 제목·기간·영역·소유·진척모드·연결업무·기여현황·진척바. 편집 권한은 서버가 판단(canEdit).
 import { useCallback, useEffect, useState } from "react";
 import { countedLabel } from "@/lib/progress";
-import {
-  GOAL_PANEL_EVENT,
-  currentGoalParam,
-  closeGoalPanel,
-  notifyGoalUpdated,
-} from "@/lib/goal-panel";
+import { GOAL_PANEL_EVENT, closeGoalPanel, currentGoalRef, notifyGoalUpdated, openGoalFull } from "@/lib/goal-panel";
 import GoalProjectPicker from "./GoalProjectPicker";
 import GoalTrend, { type TrendPoint } from "./GoalTrend";
 import HoverActions from "./HoverActions";
@@ -33,6 +28,7 @@ interface GoalDetail {
     /** 지시 27-2 — 상위 목표 */
     parentId: number | null;
     parentTitle: string | null;
+    parentSource: string;
   };
   /** 지시 27-2 — 고를 수 있는 상위 목표. 서버가 주기·스코프·순환을 이미 걸러서 준다. */
   parentCandidates?: { id: number; title: string; periodStart: string }[];
@@ -51,9 +47,14 @@ const STATUS_LABEL: Record<string, string> = { todo: "대기", doing: "진행", 
 
 export default function GoalDetailPanel() {
   const [openId, setOpenId] = useState<number | null>(null);
+  const [full, setFull] = useState(false);          // §C2 확대 모달 여부
   const [d, setD] = useState<GoalDetail | null>(null);
   const [err, setErr] = useState("");
-  const [save, setSave] = useState<"idle" | "saving" | "saved">("idle");
+  // §D2 — 저장 상태를 상시 표시한다. 자동저장인데 아무 표시가 없어서
+  // 저장됐는지도, 닫아도 되는지도 알 수 없었다.
+  const [save, setSave] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [lastFields, setLastFields] = useState<Record<string, unknown> | null>(null);
   const [manualVal, setManualVal] = useState("");
   const [areas, setAreas] = useState<{ id: number; name: string }[]>([]);
   const [picking, setPicking] = useState(false);   // 프로젝트 연결 팝오버 (§B1)
@@ -63,11 +64,13 @@ export default function GoalDetailPanel() {
   }, []);
 
   useEffect(() => {
-    const sync = () => setOpenId(currentGoalParam());
+    const sync = () => { const r = currentGoalRef(); setOpenId(r?.id ?? null); setFull(!!r?.full); };
     sync();
     const onEvent = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      setOpenId(typeof detail === "number" ? detail : detail === null ? null : currentGoalParam());
+      if (detail && typeof detail === "object") { setOpenId(detail.id); setFull(!!detail.full); }
+      else if (detail === null) { setOpenId(null); setFull(false); }
+      else sync();
     };
     window.addEventListener(GOAL_PANEL_EVENT, onEvent);
     window.addEventListener("popstate", sync);
@@ -97,29 +100,62 @@ export default function GoalDetailPanel() {
 
   async function patch(fields: Record<string, unknown>) {
     if (openId == null) return;
+    setLastFields(fields);
     setSave("saving"); setErr("");
     const res = await fetch(`/api/goals/${openId}`, {
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fields),
     });
-    if (!res.ok) { setErr((await res.json()).error ?? "저장 실패"); setSave("idle"); return; }
-    setSave("saved"); setTimeout(() => setSave("idle"), 1200);
+    if (!res.ok) {
+      // §D2 — 조용히 넘어가지 않는다. 그 자리에 실패를 남기고 다시 시도할 수단을 준다.
+      setErr((await res.json().catch(() => ({}))).error ?? "저장 실패");
+      setSave("failed");
+      return;
+    }
+    const body = await res.json().catch(() => null);
+    setSave("saved"); setSavedAt(Date.now());
     await load(openId);
     notifyGoalUpdated();
+    // §A4 — 기간을 바꿔 상위가 옮겨졌으면 한 줄로 알린다.
+    if (body?.moved) toast(`${body.moved.fromTitle ?? "상위 없음"} → ${body.moved.toTitle ?? "상위 없음"} 로 옮겨졌습니다`);
+  }
+
+  /** §D2 저장 상태 문구 — "방금" 은 시각이 아니라 사람 말이다. */
+  function saveLabel(): string {
+    if (save === "saving") return "저장 중…";
+    if (save === "failed") return "저장 실패";
+    if (save === "saved" && savedAt) {
+      const s = Math.round((Date.now() - savedAt) / 1000);
+      return s < 60 ? "저장됨 · 방금" : `저장됨 · ${Math.round(s / 60)}분 전`;
+    }
+    return "";
   }
 
   if (openId == null) return null;
 
   return (
     <>
-      <div className="tdp-backdrop" onClick={() => closeGoalPanel()} />
-      <aside className="tdp" role="dialog" aria-label="목표 상세">
+      <div className={`tdp-backdrop${full ? " full" : ""}`} onClick={() => closeGoalPanel()} />
+      {/* §C2 — 컨테이너만 바뀐다. 내용은 아래 하나뿐이다. 복제하지 않는다. */}
+      <aside className={`tdp gdp${full ? " gdp-full" : ""}`} role="dialog" aria-modal={full} aria-label="목표 상세">
         <div className="tdp-head">
           <span className="tdp-crumb">
             목표 상세 {d ? `· ${PERIOD_LABEL[d.goal.periodType] ?? d.goal.periodType}` : ""}
             {d?.goal.scope === "personal" ? " · 개인" : d ? " · 팀" : ""}
           </span>
-          <span className={`tdp-save ${save}`}>{save === "saving" ? "저장 중…" : save === "saved" ? "저장됨" : ""}</span>
-          <button className="tdp-x" onClick={() => closeGoalPanel()} aria-label="닫기">✕</button>
+          <span className="gsp" />
+          {/* §D2 — 상시 표시. 실패하면 그 자리에서 다시 시도한다. */}
+          <span className={`tdp-save ${save}`}>
+            {saveLabel()}
+            {save === "failed" && lastFields && (
+              <button className="lk gdp-retry" onClick={() => patch(lastFields)}>다시 시도</button>
+            )}
+          </span>
+          {/* §C2 확대 — 모달에서는 되돌리는 버튼을 두지 않는다. 닫으면 그대로 닫힌다. */}
+          {!full && openId != null && (
+            <button className="tdp-x gdp-zoom" onClick={() => openGoalFull(openId)} aria-label="크게 보기" title="크게 보기">⤢</button>
+          )}
+          {/* §D1 — 항상 있고, 전보다 크고 눈에 띈다 */}
+          <button className="tdp-x gdp-close" onClick={() => closeGoalPanel()} aria-label="닫기" title="닫기 (Esc)">✕</button>
         </div>
 
         {!d && !err && <div className="tdp-body"><Skeleton variant="page" rows={3} /></div>}
@@ -129,8 +165,7 @@ export default function GoalDetailPanel() {
           <div className="tdp-body">
             {err && <p className="tdp-err">{err}</p>}
             {d.canEdit ? (
-              <input className="tdp-title" defaultValue={d.goal.title} key={`t-${d.goal.id}`}
-                onBlur={(e) => { if (e.target.value.trim() && e.target.value !== d.goal.title) patch({ title: e.target.value.trim() }); }} />
+              <InlineTitle key={`t-${d.goal.id}`} value={d.goal.title} onSave={(v) => patch({ title: v })} />
             ) : (
               <h2 className="tdp-title" style={{ border: 0 }}>{d.goal.title}</h2>
             )}
@@ -165,6 +200,10 @@ export default function GoalDetailPanel() {
             </div>
 
             {/* 속성 */}
+            {/* §A5 — 수동 상위 지정은 없애지 않고 숨긴다. 기본 닫힘.
+                여기서 지정하면 기간을 바꿔도 따라가지 않는다 (A-신1-6). */}
+            <AdvancedParent goal={d.goal} canEdit={d.canEdit} onPatch={patch} />
+
             <div className="tdp-grid">
               <label>기간
                 <div className="gdp-ro">{d.goal.periodStart} ~ {d.goal.periodEnd}</div>
@@ -337,5 +376,99 @@ export default function GoalDetailPanel() {
         )}
       </aside>
     </>
+  );
+}
+
+/**
+ * §D3 인라인 편집 — Enter 확정 · Esc 취소 · 포커스가 빠지면 저장.
+ * 편집 중에는 오른쪽에 확정(✓)·취소(✕)를 노출한다.
+ * 키보드를 모르는 사람에게 확정 수단이 **하나는 보여야** 한다.
+ */
+function InlineTitle({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+  const [v, setV] = useState(value);
+  const [editing, setEditing] = useState(false);
+  const commit = () => {
+    const t = v.trim();
+    setEditing(false);
+    if (t && t !== value) onSave(t); else setV(value);
+  };
+  const cancel = () => { setV(value); setEditing(false); };
+  return (
+    <span className={`gdp-inline${editing ? " on" : ""}`}>
+      <input
+        className="tdp-title"
+        value={v}
+        onChange={(e) => { setV(e.target.value); setEditing(true); }}
+        onFocus={() => setEditing(true)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
+          if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancel(); (e.target as HTMLInputElement).blur(); }
+        }}
+      />
+      {editing && (
+        <span className="gdp-ic">
+          {/* onMouseDown 으로 잡는다 — click 은 blur 뒤에 와서 이미 저장된 뒤다 */}
+          <button className="gdp-ok" onMouseDown={(e) => { e.preventDefault(); commit(); }} aria-label="확정" title="확정 (Enter)">✓</button>
+          <button className="gdp-no" onMouseDown={(e) => { e.preventDefault(); cancel(); }} aria-label="취소" title="취소 (Esc)">✕</button>
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * §A5 「고급」 — 상위 목표 수동 지정.
+ *
+ * 속성 블록에서 빼내 접어 둔다. 기본 닫힘.
+ * 대부분의 사람은 평생 열 일이 없고, 열어야 하는 사람은 찾을 수 있어야 한다.
+ */
+function AdvancedParent({
+  goal, canEdit, onPatch,
+}: {
+  goal: { id: number; parentId?: number | null; parentTitle?: string | null; parentSource?: string | null;
+          periodType: string; periodStart: string; scope: string };
+  canEdit: boolean;
+  onPatch: (f: Record<string, unknown>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [cands, setCands] = useState<{ id: number; title: string }[]>([]);
+  useEffect(() => {
+    if (!open || goal.periodType === "year") return;
+    fetch(`/api/goals/parent?periodType=${goal.periodType}&periodStart=${goal.periodStart}&scope=${goal.scope}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setCands(d.candidates ?? []))
+      .catch(() => {});
+  }, [open, goal.periodType, goal.periodStart, goal.scope]);
+
+  if (goal.periodType === "year") return null;
+  const src = goal.parentSource ?? "derived";
+  const SRC_KO: Record<string, string> = {
+    derived: "기간에서 자동 (기간을 바꾸면 따라갑니다)",
+    placed: "만든 자리가 정함 (기간을 바꿔도 그대로)",
+    manual: "직접 지정 (기간을 바꿔도 그대로)",
+  };
+
+  return (
+    <details className="gdp-adv" open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary>고급</summary>
+      <div className="gdp-adv-b">
+        <label className="gdp-adv-l">상위 목표</label>
+        {canEdit ? (
+          <select value={goal.parentId ?? 0} onChange={(e) => onPatch({ parentId: Number(e.target.value) || null })}>
+            <option value={0}>상위 없음</option>
+            {cands.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+          </select>
+        ) : (
+          <div className="gdp-ro">{goal.parentTitle ?? "상위 없음"}</div>
+        )}
+        <p className="gdp-adv-n">{SRC_KO[src] ?? src}</p>
+        {canEdit && src !== "derived" && (
+          <button className="lk" onClick={() => onPatch({ parentSource: "derived" })}>
+            기간을 따라가게 되돌리기
+          </button>
+        )}
+      </div>
+    </details>
   );
 }

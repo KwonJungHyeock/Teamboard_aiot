@@ -12,6 +12,7 @@ import { recomputeGoalChain, judgeGoalStatus, kstTodayForGoals as kstToday, type
 import { projectsForGoal } from "@/lib/projects";
 import { goalTrend } from "@/lib/goal-snapshot";
 import { jsonError } from "@/lib/api";
+import { periodEndOf, reparentByPeriod, type GoalPeriod } from "@/lib/goal-hierarchy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       status_manual: GoalStatus | null;
       scope: string; owner_actor_id: number | null; owner_name: string | null;
       area_id: number | null; area_name: string | null; project_id: number | null; project_name: string | null;
-      parent_id: number | null; parent_title: string | null;
+      parent_id: number | null; parent_title: string | null; goal_parent_source: string;
     }>(
       `SELECT g.id, g.title, g.description, g.period_type, g.period_start::text, g.period_end::text,
               g.progress_mode, g.progress::text, g.progress_auto::text, g.progress_manual::text,
@@ -37,7 +38,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
               g.status_manual,
               g.scope, g.owner_actor_id, o.display_name AS owner_name,
               g.area_id, ar.name AS area_name, g.project_id, p.name AS project_name,
-              g.parent_id, pg.title AS parent_title
+              g.parent_id, pg.title AS parent_title, g.goal_parent_source
        FROM goal g
        LEFT JOIN goal pg ON pg.id = g.parent_id
        LEFT JOIN actor o ON o.id = g.owner_actor_id
@@ -124,6 +125,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         tasksHidden,
         parentId: g.parent_id,
         parentTitle: g.parent_title,
+        // §A5 「고급」 이 "왜 이 상위인가"를 사람 말로 보여주려면 출처가 필요하다.
+        parentSource: g.goal_parent_source,
       },
       parentCandidates: parentCandidates.map((c) => ({
         id: c.id, title: c.title, periodStart: c.period_start,
@@ -155,7 +158,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       is_active: boolean;
       scope: string;
       parent_id: number | null;
-    }>("SELECT id, title, period_type, owner_actor_id, is_active, scope, parent_id FROM goal WHERE id = $1", [goalId]);
+      period_start: string;
+      goal_parent_source: string;
+    }>(`SELECT id, title, period_type, owner_actor_id, is_active, scope, parent_id,
+               period_start::text, goal_parent_source
+          FROM goal WHERE id = $1`, [goalId]);
     if (!goal) return NextResponse.json({ error: "목표를 찾을 수 없습니다." }, { status: 404 });
 
     const isLead = session.role === "lead";
@@ -238,9 +245,21 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (payload.areaId !== undefined && goal.scope === "team") set("area_id", payload.areaId ? Number(payload.areaId) : null);
     if (payload.ownerActorId !== undefined && goal.scope === "team") set("owner_actor_id", payload.ownerActorId ? Number(payload.ownerActorId) : null);
 
-    // ── 상위 목표 변경 (지시 27-2) ─────────────────────────────────
+    // ── §A4 기간 변경 ────────────────────────────────────────────
+    // 기간을 바꾸면 상위가 따라간다. 8월 → 10월이면 Q3 → Q4.
+    // 끝날짜는 받지 않는다 — 주기와 시작일이 정한다.
+    let periodChanged = false;
+    if (typeof payload.periodStart === "string" && /^\d{4}-\d{2}-\d{2}$/.test(payload.periodStart)
+        && payload.periodStart !== goal.period_start) {
+      set("period_start", payload.periodStart);
+      set("period_end", periodEndOf(goal.period_type as GoalPeriod, payload.periodStart));
+      periodChanged = true;
+    }
+
+    // ── 상위 목표 변경 (지시 27-2 · §A5) ───────────────────────────
     // 이 경로가 없어서 상위가 틀린 목표를 고치지 못하고 새로 만들어 중복이 남았다(판정 A).
-    // 검증은 생성 경로와 **같은 함수**를 쓴다 — 규칙이 두 벌이면 한쪽만 낡는다.
+    // 029 §A5 에서 이 자리는 「고급」 접힘 영역으로 내려갔다 — 없애지 않고 숨겼다.
+    // 여기로 들어온 지정은 **사람이 한 것**이므로 goal_parent_source = manual 로 남긴다.
     let parentChanged = false;
     const oldParentId = goal.parent_id;
     if (payload.parentId !== undefined) {
@@ -259,7 +278,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         set("parent_id", nextParent);
         parentChanged = true;
       }
+      // 값이 그대로여도 "손으로 정했다"는 사실은 남긴다 — 그래야 기간을 바꿔도 안 따라간다.
+      set("goal_parent_source", "manual");
     }
+    // 「고급」에서 자동으로 되돌리기 — 다시 기간을 따라가게 한다.
+    if (payload.parentSource === "derived") set("goal_parent_source", "derived");
 
     if (sets.length > 0) {
       values.push(goalId);
@@ -291,8 +314,16 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     // 상위가 바뀌면 **떠난 쪽**도 다시 계산해야 한다. 안 하면 옛 상위에 이 목표의 몫이 남는다.
     if (parentChanged && oldParentId !== null) await recomputeGoalChain(oldParentId);
 
+    // §A4 — 기간이 바뀌었거나 자동으로 되돌렸으면 상위를 다시 맞춘다.
+    // manual 이면 reparentByPeriod 가 그냥 지나간다 (§A5).
+    let moved: Awaited<ReturnType<typeof reparentByPeriod>> | null = null;
+    if (periodChanged || payload.parentSource === "derived") {
+      moved = await reparentByPeriod(goalId);
+    }
+
     await logActivity({ userId: session.id, message: `${session.name}이(가) 목표 수정 — "${goal.title}"` });
-    return NextResponse.json({ ok: true });
+    // 옮겨졌으면 화면이 "Q3 → Q4 로 옮겨졌습니다" 한 줄을 띄울 수 있게 사실을 돌려준다.
+    return NextResponse.json({ ok: true, ...(moved?.moved ? { moved } : {}) });
   } catch (error) {
     return jsonError(error);
   }

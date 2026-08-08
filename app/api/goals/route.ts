@@ -9,6 +9,7 @@ import type { GoalPeriodType } from "@/lib/types";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
 import { visibleTaskSql } from "@/lib/visibility";
+import { periodEndOf, parentSpecOf, resolveParentId, type GoalPeriod } from "@/lib/goal-hierarchy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -132,13 +133,82 @@ export async function POST(request: Request) {
     const title = String(payload.title ?? "").trim().slice(0, 200);
     if (!title) return NextResponse.json({ error: "제목을 입력하세요." }, { status: 400 });
     const periodStart = String(payload.periodStart ?? "");
-    const periodEnd = String(payload.periodEnd ?? "");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart) || !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart)) {
       return NextResponse.json({ error: "기간(YYYY-MM-DD)이 필요합니다." }, { status: 400 });
     }
-    // 상위 목표 검증은 수정 경로와 **같은 함수**를 쓴다 (지시 27-2).
-    // 규칙이 두 벌이면 한쪽만 낡는다.
-    const parentId = payload.parentId ? Number(payload.parentId) : null;
+    // 끝날짜는 묻지 않는다 — 주기와 시작일이 정한다 (§A1).
+    const periodEnd = periodEndOf(periodType as GoalPeriod, periodStart);
+
+    // ── §A-신1 위치가 상위를 결정한다 ────────────────────────────────
+    //
+    // 1순위는 기간이 아니라 **어디서 만들었는가**다.
+    // 분기 섹션의 "+ 월 목표" 를 누른 사람은 이미 어느 분기 아래에 만들지 알고 있다.
+    // 그 사실을 버리고 기간으로 다시 계산해 묻는 것이 잘못이었다 —
+    // 이 팀은 분기를 "큰 과제"로 쓰기 때문에 한 분기에 목표가 넷이고,
+    // 기간만으로는 영영 하나로 좁혀지지 않는다.
+    //
+    // 기간 자동 귀속은 **폴백**이다. 후보가 정확히 하나일 때만 붙는다 (A-신1-4).
+    const ownerActorIdEarly = scope === "personal" ? session.id : null;
+    const placedParentId = payload.placedParentId ? Number(payload.placedParentId) : null;
+    const { parentId: derivedParent, candidates } = await resolveParentId({
+      periodType: periodType as GoalPeriod, periodStart, scope,
+      ownerActorId: ownerActorIdEarly,
+      preferred: payload.preferredParentId ? Number(payload.preferredParentId) : null,
+    });
+    // 출처를 남긴다 — placed 는 기간을 바꿔도 따라가지 않는다 (A-신1-5).
+    let parentSource: "derived" | "placed" | "manual" = "derived";
+
+    // §A2 — 상위가 없을 때 **조용히 만들지 않는다.** 화면이 물어보고,
+    // 사용자가 체크했을 때만 같은 저장 안에서 함께 만든다.
+    let parentId = derivedParent;
+    let createdParent: { id: number; title: string } | null = null;
+
+    // 만든 자리가 있으면 그게 이긴다. 기간 계산보다 먼저 본다.
+    if (placedParentId) {
+      const ok = await queryOne<{ id: number }>(
+        `SELECT id FROM goal WHERE id = $1 AND is_active = true AND scope = $2
+           AND period_type = $3
+           AND ($4::int IS NULL OR owner_actor_id = $4)`,
+        [placedParentId, scope,
+         periodType === "month" ? "quarter" : "year",
+         scope === "personal" ? ownerActorIdEarly : null]
+      );
+      if (!ok) return NextResponse.json({ error: "만든 자리의 상위 목표를 찾을 수 없습니다." }, { status: 400 });
+      parentId = ok.id;
+      parentSource = "placed";
+    }
+
+    const wantParent = payload.createParent && String(payload.createParent.title ?? "").trim();
+    if (parentId === null && candidates.length === 0 && wantParent) {
+      const spec = parentSpecOf(periodType as GoalPeriod, periodStart);
+      if (spec) {
+        if (scope === "team" && session.role !== "lead") {
+          return NextResponse.json({ error: "팀 목표는 팀장만 생성할 수 있습니다." }, { status: 403 });
+        }
+        const pTitle = String(payload.createParent.title).trim().slice(0, 200);
+        const made = await queryOne<{ id: number }>(
+          `INSERT INTO goal (parent_id, period_type, period_start, period_end, title, scope, owner_actor_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+          [
+            // 분기를 만들 때 그 해 연간이 하나뿐이면 거기에 붙인다 — 여기서도 같은 규칙이다.
+            (await resolveParentId({ periodType: spec.periodType, periodStart: spec.periodStart, scope, ownerActorId: ownerActorIdEarly })).parentId,
+            spec.periodType, spec.periodStart, periodEndOf(spec.periodType, spec.periodStart),
+            pTitle, scope, ownerActorIdEarly,
+          ]
+        );
+        parentId = made!.id;
+        createdParent = { id: made!.id, title: pTitle };
+        // 방금 만든 상위에 붙인 것은 사람이 정한 것과 같다 — 기간을 바꿔도 따라가지 않는다.
+        parentSource = "placed";
+        await logActivity({
+          userId: session.id,
+          message: `${session.name}이(가) 상위 ${spec.periodType === "year" ? "연간" : "분기"} 목표 함께 생성 — "${pTitle}"`,
+        });
+      }
+    }
+
+    // 검증은 수정 경로와 **같은 함수**를 쓴다 (지시 27-2). 계산한 값이라도 통과시켜 본다 —
+    // 계산이 틀렸을 때 조용히 잘못된 트리를 만드는 것보다 400 이 낫다.
     const parentErr = await validateGoalParent({
       goalId: null, parentId, periodType: periodType as GoalPeriodType, scope, viewerId: session.id,
     });
@@ -160,8 +230,9 @@ export async function POST(request: Request) {
 
     const goal = await queryOne<{ id: number }>(
       `INSERT INTO goal (parent_id, period_type, period_start, period_end, title, description,
-                         target_metric, target_value, progress_mode, owner_actor_id, project_id, scope, area_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+                         target_metric, target_value, progress_mode, owner_actor_id, project_id, scope, area_id,
+                         goal_parent_source)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
       [
         parentId,
         periodType,
@@ -176,6 +247,8 @@ export async function POST(request: Request) {
         payload.projectId ? Number(payload.projectId) : null,
         scope,
         areaId,
+        // 전역 "+ 새 목표" 에서 골라 보낸 것도 사람이 정한 것이다 (A-신1-3).
+        parentSource === "derived" && payload.preferredParentId ? "placed" : parentSource,
       ]
     );
     // 진척 초기화(연결 없으면 null) + 상위 체인 재계산 (파트 B)
@@ -185,7 +258,15 @@ export async function POST(request: Request) {
       message: `${session.name}이(가) ${scope === "personal" ? "개인 " : "팀 "}${periodType === "year" ? "연간" : periodType === "quarter" ? "분기" : "월"} 목표 생성 — "${title}"`,
     });
     // 27-4 — 막지 않고 알려만 준다. 저장을 먼저 끝낸 뒤 사실을 얹는다.
-    return NextResponse.json({ goal, ...(twin ? { duplicateTitleOf: twin.id } : {}) });
+    return NextResponse.json({
+      goal,
+      parentId,
+      parentSource,
+      // 후보가 여럿인데 아직 안 골랐으면 화면이 고르게 해야 한다 (§A3)
+      parentCandidates: parentId === null && candidates.length > 1 ? candidates : undefined,
+      createdParent: createdParent ?? undefined,
+      ...(twin ? { duplicateTitleOf: twin.id } : {}),
+    });
   } catch (error) {
     return jsonError(error);
   }
