@@ -111,6 +111,38 @@ export async function GET(request: Request) {
     }
     if (blocked === "1") where.push("t.blocked = true");
 
+    /**
+     * §C2-정렬 — **정렬은 전부 서버에서 건다.**
+     *
+     * 전에는 서버가 기한순으로 300건을 자른 **뒤에** 클라이언트가 다시 정렬했다.
+     * 그러면 "직접 정한 순서"의 1페이지 첫 행이 전체의 첫 행이 아니다 —
+     * 300건을 넘는 순간 틀린 답을 낸다. 지금 56건이라 안 보였을 뿐이다.
+     * §C4 가 이 목록을 4개 화면이 공유하는 컴포넌트로 만들라고 하므로,
+     * 지금 구조를 그대로 옮기면 같은 결함이 4곳에 복제된다.
+     *
+     * `LIMIT` 은 **정렬 뒤에** 걸린다. 이게 이 수정의 전부이자 핵심이다.
+     *
+     * 값은 넷뿐이다(031 §C 회신 제1부 §3). `progress` 는 없앴다 —
+     * `task.progress` 컬럼은 화면에 보이는 진척이 아니라서(하위를 가진 업무는
+     * lib/progress.ts 가 계산한다) `ORDER BY t.progress` 로 줄을 세우면
+     * 정렬 순서와 표시 퍼센트가 어긋난다. 피하려면 계산기를 SQL 로 한 벌 더
+     * 만들어야 하고, 그건 030 에서 아홉을 하나로 합친 것을 다시 가르는 일이다.
+     */
+    const ORDER_BY = {
+      // 지연 → 임박 → 여유 → 기한없음. 동률이면 우선순위, 그다음 최신 작성순.
+      due: "t.due_date ASC NULLS LAST, "
+        + "CASE t.priority WHEN 'high' THEN 0 WHEN 'low' THEN 2 ELSE 1 END ASC, t.created_at DESC, t.id DESC",
+      priority: "CASE t.priority WHEN 'high' THEN 0 WHEN 'low' THEN 2 ELSE 1 END ASC, "
+        + "t.due_date ASC NULLS LAST, t.created_at DESC, t.id DESC",
+      created: "t.created_at DESC, t.id DESC",
+      // §0 정규화와 **같은 식**이다. 두 곳에 다른 식이 있으면 순서가 다시 갈라진다.
+      manual: "(t.sort_order = 0) ASC, t.sort_order ASC, t.created_at ASC, t.id ASC",
+    } as const;
+    type SortKey = keyof typeof ORDER_BY;
+    /** 잘못된 값은 400 이 아니라 기본값으로 조용히 떨어뜨린다 — 주소는 사람이 손으로 고친다. */
+    const rawSort = url.searchParams.get("sort");
+    const sortKey: SortKey = (rawSort && rawSort in ORDER_BY ? rawSort : "due") as SortKey;
+
     const rows = await query<{
       id: number;
       title: string;
@@ -183,7 +215,7 @@ export async function GET(request: Request) {
                         WHERE pa.id = t.parent_task_id AND pa.is_active = true
                           AND ${visibleTaskSql(viewerParam, "pa")} AND (${asAlias("pa")})) )
        GROUP BY t.id, p.name, p.color_key, ar.name, a.display_name, c.display_name
-       ORDER BY t.due_date ASC NULLS LAST, t.id DESC
+       ORDER BY ${ORDER_BY[sortKey]}
        LIMIT 300`,
       params
     );

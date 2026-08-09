@@ -1691,3 +1691,92 @@ tr.drop-after > td { box-shadow: inset 0 -1px 0 0 var(--coral); }
 
 /* §C1 — 드래그가 꺼져 있을 때 어떻게 켜는지 말한다. 잡히지 않는 핸들 대신 문장. */
 .dragoff { font-size: var(--f5); color: var(--muted); }
+
+/* ── 031 §C2-정렬 — 없어진 정렬 안내 (세션 1회) ────────────────────
+   .dragoff 와 같은 톤이다. 새 시각 언어를 만들지 않는다. 코랄도 앰버도 아니다 —
+   사고가 아니라 안내이고, 사용자가 뭘 잘못한 것도 아니다. */
+.sortgone {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--f6); color: var(--muted);
+  background: var(--surface-2); border-radius: 4px; padding: 3px 6px 3px 9px;
+}
+.sortgone button {
+  width: 18px; height: 18px; display: grid; place-items: center;
+  border: 0; border-radius: 4px; background: 0; cursor: pointer;
+  color: var(--muted); font-family: inherit; font-size: var(--f6);
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+.sortgone button:hover { background: var(--surface); }
+.sortgone button:focus-visible { outline: 2px solid var(--edu); outline-offset: 1px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   031 §C2 · §D6 — 기한 막대 목록
+   홈 · 업무 목록 · 프로젝트 상세 · 영역 상세 **넷이 같은 컴포넌트**를 쓴다.
+   여기 값이 갈리면 넷이 갈린다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 트랙 — 막대가 놓이는 칸. 열 폭은 남는 만큼 가져간다(가변). */
+.pg-body .col-track { padding: 0 10px; }
+.tt-track { position: relative; display: block; width: 100%; height: 16px; }
+
+/* 눈금자 — 목록 위 한 줄. 표 안에 있어야 트랙 열과 정확히 맞는다. */
+.pg-body tr.tt-ruler > td {
+  height: 22px; border-bottom: 0; background: 0;
+  font-size: var(--f6); font-weight: 700; color: var(--muted); letter-spacing: .02em;
+}
+.tt-tick {
+  position: absolute; top: 1px; transform: translateX(-50%);
+  font-size: var(--f6); font-weight: 700; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 오늘 선 — 1px 코랄 .45. 행에는 선만, **점은 눈금자에만 하나**(§D6).
+   행마다 점을 찍으면 점의 세로 열이 되고, 그러면 오늘이 어디인지 더 안 보인다. */
+.tt-now { position: absolute; top: -14px; bottom: -14px; width: 1px; background: var(--coral); opacity: .45; }
+.tt-now.ruler { top: auto; bottom: -1px; height: 12px; opacity: .5; }
+.tt-now.ruler::before {
+  content: ""; position: absolute; top: -3px; left: -2px; width: 5px; height: 5px;
+  border-radius: 50%; background: var(--coral);
+}
+
+/* 막대 — 높이 16 · 완전 알약 · 안쪽 1px 링 (§D6) */
+.tt-bar {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  height: 16px; border-radius: 20px; display: flex; overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(16, 24, 40, .05);
+}
+.tt-bar.over { box-shadow: inset 0 0 0 1px rgba(199, 56, 60, .55); }
+.tt-bar > i { height: 100%; display: block; }
+/* 남은 구간은 **같은 색 16%**. 회색으로 깔지 않는다 — 색이 둘이면 막대가 두 가지를 말한다. */
+.tt-bar > i.rest { opacity: .16; }
+.pjdot-fill.edu, .pjdot-fill.blue { background: var(--edu); }
+.pjdot-fill.play, .pjdot-fill.purple { background: var(--play); }
+.pjdot-fill.train, .pjdot-fill.green { background: var(--train); }
+.pjdot-fill.amber { background: var(--amber); }
+.pjdot-fill.coral { background: var(--coral); }
+.pjdot-fill.team { background: var(--team); }
+
+/* 구간 밖 — 막대를 그릴 자리가 없을 때 방향과 날짜를 놓는다.
+   **안 보이는 지연은 없는 지연으로 읽힌다.** 이 시스템에서 가장 위험한 실패다. */
+.tt-stub {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: var(--f6); font-weight: 700; color: var(--muted); white-space: nowrap;
+}
+.tt-stub.before { left: 0; }
+.tt-stub.after { right: 0; }
+.tt-stub.late { color: var(--coral-text); }
+.tt-stub svg { stroke: currentColor; }
+
+/* 그룹 머리줄 = 롤업. 진척 값은 lib/progress.ts 에서 온다. */
+.pg-body tr.tt-grp > td {
+  height: var(--hdr-h); padding: 0 13px;
+  background: var(--surface-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--hair);
+}
+.tt-grp-in { display: flex; align-items: center; gap: 9px; width: 100%; }
+.tt-grp-in b { font-size: var(--f4); font-weight: 700; letter-spacing: -.018em; color: var(--ink); }
+.tt-grp-in em { font-style: normal; font-size: var(--f6); color: var(--muted); font-weight: 500; }
+.tt-grp-who { font-size: var(--f6); color: var(--ink2); font-weight: 600; white-space: nowrap; }
+.tt-grp-bar { width: 104px; height: 6px; border-radius: 99px; background: var(--track-bg); overflow: hidden; flex: none; }
+.tt-grp-bar > i { display: block; height: 100%; border-radius: 99px; background: var(--edu); }
+.tt-grp-v { font-size: var(--f5); font-weight: 800; width: 36px; text-align: right; color: var(--ink2); }

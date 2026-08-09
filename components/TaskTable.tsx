@@ -3,7 +3,7 @@
 // 업무 테이블 (Phase 3 마감 임박 → Phase 5 공용화) — 홈 "마감 임박"과 /tasks 목록이
 // 같은 컴포넌트를 재사용한다 (Phase 5 검수 포인트 6). 컬럼 폭 고정 (프로토타입 colgroup).
 // variant="full"(/tasks): 목표·우선순위 컬럼 추가 + 상태 인라인 드롭다운. compact(홈)은 5열 유지.
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import EmptyState from "./EmptyState";
 import SectionEmpty, { type SectionEmptyAction } from "./SectionEmpty";
 import { toast } from "@/lib/quick";
@@ -12,6 +12,8 @@ import { useCountUp, useExiting, useFlip, useHighlight } from "@/lib/motion";
 import { notifyGoalChain } from "@/lib/goal-chain";
 import { pfill } from "@/lib/progress-bar";
 import { dueUrgency } from "@/lib/task-view";
+import { taskBar, ticks } from "@/lib/task-bars";
+import { aggregateTasks, countTasks } from "@/lib/progress";
 export interface TaskTableRow {
   id: number;
   title: string;
@@ -36,7 +38,16 @@ export interface TaskTableRow {
   childCount?: number;
   /** §C — "직접 정한 순서" 값. 정렬은 부모(TasksView)가 이미 해서 넘긴다. */
   sortOrder?: number;
+  /** §C2 기한 막대 재료. 없으면 막대를 안 그린다 — 없는 기간을 추정하지 않는다. */
+  startDate?: string | null;
+  dueDate?: string | null;
 }
+
+/** §C2 — 묶는 기준. 값 이름은 URL 규약(`?group=`)과 같다. */
+export type TaskGroupKey = "project" | "priority" | "due" | "none";
+export const TASK_GROUP_LABEL: Record<TaskGroupKey, string> = {
+  project: "프로젝트", priority: "우선순위", due: "기한", none: "묶지 않음",
+};
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   proposed: { label: "제안", cls: "prop" },
@@ -48,6 +59,8 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 };
 
 const PRIORITY_LABEL: Record<string, string> = { high: "높음", mid: "보통", low: "낮음" };
+/** 8/24 — 그룹 머리줄의 기간 표기. 연도는 안 쓴다(같은 해다). */
+const fmtMd = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
 // 인라인 상태 변경 가능한 값 (중단은 사유가 필요해 상세에서만 — 우회 방지)
 const INLINE_STATUS = ["todo", "doing", "review", "done"] as const;
 
@@ -72,6 +85,8 @@ export default function TaskTable({
   checked,
   onToggleCheck,
   onToggleAll,
+  timeline,
+  groupBy = "none",
 }: {
   rows: TaskTableRow[];
   title?: string;
@@ -108,9 +123,32 @@ export default function TaskTable({
   checked?: Set<number>;
   onToggleCheck?: (id: number) => void;
   onToggleAll?: () => void;
+  /**
+   * §C2 — 기한 막대. 표시 구간(월)과 오늘을 받으면 눈금자 한 줄과 행마다 막대를 그린다.
+   * 안 주면 안 그린다. **없는 기간을 추정하지 않는다.**
+   */
+  timeline?: { start: string; end: string; today: string };
+  /** §C2 — 묶는 기준. 그룹 머리줄에 롤업(건수·기간·담당·진척)을 붙인다. */
+  groupBy?: TaskGroupKey;
 }) {
   const full = variant === "full";
-  const colCount = (full ? 9 : 5) + (selectable ? 1 : 0);
+  /**
+   * 막대를 켜면 **목표 · 프로젝트 · 진행률 열을 접는다.** 폭을 막대에 준다.
+   * 프로젝트는 그룹 머리줄이 이미 말하고, 진척은 막대의 채운 구간이 말한다.
+   * 목표는 §D7 의 열 목록에 아예 없다. 열 열한 개를 다 두면 막대가 114px 이 되고,
+   * 114px 짜리 막대는 기간을 못 보여준다 — 실측에서 그랬다.
+   */
+  const withBars = !!timeline;
+  const showGoal = full && !withBars;
+  const showProject = !withBars;
+  const showProg = full && !withBars;
+  const colCount =
+    1 + (showGoal ? 1 : 0) + (full ? 1 : 0) + (showProject ? 1 : 0) + (withBars ? 1 : 0)
+    + 1 + (full ? 1 : 0) + (showProg ? 1 : 0) + 2 + (selectable ? 1 : 0);
+  // 눈금자 줄의 좌우 span — 산술로 짐작하지 않고 **열을 켠 조건 그대로** 센다.
+  // 한 번 어긋나면 눈금과 막대가 다른 칸에 놓이고, 그건 화면에서만 보인다.
+  const leftCols = (selectable ? 1 : 0) + 1 + (showGoal ? 1 : 0) + (full ? 1 : 0) + (showProject ? 1 : 0);
+  const rightCols = 1 + (full ? 1 : 0) + (showProg ? 1 : 0) + 2;
   // §H3 — 필터·정렬로 순서가 바뀌면 FLIP 으로 미끄러지고(--dur-3),
   // 목록에서 빠진 행은 한 사이클 붙잡아 두고 사라진다(--dur-2).
   const bodyRef = useRef<HTMLTableSectionElement>(null);
@@ -178,7 +216,59 @@ export default function TaskTable({
     if (expanded.has(r.id)) nested.push(...(childrenOf.get(r.id) ?? []));
   }
 
-  useFlip(bodyRef as unknown as React.RefObject<HTMLElement>, nested.map((r) => r.id).join(","), "tr[data-flip]");
+  /**
+   * §C2 — 묶기. 머리줄의 진척은 **lib/progress.ts 가 센다.** 여기서 다시 계산하지 않는다.
+   * 표본이 부족하면 값은 보이되 막대는 안 그린다(030 지시 30) — countTasks 가 그 판단의 재료다.
+   */
+  const groupsOf = (list: TaskTableRow[]) => {
+    if (groupBy === "none") return [{ key: "", label: "", rows: list }];
+    const key = (t: TaskTableRow) =>
+      groupBy === "project" ? (t.projectName ?? "프로젝트 없음")
+        : groupBy === "priority" ? (PRIORITY_LABEL[t.priority ?? "mid"] ?? "보통")
+          : dueUrgency(t.dday) === "late" ? "지연"
+            : dueUrgency(t.dday) === "soon" ? "이번 주"
+              : t.dday ? "그 뒤" : "기한 없음";
+    const order: string[] = [];
+    const by = new Map<string, TaskTableRow[]>();
+    for (const t of list) {
+      const k = key(t);
+      if (!by.has(k)) { by.set(k, []); order.push(k); }
+      by.get(k)!.push(t);
+    }
+    return order.map((k) => ({ key: k, label: k, rows: by.get(k)! }));
+  };
+
+  /** 그룹 머리줄에 실을 값 — 건수 · 기간 · 담당자 이름 · 롤업 진척. */
+  const rollup = (list: TaskTableRow[]) => {
+    const forCalc = list.map((t) => ({ status: t.status, progress: t.progress ?? 0 }));
+    const counted = countTasks(forCalc);
+    const days = list.flatMap((t) => [t.startDate, t.dueDate].filter(Boolean) as string[]).sort();
+    const names = Array.from(new Set(list.map((t) => t.assigneeName).filter(Boolean) as string[]));
+    return {
+      n: list.length,
+      progress: aggregateTasks(forCalc),
+      counted: counted.counted,
+      period: days.length ? `${fmtMd(days[0])}–${fmtMd(days[days.length - 1])}` : null,
+      area: list.find((t) => t.areaName)?.areaName ?? null,
+      who: names.length === 0 ? null : names.length <= 2 ? names.join(" · ") : `${names[0]} 외 ${names.length - 1}`,
+      color: list.find((t) => t.colorKey)?.colorKey ?? "team",
+    };
+  };
+
+  // 묶기가 켜져 있으면 **그룹 순서로 다시 늘어놓는다.** 그룹 안의 순서는 서버가 준 그대로다.
+  const grouped = groupBy === "none" ? nested : groupsOf(nested).flatMap((g) => g.rows);
+  const groupHeadAt = new Map<number, { label: string; roll: ReturnType<typeof rollup> }>();
+  if (groupBy !== "none") {
+    for (const g of groupsOf(nested)) {
+      if (g.rows.length) groupHeadAt.set(g.rows[0].id, { label: g.label, roll: rollup(g.rows) });
+    }
+  }
+
+  const todayAt = timeline
+    ? (() => { const g = taskBar({ startDate: timeline.today, dueDate: timeline.today }, timeline); return g.todayAt; })()
+    : null;
+
+  useFlip(bodyRef as unknown as React.RefObject<HTMLElement>, grouped.map((r) => r.id).join(","), "tr[data-flip]");
   const [hot, flash] = useHighlight();
   const on = (id: number) => !!checked?.has(id);
   const allOn = selectable && rows.length > 0 && rows.every((r) => on(r.id));
@@ -215,13 +305,14 @@ export default function TaskTable({
           {selectable && <col style={{ width: "44px" }} />}
           {full ? (
             <>
-              <col />
-              <col style={{ width: "140px" }} />
+              <col style={withBars ? { width: "296px" } : undefined} />
+              {showGoal && <col style={{ width: "140px" }} />}
               <col style={{ width: "92px" }} />
-              <col style={{ width: "120px" }} />
+              {showProject && <col style={{ width: "120px" }} />}
+              {timeline && <col />}
               <col style={{ width: "72px" }} />
               <col style={{ width: "88px" }} />
-              <col style={{ width: "124px" }} />
+              {showProg && <col style={{ width: "124px" }} />}
               <col style={{ width: "92px" }} />
               <col style={{ width: "70px" }} />
             </>
@@ -230,6 +321,7 @@ export default function TaskTable({
               {/* 업무(제목)만 flex+truncate. 상태·기한은 배지가 안 잘리게 고정 폭(내용에 맞춤). */}
               <col />
               <col style={{ width: "20%" }} />
+              {timeline && <col />}
               <col style={{ width: "76px" }} />
               <col style={{ width: "64px" }} />
               <col style={{ width: "56px" }} />
@@ -245,15 +337,33 @@ export default function TaskTable({
               </th>
             )}
             <th>업무</th>
-            {full && <th>목표</th>}
+            {showGoal && <th>목표</th>}
             {full && <th>영역</th>}
-            <th>프로젝트</th>
+            {showProject && <th>프로젝트</th>}
+            {timeline && <th className="col-track">기간</th>}
             <th>담당</th>
             {full && <th className="col-pri">우선순위</th>}
-            {full && <th>진행률</th>}
+            {showProg && <th>진행률</th>}
             <th>상태</th>
             <th>기한</th>
           </tr>
+          {/* §C2 월 눈금자 — 목록 위 한 줄. **표 안에** 둔다. 밖에 div 로 그리면
+              트랙 열과 1px 씩 어긋나고, 그 어긋남은 열 폭이 바뀔 때마다 달라진다. */}
+          {timeline && (
+            <tr className="tt-ruler">
+              <td colSpan={leftCols}>{timeline.start.slice(0, 4)}년 {Number(timeline.start.slice(5, 7))}월</td>
+              <td className="col-track">
+                <span className="tt-track">
+                  {ticks(timeline).map((t) => (
+                    <span key={t.label} className="tt-tick" style={{ left: `${t.at}%` }}>{t.label}</span>
+                  ))}
+                  {/* 오늘 점은 **눈금자에만 하나.** 행마다 찍으면 점의 세로 열이 된다 (§D6) */}
+                  {todayAt !== null && <span className="tt-now ruler" style={{ left: `${todayAt}%` }} />}
+                </span>
+              </td>
+              <td colSpan={rightCols} />
+            </tr>
+          )}
         </thead>
         <tbody ref={bodyRef}>
           {rows.length === 0 && (
@@ -267,7 +377,8 @@ export default function TaskTable({
               </td>
             </tr>
           )}
-          {nested.map((t) => {
+          {grouped.map((t) => {
+            const head = groupHeadAt.get(t.id);
             const status = STATUS_LABEL[t.status] ?? { label: t.status, cls: "todo" };
             const kids = childrenOf.get(t.id) ?? [];
             const isChild = (t.parentTaskId ?? null) !== null;
@@ -277,7 +388,7 @@ export default function TaskTable({
             const urg = dueUrgency(t.dday);
             const dueCls = urg === "late" ? "bad" : urg === "soon" ? "soon" : "";
             const editable = full && onStatusChange && t.status !== "proposed" && t.status !== "dropped";
-            return (
+            const row = (
               <tr
                 key={t.id}
                 data-flip={t.id}
@@ -364,7 +475,7 @@ export default function TaskTable({
                       기존 상태 칩(.st) 규격을 그대로 쓴다 — 새 컴포넌트를 만들지 않는다. */}
                   {t.visibility === "private" && <span className="st priv">개인</span>}
                 </td>
-                {full && (
+                {showGoal && (
                   <td>
                     {t.goalNames && t.goalNames.length > 0 ? t.goalNames.join(", ") : "—"}
                   </td>
@@ -374,16 +485,55 @@ export default function TaskTable({
                     {t.areaName ? <span className="areatag">{t.areaName}</span> : "—"}
                   </td>
                 )}
-                <td>
-                  {t.projectName ? (
-                    <span className="pj">
-                      <i className={t.colorKey ?? "team"} />
-                      {t.projectName}
+                {showProject && (
+                  <td>
+                    {t.projectName ? (
+                      <span className="pj">
+                        <i className={t.colorKey ?? "team"} />
+                        {t.projectName}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                )}
+                {timeline && (
+                  <td className="col-track">
+                    <span className="tt-track">
+                      {/* 오늘 선 — 1px 코랄. **점은 안 찍는다**(눈금자에 하나뿐이다, §D6) */}
+                      {todayAt !== null && <span className="tt-now" style={{ left: `${todayAt}%` }} />}
+                      {(() => {
+                        const g = taskBar(t, timeline);
+                        if (g.stub) {
+                          // 막대를 그릴 자리가 없다 — 방향과 날짜를 대신 놓는다.
+                          // **안 보이는 지연은 없는 지연으로 읽힌다**(회신 1 · 2-1).
+                          return (
+                            <span className={`tt-stub ${g.stub.side}${g.over ? " late" : ""}`}>
+                              {g.stub.side === "before" && (
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9.6 3.6L5.2 8l4.4 4.4" /></svg>
+                              )}
+                              {fmtMd(g.stub.date)} 마감
+                              {g.stub.side === "after" && (
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6.4 3.6L10.8 8l-4.4 4.4" /></svg>
+                              )}
+                            </span>
+                          );
+                        }
+                        if (!g.visible) return null;
+                        const pct = Math.max(0, Math.min(100, t.progress ?? 0));
+                        return (
+                          <span className={`tt-bar${g.over ? " over" : ""}`}
+                            style={{ left: `${g.left}%`, width: `${g.width}%` }}>
+                            {/* 완료 구간은 영역 색 실선, 남은 구간은 **같은 색 16%**.
+                                회색으로 깔지 않는다 — 색이 둘이 되면 막대가 두 가지를 말한다. */}
+                            <i className={`pjdot-fill ${t.colorKey ?? "team"}`} style={{ width: `${pct}%` }} />
+                            <i className={`pjdot-fill ${t.colorKey ?? "team"} rest`} style={{ width: `${100 - pct}%` }} />
+                          </span>
+                        );
+                      })()}
                     </span>
-                  ) : (
-                    "—"
-                  )}
-                </td>
+                  </td>
+                )}
                 <td>{t.assigneeName ?? "—"}</td>
                 {full && (
                   <td className="col-pri">
@@ -392,7 +542,7 @@ export default function TaskTable({
                     </span>
                   </td>
                 )}
-                {full && (
+                {showProg && (
                   <td className="col-prog">
                     <div className="tt-prog" title={`진행률 ${t.progress ?? 0}%`}>
                       <i className={t.status === "done" ? "pf-green" : "pf-blue"} style={pfill(t.progress ?? 0)} />
@@ -441,6 +591,33 @@ export default function TaskTable({
                   )}
                 </td>
               </tr>
+            );
+            if (!head) return row;
+            const rl = head.roll;
+            return (
+              <Fragment key={`g${t.id}`}>
+                {/* §C2 그룹 머리줄 = 롤업. 진척은 lib/progress.ts 가 센다 — 여기서 안 센다. */}
+                <tr className="tt-grp" data-flip={`g${t.id}`}>
+                  <td colSpan={colCount}>
+                    <span className="tt-grp-in">
+                      <i className={`pjdot ${rl.color}`} />
+                      <b>{head.label}</b>
+                      <em>
+                        {[rl.area, `${rl.n}건`, rl.period].filter(Boolean).join(" · ")}
+                      </em>
+                      <span className="gsp" />
+                      {rl.who && <span className="tt-grp-who">{rl.who}</span>}
+                      {rl.progress !== null && (
+                        <>
+                          <span className="tt-grp-bar"><i style={pfill(rl.progress)} /></span>
+                          <em className="tt-grp-v num">{rl.progress}%</em>
+                        </>
+                      )}
+                    </span>
+                  </td>
+                </tr>
+                {row}
+              </Fragment>
             );
           })}
         </tbody>
