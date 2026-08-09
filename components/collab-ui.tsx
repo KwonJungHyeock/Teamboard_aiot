@@ -65,7 +65,8 @@ export function Avatar({ name, url, size = 30 }: { name: string; url?: string | 
     return <img className="cav" src={url} alt={name} width={size} height={size} style={{ width: size, height: size }} />;
   }
   return (
-    <span className="cav cav-i" style={{ width: size, height: size, fontSize: size * 0.42 }} aria-hidden="true">
+    // §A1 — 11px 미만 글자는 화면에 존재하지 않는다. 아바타가 작아도 이니셜은 11px 밑으로 안 내려간다.
+    <span className="cav cav-i" style={{ width: size, height: size, fontSize: Math.max(11, size * 0.42) }} aria-hidden="true">
       {name.slice(0, 1)}
     </span>
   );
