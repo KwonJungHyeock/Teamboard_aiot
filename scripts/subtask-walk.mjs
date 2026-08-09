@@ -3,7 +3,9 @@
 // **로컬 전용. 원격 DB 에서 실행 금지** (지시 32) — 아래 requireLocalDb 가 강제한다.
 //
 // 무엇을 보는가.
-//   A1 업무 상세의 하위 업무 섹션 — 위치 · 38px 행 · 제목 줄 · 인라인 추가(같은 컴포넌트)
+//   A1 업무 상세의 하위 업무 섹션 — 위치 · 목록 행 높이(--row-h) · 제목 줄 · 인라인 추가(같은 컴포넌트)
+//   ※ 행 높이는 031 §A2 로 38 → 44 가 됐다. 숫자를 여기 박아 두면 규격이 바뀔 때마다 검사가 먼저 깨진다.
+//      그래서 **문서의 값을 옮겨 적지 않고 토큰이 실제로 계산된 값**과 비교한다.
 //   A2 상속(프로젝트·영역·공개 범위) · 목표 직접 연결 거부(28-b, **사유 문구를 그대로 싣는다**)
 //      · 하위 업무 상세에는 섹션 자체가 없다
 //   A3 목록의 캐럿 · 22px 들여쓰기(목표 트리와 같은 값) · 높이 애니메이션 없음
@@ -140,6 +142,9 @@ try {
   // ── §A1 업무 상세 화면 ──────────────────────────────────────────
   await page.goto(`${BASE}/tasks?panel=task:${parent.id}`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1500);
+  // 규격값은 문서에서 베끼지 않고 **화면이 실제로 계산한 토큰**에서 읽는다.
+  const ROW_H = await page.evaluate(() =>
+    Math.round(parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--row-h"))));
   const secH = await page.locator(".tdp .stx .tdp-sec-h").innerText().catch(() => "(없음)");
   const rowsN = await page.locator(".tdp .stx-row").count();
   const rowH = await page.locator(".tdp .stx-row").first().boundingBox();
@@ -150,8 +155,8 @@ try {
   const yDoc = (await page.locator(".tdp .tdp-doc").boundingBox())?.y ?? -1;
   await page.screenshot({ path: `${OUT}/A1-하위업무섹션.png` });
   chk("A1-위치와규격",
-    yProp > 0 && yProp < yStx && yStx < yDoc && rowsN === 2 && Math.round(rowH?.height ?? 0) === 38 && iti === 1,
-    `제목 줄 "${secH.replace(/\n/g, " ")}" · 행 ${rowsN}개 · 행 높이 ${Math.round(rowH?.height ?? 0)}px(38 이어야) · ` +
+    yProp > 0 && yProp < yStx && yStx < yDoc && rowsN === 2 && Math.round(rowH?.height ?? 0) === ROW_H && iti === 1,
+    `제목 줄 "${secH.replace(/\n/g, " ")}" · 행 ${rowsN}개 · 행 높이 ${Math.round(rowH?.height ?? 0)}px(--row-h ${ROW_H} 이어야) · ` +
     `인라인 추가 ${iti}개 · y좌표 속성 ${Math.round(yProp)} < 하위 ${Math.round(yStx)} < 본문 ${Math.round(yDoc)}`);
 
   // 인라인 추가가 **같은 컴포넌트**인가 — 세 자리가 같은 클래스와 같은 안내문을 쓴다.

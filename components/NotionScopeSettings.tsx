@@ -50,7 +50,7 @@ function NotionSchemaCard() {
         바꾸면 여기서 새로고침하세요. 조회 실패 시 캐시·코드 폴백으로 안전하게 동작합니다.
       </p>
       {loaded && (
-        <p className="muted" style={{ fontSize: 12.5 }}>
+        <p className="muted" style={{ fontSize: "var(--f4)" }}>
           현재 출처: <strong>{sourceLabel[source] ?? source ?? "-"}</strong>
           {updatedAt ? ` · 갱신 ${new Date(updatedAt).toLocaleString("ko-KR")}` : ""}
         </p>
@@ -63,7 +63,7 @@ function NotionSchemaCard() {
             background: "rgba(245,165,36,.12)",
             border: "1px solid rgba(245,165,36,.3)",
             borderRadius: 8,
-            fontSize: 12.5,
+            fontSize: "var(--f4)",
             color: "#F5A524",
           }}
         >
@@ -230,7 +230,7 @@ export default function NotionScopeSettings({ notionConnected = true }: { notion
           <input
             value={dataSourceId}
             onChange={(e) => setDataSourceId(e.target.value)}
-            style={{ fontFamily: "var(--mono)", fontSize: 13 }}
+            style={{ fontFamily: "var(--mono)", fontSize: "var(--f4)" }}
           />
         </div>
         {error && <p className="error-text">{error}</p>}

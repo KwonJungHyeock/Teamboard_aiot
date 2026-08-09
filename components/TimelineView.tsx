@@ -57,7 +57,7 @@ export default function TimelineView() {
       {/* 다크 시절 잔재였던 흰색 틴트·다크 폴백을 토큰으로 교체 (MD-P-2026-013) */}
       <p
         style={{
-          fontSize: 12.5,
+          fontSize: "var(--f4)",
           color: "var(--text-dim)",
           background: "color-mix(in srgb, var(--slate) 6%, var(--card))",
           border: "1px solid var(--hair)",
@@ -144,7 +144,7 @@ export default function TimelineView() {
                     </span>
                   </td>
                   <td>{item.workArea || "—"}</td>
-                  <td style={{ fontFamily: "var(--mono)", fontSize: 12 }}>
+                  <td style={{ fontFamily: "var(--mono)", fontSize: "var(--f5)" }}>
                     {item.startDate ?? "?"} ~ {item.endDate ?? "?"}
                   </td>
                 </tr>

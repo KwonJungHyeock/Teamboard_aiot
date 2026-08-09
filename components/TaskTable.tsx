@@ -207,7 +207,11 @@ export default function TaskTable({
       </div>
       <table>
         <colgroup>
-          {selectable && <col style={{ width: "34px" }} />}
+          {/* §A1 실측 — 폭은 여기(colgroup)가 유일한 출처다. table-layout:fixed 라
+              CSS 의 width 는 col 을 못 이긴다. 34px 은 좌우 13px 여백 + 15px 체크박스를
+              담지 못해 체크박스가 잘리고 말줄임표가 찍혔다. 68px 은 "우선순위" 머리글과
+              알약이 안 들어갔다(필요 79px). 둘 다 들어가는 값으로 올린다. */}
+          {selectable && <col style={{ width: "44px" }} />}
           {full ? (
             <>
               <col />
@@ -215,8 +219,8 @@ export default function TaskTable({
               <col style={{ width: "92px" }} />
               <col style={{ width: "120px" }} />
               <col style={{ width: "72px" }} />
-              <col style={{ width: "68px" }} />
-              <col style={{ width: "118px" }} />
+              <col style={{ width: "88px" }} />
+              <col style={{ width: "124px" }} />
               <col style={{ width: "92px" }} />
               <col style={{ width: "70px" }} />
             </>
@@ -244,7 +248,7 @@ export default function TaskTable({
             {full && <th>영역</th>}
             <th>프로젝트</th>
             <th>담당</th>
-            {full && <th>우선순위</th>}
+            {full && <th className="col-pri">우선순위</th>}
             {full && <th>진행률</th>}
             <th>상태</th>
             <th>기한</th>
@@ -382,7 +386,7 @@ export default function TaskTable({
                 </td>
                 <td>{t.assigneeName ?? "—"}</td>
                 {full && (
-                  <td>
+                  <td className="col-pri">
                     <span className={`prio prio-${t.priority ?? "mid"}`}>
                       {PRIORITY_LABEL[t.priority ?? "mid"] ?? "보통"}
                     </span>
