@@ -165,17 +165,19 @@ export default function MemberManager({ user }: { user: SessionUser }) {
           {loading && <Skeleton variant="list" />}
           <table>
             <colgroup>
-              <col style={{ width: "24%" }} />
-              <col style={{ width: "23%" }} />
-              <col style={{ width: "13%" }} />
-              <col style={{ width: "11%" }} />
-              <col style={{ width: "13%" }} />
+              <col style={{ width: "17%" }} />
+              <col style={{ width: "21%" }} />
               <col style={{ width: "16%" }} />
+              <col style={{ width: "11%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "11%" }} />
+              <col style={{ width: "14%" }} />
             </colgroup>
             <thead>
               <tr>
-                <th>이름 · 상태</th>
+                <th>이름</th>
                 <th>이메일</th>
+                <th>에이전트</th>
                 <th>역할</th>
                 <th>가입</th>
                 <th>최근 접속</th>
@@ -185,21 +187,24 @@ export default function MemberManager({ user }: { user: SessionUser }) {
             <tbody>
               {members.map((m) => (
                 <tr key={m.id} style={{ opacity: m.isActive ? 1 : 0.5 }}>
+                  {/* H-1 — 이 칸은 **사람 이름 하나만** 쓴다.
+                      전에는 이름 · 짧은이름 · "에이전트 " + 에이전트이름을 이어 붙여
+                      "권정혁 · 정혁 에이전트 정혁의 에이전트"가 됐다. 세 값이 다 같은
+                      사람 이름에서 파생된 것이라, 이어 붙이는 순간 같은 말이 세 번 나온다.
+                      짧은 이름은 다른 화면(멘션·아바타)에서 쓰고 여기엔 안 쓴다.
+                      에이전트는 자기 열에서 본다. 비번변경 대기는 이름이 아니라 처리해야 할
+                      상태라 남긴다 — 여기서 빼면 볼 데가 없다. */}
                   <td>
                     <span className="mbr-name">
                       <span className={`led ${m.isActive ? "s-done" : "s-drop"}`} title={m.isActive ? "활성" : "비활성"} aria-hidden="true" />
                       <span className="mbr-nm">
-                        {m.displayName}{m.shortName && <span className="rp-by"> · {m.shortName}</span>}
-                        {(m.assistantName || m.mustChangePw) && (
-                          <small className="mbr-sub">
-                            {m.assistantName ? `에이전트 ${m.assistantName}` : ""}
-                            {m.mustChangePw ? `${m.assistantName ? " · " : ""}비번변경 대기` : ""}
-                          </small>
-                        )}
+                        {m.displayName}
+                        {m.mustChangePw && <small className="mbr-sub">비번변경 대기</small>}
                       </span>
                     </span>
                   </td>
                   <td>{m.email}</td>
+                  <td className="mbr-agent">{m.assistantName ?? "—"}</td>
                   <td>
                     <select
                       className={`role-sel role-${m.role}`}

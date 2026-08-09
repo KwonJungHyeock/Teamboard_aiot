@@ -8,6 +8,7 @@ import Link from "next/link";
 import { openPanel } from "@/lib/side-panel";
 import type { HomeSummary } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
+import { dueUrgency } from "@/lib/task-view";
 import PageShell from "./PageShell";
 import SectionEmpty from "./SectionEmpty";
 import HeroTimeline from "./HeroTimeline";
@@ -214,14 +215,17 @@ function UpcomingBlock({ items, today }: { items: HomeSummary["upcoming"]; today
       ) : future.map((it) => {
         const k = UP_KIND[it.kind];
         const [, mm, dd] = it.date.split("-");
-        const near = !!it.dday && /^D-[0-2]$|^D-DAY$/.test(it.dday);
+        // H-2 — 판정은 lib/task-view 의 dueUrgency 한 곳에서만.
+        // 이 목록은 lib/home.ts 에서 `due_date >= today` 로 뽑는 **미래만** 담는 목록이라
+        // 지연(D+N)이 올 수 없다. 그래서 late 분기를 두지 않는다 — 안 그리는 분기는 안 만든다.
+        const urg = dueUrgency(it.dday);
         return (
           <Link className="hm-row hm-row-up" key={it.key} href={it.kind === "meeting" ? "/calendar" : "/tasks"}>
             <span className="hm-c1 hm-date num">{it.date === today ? "오늘" : `${Number(mm)}/${Number(dd)}`}</span>
             <span className="hm-c2 hm-t">{it.title}</span>
             <span className="hm-c3">
               {it.dday
-                ? <em className={`hm-dd num${near ? " over" : ""}`}>{it.dday}</em>
+                ? <em className={`hm-dd num${urg === "soon" ? " over" : ""}`}>{it.dday}</em>
                 : <span className={`hm-chip ${k.cls}`}>{k.label}</span>}
             </span>
           </Link>

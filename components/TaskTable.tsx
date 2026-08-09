@@ -11,6 +11,7 @@ import { notifyTaskUpdated } from "@/lib/task-panel";
 import { useCountUp, useExiting, useFlip, useHighlight } from "@/lib/motion";
 import { notifyGoalChain } from "@/lib/goal-chain";
 import { pfill } from "@/lib/progress-bar";
+import { dueUrgency } from "@/lib/task-view";
 export interface TaskTableRow {
   id: number;
   title: string;
@@ -271,11 +272,10 @@ export default function TaskTable({
             const kids = childrenOf.get(t.id) ?? [];
             const isChild = (t.parentTaskId ?? null) !== null;
             const openHere = expanded.has(t.id);
-            const dueCls = t.overdue
-              ? "bad"
-              : t.dday === "D-DAY" || t.dday === "D-1" || t.dday === "D-2"
-                ? "soon"
-                : "";
+            // H-2 — 급함 등급은 lib/task-view 의 dueUrgency 하나에서 나온다.
+            // 화면마다 정규식을 따로 쓰면 "이번 주"의 뜻이 화면마다 달라진다.
+            const urg = dueUrgency(t.dday);
+            const dueCls = urg === "late" ? "bad" : urg === "soon" ? "soon" : "";
             const editable = full && onStatusChange && t.status !== "proposed" && t.status !== "dropped";
             return (
               <tr
