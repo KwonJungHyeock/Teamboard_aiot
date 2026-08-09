@@ -86,8 +86,8 @@
 .hv .st.review{border-color:var(--line);color:var(--ink-soft)}
 .hv .st.prop{border-style:dashed;border-color:var(--play);color:var(--play)}
 .hv .due{font-family:var(--f-d);font-size: var(--f6);color:var(--lo)}
-.hv .due.bad{color:var(--danger)}
-.hv .due.soon{color:var(--warn)}
+.hv .due.bad{color:var(--danger);font-weight:700}
+.hv .due.soon{color:var(--warn);font-weight:700}
 .hv .tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px}
 .hv .tab{border:1px solid var(--line);background:transparent;color:var(--mid);border-radius:18px;padding:3.5px 11px;font-family:inherit;font-size: var(--f6);cursor:pointer}
 .hv .tab:hover{border-color:var(--line-hi)}
@@ -790,6 +790,8 @@
 
 /* ═══ 6. 접근성 대비 — 의미색 '텍스트' ≥4.5:1 (밝은 원색은 바·테두리·틴트, 글자는 -text 변형) ═══ */
 .hv .due.bad, .hv .mc .d.dn, .hv .bg.stale, .hv .prio-high, .hv .tl-chip.late .tl-dday { color: var(--coral-text); }
+/* H-2 — 지연·임박은 굵기까지 간다. 색만으로는 스무 건 중 하나를 못 고른다. */
+.hv :is(.due.bad, .due.soon) .tt-dday { font-weight: 700; }
 .hv .due.soon, .hv .bg.decided, .hv .hud .f .gtag.decided, .hv .wtag.routine, .hv .sdecided { color: var(--amber-text); }
 .hv .mc .d.up, .hv .st.done, .hv .stsel.st-done, .hv .hud .f .gtag.resolved, .hv .gchip.done, .hv .slinked { color: var(--green-text); }
 .hv .st.doing, .hv .stsel.st-doing, .hv .prio-mid, .hv .bg.tome { color: var(--edu-text); }
@@ -1294,6 +1296,7 @@
 .hv .tb-who { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hv .tb-dday { margin-left: auto; font-size: var(--f5); color: var(--muted); flex: none; }
 .hv .tb-dday.late { color: var(--coral-text); font-weight: 700; }
+.hv .tb-dday.soon { color: var(--amber-text); font-weight: 700; }
 .hv .tb-card-prog { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
 .hv .tb-bar { flex: 1; height: 5px; border-radius: 3px; background: var(--track-bg); overflow: hidden; }
 .hv .tb-bar i { display: block; height: 100%; border-radius: 3px; }
@@ -1415,6 +1418,8 @@
 .hv .mbr-name .led { width: 8px; height: 8px; flex: none; }
 .hv .mbr-nm { display: flex; flex-direction: column; line-height: 1.35; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .hv .mbr-sub { font-family: var(--f-d); font-size: var(--f6); color: var(--muted); font-weight: 500; margin-top: 1px; }
+/* H-1 — 에이전트는 자기 열에서 본다. 사람 이름 칸에 이어 붙이지 않는다. */
+.hv .mbr-agent { color: var(--muted); }
 .hv .mbr-date { font-size: var(--f5); color: var(--ink-soft); }
 .hv .role-sel { width: auto; min-width: 74px; height: 30px; font-size: var(--fs-badge); font-weight: 700; border-radius: 8px; padding: 0 10px; border: 1px solid var(--line-hi); background: var(--card); }
 .hv .role-sel.role-lead { color: var(--coral-text); background: var(--coral-bg); border-color: color-mix(in srgb, var(--coral) 30%, transparent); }

@@ -9,7 +9,7 @@
 //   §A4 새 업무의 goal_source 가 inherited 가 아니다 · 상속 요청은 거부된다
 //   §A5 테이블·컬럼은 살아 있다
 //   §C2 연결 **데이터**도 살아 있다 — 코드가 도는 동안 한 건도 줄지 않는다
-//   §C3 1회 안내가 뜨고, 닫으면 다시 뜨지 않는다
+//   §C3 1회 안내는 031 H-3 으로 제거됐다 — 그 자리에 미연결 줄만 남는지 확인한다
 //   표본 가드 — 업무 1건짜리 연간 목표가 100% 막대로 뜨지 않는다 (지시 16)
 //   §B  배너 숫자 = 일괄 연결 화면 행 수 = 서버 판정, 셋이 같은 수다
 //   서버 경로도 함께 닫혔는지 — 화면에서 버튼만 지우면 경로는 남는다
@@ -258,36 +258,17 @@ try {
   chk("B1-미연결은집계밖", ids.length > 0 && leaked.length === 0,
     `배너가 센 ${ids.length}건 중 어떤 목표 서브트리에라도 잡히는 것 ${leaked.length}건`);
 
-  // ── §C3 1회 안내 ────────────────────────────────────────────────
-  // 이 브라우저 컨텍스트는 매번 새로 뜨므로 localStorage 가 비어 있다 = 첫 방문 상태.
+  // ── §C3 1회 안내 — **031 H-3 으로 화면에서 뺐다** ────────────────
+  // 030 을 아는 사람에게만 뜻이 통하는 문구라 오픈 전에 제거했다.
+  // 검사도 같이 지운다. 안 그리는 것을 계속 재면 검사가 먼저 깨진다.
+  // 대신 그 자리에 무엇이 남아야 하는지를 잰다 — 지운 것과 안 그려진 것은 다르다.
   await page.goto(`${BASE}/goals`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1200);
-  const noticeText = (await page.locator(".lmn").innerText().catch(() => "")).replace(/\n/g, " ");
-  const noticeCoral = await page.locator(".lmn").evaluate((el) => {
-    const bg = getComputedStyle(el).backgroundColor + getComputedStyle(el).borderLeftColor;
-    return bg;
-  }).catch(() => "(없음)");
-  await page.screenshot({ path: `${OUT}/C3-안내.png` });
-  chk("C3-안내가뜬다",
-    noticeText.includes("프로젝트를 목표에 연결하는 방식이 없어졌습니다")
-      && noticeText.includes("21건") && noticeText.includes("1건만 남습니다")
-      && noticeText.includes("미연결 업무에서 한 번에"),
-    `"${noticeText}"`);
-
-  await page.locator(".lmn-x").click();
-  await page.waitForTimeout(400);
-  const goneNow = await page.locator(".lmn").count();
-  await page.reload({ waitUntil: "networkidle" });
-  await page.waitForTimeout(1400);
-  const goneAfter = await page.locator(".lmn").count();
-  // 짝이 되는 존재 단언 — 저장소를 비우면 **다시 떠야** 한다. 안 그러면 위 0건은
-  // "안내가 애초에 안 그려졌다"와 구별되지 않는다 (지시 28-2).
-  await page.evaluate(() => localStorage.removeItem("tb:notice:link-model-030"));
-  await page.reload({ waitUntil: "networkidle" });
-  await page.waitForTimeout(1400);
-  const backAgain = await page.locator(".lmn").count();
-  chk("C3-닫으면안뜬다", goneNow === 0 && goneAfter === 0 && backAgain === 1,
-    `닫은 직후 ${goneNow}개 · 새로고침 후 ${goneAfter}개 · 저장소를 비우면 ${backAgain}개(다시 떠야 한다)`);
+  const noticeGone = await page.locator(".lmn").count();
+  const ulText = (await page.locator(".ulbanner").innerText().catch(() => "")).replace(/\n/g, " ");
+  await page.screenshot({ path: `${OUT}/C3-안내제거.png` });
+  chk("C3-개발과정안내없음", noticeGone === 0 && ulText.includes("연결하면 진척에 집계됩니다"),
+    `.lmn ${noticeGone}개 · 남은 줄 "${ulText}"`);
 
   // ── 표본 가드 — 업무 1건짜리 연간 목표 (지시 16) ────────────────────
   // 030 §A3 로 프로젝트 경유가 빠지면서 실제로 이 상태에 닿는 연간 목표가 생긴다.

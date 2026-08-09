@@ -113,15 +113,38 @@ export function taskDays(task: { startDate: string | null; dueDate: string | nul
   return s0 <= e0 ? { start: s0, end: e0 } : { start: e0, end: s0 };
 }
 
-export function dday(due: string | null, today: string): { text: string | null; overdue: boolean } {
-  if (!due || !today) return { text: null, overdue: false };
+export function dday(due: string | null, today: string): {
+  text: string | null; overdue: boolean; soon: boolean;
+} {
+  if (!due || !today) return { text: null, overdue: false, soon: false };
   const diff = Math.round(
     (Date.parse(`${due}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000
   );
   return {
     text: diff < 0 ? `D+${-diff}` : diff === 0 ? "D-DAY" : `D-${diff}`,
     overdue: diff < 0,
+    soon: diff >= 0 && diff <= 7,
   };
+}
+
+/**
+ * 기한 급함 등급 — **여기 하나만 쓴다** (MD-P-2026-031 H-2).
+ *
+ * 화면마다 `/^D-[0-2]$/` 같은 정규식을 따로 쓰고 있었다. 그러면 "이번 주"의 뜻이
+ * 화면마다 달라지고, 지연이 어디선 빨갛고 어디선 회색이 된다. 진척 계산기가
+ * 아홉 갈래로 갈렸던 것과 같은 경로다.
+ *
+ * `D+N` 지연 · `D-DAY ~ D-7` 임박 · 그 외 보통. 문자열만 있어도 판정한다 —
+ * 홈처럼 서버가 만든 라벨만 들고 있는 화면이 있기 때문이다.
+ */
+export type DueUrgency = "late" | "soon" | "normal";
+export function dueUrgency(ddayText: string | null | undefined): DueUrgency {
+  if (!ddayText) return "normal";
+  if (/^D\+\d+$/.test(ddayText)) return "late";
+  if (ddayText === "D-DAY") return "soon";
+  const m = /^D-(\d+)$/.exec(ddayText);
+  if (m && Number(m[1]) <= 7) return "soon";
+  return "normal";
 }
 
 /**

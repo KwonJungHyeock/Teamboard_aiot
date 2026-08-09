@@ -14,7 +14,6 @@ import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import ErrorNote from "./ErrorNote";
 import NewGoalModal from "./NewGoalModal";
-import LinkModelNotice from "./LinkModelNotice";
 import UnlinkedTaskPanel, { type UnlinkedTask, type MonthGoalOption } from "./UnlinkedTaskPanel";
 import SnapshotMenu from "./SnapshotMenu";
 import { GOAL_UPDATED_EVENT, openGoalPanel } from "@/lib/goal-panel";
@@ -168,18 +167,17 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
     {/* 본문 CSS 가 home.css 에 `.hv …` 로 스코프돼 있다 — 래퍼를 지우면 트리 스타일이 통째로 죽는다.
         (MD-P-2026-022 §A 1~4 에서 이 래퍼가 빠져 목표 트리가 깨져 있었다) */}
     <div className="hv pg-legacy">
-      {/* §C3 1회 안내 — 숫자만 내려가면 고장으로 읽힌다. 한 번은 말해야 한다.
-          배너보다 위에 둔다: "왜 바뀌었는가"를 읽고 나서 "무엇을 하면 되는가"로 내려가야 순서가 맞다. */}
-      {tab === "team" && <LinkModelNotice />}
-
+      {/* §C3 1회 안내(030)는 **오픈 전에 뺐다** (031 H-3).
+          "프로젝트를 목표에 연결하는 방식이 없어졌습니다"는 030 을 아는 사람에게만 뜻이 통한다.
+          오늘 처음 들어오는 사람에게는 사고로 읽힌다. 개발 과정은 화면에 남기지 않는다. */}
       {/* 미연결 배너 (MD-P-2026-030 §B) — 이 숫자는 아래 일괄 연결 화면의 행 수와
           **같은 배열**에서 나온다. 조건은 lib/progress.ts 의 unlinkedTaskSql 하나뿐이고,
           그 조건은 진척 계산기가 세는 집계 대상과 같다.
           0건이면 배너를 그리지 않는다. 코랄을 쓰지 않는다(중립 톤). */}
       {tab === "team" && unlinkedTasks.length > 0 && (
         <button className="ulbanner" onClick={() => setShowUnlinked((v) => !v)} aria-expanded={showUnlinked}>
-          <b className="num">{unlinkedTasks.length}건</b>
-          <span>목표에 연결되지 않은 업무 · 진척에 집계되지 않습니다</span>
+          {/* H-3 — 없어진 것을 설명하지 말고 **지금 할 일**을 말한다. */}
+          <span>업무 <b className="num">{unlinkedTasks.length}건</b>이 아직 목표에 연결되지 않았습니다 — 연결하면 진척에 집계됩니다</span>
           <span className="gsp" />
           <em>{showUnlinked ? "닫기" : "연결하기 →"}</em>
         </button>

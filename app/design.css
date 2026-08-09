@@ -575,7 +575,10 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .hm-row-up .hm-c3 { flex: 0 0 60px; display: flex; justify-content: flex-end; }
 .hm-date { font-size: var(--f5); font-weight: 800; color: var(--ink2); }
 .hm-dd { font-size: var(--f5); font-weight: 800; font-style: normal; color: var(--ink2); }
-.hm-dd.over { color: var(--coral-text); }
+/* H-2 — 임박(D-DAY~D-7)은 앰버. 등급은 lib/task-view 의 dueUrgency 하나에서 나온다.
+   지연(.late)은 여기 두지 않는다 — 이 목록은 미래만 담아서 D+N 이 올 수 없다.
+   알약·아이콘은 만들지 않는다(§D2 에서 한다). */
+.hm-dd.over { color: var(--amber-text); }
 
 /* 나의 초점 — 아이콘 20px / 안읽음 굵게 + 좌측 코랄 점 (MD-P-2026-018 §B 규격) */
 /* 지시서는 radius 5px 지만 §G 라운드 3종(4/7/9) 밖이라 4px 로 스냅했다 */
@@ -1554,29 +1557,6 @@ a.pcard:hover, .pcard.clickable:hover { box-shadow: var(--e2); }
 .gdp-nodata-h { display: block; margin-top: 3px; color: var(--muted); }
 .gdp-nodata-h b { color: var(--ink-soft); font-weight: 700; }
 
-/* ── MD-P-2026-030 §C3 — 연결 모델 변경 1회 안내 ──────────────────────
-   .ulbanner 와 같은 규격을 쓴다. 새 시각 언어를 만들지 않는다.
-   다른 점은 둘뿐이다: 여러 줄이라 align-items 가 flex-start 이고, 닫기 버튼이 있다.
-   코랄 금지 — 사고가 아니라 안내다. 앰버도 쓰지 않는다: 경고가 아니다. */
-.lmn {
-  display: flex; align-items: flex-start; gap: 10px; width: 100%;
-  background: var(--surface-2);
-  border-left: 1px solid var(--line); border-radius: 0 4px 4px 0;
-  padding: 11px 13px; margin-bottom: 12px;
-}
-.lmn-b { flex: 1; min-width: 0; }
-.lmn-t { margin: 0; font-size: var(--f4); font-weight: 700; color: var(--ink); }
-.lmn-d { margin: 3px 0 0; font-size: var(--f4); color: var(--ink2); }
-.lmn-x {
-  flex: 0 0 auto; width: 24px; height: 24px; display: grid; place-items: center;
-  border: 0; border-radius: 4px; background: transparent; cursor: pointer;
-  color: var(--muted); font-size: var(--f5); font-family: inherit;
-  /* color 는 §H2 허용 속성이 아니다 — 배경만 넘긴다. 정적 검사가 잡아 줬다. */
-  transition: background-color var(--dur-1) var(--ease-out);
-}
-.lmn-x:hover { background: var(--surface); color: var(--ink); }
-.lmn-x:focus-visible { outline: 2px solid var(--edu); outline-offset: 2px; }
-
 /* ── 표본 부족 표기 (MD-P-2026-030 지시 30-2) ─────────────────────────
    표본 부족은 "값이 없다"가 아니라 **"값의 신뢰도가 낮다"** 는 뜻이다.
    값은 보이고(30-1) 막대는 그리지 않는다(30-3). 대신 숫자를 낮춰 확정값과 구분한다.
@@ -1663,7 +1643,7 @@ button.st.blkd:focus-visible { outline: 2px solid var(--edu); outline-offset: 2p
 .prop-blking b { font-size: var(--f4); color: var(--ink); }
 
 /* §B4 원인 완료 안내 — 자동으로 풀지 않는다. 알리고, 그 자리에서 풀 수단을 준다.
-   .lmn(030 §C3)과 같은 중립 톤이되 앰버 틴트로 "확인이 필요하다"를 말한다. */
+   .ulbanner 와 같은 중립 톤이되 앰버 틴트로 "확인이 필요하다"를 말한다. */
 .blkdone {
   display: flex; align-items: center; gap: 10px; margin: 0 0 12px;
   padding: 9px 12px; border-radius: 0 4px 4px 0;

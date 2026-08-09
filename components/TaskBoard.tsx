@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import { openTaskPanel } from "@/lib/task-panel";
 import { openQuickCreate } from "@/lib/quick";
 import {
-  type TaskItem, type BoardGroup, BOARD_STATUSES, STATUS_META, statusColor, areaColor, dday,
+  type TaskItem, type BoardGroup, BOARD_STATUSES, STATUS_META, statusColor, areaColor, dday, dueUrgency,
 } from "@/lib/task-view";
 import SectionEmpty from "./SectionEmpty";
 import { pfill } from "@/lib/progress-bar";
@@ -130,7 +130,7 @@ export default function TaskBoard({
                         {STATUS_META[t.status]?.label ?? t.status}
                       </span>
                       {t.assigneeName && <span className="tb-who">{t.assigneeName}</span>}
-                      {d.text && <span className={`tb-dday num${overdue ? " late" : ""}`}>{d.text}</span>}
+                      {d.text && <span className={`tb-dday num${dueUrgency(d.text) === "late" ? " late" : dueUrgency(d.text) === "soon" ? " soon" : ""}`}>{d.text}</span>}
                     </div>
                     <div className="tb-card-prog">
                       <div className="tb-bar"><i style={{ ...pfill(Math.max(t.progress, 2)), background: statusColor(t.status) }} /></div>
