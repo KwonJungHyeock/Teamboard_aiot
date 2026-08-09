@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Mission Deck — 홈 시안 v6</title>
+<style>
+:root{
+  --bg:#F4F6F8;
+  --surface:#FFFFFF;
+  --ink:#101419; --ink2:#454E5A; --muted:#79818B; --faint:#A4ABB4;
+  --line:#E7EBEF; --hair:#F0F3F6;
+  --sb1:#14171C; --sb2:#0B0D11;
+  --coral:#EA4A4F; --coral-d:#C7383C;
+  --blue:#3072E6; --teal:#0E9E92; --purple:#7C5CE0;
+  --green:#12915C; --amber:#D9880F; --slate:#8E97A3;
+  --e-card:0 1px 2px rgba(16,24,40,.04), 0 12px 28px -16px rgba(16,24,40,.18);
+  --e-lift:0 1px 2px rgba(16,24,40,.05), 0 16px 32px -14px rgba(16,24,40,.22);
+  --f1:26px; --f2:20px; --f3:15px; --f4:13.5px; --f5:12px; --f6:11px;
+  --dur-1:120ms; --dur-2:180ms; --dur-3:260ms; --dur-4:520ms;
+  --stagger-2:60ms; --ease-out:cubic-bezier(.2,.8,.2,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-family:"Pretendard","Apple SD Gothic Neo",-apple-system,"Segoe UI",sans-serif;
+  background:var(--bg);color:var(--ink);font-size:var(--f4);line-height:1.5;letter-spacing:-.011em}
+svg{display:block;flex:none}
+.app{display:flex;min-height:100vh}
+
+/* ───────── 사이드바 ───────── */
+.sb{width:216px;flex:none;background:linear-gradient(168deg,var(--sb1) 0%,var(--sb2) 100%);
+  padding:18px 12px;display:flex;flex-direction:column;gap:1px;color:#9AA3AE}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px}
+.sb-mark{width:28px;height:28px;border-radius:9px;
+  background:linear-gradient(145deg,#FF6B6F,var(--coral-d));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;
+  box-shadow:0 4px 12px -4px rgba(234,74,79,.7)}
+.sb-nm{font-size:var(--f4);font-weight:700;color:#fff;line-height:1.15}
+.sb-sub{font-size:9px;letter-spacing:.16em;color:#565F6B;font-weight:800;margin-top:1px}
+.sb-g{font-size:10px;color:#565F6B;font-weight:800;letter-spacing:.06em;padding:16px 8px 6px}
+.sb-i{display:flex;align-items:center;gap:10px;padding:0 9px;height:33px;border-radius:8px;
+  font-size:var(--f4);color:#9AA3AE;font-weight:500}
+.sb-i svg{stroke:currentColor;opacity:.8}
+.sb-i.on{background:rgba(255,255,255,.08);color:#fff;font-weight:600}
+.sb-i.on svg{opacity:1}
+.sb-badge{margin-left:auto;font-size:10px;font-weight:700;background:var(--coral);color:#fff;
+  border-radius:20px;padding:1px 6px;line-height:1.4}
+.sb-me{margin-top:auto;display:flex;align-items:center;gap:9px;padding:9px;border-radius:9px;
+  background:rgba(255,255,255,.05)}
+.av{border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:700;color:#fff;flex:none;letter-spacing:0}
+.av.s{width:22px;height:22px;font-size:10px}
+.av.m{width:26px;height:26px;font-size:11px}
+
+/* ───────── 워크스페이스 ───────── */
+.ws{flex:1;min-width:0;padding:22px 26px 48px}
+.crumb{font-size:var(--f5);color:var(--faint);margin-bottom:7px;font-weight:500}
+.hd{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.h1{font-size:var(--f1);font-weight:800;letter-spacing:-.035em;line-height:1.05}
+.hd-meta{font-size:var(--f5);color:var(--muted);font-weight:500}
+.dot-sep{width:3px;height:3px;border-radius:50%;background:#CDD3DA}
+.hd-r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.btn{height:33px;padding:0 13px;border-radius:9px;font-size:var(--f4);font-weight:600;
+  display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;white-space:nowrap}
+.btn-coral{background:var(--coral);color:#fff;box-shadow:0 1px 2px rgba(234,74,79,.3),0 8px 16px -10px rgba(234,74,79,.8)}
+.btn-line{background:#fff;border-color:var(--line);color:var(--ink2);box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.btn-text{background:transparent;color:var(--muted);padding:0 6px;font-size:var(--f5);height:26px}
+.btn-text svg{stroke:currentColor}
+
+.tabs{display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+.tab{padding:0 3px;margin-right:18px;height:34px;display:flex;align-items:center;gap:7px;
+  font-size:var(--f4);color:var(--muted);position:relative;font-weight:600}
+.tab.on{color:var(--ink);font-weight:700}
+.tab.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;
+  background:var(--ink);border-radius:2px 2px 0 0}
+.tab .n{font-size:10px;color:var(--faint);font-weight:700;background:var(--hair);
+  border-radius:20px;padding:1px 6px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 316px;gap:18px;align-items:start}
+
+/* ───────── 1층 · 판단 ───────── */
+.judge{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.jt{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:13px 15px 12px;box-shadow:var(--e-card);position:relative}
+.jt.on{border-color:#C6CDD5;box-shadow:var(--e-lift)}
+.jt-top{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.jt-ic{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex:none}
+.jt-l{font-size:var(--f5);font-weight:700;color:var(--ink2)}
+.jt-n{margin-left:auto;font-size:22px;font-weight:800;line-height:1;
+  font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.jt-why{font-size:var(--f6);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.jt.zero{background:#FAFBFC;border-color:#EDF0F3;box-shadow:none}
+.jt.zero .jt-n,.jt.zero .jt-l{color:#B7BDC5}
+.jt.zero .jt-why{color:#C3C9D0}
+
+/* ───────── 카드 ───────── */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  box-shadow:var(--e-card);overflow:hidden;margin-bottom:14px}
+.chd{display:flex;align-items:center;gap:11px;padding:16px 18px 13px}
+.chd-t{font-size:17px;font-weight:800;letter-spacing:-.028em}
+.chd-m{font-size:var(--f5);color:var(--faint);font-weight:500}
+.chd-r{margin-left:auto;display:flex;align-items:center;gap:9px}
+.seg{display:flex;background:#F3F5F8;border-radius:9px;padding:3px;gap:2px}
+.seg span{font-size:var(--f5);padding:4px 10px;border-radius:7px;color:var(--muted);font-weight:600}
+.seg span.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 2px rgba(16,24,40,.08)}
+
+/* 눈금 */
+.ruler{display:flex;align-items:center;height:22px;padding:0 18px 0 18px;color:var(--faint)}
+.lead{width:474px;flex:none;display:flex;align-items:center;gap:9px;min-width:0}
+.ruler .lead{font-size:var(--f6);font-weight:700;letter-spacing:.02em}
+.track{flex:1;position:relative;height:100%;min-width:0}
+.ruler .tick{position:absolute;top:4px;font-size:10px;font-weight:700;
+  font-variant-numeric:tabular-nums;transform:translateX(-50%)}
+.tail{width:152px;flex:none;display:flex;align-items:center;gap:9px;justify-content:flex-end}
+.who{font-size:var(--f6);color:var(--muted);font-weight:600;white-space:nowrap;
+  width:52px;flex:none;text-align:right;overflow:hidden;text-overflow:ellipsis}
+.grp .who{width:auto;text-align:left;color:var(--ink2)}
+
+/* 그룹(프로젝트) */
+.grp{display:flex;align-items:center;gap:10px;height:38px;padding:0 18px;
+  border-top:1px solid var(--hair)}
+.grp:first-of-type{border-top:1px solid var(--line)}
+.pdot{width:9px;height:9px;border-radius:3px;flex:none}
+.grp .nm{font-size:var(--f4);font-weight:700;letter-spacing:-.018em}
+.grp .meta{font-size:var(--f6);color:var(--faint);font-weight:500}
+.grp .r{margin-left:auto;display:flex;align-items:center;gap:10px}
+.stack{display:flex}
+.stack .av{margin-left:-6px;box-shadow:0 0 0 2px #fff}
+.stack .av:first-child{margin-left:0}
+.rollbar{width:104px;height:6px;border-radius:99px;background:#EDF0F3;overflow:hidden}
+.rollbar i{display:block;height:100%;border-radius:99px}
+.rollv{font-size:var(--f5);font-weight:800;font-variant-numeric:tabular-nums;width:36px;text-align:right}
+
+/* 행 */
+.row{display:flex;align-items:center;height:44px;padding:0 18px;position:relative}
+.row + .row::before{content:"";position:absolute;left:18px;right:18px;top:0;height:1px;background:var(--hair)}
+.row:hover{background:#FAFBFD}
+.pri{width:16px;flex:none;display:flex;align-items:center;justify-content:center}
+.st{width:7px;height:7px;border-radius:50%;flex:none;margin:0 8px 0 2px}
+.st.todo{background:#CFD5DC}
+.st.doing{background:var(--blue)}
+.st.done{background:var(--green)}
+.tt{font-size:var(--f4);width:296px;flex:none;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;font-weight:500;color:var(--ink)}
+.row.is-done .tt{color:var(--muted)}
+/* 영역 — 상자 없이 점 + 글자 */
+.area{width:78px;flex:none;display:flex;align-items:center;gap:6px;
+  font-size:var(--f6);color:var(--muted);font-weight:600}
+.area i{width:6px;height:6px;border-radius:2px;flex:none}
+/* 상태 표시 — 테두리 없는 아주 옅은 알약 */
+.flag{width:76px;flex:none}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;
+  padding:3px 8px;border-radius:20px;letter-spacing:.01em;white-space:nowrap}
+.pill.late{background:#FDECED;color:var(--coral-d)}
+.pill.soon{background:#FCF3E3;color:#8F5C0B}
+.pill.block{background:#F2EEFD;color:#5B41BE}
+.pill.blocking{background:#E9F1FE;color:#1E5CD9}
+.pill svg{stroke:currentColor}
+
+.now{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--coral);opacity:.45}
+/* 오늘 선 — 점은 눈금자에만 하나. 행마다 찍으면 점의 열이 된다 */
+.ruler .now{top:auto;bottom:-1px;height:12px;opacity:.5}
+.ruler .now::before{content:"";position:absolute;top:-3px;left:-2px;width:5px;height:5px;
+  border-radius:50%;background:var(--coral)}
+/* ── 3층 · 상시 호흡 (화면에 딱 하나) ── */
+@keyframes nowBreath{
+  0%,100%{opacity:.55;transform:scale(1)}
+  50%    {opacity:1;  transform:scale(1.22)}}
+.ruler .now::before{animation:nowBreath 2.4s ease-in-out infinite;transform-origin:50% 50%}
+body.paused .ruler .now::before{animation-play-state:paused}
+
+/* ── 1층 · 진입 시 1회 (지연·오늘 건만) ── */
+@keyframes barDraw{from{transform:scaleX(.04)}to{transform:scaleX(1)}}
+@keyframes barFade{from{opacity:0}to{opacity:1}}
+.bar.sweep{animation:barFade var(--dur-3) var(--ease-out) both;
+  animation-delay:var(--d,0ms)}
+.bar.sweep > i{transform-origin:left center;
+  animation:barDraw var(--dur-4) var(--ease-out) both;
+  animation-delay:var(--d,0ms)}
+
+.bar{position:absolute;top:50%;transform:translateY(-50%);height:16px;border-radius:20px;
+  display:flex;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(16,24,40,.05)}
+.bar i{height:100%;display:block}
+.bar.over{box-shadow:inset 0 0 0 1px rgba(199,56,60,.55)}
+.stub{position:absolute;top:50%;transform:translateY(-50%);left:0;display:flex;
+  align-items:center;gap:5px;font-size:var(--f6);color:var(--coral-d);font-weight:700}
+.stub svg{stroke:currentColor}
+.dday{width:44px;flex:none;font-size:var(--f5);font-weight:700;
+  font-variant-numeric:tabular-nums;color:var(--faint);text-align:right}
+.dday.late{color:var(--coral-d)}
+.dday.soon{color:#8F5C0B}
+.pct{width:38px;flex:none;font-size:var(--f5);font-weight:700;
+  font-variant-numeric:tabular-nums;color:var(--ink2);text-align:right}
+
+.cft{display:flex;align-items:center;gap:8px;padding:11px 18px;border-top:1px solid var(--hair);
+  font-size:var(--f5);color:var(--faint);font-weight:500}
+.cft svg{stroke:currentColor}
+
+/* 상시 업무 접힌 카드 */
+.fold{display:flex;align-items:center;gap:11px;padding:14px 18px}
+.fold .t{font-size:var(--f4);font-weight:700}
+.fold .m{font-size:var(--f5);color:var(--faint);font-weight:500}
+.fold .r{margin-left:auto;display:flex;align-items:center;gap:9px}
+
+/* ───────── 오른쪽 ───────── */
+.rail{display:flex;flex-direction:column;gap:14px}
+.rc{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  box-shadow:var(--e-card);overflow:hidden}
+.rhd{display:flex;align-items:center;gap:9px;padding:14px 16px 11px}
+.rt{font-size:var(--f3);font-weight:800;letter-spacing:-.024em}
+.rn{font-size:10px;font-weight:800;background:var(--coral);color:#fff;border-radius:20px;padding:1px 6px}
+.rhd .btn-text{margin-left:auto}
+.ri{display:flex;align-items:center;gap:9px;padding:0 16px;height:40px;position:relative}
+.ri + .ri::before{content:"";position:absolute;left:16px;right:16px;top:0;height:1px;background:var(--hair)}
+.ri .ic{width:16px;flex:none;color:var(--faint)}
+.ri .ic svg{stroke:currentColor}
+.ri .tx{font-size:var(--f5);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.ri .rt2{font-size:var(--f6);color:var(--faint);flex:none;font-variant-numeric:tabular-nums;font-weight:700}
+.ri .rt2.soon{color:var(--coral-d)}
+.gl{padding:2px 16px 15px;display:flex;flex-direction:column;gap:13px}
+.glr{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.glab{font-size:10px;color:var(--faint);font-weight:800;letter-spacing:.04em;
+  background:var(--hair);border-radius:5px;padding:2px 6px;flex:none}
+.gnm{font-size:var(--f5);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.gvl{font-size:var(--f5);font-weight:800;font-variant-numeric:tabular-nums;color:var(--muted)}
+.gtr{height:6px;border-radius:99px;background:#EDF0F3}
+.gnote{font-size:10px;color:var(--faint);margin-top:5px;font-weight:500}
+
+.note{margin-top:24px;padding:17px 19px;background:#fff;border:1px solid var(--line);
+  border-radius:14px;font-size:var(--f5);color:var(--ink2);line-height:1.85;box-shadow:var(--e-card)}
+.note h4{font-size:var(--f4);margin-bottom:8px;color:var(--ink);font-weight:800}
+.note b{color:var(--ink);font-weight:700}
+
+@media (prefers-reduced-motion: reduce){
+  .ruler .now::before{animation:none;opacity:.85;transform:none}
+  .bar.sweep,.bar.sweep > i{animation:none;opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sb">
+  <div class="sb-brand"><div class="sb-mark">E</div>
+    <div><div class="sb-nm">Eduino AI</div><div class="sb-sub">MISSION DECK</div></div></div>
+
+  <div class="sb-g">내 공간</div>
+  <div class="sb-i"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M3 8.5l2.5 2.5L13 4"/></svg>내 업무</div>
+  <div class="sb-i"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.6"><circle cx="8" cy="8" r="5.6"/><circle cx="8" cy="8" r="1.9"/></svg>내 목표</div>
+  <div class="sb-i"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="2.5" width="10" height="11" rx="2"/><path d="M5.8 6h4.4M5.8 9h3"/></svg>메모</div>
+  <div class="sb-i"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><rect x="2.5" y="3.5" width="11" height="10" rx="2"/><path d="M2.5 6.6h11M5.6 2v2.6M10.4 2v2.6"/></svg>내 캘린더</div>
+  <div class="sb-i"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linejoin="round"><path d="M4 2.8h8v10.4l-4-2.6-4 2.6z"/></svg>저장됨</div>
+
+  <div class="sb-g">팀</div>
+  <div class="sb-i on"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linejoin="round"><path d="M2.6 7.2L8 2.8l5.4 4.4V13H2.6z"/></svg>홈</div>
+  <div class="sb-i"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.6"><circle cx="8" cy="8" r="5.6"/><circle cx="8" cy="8" r="1.9"/></svg>목표</div>
+  <div class="sb-i"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linejoin="round"><path d="M2.5 5.2V12a1 1 0 001 1h9a1 1 0 001-1V6.4a1 1 0 00-1-1H8.2L6.8 3.8H3.5a1 1 0 00-1 1z"/></svg>프로젝트</div>
+  <div class="sb-i"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M5.6 4.4h7M5.6 8h7M5.6 11.6h7M3 4.4h.01M3 8h.01M3 11.6h.01"/></svg>업무</div>
+  <div class="sb-i"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><rect x="2.5" y="3.5" width="11" height="10" rx="2"/><path d="M2.5 6.6h11"/></svg>캘린더</div>
+  <div class="sb-i"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linejoin="round"><path d="M13.2 9.4a1.4 1.4 0 01-1.4 1.4H5.2L2.8 13.2V4a1.4 1.4 0 011.4-1.4h7.6A1.4 1.4 0 0113.2 4z"/></svg>논의·결정</div>
+  <div class="sb-i"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M8 2.6a3.6 3.6 0 00-3.6 3.6c0 3-1.4 4-1.4 4h10s-1.4-1-1.4-4A3.6 3.6 0 008 2.6zM6.8 13a1.4 1.4 0 002.4 0"/></svg>활동<span class="sb-badge">3</span></div>
+
+  <div class="sb-g">관리</div>
+  <div class="sb-i"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><circle cx="6.2" cy="6" r="2.3"/><path d="M2.6 13c0-2.2 1.6-3.5 3.6-3.5s3.6 1.3 3.6 3.5M11 5.2a2 2 0 010 3.6M12.4 3.4a4 4 0 010 7.2"/></svg>구성원 · 현황 · 에이전트</div>
+
+  <div class="sb-me">
+    <div class="av m" style="background:linear-gradient(140deg,#5B7CFA,#3D5AF1)">권</div>
+    <div><div style="font-size:12px;font-weight:700;color:#fff;line-height:1.2">권정혁</div>
+      <div style="font-size:10px;color:#6B7481;font-weight:700;letter-spacing:.06em">LEAD</div></div>
+  </div>
+</aside>
+
+<main class="ws">
+  <div class="crumb">워크스페이스 / 홈</div>
+  <div class="hd">
+    <div class="h1">홈</div>
+    <span class="dot-sep"></span>
+    <div class="hd-meta">2026.08.08 토 · 플랫폼팀</div>
+    <div class="hd-r">
+      <span class="btn btn-line">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 10.4V2.8M5.2 7.6L8 10.4l2.8-2.8M3 12.4h10"/></svg>가져오기</span>
+      <span class="btn btn-coral">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M8 3.6v8.8M3.6 8h8.8"/></svg>새 업무</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on">오늘</div>
+    <div class="tab">팀 현황 <span class="n">3</span></div>
+    <div class="tab">목표</div>
+  </div>
+
+  <div class="grid">
+    <div>
+
+      <!-- 1층 -->
+      <div class="judge">
+        <div class="jt on">
+          <div class="jt-top">
+            <span class="jt-ic" style="background:#FDECED">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#C7383C" stroke-width="1.8" stroke-linecap="round"><circle cx="8" cy="8" r="5.6"/><path d="M8 5.2V8l2 1.4"/></svg></span>
+            <span class="jt-l">지연</span><span class="jt-n" style="color:var(--coral-d)">3</span>
+          </div>
+          <div class="jt-why">가장 오래된 것 D+10 · 특허 요약서</div>
+        </div>
+        <div class="jt">
+          <div class="jt-top">
+            <span class="jt-ic" style="background:#FCF3E3">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#B87710" stroke-width="1.8" stroke-linecap="round"><rect x="2.6" y="3.4" width="10.8" height="10" rx="2"/><path d="M2.6 6.6h10.8M5.6 2v2.4M10.4 2v2.4"/></svg></span>
+            <span class="jt-l">이번 주</span><span class="jt-n" style="color:#B87710">5</span>
+          </div>
+          <div class="jt-why">오늘 2 · 내일 1 · 주말까지 2</div>
+        </div>
+        <div class="jt">
+          <div class="jt-top">
+            <span class="jt-ic" style="background:#F2EEFD">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#5B41BE" stroke-width="1.8" stroke-linecap="round"><rect x="3.2" y="7" width="9.6" height="6.4" rx="1.8"/><path d="M5.6 7V5.2a2.4 2.4 0 014.8 0V7"/></svg></span>
+            <span class="jt-l">막힘</span><span class="jt-n" style="color:#5B41BE">1</span>
+          </div>
+          <div class="jt-why">#26 내부 1차 PoC 를 기다리는 중</div>
+        </div>
+        <div class="jt">
+          <div class="jt-top">
+            <span class="jt-ic" style="background:#E9F1FE">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#1E5CD9" stroke-width="1.8" stroke-linecap="round"><path d="M6.6 9.4a2.6 2.6 0 003.9.3l1.8-1.8a2.6 2.6 0 00-3.7-3.7l-1 1"/><path d="M9.4 6.6a2.6 2.6 0 00-3.9-.3L3.7 8.1a2.6 2.6 0 003.7 3.7l1-1"/></svg></span>
+            <span class="jt-l">내가 막는 것</span><span class="jt-n" style="color:#1E5CD9">2</span>
+          </div>
+          <div class="jt-why">조서연 · 박주희가 기다리는 중</div>
+        </div>
+      </div>
+
+      <!-- 2층 -->
+      <div class="card">
+        <div class="chd">
+          <span class="chd-t">진행 중인 일</span>
+          <span class="chd-m">R&D · 플랫폼 · 8건</span>
+          <div class="chd-r">
+            <div class="seg"><span class="on">프로젝트</span><span>우선순위</span><span>기한</span></div>
+            <span class="btn btn-text">전체 관리
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M6 3.6L10.4 8 6 12.4"/></svg></span>
+          </div>
+        </div>
+
+        <div class="ruler">
+          <div class="lead">2026년 8월</div>
+          <div class="track">
+            <span class="tick" style="left:0%">1</span><span class="tick" style="left:22.6%">8</span>
+            <span class="tick" style="left:45.2%">15</span><span class="tick" style="left:67.7%">22</span>
+            <span class="tick" style="left:96.8%">31</span>
+            <span class="now" style="left:22.6%"></span>
+          </div>
+          <div class="tail"></div>
+        </div>
+
+        <!-- EDUINO AI -->
+        <div class="grp">
+          <span class="pdot" style="background:var(--blue)"></span>
+          <span class="nm">EDUINO AI</span><span class="meta">플랫폼 · 4건 · 8/01–8/24</span>
+          <span class="r">
+            <span class="who">권정혁 · 조서연</span>
+            <span class="rollbar"><i style="width:44%;background:var(--blue)"></i></span>
+            <span class="rollv">44%</span>
+          </span>
+        </div>
+
+        <div class="row">
+          <span class="pri"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="#101419" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.6l3.2 3.6H2.8z" fill="#101419"/></svg></span>
+          <span class="st doing"></span>
+          <span class="tt">앱스토어 심사 제출</span>
+          <span class="area"><i style="background:var(--blue)"></i>플랫폼</span>
+          <span class="flag"><span class="pill soon">오늘</span></span>
+          <span class="track"><span class="now" style="left:22.6%"></span>
+            <span class="bar sweep over" style="--d:0ms;left:16.1%;width:9.7%">
+              <i style="width:40%;background:var(--blue)"></i><i style="width:60%;background:var(--blue);opacity:.16"></i></span></span>
+          <span class="tail">
+            <span class="who">권정혁</span>
+            <span class="dday soon">오늘</span><span class="pct">40%</span></span>
+        </div>
+
+        <div class="row">
+          <span class="pri"><svg width="9" height="9" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3" fill="#BFC6CE"/></svg></span>
+          <span class="st doing"></span>
+          <span class="tt">[플랫폼] AI 학습추론모델 Git 이관 (→lab git)</span>
+          <span class="area"><i style="background:var(--blue)"></i>플랫폼</span>
+          <span class="flag"><span class="pill block">
+            <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke-width="2" stroke-linecap="round"><rect x="3.2" y="7" width="9.6" height="6.4" rx="1.8"/><path d="M5.6 7V5.2a2.4 2.4 0 014.8 0V7"/></svg>막힘</span></span>
+          <span class="track"><span class="now" style="left:22.6%"></span>
+            <span class="bar" style="left:9.7%;width:29%"><i style="width:100%;background:var(--blue);opacity:.16"></i></span></span>
+          <span class="tail">
+            <span class="who">권정혁</span>
+            <span class="dday">D-4</span><span class="pct">0%</span></span>
+        </div>
+
+        <div class="row">
+          <span class="pri"><svg width="9" height="9" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3" fill="#BFC6CE"/></svg></span>
+          <span class="st doing"></span>
+          <span class="tt">[플랫폼] 플랫폼 구조 기획 (피드백·시장조사 기반)</span>
+          <span class="area"><i style="background:var(--blue)"></i>플랫폼</span>
+          <span class="flag"><span class="pill blocking">2건 막는 중</span></span>
+          <span class="track"><span class="now" style="left:22.6%"></span>
+            <span class="bar" style="left:0%;width:45.2%">
+              <i style="width:95%;background:var(--blue)"></i><i style="width:5%;background:var(--blue);opacity:.16"></i></span></span>
+          <span class="tail">
+            <span class="who">권정혁</span>
+            <span class="dday">D-7</span><span class="pct">95%</span></span>
+        </div>
+
+        <div class="row">
+          <span class="pri"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="#D4D9DE" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.4L2.8 5.8h6.4z"/></svg></span>
+          <span class="st todo"></span>
+          <span class="tt">카메라 캘리브레이션 자동화 스크립트 초안</span>
+          <span class="area"><i style="background:var(--blue)"></i>플랫폼</span>
+          <span class="flag"></span>
+          <span class="track"><span class="now" style="left:22.6%"></span>
+            <span class="bar" style="left:35.5%;width:29%"><i style="width:100%;background:var(--blue);opacity:.16"></i></span></span>
+          <span class="tail">
+            <span class="who">권정혁</span>
+            <span class="dday">D-12</span><span class="pct">0%</span></span>
+        </div>
+
+        <!-- R&D -->
+        <div class="grp">
+          <span class="pdot" style="background:var(--teal)"></span>
+          <span class="nm">R&D 과제</span><span class="meta">R&D · 2건 · 7/22–8/31</span>
+          <span class="r">
+            <span class="who">권정혁</span>
+            <span class="rollbar"><i style="width:50%;background:var(--teal)"></i></span>
+            <span class="rollv">50%</span>
+          </span>
+        </div>
+
+        <div class="row">
+          <span class="pri"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M6 2.6l3.2 3.6H2.8z" fill="#101419"/></svg></span>
+          <span class="st todo"></span>
+          <span class="tt">[R&D] 특허 관련 연구개발 요약서 및 사업계획서</span>
+          <span class="area"><i style="background:var(--teal)"></i>R&D</span>
+          <span class="flag"><span class="pill late">
+            <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke-width="2.2" stroke-linecap="round"><circle cx="8" cy="8" r="5.6"/><path d="M8 5.2V8l2 1.4"/></svg>지연</span></span>
+          <span class="track"><span class="now" style="left:22.6%"></span>
+            <span class="stub"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9.6 3.6L5.2 8l4.4 4.4"/></svg>7/29 마감</span></span>
+          <span class="tail">
+            <span class="who">권정혁</span>
+            <span class="dday late">D+10</span><span class="pct">0%</span></span>
+        </div>
+
+        <div class="row is-done">
+          <span class="pri"><svg width="9" height="9" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3" fill="#BFC6CE"/></svg></span>
+          <span class="st done"></span>
+          <span class="tt">[R&D] 연구개발 1차 구매 부품리스트 작성</span>
+          <span class="area"><i style="background:var(--teal)"></i>R&D</span>
+          <span class="flag"></span>
+          <span class="track"><span class="now" style="left:22.6%"></span>
+            <span class="bar sweep" style="--d:60ms;left:0%;width:96.8%"><i style="width:100%;background:var(--teal)"></i></span></span>
+          <span class="tail">
+            <span class="who">권정혁</span>
+            <span class="dday">D-23</span><span class="pct">100%</span></span>
+        </div>
+
+        <!-- Playino -->
+        <div class="grp">
+          <span class="pdot" style="background:var(--purple)"></span>
+          <span class="nm">Playino</span><span class="meta">플랫폼 · 2건 · 8/03–8/14</span>
+          <span class="r">
+            <span class="who">권정혁 · 박주희</span>
+            <span class="rollbar"><i style="width:5%;background:var(--purple)"></i></span>
+            <span class="rollv">5%</span>
+          </span>
+        </div>
+
+        <div class="row">
+          <span class="pri"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M6 2.6l3.2 3.6H2.8z" fill="#101419"/></svg></span>
+          <span class="st todo"></span>
+          <span class="tt">[플랫폼] Playino 미니게임천국 MVP 제작</span>
+          <span class="area"><i style="background:var(--purple)"></i>플랫폼</span>
+          <span class="flag"><span class="pill soon">D-3</span></span>
+          <span class="track"><span class="now" style="left:22.6%"></span>
+            <span class="bar sweep" style="--d:120ms;left:6.5%;width:29%">
+              <i style="width:10%;background:var(--purple)"></i><i style="width:90%;background:var(--purple);opacity:.16"></i></span></span>
+          <span class="tail">
+            <span class="who">권정혁</span>
+            <span class="dday soon">D-3</span><span class="pct">10%</span></span>
+        </div>
+
+        <div class="row">
+          <span class="pri"><svg width="9" height="9" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3" fill="#BFC6CE"/></svg></span>
+          <span class="st todo"></span>
+          <span class="tt">[플랫폼] Playino 신제품 구성품리스트 작성</span>
+          <span class="area"><i style="background:var(--purple)"></i>플랫폼</span>
+          <span class="flag"></span>
+          <span class="track"><span class="now" style="left:22.6%"></span>
+            <span class="bar sweep" style="--d:180ms;left:9.7%;width:22.6%"><i style="width:100%;background:var(--purple);opacity:.16"></i></span></span>
+          <span class="tail">
+            <span class="who">박주희</span>
+            <span class="dday">D-6</span><span class="pct">0%</span></span>
+        </div>
+
+        <div class="cft">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M8 3.6v8.8M3.6 8h8.8"/></svg>
+          업무 제목을 쓰고 Enter — ⌘Enter 로 자세히
+        </div>
+      </div>
+
+      <!-- 상시 업무 -->
+      <div class="card">
+        <div class="fold">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#79818B" stroke-width="1.8" stroke-linecap="round"><path d="M6 3.6L10.4 8 6 12.4"/></svg>
+          <span class="t">상시 업무</span>
+          <span class="m">연구소 · 기타 · 현장실습 · 11건</span>
+          <span class="r"><span class="pill late">지연 2</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 오른쪽 -->
+    <aside class="rail">
+      <div class="rc">
+        <div class="rhd"><span class="rt">나의 초점</span><span class="rn">4</span>
+          <span class="btn btn-text">전체
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M6 3.6L10.4 8 6 12.4"/></svg></span></div>
+        <div class="ri"><span class="ic"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M13.2 9.4a1.4 1.4 0 01-1.4 1.4H5.2L2.8 13.2V4a1.4 1.4 0 011.4-1.4h7.6A1.4 1.4 0 0113.2 4z"/></svg></span>
+          <span class="tx">조서연 — 과제게시판 구조 확인 부탁</span><span class="rt2">10일 전</span></div>
+        <div class="ri"><span class="ic"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M3 8.5l2.5 2.5L13 4"/></svg></span>
+          <span class="tx">박주희 — 교육자료 피드백 반영 완료</span><span class="rt2">2일 전</span></div>
+        <div class="ri"><span class="ic"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><rect x="3.2" y="7" width="9.6" height="6.4" rx="1.8"/><path d="M5.6 7V5.2a2.4 2.4 0 014.8 0V7"/></svg></span>
+          <span class="tx">차단 원인 #26 완료 — 확인 필요</span><span class="rt2 soon">오늘</span></div>
+        <div class="ri"><span class="ic"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M8 2.6a3.6 3.6 0 00-3.6 3.6c0 3-1.4 4-1.4 4h10s-1.4-1-1.4-4A3.6 3.6 0 008 2.6z"/></svg></span>
+          <span class="tx">승인 대기 3건</span><span class="rt2">—</span></div>
+      </div>
+
+      <div class="rc">
+        <div class="rhd"><span class="rt">다가오는 일정</span>
+          <span class="btn btn-text">전체
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M6 3.6L10.4 8 6 12.4"/></svg></span></div>
+        <div class="ri"><span class="ic"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><rect x="2.6" y="3.4" width="10.8" height="10" rx="2"/><path d="M2.6 6.6h10.8"/></svg></span>
+          <span class="tx">Playino 신제품 구성품리스트</span><span class="rt2">D-3</span></div>
+        <div class="ri"><span class="ic"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><rect x="2.6" y="3.4" width="10.8" height="10" rx="2"/><path d="M2.6 6.6h10.8"/></svg></span>
+          <span class="tx">블루투스 앱 관련 교육자료</span><span class="rt2">D-6</span></div>
+        <div class="ri"><span class="ic"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke-width="1.6" stroke-linecap="round"><rect x="2.6" y="3.4" width="10.8" height="10" rx="2"/><path d="M2.6 6.6h10.8"/></svg></span>
+          <span class="tx">회사 소개서 최신화</span><span class="rt2">D-11</span></div>
+      </div>
+
+      <div class="rc">
+        <div class="rhd"><span class="rt">목표</span>
+          <span class="btn btn-text">전체
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M6 3.6L10.4 8 6 12.4"/></svg></span></div>
+        <div class="gl">
+          <div>
+            <div class="glr"><span class="glab">연간</span>
+              <span class="gnm">Eduino AI 서비스 정식 출시</span><span class="gvl">100%</span></div>
+            <div class="gtr"></div>
+            <div class="gnote">업무 1건 — 표본 부족</div>
+          </div>
+          <div>
+            <div class="glr"><span class="glab">Q3</span>
+              <span class="gnm">ESP32 RC카 교육콘텐츠 제작</span><span class="gvl">100%</span></div>
+            <div class="gtr"></div>
+            <div class="gnote">Q3 목표 4개 중 3개는 집계 없음</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="note">
+    <h4>v5 에서 무엇을 고쳤나 — 지적하신 "왼쪽 띠와 배경칠뿐"</h4>
+    <b>① 문자 기호를 전부 선 아이콘으로 바꿨습니다.</b> ▲ ● ▣ ▤ ↩ 를 16px · 1.6 굵기 SVG 로.
+    같은 굵기·같은 끝처리로 통일해야 화면이 한 벌로 보입니다. 완성도 차이의 절반은 여기서 납니다.<br>
+    <b>② 상자를 걷어냈습니다.</b> 영역은 테두리 있는 칩이 아니라 <b>작은 색점 + 글자</b>입니다.
+    상태 표시만 테두리 없는 옅은 알약으로 남겼습니다. 상자가 줄면 데이터가 보입니다.<br>
+    <b>③ 왼쪽 3px 띠를 없앴습니다.</b> 카드 제목은 띠 대신 <b>글자 크기와 굵기</b>로 세웠고(17px/800),
+    헤더 배경칠과 구분선도 뺐습니다. 여백이 구분합니다.<br>
+    <b>④ 깊이를 선이 아니라 그림자로 냅니다.</b> 카드는 아주 옅은 1px 테두리에
+    <b>넓고 부드러운 그림자</b>(28px 흐림, -16px 확산)를 얹었습니다. 종이가 떠 있는 느낌이 나고
+    경계선을 굵게 하지 않아도 영역이 잡힙니다. 라운드도 9 → 14px.<br>
+    <b>⑤ 담당을 이름 대신 아바타로.</b> 폭이 줄고, 프로젝트 헤더에는 참여자를 겹쳐 쌓았습니다.
+    누가 무엇을 하는지가 훑어서 보입니다.<br>
+    <b>⑥ 기한 막대를 알약으로.</b> 높이 16px, 완전 라운드, 안쪽에 1px 링.
+    남은 구간은 같은 색 16% 라 <b>색은 하나인데 진행이 읽힙니다.</b>
+    오늘 선 위에는 작은 점을 얹어 눈이 먼저 가게 했습니다.<br>
+    <b>⑦ 행 높이를 40 → 44px 로.</b> 아바타와 알약이 들어가려면 숨 쉴 자리가 필요합니다.
+    밀도는 줄어들지만 훑는 속도는 빨라집니다.
+  </div>
+</main>
+</div>
+<script>
+/* 백그라운드 탭에서는 상시 애니메이션을 멈춘다 */
+document.addEventListener('visibilitychange',function(){
+  document.body.classList.toggle('paused', document.hidden);
+});
+</script>
+</body>
+</html>

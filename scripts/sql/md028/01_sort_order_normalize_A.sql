@@ -43,7 +43,16 @@ FROM task
 WHERE is_active = true AND parent_task_id IS NULL
 GROUP BY 1 ORDER BY 1;
 
--- ①-3 바뀔 결과 미리보기 — ③ 이 쓸 값과 **같은 식**입니다.
+-- ①-3 이번 실행에서 하위 업무가 몇 건인가 (031 회신 1 · 3-2)
+--   0 이면 하위 분기는 프로덕션에서도 밟히지 않습니다. 그것은 문제가 아닙니다 —
+--   이후에 만들어지는 하위 업무는 POST /api/tasks/reorder 가 자기 상위 안에서
+--   1..N 을 매기므로 자연히 맞습니다.
+SELECT count(*) FILTER (WHERE parent_task_id IS NOT NULL) AS "하위 업무",
+       count(DISTINCT parent_task_id)                     AS "상위 노릇 하는 업무",
+       count(*)                                           AS "활성 업무 전체"
+  FROM task WHERE is_active = true;
+
+-- ①-4 바뀔 결과 미리보기 — ③ 이 쓸 값과 **같은 식**입니다.
 WITH ranked AS (
   SELECT id, title, project_id, parent_task_id, sort_order AS old_order,
          row_number() OVER (
@@ -89,7 +98,7 @@ UPDATE task AS t
  WHERE t.id = r.id
    AND t.sort_order IS DISTINCT FROM r.new_order;
 
--- 여기서 갱신 건수가 ①-3 의 "←" 개수와 같은지 보고 COMMIT 하십시오.
+-- 여기서 갱신 건수가 ①-4 의 "←" 개수와 같은지 보고 COMMIT 하십시오.
 COMMIT;
 
 
@@ -110,3 +119,10 @@ SELECT COALESCE(parent_task_id, 0)                       AS "상위(0=최상위)
        count(*) - count(DISTINCT sort_order)             AS "겹침(0이어야 함)"
   FROM task WHERE is_active = true
  GROUP BY 1 ORDER BY 1;
+
+-- ④-3 하위 업무에 대한 기록 (031 회신 1 · 3-2)
+--   ①-3 의 「하위 업무」가 0 이었다면 위 표에는 「상위 0=최상위」 한 줄만 나옵니다.
+--   그것으로 정상입니다. 이번 정리가 하위 분기를 밟지 않았다는 뜻일 뿐,
+--   식이 하위를 빼놓은 것이 아닙니다(PARTITION BY parent_task_id 가 전체를 훑습니다).
+--   이후 만들어지는 하위 업무는 POST /api/tasks/reorder 가 자기 상위 안에서
+--   1..N 을 매기므로, 여기서 손대지 않아도 형제 묶음은 계속 맞습니다.
