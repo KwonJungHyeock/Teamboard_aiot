@@ -299,21 +299,60 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       if (r) extraLogs.push(`${session.name}이(가) 완료 사유 변경 → ${RESOLUTION_LABEL[r as Resolution]} — "${task.title}"`);
     }
 
-    // 상위 업무 (§2) — 깊이 2단·순환은 DB 트리거가 막는다. 여기서는 값만 넘긴다.
-    if (payload.parentTaskId !== undefined) {
-      const pid = payload.parentTaskId === null ? null : Number(payload.parentTaskId);
-      if (pid !== null && (!Number.isInteger(pid) || pid === taskId)) {
-        return NextResponse.json({ error: "상위 업무 지정이 올바르지 않습니다." }, { status: 400 });
-      }
-      set("parent_task_id", pid);
-    }
-    // 차단 업무 (§2) — 순환은 DB 트리거가 거부한다.
+    // ── §B1 차단 업무 지정·해제 ──────────────────────────────────────
+    //
+    // 순환은 DB 트리거(trg_task_block_cycle)가 최종 방어선이다. 다만 트리거 예외를
+    // 그대로 흘리면 사용자는 500 과 영문 스택을 본다. 여기서 먼저 걸어 **사유를 사람 말로** 준다.
+    // 트리거는 그대로 둔다 — 여기를 우회하는 경로가 생겨도 데이터는 지켜져야 한다.
+    let blockChanged = false;
     if (payload.blockedByTaskId !== undefined) {
-      const bid = payload.blockedByTaskId === null ? null : Number(payload.blockedByTaskId);
-      if (bid !== null && (!Number.isInteger(bid) || bid === taskId)) {
+      const bid = payload.blockedByTaskId === null || payload.blockedByTaskId === 0
+        ? null : Number(payload.blockedByTaskId);
+      if (bid !== null && !Number.isInteger(bid)) {
         return NextResponse.json({ error: "차단 업무 지정이 올바르지 않습니다." }, { status: 400 });
       }
-      set("blocked_by", bid);
+      if (bid === taskId) {
+        return NextResponse.json(
+          { error: "자기 자신을 차단 업무로 지정할 수 없습니다." }, { status: 409 });
+      }
+      if (bid !== null) {
+        const cyc = await queryOne<{ id: number; title: string }>(
+          `WITH RECURSIVE chain AS (
+             SELECT id, title, blocked_by, 1 AS hops FROM task WHERE id = $1
+             UNION ALL
+             SELECT t.id, t.title, t.blocked_by, chain.hops + 1
+               FROM task t JOIN chain ON t.id = chain.blocked_by
+              WHERE chain.hops < 50
+           )
+           SELECT id, title FROM chain WHERE id = $2 LIMIT 1`,
+          [bid, taskId]
+        );
+        if (cyc) {
+          return NextResponse.json({
+            error: `차단 관계가 순환합니다 — "${task.title}"이(가) 이미 그 업무를 (건너서) 막고 있습니다.`,
+          }, { status: 409 });
+        }
+        const target = await queryOne<{ id: number; title: string }>(
+          `SELECT t.id, t.title FROM task t
+            WHERE t.id = $1 AND t.is_active = true AND ${visibleTaskSql("$2")}`,
+          [bid, session.id]
+        );
+        if (!target) return NextResponse.json({ error: "차단 업무를 찾을 수 없습니다." }, { status: 404 });
+        // 지목하면 막힘 표시도 함께 켠다. DB 트리거(task_blocked_derive)와 같은 규칙이지만
+        // 사유 텍스트는 **덮지 않는다** — 지목과 사유는 함께 존재할 수 있다 (§B1).
+        set("blocked_by", bid);
+        set("blocked", true);
+        if (!task.blocked) set("blocked_since", new Date().toISOString());
+        extraLogs.push(`${session.name}이(가) 차단 지정 — "${task.title}" ← #${bid} "${target.title}"`);
+      } else {
+        // "차단 없음" — 지목과 막힘 표시를 함께 푼다. 지정만 되고 해제가 안 되면 안 쓰인다.
+        set("blocked_by", null);
+        set("blocked", false);
+        set("blocked_reason", null);
+        set("blocked_since", null);
+        extraLogs.push(`${session.name}이(가) 차단 해제 — "${task.title}"`);
+      }
+      blockChanged = true;
     }
 
     // 막힘(blocked) 플래그 — 상태와 별개. 표시 시 사유 필수, 해제 시 상태 유지.
@@ -328,7 +367,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         set("blocked_reason", reason);
         // 새로 막힘 표시할 때만 시각 갱신(이미 막힌 상태의 사유 수정은 시각 유지)
         if (!task.blocked) set("blocked_since", new Date().toISOString());
-        set("blocked_by", payload.blockedBy ? Number(payload.blockedBy) : null);
+        // 같은 요청에서 blockedByTaskId 가 왔으면 그쪽이 정한 지목을 **덮지 않는다** (§B1).
+        // 사유만 고치는 요청이 지목을 조용히 지우던 자리였다.
+        if (!blockChanged) set("blocked_by", payload.blockedBy ? Number(payload.blockedBy) : null);
         extraLogs.push(
           task.blocked
             ? `${session.name}이(가) 막힘 사유 수정 — "${task.title}" (${reason})`
@@ -478,6 +519,30 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     // 연결 체인(월→분기→연간) 즉시 재계산 — 홈·목표 화면에 바로 반영 (파트 B)
     for (const gid of Array.from(affectedGoals)) await recomputeGoalChain(gid);
 
+    // ── §B4 이 업무가 완료되면, 이것 때문에 막혀 있던 업무들에게 알린다 ──
+    //
+    // **자동으로 해제하지 않는다.** 원인이 끝나도 다른 이유로 여전히 막혀 있을 수 있다.
+    // 대신 활동에 남긴다 — 사람이 화면을 안 보고 있을 수 있다(§B4).
+    if (statusChanged && payload.status === "done") {
+      const waiting = await query<{ id: number; title: string; assignee_id: number | null }>(
+        `SELECT id, title, assignee_id FROM task
+          WHERE blocked_by = $1 AND is_active = true AND blocked = true`,
+        [taskId]
+      );
+      for (const w of waiting) {
+        await logActivity({
+          userId: session.id, taskId: w.id, level: "success",
+          message: `차단 원인 #${taskId} "${task.title}" 이(가) 완료됐습니다 — "${w.title}" 의 차단을 확인하세요`,
+        });
+        if (w.assignee_id) {
+          await notify({
+            userId: w.assignee_id, type: "assign", refType: "task", refId: w.id,
+            snippet: `차단 원인 완료 · ${w.title}`, actorId: session.id,
+          });
+        }
+      }
+    }
+
     // 활동 타임라인(파트 5) — 의미 있는 변경만 기록: 상태·담당·진행률·목표연결.
     // (제목·설명 등 잡음성 필드는 제외. 코멘트는 코멘트 라우트가 기록.)
     for (const msg of extraLogs) {
@@ -583,6 +648,20 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         // §A1 — 하위 업무 목록. 상위가 아니면 빈 배열이 아니라 **섹션 자체를 안 그린다**(§A2).
         //   그 판단은 화면이 parentTaskId 로 한다. 여기서는 사실만 준다.
         children: await childrenOf(id),
+        // §B2 역방향 — 이 업무를 blocked_by 로 가리키는 업무들. "내가 무엇을 막고 있는가".
+        //   방향을 헷갈리면 이 기능은 오히려 해롭다: 조건은 `bt.blocked_by = 이 업무` 다.
+        blocking: await query<{ id: number; title: string }>(
+          `SELECT bt.id, bt.title FROM task bt
+            WHERE bt.blocked_by = $1 AND bt.is_active = true AND ${visibleTaskSql("$2", "bt")}
+            ORDER BY bt.id`,
+          [id, session.id]
+        ),
+        // §B4 — 원인이 완료됐는가. **자동 해제하지 않는다.** 화면이 안내만 띄운다.
+        blockedByDone: t.blocked && t.blocked_by !== null
+          ? !!(await queryOne<{ id: number }>(
+              `SELECT id FROM task WHERE id = $1 AND status = 'done' AND is_active = true`,
+              [t.blocked_by]))
+          : false,
       },
       activity,
       // 양방향 링크 — 이 업무에 연결된 결정 (MD-P-2026-004 §E)

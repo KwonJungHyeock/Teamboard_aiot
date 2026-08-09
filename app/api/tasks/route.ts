@@ -41,6 +41,7 @@ export interface TaskListRow {
   createdByName: string | null;
   blocked: boolean;
   blockedReason: string | null;
+  blockedBy: number | null;
   visibility: "team" | "private";
   /** §A3 계층 — 목록이 접기/펼치기를 그릴 재료 */
   parentTaskId: number | null;
@@ -130,6 +131,7 @@ export async function GET(request: Request) {
       created_by_name: string | null;
       blocked: boolean;
       blocked_reason: string | null;
+      blocked_by: number | null;
       visibility: "team" | "private";
       resolution: string | null;
       parent_task_id: number | null;
@@ -147,7 +149,7 @@ export async function GET(request: Request) {
               array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
               t.progress,
               c.display_name AS created_by_name,
-              t.blocked, t.blocked_reason, t.visibility, t.resolution,
+              t.blocked, t.blocked_reason, t.blocked_by, t.visibility, t.resolution,
               t.parent_task_id,
               (SELECT count(*)::int FROM task ck
                 WHERE ck.parent_task_id = t.id AND ck.is_active = true) AS child_count,
@@ -237,6 +239,7 @@ export async function GET(request: Request) {
       }),
       blocked: r.blocked ?? false,
       blockedReason: r.blocked_reason,
+      blockedBy: r.blocked_by,
       visibility: r.visibility,
       createdByName: r.created_by_name,
       parentTaskId: r.parent_task_id,

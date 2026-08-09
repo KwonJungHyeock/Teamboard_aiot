@@ -1640,3 +1640,39 @@ a.pcard:hover, .pcard.clickable:hover { box-shadow: var(--e2); }
 tr.sub-row { animation: sub-in var(--dur-2) var(--ease-out); }
 tr.sub-row > td:first-child { color: var(--ink2); }
 
+
+/* ── MD-P-2026-028 §B 차단 관계 ────────────────────────────────────────
+   §B3 "차단됨" 칩 — **기존 상태 칩(.st) 규격을 그대로 쓰고 색만 앰버 틴트다.**
+   코랄은 쓰지 않는다: 코랄은 화면당 주액션 1개고, 차단은 액션이 아니라 상태다. */
+.st.blkd {
+  border: 0; font-family: inherit; cursor: default;
+  color: var(--amber-text, var(--ink)); background: color-mix(in srgb, var(--amber) 16%, var(--card));
+}
+button.st.blkd { cursor: pointer; transition: background-color var(--dur-1) var(--ease-out); }
+button.st.blkd:hover { background: color-mix(in srgb, var(--amber) 26%, var(--card)); }
+button.st.blkd:focus-visible { outline: 2px solid var(--edu); outline-offset: 2px; }
+
+/* §B1 — 지목이 먼저 읽히고 사유 텍스트가 뒤에 붙는다. 둘 다 있을 수 있다. */
+.prop-blk { display: inline-flex; align-items: baseline; gap: 7px; min-width: 0; }
+.prop-blk-r { font-style: normal; font-size: 11.5px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* §B2 역방향 — 읽기 전용. 개수를 먼저 두고 링크를 잇는다 ("2건 — #41, #47") */
+.prop-blking { display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.prop-blking b { font-size: 12.5px; color: var(--ink); }
+
+/* §B4 원인 완료 안내 — 자동으로 풀지 않는다. 알리고, 그 자리에서 풀 수단을 준다.
+   .lmn(030 §C3)과 같은 중립 톤이되 앰버 틴트로 "확인이 필요하다"를 말한다. */
+.blkdone {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 12px;
+  padding: 9px 12px; border-radius: 0 4px 4px 0;
+  border-left: 1px solid color-mix(in srgb, var(--amber) 45%, var(--line));
+  background: color-mix(in srgb, var(--amber) 10%, var(--surface-2));
+  font-size: 12.5px; color: var(--ink2);
+}
+.blkdone b { color: var(--ink); }
+.blkdone .lk { margin-left: auto; flex: 0 0 auto; }
+
+/* §A4·§B1 공용 업무 콤보 — ProjectCombo 의 .pcb-* 를 그대로 쓰고 두 가지만 덧댄다. */
+.tcb { position: static; min-width: 280px; }
+.tcb-id { flex: 0 0 auto; font-size: 11.5px; color: var(--muted); }
+.tcb-n { margin: 6px 0 0; font-size: 11.5px; color: var(--muted); }

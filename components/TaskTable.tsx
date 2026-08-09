@@ -26,6 +26,8 @@ export interface TaskTableRow {
   progress?: number; // full 전용 — 진행률 0~100
   blocked?: boolean;
   blockedReason?: string | null;
+  /** §B3 — 원인 업무. 있으면 칩을 눌러 그리로 간다. */
+  blockedBy?: number | null;
   /** MD-P-2026-025 §B2 — 개인 업무 표시. 없으면 팀 공개로 본다. */
   visibility?: "team" | "private";
   /** §A3 계층 — 없으면 평면 목록으로 그린다(홈 등 compact 사용처는 안 보낸다). */
@@ -261,10 +263,18 @@ export default function TaskTable({
                       <span className="num">{kids.length}</span>
                     </button>
                   ) : null}
+                  {/* §B3 — 자물쇠 아이콘만으로는 무슨 뜻인지 배워야 한다.
+                      기존 상태 칩(.st) 규격을 그대로 쓰고 색만 --amber 틴트다. 코랄은 안 쓴다.
+                      원인 업무가 있으면 눌러서 그리로 가고, 없으면 사유를 툴팁으로 보인다. */}
                   {t.blocked && (
-                    <span className="blk-mark" title={t.blockedReason ? `막힘: ${t.blockedReason}` : "막힘"} aria-label="막힘">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-                    </span>
+                    t.blockedBy ? (
+                      <button
+                        className="st blkd" title={t.blockedReason ? `막힘: ${t.blockedReason}` : `원인 #${t.blockedBy}`}
+                        onClick={(e) => { e.stopPropagation(); onRowClick?.(t.blockedBy!); }}
+                      >차단됨</button>
+                    ) : (
+                      <span className="st blkd" title={t.blockedReason ? `막힘: ${t.blockedReason}` : "막힘"}>차단됨</span>
+                    )
                   )}
                   {t.title}
                   {/* §B2 — 자물쇠 아이콘이 아니라 "개인" 텍스트 칩.

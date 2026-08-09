@@ -449,6 +449,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
           overdue: d.overdue && t.status !== "done" && t.status !== "dropped",
           blocked: t.blocked,
           blockedReason: t.blockedReason,
+          blockedBy: t.blockedBy ?? null,   // §B3 칩에서 원인으로 이동
           visibility: t.visibility,   // §B2 "개인" 칩
           parentTaskId: t.parentTaskId ?? null,   // §A3 계층
           childCount: t.childCount ?? 0,

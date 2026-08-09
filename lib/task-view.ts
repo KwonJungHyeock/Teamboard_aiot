@@ -30,6 +30,8 @@ export interface TaskItem {
   /** §A3 계층 (MD-P-2026-028) — 목록이 접기/펼치기를 그릴 재료 */
   parentTaskId?: number | null;
   childCount?: number;
+  /** §B3 — 차단 원인 업무 */
+  blockedBy?: number | null;
 }
 
 export type TaskLens = "sheet" | "board" | "calendar" | "timeline";
