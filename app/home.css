@@ -41,7 +41,12 @@
 }
 .hv .stack{display:flex;flex-direction:column;gap:13px}
 .hv .card{background:linear-gradient(180deg,var(--glass),transparent),var(--bg-surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
-.hv .ch{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+/* §B1 — 제목과 값을 양 끝으로 밀지 않는다. `.ch` 의 자식은 늘 제목 + 값(건수·설명)이고
+   **값은 액션이 아니다.** space-between 이면 "내 업무"와 "31건" 사이가 1010px 벌어져
+   같은 것을 말하는 두 조각이 서로 남처럼 놓인다. 붙여 놓아야 한 덩어리로 읽힌다.
+   오른쪽에 진짜 액션을 두는 자리(SignalThread)는 `.gsp`(flex:1) 스페이서로 민다 —
+   미는 쪽이 명시적이어야 나중에 값이 하나 늘어도 안 흐트러진다. */
+.hv .ch{display:flex;align-items:center;justify-content:flex-start;gap:10px;margin-bottom:12px}
 .hv .ch h2{font-size: var(--f3);font-weight:600}
 .hv .ch .sub{font-family:var(--f-d);font-size: var(--f6);color:var(--lo)}
 .hv .cal{position:relative}
