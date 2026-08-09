@@ -1,0 +1,1202 @@
+[
+  {
+    "route": "/",
+    "sel": "button.pg-chip.on",
+    "text": "이번 분기",
+    "bg": "rgb(253, 237, 237)",
+    "color": "rgb(196, 43, 48)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/",
+    "sel": "button.pg-chip",
+    "text": "전체 기간",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "button.pg-chip",
+    "text": "전체 영역",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "button.pg-chip.area-chip.on",
+    "text": "R&D",
+    "bg": "rgb(253, 237, 237)",
+    "color": "rgb(196, 43, 48)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "button.pg-chip.area-chip",
+    "text": "플랫폼",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "button.pg-chip.area-chip",
+    "text": "교육자료",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "button.pg-chip.area-chip",
+    "text": "디자인",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "button.pg-chip.area-chip",
+    "text": "연구소",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "button.pg-chip.area-chip",
+    "text": "현장실습교육",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "button.pg-chip.area-chip",
+    "text": "기타",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "button.pg-chip",
+    "text": "완료 포함",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "span.areatag",
+    "text": "R&D",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "span.areatag",
+    "text": "R&D",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "span.areatag",
+    "text": "R&D",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "span.areatag",
+    "text": "R&D",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "span.areatag",
+    "text": "R&D",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/tasks",
+    "sel": "span.areatag",
+    "text": "R&D",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/goals",
+    "sel": "button.pg-chip",
+    "text": "2025",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/goals",
+    "sel": "button.pg-chip.on",
+    "text": "2026",
+    "bg": "rgb(253, 237, 237)",
+    "color": "rgb(196, 43, 48)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/goals",
+    "sel": "button.pg-chip",
+    "text": "전체",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/goals",
+    "sel": "button.pg-chip",
+    "text": "보관함",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/goals",
+    "sel": "button.pg-chip.on",
+    "text": "전체 영역",
+    "bg": "rgb(253, 237, 237)",
+    "color": "rgb(196, 43, 48)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/goals",
+    "sel": "button.pg-chip.area-chip",
+    "text": "R&D",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/goals",
+    "sel": "button.pg-chip.area-chip",
+    "text": "플랫폼",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/goals",
+    "sel": "button.pg-chip.area-chip",
+    "text": "교육자료",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/goals",
+    "sel": "button.pg-chip.area-chip",
+    "text": "디자인",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/goals",
+    "sel": "button.pg-chip.area-chip",
+    "text": "연구소",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/goals",
+    "sel": "button.pg-chip.area-chip",
+    "text": "현장실습교육",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/goals",
+    "sel": "button.pg-chip.area-chip",
+    "text": "기타",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/goals",
+    "sel": "span.gtag.y",
+    "text": "연간",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(22, 25, 29)",
+    "radius": 4,
+    "h": 21,
+    "fs": 10.5
+  },
+  {
+    "route": "/goals",
+    "sel": "span.gtag.y",
+    "text": "연간",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(22, 25, 29)",
+    "radius": 4,
+    "h": 21,
+    "fs": 10.5
+  },
+  {
+    "route": "/goals",
+    "sel": "span.gtag",
+    "text": "07월",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(102, 108, 115)",
+    "radius": 4,
+    "h": 21,
+    "fs": 10.5
+  },
+  {
+    "route": "/goals",
+    "sel": "span.gtag",
+    "text": "07월",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(102, 108, 115)",
+    "radius": 4,
+    "h": 21,
+    "fs": 10.5
+  },
+  {
+    "route": "/goals",
+    "sel": "span.gtag",
+    "text": "07월",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(102, 108, 115)",
+    "radius": 4,
+    "h": 21,
+    "fs": 10.5
+  },
+  {
+    "route": "/goals",
+    "sel": "span.gtag",
+    "text": "07월",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(102, 108, 115)",
+    "radius": 4,
+    "h": 21,
+    "fs": 10.5
+  },
+  {
+    "route": "/goals",
+    "sel": "span.gtag.mu",
+    "text": "수동",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(102, 108, 115)",
+    "radius": 4,
+    "h": 21,
+    "fs": 10.5
+  },
+  {
+    "route": "/goals",
+    "sel": "span.gtag",
+    "text": "07월",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(102, 108, 115)",
+    "radius": 4,
+    "h": 21,
+    "fs": 10.5
+  },
+  {
+    "route": "/goals",
+    "sel": "span.gtag",
+    "text": "08월",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(102, 108, 115)",
+    "radius": 4,
+    "h": 21,
+    "fs": 10.5
+  },
+  {
+    "route": "/goals",
+    "sel": "span.gtag",
+    "text": "08월",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(102, 108, 115)",
+    "radius": 4,
+    "h": 21,
+    "fs": 10.5
+  },
+  {
+    "route": "/goals",
+    "sel": "span.gtag",
+    "text": "08월",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(102, 108, 115)",
+    "radius": 4,
+    "h": 21,
+    "fs": 10.5
+  },
+  {
+    "route": "/projects",
+    "sel": "button.pg-chip.on",
+    "text": "전체 영역",
+    "bg": "rgb(253, 237, 237)",
+    "color": "rgb(196, 43, 48)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/projects",
+    "sel": "button.pg-chip.area-chip",
+    "text": "R&D",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/projects",
+    "sel": "button.pg-chip.area-chip",
+    "text": "플랫폼",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/projects",
+    "sel": "button.pg-chip.area-chip",
+    "text": "교육자료",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/projects",
+    "sel": "button.pg-chip.area-chip",
+    "text": "디자인",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/projects",
+    "sel": "button.pg-chip.area-chip",
+    "text": "연구소",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/projects",
+    "sel": "button.pg-chip.area-chip",
+    "text": "현장실습교육",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/projects",
+    "sel": "button.pg-chip.area-chip",
+    "text": "기타",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/projects/1",
+    "sel": "span.pws-chip",
+    "text": "플랫폼",
+    "bg": "rgb(251, 252, 252)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 19,
+    "fs": 10.5
+  },
+  {
+    "route": "/projects/1",
+    "sel": "span.pws-chip",
+    "text": "진행",
+    "bg": "rgb(251, 252, 252)",
+    "color": "rgb(48, 114, 230)",
+    "radius": 4,
+    "h": 19,
+    "fs": 10.5
+  },
+  {
+    "route": "/calendar",
+    "sel": "button.pg-chip",
+    "text": "‹",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/calendar",
+    "sel": "button.pg-chip",
+    "text": "›",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/calendar",
+    "sel": "button.pg-chip",
+    "text": "오늘",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/calendar",
+    "sel": "button.pg-chip",
+    "text": "내 일정",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/signals",
+    "sel": "button.pg-chip.on",
+    "text": "열림",
+    "bg": "rgb(253, 237, 237)",
+    "color": "rgb(196, 43, 48)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/signals",
+    "sel": "button.pg-chip",
+    "text": "종결",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip",
+    "text": "리스크",
+    "bg": "color(srgb 0.988471 0.900627 0.903373)",
+    "color": "rgb(234, 74, 79)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip",
+    "text": "리스크",
+    "bg": "color(srgb 0.988471 0.900627 0.903373)",
+    "color": "rgb(234, 74, 79)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip",
+    "text": "온트랙",
+    "bg": "color(srgb 0.869882 0.936863 0.908314)",
+    "color": "rgb(18, 140, 88)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip",
+    "text": "온트랙",
+    "bg": "color(srgb 0.869882 0.936863 0.908314)",
+    "color": "rgb(18, 140, 88)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip",
+    "text": "온트랙",
+    "bg": "color(srgb 0.869882 0.936863 0.908314)",
+    "color": "rgb(18, 140, 88)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip",
+    "text": "리스크",
+    "bg": "color(srgb 0.988471 0.900627 0.903373)",
+    "color": "rgb(234, 74, 79)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip",
+    "text": "온트랙",
+    "bg": "color(srgb 0.869882 0.936863 0.908314)",
+    "color": "rgb(18, 140, 88)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip.warn",
+    "text": "다음 달",
+    "bg": "color(srgb 0.989294 0.907726 0.910275)",
+    "color": "rgb(180, 55, 59)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip.warn",
+    "text": "다음 달",
+    "bg": "color(srgb 0.989294 0.907726 0.910275)",
+    "color": "rgb(180, 55, 59)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip.warn",
+    "text": "다음 달",
+    "bg": "color(srgb 0.989294 0.907726 0.910275)",
+    "color": "rgb(180, 55, 59)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip.warn",
+    "text": "다음 달",
+    "bg": "color(srgb 0.989294 0.907726 0.910275)",
+    "color": "rgb(180, 55, 59)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip.warn",
+    "text": "다음 달",
+    "bg": "color(srgb 0.989294 0.907726 0.910275)",
+    "color": "rgb(180, 55, 59)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip.warn",
+    "text": "다음 달",
+    "bg": "color(srgb 0.989294 0.907726 0.910275)",
+    "color": "rgb(180, 55, 59)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip.warn",
+    "text": "다음 달",
+    "bg": "color(srgb 0.989294 0.907726 0.910275)",
+    "color": "rgb(180, 55, 59)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip.warn",
+    "text": "다음 달",
+    "bg": "color(srgb 0.989294 0.907726 0.910275)",
+    "color": "rgb(180, 55, 59)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip.warn",
+    "text": "다음 달",
+    "bg": "color(srgb 0.989294 0.907726 0.910275)",
+    "color": "rgb(180, 55, 59)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/reports",
+    "sel": "span.prep-chip.warn",
+    "text": "다음 달",
+    "bg": "color(srgb 0.989294 0.907726 0.910275)",
+    "color": "rgb(180, 55, 59)",
+    "radius": 999,
+    "h": 17,
+    "fs": 10.6667
+  },
+  {
+    "route": "/saved",
+    "sel": "button.pg-chip.on",
+    "text": "전체",
+    "bg": "rgb(253, 237, 237)",
+    "color": "rgb(196, 43, 48)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/saved",
+    "sel": "button.pg-chip",
+    "text": "업무",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/saved",
+    "sel": "button.pg-chip",
+    "text": "논의",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/saved",
+    "sel": "button.pg-chip",
+    "text": "결정",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/saved",
+    "sel": "button.pg-chip",
+    "text": "프로젝트",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "button.pg-chip",
+    "text": "전체 영역",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "button.pg-chip.area-chip.on",
+    "text": "R&D",
+    "bg": "rgb(253, 237, 237)",
+    "color": "rgb(196, 43, 48)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "button.pg-chip.area-chip",
+    "text": "플랫폼",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "button.pg-chip.area-chip",
+    "text": "교육자료",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "button.pg-chip.area-chip",
+    "text": "디자인",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "button.pg-chip.area-chip",
+    "text": "연구소",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "button.pg-chip.area-chip",
+    "text": "현장실습교육",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "button.pg-chip.area-chip",
+    "text": "기타",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "button.pg-chip",
+    "text": "완료 포함",
+    "bg": "rgb(255, 255, 255)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 26,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "R&D",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "R&D",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "기타",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "R&D",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "연구소",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "R&D",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "R&D",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "현장실습교육",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "R&D",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "기타",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.st.blkd",
+    "text": "차단됨",
+    "bg": "color(srgb 0.974275 0.925961 0.850039)",
+    "color": "rgb(138, 90, 8)",
+    "radius": 4,
+    "h": 20,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.st.blkd",
+    "text": "차단됨",
+    "bg": "color(srgb 0.974275 0.925961 0.850039)",
+    "color": "rgb(138, 90, 8)",
+    "radius": 4,
+    "h": 20,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  },
+  {
+    "route": "/areas/1",
+    "sel": "span.areatag",
+    "text": "플랫폼",
+    "bg": "rgba(0, 0, 0, 0)",
+    "color": "rgb(82, 90, 102)",
+    "radius": 4,
+    "h": 18,
+    "fs": 11.5
+  }
+]

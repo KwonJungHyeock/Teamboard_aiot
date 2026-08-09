@@ -75,12 +75,15 @@ const DUE_OPTIONS = [
 ] as const;
 
 /** 정렬 기준 (MD-P-2026-018 §D) — 기본은 기한순. 선택은 사용자별로 기억한다. */
-type SortKey = "due" | "priority" | "recent" | "progress";
+type SortKey = "due" | "priority" | "recent" | "progress" | "manual";
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "due", label: "기한순" },
   { key: "priority", label: "우선순위순" },
   { key: "recent", label: "최신 작성순" },
   { key: "progress", label: "진척순" },
+  // §C1 — 이 값일 때만 드래그가 된다. 이름은 "수동 순서" 가 아니라 **"직접 정한 순서"** 다:
+  //   목표 진척에 이미 "수동 입력" 이 있어, 같은 단어가 두 개념을 가리키면 안 된다 (§B 회신 [확정]).
+  { key: "manual", label: "직접 정한 순서" },
 ];
 const PRIORITY_RANK: Record<string, number> = { high: 0, mid: 1, medium: 1, normal: 1, low: 2 };
 
@@ -372,14 +375,26 @@ export default function TasksView({ user }: { user: SessionUser }) {
   // 검색·완료필터·정렬이 적용된 업무 목록 — 모든 렌즈가 공유 (MD-P-2026-018 §D)
   const filteredTasks = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const out = tasks.filter(
-      (t) =>
-        (showDone || (t.status !== "done" && t.status !== "dropped")) &&
-        (!q ||
-          t.title.toLowerCase().includes(q) ||
-          (t.projectName ?? "").toLowerCase().includes(q) ||
-          (t.assigneeName ?? "").toLowerCase().includes(q))
-    );
+    const match = (t: TaskItem) =>
+      (showDone || (t.status !== "done" && t.status !== "dropped")) &&
+      (!q ||
+        t.title.toLowerCase().includes(q) ||
+        (t.projectName ?? "").toLowerCase().includes(q) ||
+        (t.assigneeName ?? "").toLowerCase().includes(q));
+
+    // §A3 — **하위 행은 필터·정렬의 대상이 아니다.**
+    //   상위가 걸리면 따라 나오고, 하위만 걸리면 상위를 살려서 보여준다.
+    //   서버가 목록 필터에 대해 같은 처리를 하고(재귀), 여기서는 화면 쪽 필터
+    //   (검색어·완료 숨김)에 대해 같은 규칙을 적용한다. 한쪽만 하면 규칙이 갈린다.
+    //   완료한 하위를 숨기면 "2건 중 1건 완료"인데 펼치면 1건만 보인다.
+    const hit = new Set(tasks.filter(match).map((t) => t.id));
+    const keep = new Set(hit);
+    for (const t of tasks) {
+      const p = t.parentTaskId ?? null;
+      if (p !== null && hit.has(p)) keep.add(t.id);   // 상위가 걸림 → 하위도 남긴다
+      if (p !== null && hit.has(t.id)) keep.add(p);   // 하위만 걸림 → 상위를 살린다
+    }
+    const out = tasks.filter((t) => keep.has(t.id));
 
     const prio = (t: TaskItem) => PRIORITY_RANK[t.priority] ?? 1;
     // 기한 없는 항목은 항상 맨 뒤 — 날짜 비교에 끌어들이면 순서가 뒤죽박죽이 된다
@@ -394,6 +409,9 @@ export default function TasksView({ user }: { user: SessionUser }) {
         prio(a) - prio(b) || dueKey(a).localeCompare(dueKey(b)) || recent(b).localeCompare(recent(a)),
       recent: (a, b) => recent(b).localeCompare(recent(a)) || b.id - a.id,
       progress: (a, b) => (b.progress ?? 0) - (a.progress ?? 0) || dueKey(a).localeCompare(dueKey(b)),
+      // §C — 사람이 정한 순서. 같은 값이면 id 로 갈라 **매번 같은 순서**가 되게 한다.
+      //   (023 backfill 이후 만들어진 업무는 sort_order 가 0 으로 뭉쳐 있다 — C-a 보고 참조)
+      manual: (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id - b.id,
     };
     return out.slice().sort(cmp[sortBy]);
   }, [tasks, search, showDone, sortBy]);
@@ -416,6 +434,23 @@ export default function TasksView({ user }: { user: SessionUser }) {
     window.history.replaceState({}, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
   }, [loading, areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, sortBy, showDone]);
 
+  /**
+   * §C — 보이는 행의 새 순서를 서버에 보낸다.
+   *
+   * **전역 sort_order 정리는 서버가 한다.** 필터가 걸려 있으면 화면에 없는 형제가
+   * 사이사이에 있는데, 화면이 그것까지 계산하려 들면 필터마다 다른 답을 낸다 (§C3).
+   */
+  const reorder = useCallback(async (parentTaskId: number | null, orderedIds: number[]) => {
+    const res = await fetch("/api/tasks/reorder", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ parentTaskId, orderedIds }),
+    }).catch(() => null);
+    if (!res || !res.ok) {
+      toast((res && (await res.json().catch(() => ({})))?.error) || "순서를 저장하지 못했어요", "err");
+    }
+    await load();
+  }, [load]);
+
   const rows: TaskTableRow[] = useMemo(() => {
     return filteredTasks
       .map((t) => {
@@ -429,13 +464,19 @@ export default function TasksView({ user }: { user: SessionUser }) {
           status: t.status,
           priority: t.priority,
           areaName: t.areaName,
+          // 28-a — 서버가 이미 taskProgress() 를 통과시킨 **실효 진척**을 준다.
+          //   여기서 다시 셈하지 않는다. 두 번 셈하면 계산기가 둘이 된다.
           progress: t.progress,
           goalNames: t.goalIds.map(goalTitleOf).filter((x): x is string => !!x),
           dday: d.text,
           overdue: d.overdue && t.status !== "done" && t.status !== "dropped",
           blocked: t.blocked,
           blockedReason: t.blockedReason,
+          blockedBy: t.blockedBy ?? null,   // §B3 칩에서 원인으로 이동
           visibility: t.visibility,   // §B2 "개인" 칩
+          parentTaskId: t.parentTaskId ?? null,   // §A3 계층
+          sortOrder: t.sortOrder ?? 0,
+          childCount: t.childCount ?? 0,
         };
       });
   }, [filteredTasks, today, goalTitleOf]);
@@ -483,6 +524,10 @@ export default function TasksView({ user }: { user: SessionUser }) {
             <option value="">전체 담당</option>
             {actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
+          {/* §C1 — 잡히지 않는 핸들을 보여주면 고장으로 읽힌다. 대신 어떻게 켜는지 말한다. */}
+          {sortBy !== "manual" && (
+            <span className="dragoff">순서를 바꾸려면 정렬을 &lsquo;직접 정한 순서&rsquo;로 바꾸세요</span>
+          )}
           <select value={sortBy} onChange={(e) => pickSort(e.target.value as SortKey)} aria-label="정렬 기준">
             {SORT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}{o.key === "due" ? " (기본)" : ""}</option>)}
           </select>
@@ -588,6 +633,9 @@ export default function TasksView({ user }: { user: SessionUser }) {
               }
               variant="full"
               quickComplete
+              // §C1 — "직접 정한 순서" 일 때만 핸들을 그린다
+              sortable={sortBy === "manual"}
+              onReorder={reorder}
               selectable
               checked={checked}
               onToggleCheck={toggleCheck}

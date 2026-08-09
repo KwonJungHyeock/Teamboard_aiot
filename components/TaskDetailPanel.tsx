@@ -10,6 +10,8 @@ import { blobSrc } from "@/lib/upload";
 import { AttachButton, AttachStatus, DropZone, useAttach } from "./Attach";
 import { openPanel } from "@/lib/side-panel";
 import DocEditor, { type DocBlock } from "./DocEditor";
+import SubtaskSection, { type SubtaskRow } from "./SubtaskSection";
+import TaskCombo, { rememberTask } from "./TaskCombo";
 import PropertyBlock, { type PropRow } from "./PropertyBlock";
 import LinkedResources from "./LinkedResources";
 import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution } from "@/lib/progress";
@@ -39,6 +41,12 @@ interface TaskDetail {
   resolution: string | null;
   parentTaskId: number | null; parentTitle: string | null;
   blockedByTitle: string | null; childCount: number;
+  /** §A1 하위 업무 목록. 자기가 하위면 항상 빈 배열이다(깊이 2단). */
+  children: SubtaskRow[];
+  /** §B2 역방향 — **이 업무가 막고 있는** 업무들. 상대가 지정한 것이라 읽기 전용이다. */
+  blocking: { id: number; title: string }[];
+  /** §B4 — 차단 원인이 완료됐는가. 자동 해제는 하지 않고 안내만 띄운다. */
+  blockedByDone: boolean;
   goalSource: "inherited" | "manual" | "none";   // inherited 는 역사적 값(= 미지정). 새로 안 생긴다.
   visibility: "team" | "private";
   effectiveProgress: number; rolledUpFromChildren: boolean;
@@ -169,6 +177,31 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
     notifyTaskUpdated();
     if (CHAIN_FIELDS.some((k) => k in fields)) notifyGoalChain();
     return true;
+  }
+
+  /**
+   * 저장하고 **거절 사유를 돌려준다** (§B1 · §A4).
+   *
+   * patch() 는 실패를 패널 상단 배너로 밀어낸다. 콤보박스 안에서 고른 것이 거절되면
+   * 사유가 화면 반대편에 뜨는 셈이라 무엇 때문인지 이어지지 않는다.
+   * 그래서 이 경로만 사유를 **호출한 자리로** 돌려준다 — 서버 문장 그대로.
+   */
+  async function saveField(fields: Record<string, unknown>): Promise<string | null> {
+    if (typeof openId !== "number") return "업무를 찾을 수 없습니다.";
+    setSave("saving"); setErr("");
+    const res = await fetch(`/api/tasks/${openId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(fields),
+    }).catch(() => null);
+    if (!res || !res.ok) {
+      setSave("idle");
+      return (res && (await res.json().catch(() => ({})))?.error) || "저장하지 못했어요";
+    }
+    setSave("saved");
+    setTimeout(() => setSave("idle"), 1200);
+    await loadDetail(openId);
+    notifyTaskUpdated();
+    return null;
   }
 
   /**
@@ -417,21 +450,65 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
         </div>
       ),
     },
-    // ── MD-P-2026-024 §6-1 — 읽기 전용 2줄. 값이 없으면 줄 자체를 만들지 않는다.
-    ...(t.parentTaskId !== null ? [{
+    // ── §A4 승격·강등 — 여기서 상위를 비우면 최상위가 되고, 지정하면 하위가 된다.
+    //    예전에는 읽기 전용 링크였고 값이 없으면 줄 자체가 없었다. 줄이 없으면
+    //    **승격도 강등도 화면에서 할 수 없다.** 하위를 가진 업무는 하위가 될 수 없으므로
+    //    (깊이 2단) 그때는 줄을 그리지 않는다 — 눌러도 안 되는 것을 보이지 않게 한다.
+    ...(t.parentTaskId !== null || t.childCount === 0 ? [{
       key: "parent", label: "상위 업무",
-      value: (
+      value: t.parentTaskId === null ? null : (
         <button className="prop-link" onClick={() => openTaskPanel(t.parentTaskId!)}>
           #{t.parentTaskId} {t.parentTitle ?? ""}
         </button>
       ),
+      empty: t.parentTaskId === null, action: "＋ 상위 지정",
+      editor: () => (
+        <TaskCombo
+          selfId={t.id} value={t.parentTaskId}
+          noneLabel="상위 없음" noneHint="최상위 업무로 올립니다"
+          note="하위가 되면 프로젝트·영역·공개 범위를 상위에서 물려받습니다."
+          onPick={(id) => saveField({ parentTaskId: id })}
+        />
+      ),
     } as PropRow] : []),
-    ...(t.blockedBy !== null ? [{
+    // ── §B1 차단 — 읽기 전용 링크였다. 지정·해제가 되어야 쓰인다.
+    //    지목(blocked_by)이 있으면 그것이 먼저 읽히고, 사유 텍스트는 뒤에 붙는다.
+    //    사유만 있는 차단도 있으므로 blocked_reason 을 지우지 않는다.
+    {
       key: "blockedBy", label: "차단",
+      value: t.blockedBy !== null ? (
+        <span className="prop-blk">
+          <button className="prop-link" onClick={() => openTaskPanel(t.blockedBy!)}>
+            #{t.blockedBy} {t.blockedByTitle ?? ""}
+          </button>
+          {t.blockedReason && <em className="prop-blk-r">{t.blockedReason}</em>}
+        </span>
+      ) : t.blocked && t.blockedReason ? (
+        <span className="prop-blk"><em className="prop-blk-r">{t.blockedReason}</em></span>
+      ) : null,
+      empty: t.blockedBy === null && !t.blockedReason, action: "＋ 차단 지정",
+      editor: () => (
+        <TaskCombo
+          selfId={t.id} value={t.blockedBy}
+          noneLabel="차단 없음" noneHint="막힘 표시를 해제합니다"
+          note="자기 자신·순환은 서버가 막습니다. 사유 텍스트만 있는 차단은 아래 「막힘 표시」에서."
+          onPick={(id) => saveField({ blockedByTaskId: id })}
+        />
+      ),
+    } as PropRow,
+    // ── §B2 역방향 — "내가 무엇을 막고 있는가". 0건이면 줄 자체를 그리지 않는다.
+    //    읽기 전용이다: 이 관계는 **상대 업무에서** 지정한 것이라 여기서 고치면 방향이 헷갈린다.
+    ...(t.blocking.length > 0 ? [{
+      key: "blocking", label: "이 업무가 막는 업무",
       value: (
-        <button className="prop-link" onClick={() => openTaskPanel(t.blockedBy!)}>
-          #{t.blockedBy} {t.blockedByTitle ?? ""}
-        </button>
+        <span className="prop-blking">
+          <b className="num">{t.blocking.length}건</b>
+          {t.blocking.map((b) => (
+            <button key={b.id} className="prop-link" onClick={() => openTaskPanel(b.id)} title={b.title}>
+              #{b.id}
+            </button>
+          ))}
+        </span>
       ),
     } as PropRow] : []),
     // §6-2 — 완료 사유 4지. 완료 상태에서만 나타난다. 기본값 완료.
@@ -518,6 +595,30 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
             {/* 속성 블록 (MD-P-2026-020 §F1) — 폼이 아니라 문서 속성. 값 클릭 → 그 자리 편집 */}
             <PropertyBlock rows={propRows} collapseAfter={5} />
 
+            {/* §A1 하위 업무 — 속성 블록 아래, 자유 본문 위.
+                §A2 — **하위 업무의 상세에는 이 섹션 자체를 그리지 않는다.** 깊이 2단이라
+                눌러도 안 되는 것을 보여줄 이유가 없다. */}
+            {t.parentTaskId === null && (
+              <SubtaskSection
+                parentId={t.id}
+                children={t.children ?? []}
+                prefill={{ areaId: t.areaId, projectId: t.projectId ?? undefined, visibility: t.visibility }}
+                onChanged={() => { notifyTaskUpdated(); void loadDetail(t.id); }}
+              />
+            )}
+
+            {/* §B4 — 차단 원인이 완료됐다. **자동으로 풀지 않는다.**
+                다른 이유로 여전히 막혀 있을 수 있으므로 판단은 사람이 한다.
+                다만 해제는 그 자리에서 한 번에 되어야 한다. */}
+            {t.blockedByDone && (
+              <div className="blkdone" role="status">
+                <span>
+                  차단 원인 <b>#{t.blockedBy}</b> {t.blockedByTitle ? `"${t.blockedByTitle}"` : ""} 가 완료됐습니다
+                </span>
+                <button className="lk" onClick={() => patch({ blockedByTaskId: null })}>차단 해제</button>
+              </div>
+            )}
+
             {/* 막힘 표시 — 상태와 별개인 진행 불가 신호. 표시 시 사유 필수. */}
             <div className={`tdp-sec tdp-block${t.blocked ? " on" : ""}`}>
               <div className="tdp-sec-h tdp-block-h">
@@ -545,18 +646,28 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
                 <div className="tdp-block-body">
                   <input
                     className="tdp-block-reason"
-                    placeholder="막힌 사유 (필수) — 예: 부품 입고 지연, 승인 대기"
+                    placeholder={t.blockedBy !== null
+                      ? "사유 (선택) — 지목한 업무 말고 다른 이유가 있으면 적으세요"
+                      : "막힌 사유 (필수) — 예: 부품 입고 지연, 승인 대기"}
                     value={blockReason}
                     onChange={(e) => setBlockReason(e.target.value)}
                     onBlur={() => {
                       const r = blockReason.trim();
-                      if (!r) { setBlockErr("사유를 입력해야 막힘으로 저장됩니다."); return; }
+                      // 업무를 지목한 차단은 사유가 없어도 성립한다 (§B1).
+                      if (!r && t.blockedBy === null) { setBlockErr("사유를 입력해야 막힘으로 저장됩니다."); return; }
+                      if (!r) return;
                       if (r !== (t.blockedReason ?? "")) patch({ blocked: true, blockedReason: r });
                     }}
                     onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
                   />
                   {blockErr && <p className="tdp-block-err">{blockErr}</p>}
-                  <p className="tdp-block-note">진행 불가 신호입니다. 상태(진행·대기)는 그대로 두고, 해제하면 원래 상태로 돌아갑니다.</p>
+                  {/* §B1 — 업무를 지목한 차단은 이미 사유가 있는 셈이다.
+                      "(필수)" 를 그대로 두면 채우지 않아도 되는 칸을 채우라고 조르는 화면이 된다. */}
+                  <p className="tdp-block-note">
+                    {t.blockedBy !== null
+                      ? `차단 원인은 위에 지목한 #${t.blockedBy} 입니다. 사유 텍스트는 선택입니다.`
+                      : "진행 불가 신호입니다. 상태(진행·대기)는 그대로 두고, 해제하면 원래 상태로 돌아갑니다."}
+                  </p>
                 </div>
               )}
             </div>

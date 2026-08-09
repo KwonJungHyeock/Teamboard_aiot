@@ -1,0 +1,1230 @@
+[
+  {
+    "route": "/",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/home.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "section.tile.hero",
+        "w": 1108,
+        "h": 212
+      },
+      {
+        "el": "div.hm-g2",
+        "w": 1108,
+        "h": 350
+      },
+      {
+        "el": "div.hh2",
+        "w": 1076,
+        "h": 27
+      }
+    ],
+    "btnCount": 18,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 4,
+        "sample": "header.pg-head"
+      },
+      {
+        "bg": "rgb(251, 252, 252)",
+        "token": "--surface-2",
+        "n": 1,
+        "sample": "div.pg-filters"
+      },
+      {
+        "bg": "linear-gradient(150deg, rgb(26, 31, 39), rgb(14, 17, 22))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "section.tile.hero"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/tasks",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/tasks.png",
+    "scrollHeight": 1692,
+    "biggest": [
+      {
+        "el": "section.card",
+        "w": 1108,
+        "h": 1295
+      },
+      {
+        "el": "table",
+        "w": 1070,
+        "h": 1208
+      },
+      {
+        "el": "colgroup",
+        "w": 1070,
+        "h": 1208
+      }
+    ],
+    "btnCount": 16,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 3,
+        "sample": "header.pg-head"
+      },
+      {
+        "bg": "rgb(251, 252, 252)",
+        "token": "--surface-2",
+        "n": 1,
+        "sample": "div.pg-filters"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/goals",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/goals.png",
+    "scrollHeight": 1250,
+    "biggest": [
+      {
+        "el": "aside.lmn",
+        "w": 1108,
+        "h": 88
+      },
+      {
+        "el": "button.ulbanner",
+        "w": 1108,
+        "h": 40
+      },
+      {
+        "el": "div.gtree",
+        "w": 1108,
+        "h": 811
+      }
+    ],
+    "btnCount": 47,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 3,
+        "sample": "header.pg-head"
+      },
+      {
+        "bg": "rgb(251, 252, 252)",
+        "token": "--surface-2",
+        "n": 6,
+        "sample": "div.pg-filters"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/projects",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/projects.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "div.top",
+        "w": 1152,
+        "h": 40
+      },
+      {
+        "el": "div.head",
+        "w": 1104,
+        "h": 78
+      },
+      {
+        "el": "div.pg-filters.areafilter-row",
+        "w": 1104,
+        "h": 36
+      }
+    ],
+    "btnCount": 13,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/projects/1",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/projects_1.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "div.pws-ov",
+        "w": 1108,
+        "h": 590
+      },
+      {
+        "el": "section.card.pws-ov-card",
+        "w": 1108,
+        "h": 164
+      },
+      {
+        "el": "section.card.pws-ov-card",
+        "w": 1108,
+        "h": 228
+      }
+    ],
+    "btnCount": 14,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 6,
+        "sample": "header.pg-head"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/calendar",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/calendar.png",
+    "scrollHeight": 1018,
+    "biggest": [
+      {
+        "el": "section.tile.cal2",
+        "w": 1108,
+        "h": 731
+      },
+      {
+        "el": "div.cal2-dow",
+        "w": 1106,
+        "h": 39
+      },
+      {
+        "el": "div.cal2-body",
+        "w": 1106,
+        "h": 690
+      }
+    ],
+    "btnCount": 19,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 2,
+        "sample": "header.pg-head"
+      },
+      {
+        "bg": "rgb(251, 252, 252)",
+        "token": "--surface-2",
+        "n": 1,
+        "sample": "div.pg-filters"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/signals",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/signals.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "div.sig-wrap",
+        "w": 1108,
+        "h": 374
+      },
+      {
+        "el": "div.tile.sig-sum",
+        "w": 1108,
+        "h": 26
+      },
+      {
+        "el": "div.dl",
+        "w": 1108,
+        "h": 336
+      }
+    ],
+    "btnCount": 14,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 2,
+        "sample": "header.pg-head"
+      },
+      {
+        "bg": "rgb(251, 252, 252)",
+        "token": "--surface-2",
+        "n": 1,
+        "sample": "div.pg-filters"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/signals?tab=decision",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/signals_tab_decision.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "section.card.dlog",
+        "w": 1108,
+        "h": 410
+      },
+      {
+        "el": "div.dlog-bar",
+        "w": 1106,
+        "h": 63
+      },
+      {
+        "el": "div.dlist",
+        "w": 1106,
+        "h": 345
+      }
+    ],
+    "btnCount": 5,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 2,
+        "sample": "header.pg-head"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/inbox",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/inbox.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "div.inbox-demo",
+        "w": 1108,
+        "h": 42
+      },
+      {
+        "el": "div.inbox-strip",
+        "w": 1108,
+        "h": 82
+      },
+      {
+        "el": "section.inbox-sec",
+        "w": 1108,
+        "h": 508
+      }
+    ],
+    "btnCount": 12,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 6,
+        "sample": "header.pg-head"
+      },
+      {
+        "bg": "color(srgb 0.980706 0.944471 0.887529)",
+        "token": "--amber 12% 안내 배너 (.inbox-demo)",
+        "n": 1,
+        "sample": "div.inbox-demo"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/activity",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/activity.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "div.actv-body",
+        "w": 1108,
+        "h": 366
+      },
+      {
+        "el": "div.actv-main",
+        "w": 896,
+        "h": 320
+      },
+      {
+        "el": "div.actv-bar",
+        "w": 896,
+        "h": 28
+      }
+    ],
+    "btnCount": 17,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 2,
+        "sample": "header.pg-head"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/huddle",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/huddle.png",
+    "scrollHeight": 1087,
+    "biggest": [
+      {
+        "el": "div.top",
+        "w": 1152,
+        "h": 40
+      },
+      {
+        "el": "div.head",
+        "w": 1104,
+        "h": 78
+      },
+      {
+        "el": "section",
+        "w": 1104,
+        "h": 206
+      }
+    ],
+    "btnCount": 6,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 4,
+        "sample": "article.hud-card"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/assistant",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/assistant.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "div.tile.ma-credit",
+        "w": 1108,
+        "h": 86
+      },
+      {
+        "el": "section.tile.ma-dispatch",
+        "w": 1108,
+        "h": 333
+      },
+      {
+        "el": "div.th",
+        "w": 1108,
+        "h": 45
+      }
+    ],
+    "btnCount": 4,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 2,
+        "sample": "header.pg-head"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/reports",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/reports.png",
+    "scrollHeight": 3217,
+    "biggest": [
+      {
+        "el": "article.prep",
+        "w": 1108,
+        "h": 2917
+      },
+      {
+        "el": "section.prep-sec",
+        "w": 1106,
+        "h": 1739
+      },
+      {
+        "el": "table.prep-t",
+        "w": 1050,
+        "h": 1664
+      }
+    ],
+    "btnCount": 7,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 2,
+        "sample": "header.pg-head"
+      },
+      {
+        "bg": "rgb(22, 25, 31)",
+        "token": "--charcoal (히어로 전용)",
+        "n": 1,
+        "sample": "header.prep-cover"
+      },
+      {
+        "bg": "rgb(251, 252, 252)",
+        "token": "--surface-2",
+        "n": 1,
+        "sample": "tr"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/handover",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/handover.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "div.rp-cols",
+        "w": 1108,
+        "h": 203
+      },
+      {
+        "el": "main.rp-main",
+        "w": 812,
+        "h": 39
+      },
+      {
+        "el": "div.no-print",
+        "w": 812,
+        "h": 39
+      }
+    ],
+    "btnCount": 4,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 1,
+        "sample": "header.pg-head"
+      },
+      {
+        "bg": "rgb(251, 252, 252)",
+        "token": "--surface-2",
+        "n": 1,
+        "sample": "aside.rp-side.no-print"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/members",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/members.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "section.card",
+        "w": 1108,
+        "h": 269
+      },
+      {
+        "el": "section.card",
+        "w": 1108,
+        "h": 180
+      },
+      {
+        "el": "div.ch",
+        "w": 1070,
+        "h": 33
+      }
+    ],
+    "btnCount": 5,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 3,
+        "sample": "header.pg-head"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/settings",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/settings.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "div.top",
+        "w": 1152,
+        "h": 40
+      },
+      {
+        "el": "section.card.ncon",
+        "w": 1104,
+        "h": 403
+      },
+      {
+        "el": "div.ncon-h",
+        "w": 1066,
+        "h": 34
+      }
+    ],
+    "btnCount": 4,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 3,
+        "sample": "section.card.ncon"
+      },
+      {
+        "bg": "color(srgb 0.987137 0.96298 0.92502)",
+        "token": "--amber 8% 안내 배너 (.ncon-guide)",
+        "n": 1,
+        "sample": "div.ncon-guide"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/saved",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/saved.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "div.empty-state",
+        "w": 1108,
+        "h": 320
+      },
+      {
+        "el": "p.es-hint",
+        "w": 360,
+        "h": 37
+      },
+      {
+        "el": "p.es-title",
+        "w": 115,
+        "h": 22
+      }
+    ],
+    "btnCount": 5,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 1,
+        "sample": "header.pg-head"
+      },
+      {
+        "bg": "rgb(251, 252, 252)",
+        "token": "--surface-2",
+        "n": 1,
+        "sample": "div.pg-filters"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/notes",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/notes.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "div.empty-state",
+        "w": 1108,
+        "h": 320
+      },
+      {
+        "el": "p.es-hint",
+        "w": 360,
+        "h": 37
+      },
+      {
+        "el": "p.es-title",
+        "w": 103,
+        "h": 22
+      }
+    ],
+    "btnCount": 1,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 1,
+        "sample": "header.pg-head"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/profile",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/profile.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "div.top",
+        "w": 1152,
+        "h": 63
+      },
+      {
+        "el": "div.head",
+        "w": 1104,
+        "h": 78
+      },
+      {
+        "el": "div.cols",
+        "w": 1104,
+        "h": 394
+      }
+    ],
+    "btnCount": 3,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 2,
+        "sample": "section.card"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/status",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/status.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "div.an-wrap",
+        "w": 1108,
+        "h": 278
+      },
+      {
+        "el": "section.card.an-card",
+        "w": 546,
+        "h": 278
+      },
+      {
+        "el": "section.card.an-card",
+        "w": 546,
+        "h": 278
+      }
+    ],
+    "btnCount": 0,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 3,
+        "sample": "header.pg-head"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  },
+  {
+    "route": "/areas/1",
+    "status": 200,
+    "shot": "docs/shots/MD-P-2026-028/sweep/areas_1.png",
+    "scrollHeight": 987,
+    "biggest": [
+      {
+        "el": "div.iti",
+        "w": 1108,
+        "h": 38
+      },
+      {
+        "el": "section.card",
+        "w": 1108,
+        "h": 345
+      },
+      {
+        "el": "p.tv-hidden",
+        "w": 1108,
+        "h": 18
+      }
+    ],
+    "btnCount": 16,
+    "misaligned": [],
+    "coralFill": [],
+    "boxy": [],
+    "badRadius": [],
+    "badFont": [],
+    "uaDefault": [],
+    "uaInput": [],
+    "bgs": [
+      {
+        "bg": "rgb(247, 248, 249)",
+        "token": "--bg",
+        "n": 3,
+        "sample": "html.__variable_fde3a9.__variable_44adcb"
+      },
+      {
+        "bg": "linear-gradient(168deg, rgb(22, 25, 31), rgb(13, 16, 20))",
+        "token": "의도된 그라데이션",
+        "kind": "image",
+        "n": 1,
+        "sample": "aside.side"
+      },
+      {
+        "bg": "rgb(255, 255, 255)",
+        "token": "--surface",
+        "n": 3,
+        "sample": "header.pg-head"
+      },
+      {
+        "bg": "rgb(251, 252, 252)",
+        "token": "--surface-2",
+        "n": 1,
+        "sample": "div.pg-filters"
+      }
+    ],
+    "gridEmpty": [],
+    "tallEmpty": [],
+    "js": []
+  }
+]

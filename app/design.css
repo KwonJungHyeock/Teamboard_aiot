@@ -1340,7 +1340,8 @@ a.pcard:hover, .pcard.clickable:hover { box-shadow: var(--e2); }
   /* transform 이 섞인 애니메이션은 opacity 만 남긴 판으로 갈아 끼운다 */
   @keyframes fade-only { from { opacity: 0; } to { opacity: 1; } }
   @keyframes fade-out-only { from { opacity: 1; } to { opacity: 0; } }
-  .tdp, .ntm, .tdp-save.saved { animation: fade-only var(--dur-1) var(--ease-out); }
+  .tdp, .ntm, .tdp-save.saved, tr.sub-row { animation: fade-only var(--dur-1) var(--ease-out); }
+  .sub-cv svg { transition: none var(--dur-1) var(--ease-out); }
   .ntm-bg.closing .ntm, .row-out { animation: fade-out-only var(--dur-1) var(--ease-out) forwards; }
   .ntm-bg { animation: fade-only var(--dur-1) var(--ease-out); }
   .hl { animation: none; }
@@ -1580,3 +1581,131 @@ a.pcard:hover, .pcard.clickable:hover { box-shadow: var(--e2); }
    `.none`(집계 없음)과 색은 같지만 뜻이 다르므로 클래스를 나눠 둔다 —
    합치면 "값이 없다"와 "값이 흐리다"가 코드에서 구별되지 않는다. */
 .gpv.low, .ycard-p.low { color: var(--muted); }
+
+/* ── MD-P-2026-028 §A1 하위 업무 섹션 (업무 상세) ──────────────────────
+   §C 목록 규격(38px 행 · 12.5px)을 그대로 쓴다. 새 시각 토큰을 만들지 않는다. */
+.stx-done { font-style: normal; font-size: 11.5px; color: var(--muted); font-weight: 400; }
+.stx-list { border-top: 1px solid var(--hair); }
+.stx-row { display: flex; align-items: center; gap: 8px; height: 38px;
+  border-bottom: 1px solid var(--hair); font-size: 12.5px; color: var(--ink2); }
+.stx-chk { flex: 0 0 auto; width: 14px; height: 14px; margin: 0; cursor: pointer; }
+.stx-t { flex: 1; min-width: 0; text-align: left; border: 0; background: 0; padding: 0;
+  font: inherit; color: var(--ink); cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stx-t:hover { text-decoration: underline; }
+.stx-a { flex: 0 0 66px; color: var(--muted); font-size: 11.5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stx-d { flex: 0 0 44px; color: var(--muted); font-size: 11.5px; }
+.stx-p { flex: 0 0 76px; display: flex; align-items: center; gap: 6px; }
+.stx-p i { flex: 1; height: 4px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.stx-p i b { display: block; height: 100%; border-radius: 999px; background: var(--edu);
+  transform-origin: left center; transform: scaleX(var(--p, 0)); }
+.stx-p em { flex: 0 0 auto; font-style: normal; font-size: 11.5px; color: var(--muted); }
+/* 완료 행 — 취소선이 아니라 흐리게. 취소선은 "잘못됐다"로 읽힌다 */
+.stx-row.done .stx-t { color: var(--muted); }
+
+/* ── §A4 상위 업무 지정 (속성 블록 안 팝오버) ─────────────────────── */
+.ppk { display: flex; flex-direction: column; gap: 6px; min-width: 260px; }
+.ppk-q { width: 100%; }
+.ppk-list { display: flex; flex-direction: column; max-height: 220px; overflow-y: auto; }
+.ppk-o { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 7px;
+  border: 0; border-radius: 4px; background: 0; cursor: pointer; text-align: left;
+  font: inherit; font-size: 12.5px; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: background-color var(--dur-1) var(--ease-out); }
+.ppk-o:hover, .ppk-o.on { background: var(--surface-2); }
+.ppk-o.none { color: var(--muted); }
+.ppk-o em { font-style: normal; font-size: 11.5px; color: var(--muted); }
+.ppk-id { flex: 0 0 auto; font-size: 11.5px; color: var(--muted); }
+.ppk-none { padding: 7px; font-size: 11.5px; color: var(--muted); }
+.ppk-n { margin: 0; font-size: 11.5px; color: var(--muted); }
+
+/* ── §A3 목록의 하위 업무 행 ──────────────────────────────────────────
+   들여쓰기 22px — 목표 트리(.pg-body .grow)와 **같은 값**이다. 새로 정하지 않는다.
+   높이를 애니메이트하지 않는다(§H2 금지 속성). 펼침 자체는 즉시 일어나고,
+   나타나는 행에만 opacity + translateY 를 --dur-2 로 준다. */
+/* 캐럿은 **일반 흐름**에 둔다. absolute 로 칸 밖에 걸었더니 사이드바 아래로 들어가
+   클릭이 통째로 가로채였다 — 실측에서 잡혔다. 위치를 계산하지 말고 그냥 앞에 놓는다. */
+.pg-body table tbody td.sub-cell { padding-left: 22px; }
+.sub-cv { display: inline-flex; align-items: center; gap: 2px; height: 18px; padding: 0 3px;
+  margin-right: 4px; vertical-align: middle;
+  border: 0; border-radius: 4px; background: 0; cursor: pointer;
+  color: var(--muted); font: inherit; font-size: 10.5px;
+  transition: background-color var(--dur-1) var(--ease-out); }
+.sub-cv:hover { background: var(--surface-2); }
+.sub-cv svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2;
+  transition: transform var(--dur-2) var(--ease-out); }
+.sub-cv.on svg { transform: rotate(90deg); }
+@keyframes sub-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+tr.sub-row { animation: sub-in var(--dur-2) var(--ease-out); }
+tr.sub-row > td:first-child { color: var(--ink2); }
+
+
+/* ── MD-P-2026-028 §B 차단 관계 ────────────────────────────────────────
+   §B3 "차단됨" 칩 — **기존 상태 칩(.st) 규격을 그대로 쓰고 색만 앰버 틴트다.**
+   코랄은 쓰지 않는다: 코랄은 화면당 주액션 1개고, 차단은 액션이 아니라 상태다. */
+.st.blkd {
+  border: 0; font-family: inherit; cursor: default;
+  color: var(--amber-text, var(--ink)); background: color-mix(in srgb, var(--amber) 16%, var(--card));
+}
+button.st.blkd { cursor: pointer; transition: background-color var(--dur-1) var(--ease-out); }
+button.st.blkd:hover { background: color-mix(in srgb, var(--amber) 26%, var(--card)); }
+button.st.blkd:focus-visible { outline: 2px solid var(--edu); outline-offset: 2px; }
+
+/* §B1 — 지목이 먼저 읽히고 사유 텍스트가 뒤에 붙는다. 둘 다 있을 수 있다. */
+.prop-blk { display: inline-flex; align-items: baseline; gap: 7px; min-width: 0; }
+.prop-blk-r { font-style: normal; font-size: 11.5px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* §B2 역방향 — 읽기 전용. 개수를 먼저 두고 링크를 잇는다 ("2건 — #41, #47") */
+.prop-blking { display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.prop-blking b { font-size: 12.5px; color: var(--ink); }
+
+/* §B4 원인 완료 안내 — 자동으로 풀지 않는다. 알리고, 그 자리에서 풀 수단을 준다.
+   .lmn(030 §C3)과 같은 중립 톤이되 앰버 틴트로 "확인이 필요하다"를 말한다. */
+.blkdone {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 12px;
+  padding: 9px 12px; border-radius: 0 4px 4px 0;
+  border-left: 1px solid color-mix(in srgb, var(--amber) 45%, var(--line));
+  background: color-mix(in srgb, var(--amber) 10%, var(--surface-2));
+  font-size: 12.5px; color: var(--ink2);
+}
+.blkdone b { color: var(--ink); }
+.blkdone .lk { margin-left: auto; flex: 0 0 auto; }
+
+/* §A4·§B1 공용 업무 콤보 — ProjectCombo 의 .pcb-* 를 그대로 쓰고 두 가지만 덧댄다. */
+.tcb { position: static; min-width: 280px; }
+.tcb-id { flex: 0 0 auto; font-size: 11.5px; color: var(--muted); }
+.tcb-n { margin: 6px 0 0; font-size: 11.5px; color: var(--muted); }
+
+/* ── MD-P-2026-028 §C 드래그 정렬 ─────────────────────────────────────
+   새로 만드는 것은 §G 규격을 처음부터 지킨다 (§B 회신 [적용]) —
+   핸들은 **텍스트 버튼**(배경·테두리 없음) · 라운드 4px · 높이 16px(4의 배수) ·
+   글자 크기는 아이콘이라 해당 없음. 새 색을 만들지 않고 --muted 를 쓴다. */
+.dgrip {
+  /* **display:none 으로 숨기면 안 된다.** 숨은 요소는 탭 순서에서 빠져
+     키보드로는 영영 닿을 수 없고, ⌥↑/⌥↓ 가 죽는다 — 실측에서 잡혔다.
+     자리는 늘 차지하고 **투명도로만** 숨긴다. hover 시 레이아웃이 흔들리지도 않는다. */
+  display: inline-flex; opacity: 0; width: 12px; height: 16px; padding: 0; margin-right: 4px;
+  vertical-align: middle; align-items: center; justify-content: center;
+  border: 0; border-radius: 4px; background: 0; cursor: grab;
+  color: var(--muted); font: inherit;
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+/* §C2 — hover 와 키보드 포커스에서만 보인다. 늘 보이면 목록이 시끄럽다. */
+tbody tr:hover .dgrip, .dgrip:focus-visible, .dgrip:focus { opacity: 1; }
+.dgrip:hover { background: var(--surface-2); }
+.dgrip:active { cursor: grabbing; }
+.dgrip:focus-visible { outline: 2px solid var(--edu); outline-offset: 1px; }
+.dgrip svg { width: 10px; height: 16px; fill: currentColor; }
+/* 핸들이 나타나도 제목이 밀리지 않게 자리를 미리 비워 둔다 (드래그 중 줄바꿈 방지) */
+.pg-body table tbody tr td:first-child { position: relative; }
+
+/* 끌고 있는 행 — 들어 올린 느낌만. 크기는 바꾸지 않는다(높이 애니메이트 금지). */
+tr.row-drag > td { opacity: .45; }
+/* §C2 놓일 자리 — **1px 코랄 선.** 행을 미리 벌리지 않는다.
+   box-shadow 로 그려서 레이아웃을 건드리지 않는다 (§H2 허용 속성). */
+tr.drop-before > td { box-shadow: inset 0 1px 0 0 var(--coral); }
+tr.drop-after > td { box-shadow: inset 0 -1px 0 0 var(--coral); }
+
+/* §C1 — 드래그가 꺼져 있을 때 어떻게 켜는지 말한다. 잡히지 않는 핸들 대신 문장. */
+.dragoff { font-size: 11.5px; color: var(--muted); }

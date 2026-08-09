@@ -140,6 +140,9 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
         priority: d.priority,
         startDate: d.startDate || undefined,
         dueDate: d.dueDate || undefined,
+        // §A1 — 하위 업무 자리에서 ⌘Enter 로 확장해 온 경우.
+        // 프로젝트·영역·공개 범위는 서버가 상위 값으로 덮는다 (§A2) — 여기서 보내도 무시된다.
+        parentTaskId: prefill.parentTaskId,
       }),
     }).catch(() => null);
     const body = res ? await res.json().catch(() => null) : null;
@@ -149,7 +152,7 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
     // 목표 연결은 생성 직후 PATCH 로 붙인다.
     // POST 에 goalIds 를 새로 받게 하면 개인/팀 목표 교차 금지 규칙(§B3)이 두 벌이 된다.
     // 규칙이 두 벌이면 반드시 한쪽이 낡는다 — 검증된 경로 하나를 그대로 쓴다.
-    if (d.goalIds.length > 0) {
+    if (d.goalIds.length > 0 && !prefill.parentTaskId) {
       const g = await fetch(`/api/tasks/${id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ goalIds: d.goalIds }),

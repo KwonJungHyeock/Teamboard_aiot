@@ -2,6 +2,7 @@
 // 삭제는 소프트만: isActive=false. 하드 삭제 핸들러는 의도적으로 없다 (검수 포인트 4).
 import { NextResponse } from "next/server";
 import { markGoalManual, markGoalNone, clearGoalNone, goalLinkInfo } from "@/lib/goal-inherit";
+import { checkParent, rejectGoalLinkIfChild, childrenOf } from "@/lib/subtask";
 import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution, countableSql, doneSql, taskProgress } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
@@ -29,9 +30,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       id: number; title: string; status: string; assignee_id: number | null;
       start_date: string | null; due_date: string | null; progress: number; blocked: boolean;
       is_active: boolean; project_id: number | null; created_by: number; visibility: string;
+      parent_task_id: number | null; area_id: number;
     }>(
       `SELECT id, title, status, assignee_id, start_date::text, due_date::text, progress, blocked, is_active,
-              project_id, created_by, visibility
+              project_id, created_by, visibility, parent_task_id, area_id
          FROM task t WHERE id = $1 AND ${visibleTaskSql("$2")}`,
       [taskId, session.id]
     );
@@ -81,12 +83,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     // goalSource 전환에서 끊긴 목표 — 아래 재계산 집합에 합류시킨다
     const affectedGoalsPre = new Set<number>();
-    const sets: string[] = [];
-    const values: unknown[] = [];
-    const set = (column: string, value: unknown) => {
-      values.push(value);
-      sets.push(`${column} = $${values.length}`);
-    };
+    // 같은 컬럼을 두 번 지정하면 Postgres 가 통째로 거부한다
+    // ("multiple assignments to same column"). §A4 상속이 project_id·area_id·visibility 를
+    // 덮어쓰므로 실제로 부딪힌다 — 배열이 아니라 Map 으로 둬서 **나중 값이 이기게** 한다.
+    // 상속을 뒤에 두는 이유가 이것이다: 사용자가 보낸 값보다 상위에서 물려받은 값이 이겨야 한다.
+    const setMap = new Map<string, unknown>();
+    const set = (column: string, value: unknown) => { setMap.set(column, value); };
 
     if (typeof payload.title === "string" && payload.title.trim()) {
       set("title", payload.title.trim().slice(0, 200));
@@ -175,6 +177,49 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       );
     }
 
+    // ── §A4 승격·강등 ────────────────────────────────────────────────
+    //
+    //   상위를 비우면 최상위가 되고, 지정하면 하위가 된다.
+    //   하위가 되면 프로젝트·영역·공개 범위를 **상위에서 물려받는다** (§A2) —
+    //   생성 경로와 같은 함수(checkParent)를 쓴다. 두 경로가 각자 검사하면 갈라진다.
+    //
+    //   깊이 2단은 DB 트리거가 최종 방어선이지만 여기서 먼저 잡는다.
+    //   트리거에 맡기면 사용자가 받는 것은 500 과 영문 예외 문구다.
+    let parentChanged = false;
+    const oldParentId = task.parent_task_id;
+    let newParentId = oldParentId;
+    if (payload.parentTaskId !== undefined) {
+      newParentId = payload.parentTaskId === null || payload.parentTaskId === 0
+        ? null : Number(payload.parentTaskId);
+      if (newParentId !== oldParentId) {
+        if (newParentId !== null) {
+          const chk = await checkParent(newParentId, taskId);
+          if (chk.error) return NextResponse.json({ error: chk.error }, { status: 400 });
+          // 물려받는 값을 함께 쓴다. 순서가 중요하다 — 아래의 project/visibility 처리보다
+          // 뒤에 있으면 사용자가 보낸 값이 이겨서 상속이 깨진다.
+          set("project_id", chk.inherit!.projectId);
+          set("area_id", chk.inherit!.areaId);
+          set("visibility", chk.inherit!.visibility);
+          // 하위 업무는 목표에 직접 붙을 수 없다 (§A2). 강등되면 기존 직접 연결을 끊는다.
+          // 남겨 두면 goal_task 행은 있는데 진척에는 안 잡히는 유령 링크가 된다.
+          const dropped = await query<{ goal_id: number }>(
+            `DELETE FROM goal_task WHERE task_id = $1 RETURNING goal_id`, [taskId]
+          );
+          for (const d of dropped) affectedGoalsPre.add(d.goal_id);
+          if (dropped.length > 0) {
+            extraLogs.push(`${session.name}이(가) 하위 업무가 되면서 목표 연결 ${dropped.length}건 해제 — "${task.title}"`);
+          }
+        }
+        set("parent_task_id", newParentId);
+        parentChanged = true;
+        extraLogs.push(
+          newParentId === null
+            ? `${session.name}이(가) 상위 업무 해제 — "${task.title}"`
+            : `${session.name}이(가) 상위 업무 지정 (#${newParentId}) — "${task.title}"`
+        );
+      }
+    }
+
     let statusLog = "";
     if (payload.status !== undefined) {
       if (!(STATUSES as readonly string[]).includes(payload.status)) {
@@ -254,21 +299,60 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       if (r) extraLogs.push(`${session.name}이(가) 완료 사유 변경 → ${RESOLUTION_LABEL[r as Resolution]} — "${task.title}"`);
     }
 
-    // 상위 업무 (§2) — 깊이 2단·순환은 DB 트리거가 막는다. 여기서는 값만 넘긴다.
-    if (payload.parentTaskId !== undefined) {
-      const pid = payload.parentTaskId === null ? null : Number(payload.parentTaskId);
-      if (pid !== null && (!Number.isInteger(pid) || pid === taskId)) {
-        return NextResponse.json({ error: "상위 업무 지정이 올바르지 않습니다." }, { status: 400 });
-      }
-      set("parent_task_id", pid);
-    }
-    // 차단 업무 (§2) — 순환은 DB 트리거가 거부한다.
+    // ── §B1 차단 업무 지정·해제 ──────────────────────────────────────
+    //
+    // 순환은 DB 트리거(trg_task_block_cycle)가 최종 방어선이다. 다만 트리거 예외를
+    // 그대로 흘리면 사용자는 500 과 영문 스택을 본다. 여기서 먼저 걸어 **사유를 사람 말로** 준다.
+    // 트리거는 그대로 둔다 — 여기를 우회하는 경로가 생겨도 데이터는 지켜져야 한다.
+    let blockChanged = false;
     if (payload.blockedByTaskId !== undefined) {
-      const bid = payload.blockedByTaskId === null ? null : Number(payload.blockedByTaskId);
-      if (bid !== null && (!Number.isInteger(bid) || bid === taskId)) {
+      const bid = payload.blockedByTaskId === null || payload.blockedByTaskId === 0
+        ? null : Number(payload.blockedByTaskId);
+      if (bid !== null && !Number.isInteger(bid)) {
         return NextResponse.json({ error: "차단 업무 지정이 올바르지 않습니다." }, { status: 400 });
       }
-      set("blocked_by", bid);
+      if (bid === taskId) {
+        return NextResponse.json(
+          { error: "자기 자신을 차단 업무로 지정할 수 없습니다." }, { status: 409 });
+      }
+      if (bid !== null) {
+        const cyc = await queryOne<{ id: number; title: string }>(
+          `WITH RECURSIVE chain AS (
+             SELECT id, title, blocked_by, 1 AS hops FROM task WHERE id = $1
+             UNION ALL
+             SELECT t.id, t.title, t.blocked_by, chain.hops + 1
+               FROM task t JOIN chain ON t.id = chain.blocked_by
+              WHERE chain.hops < 50
+           )
+           SELECT id, title FROM chain WHERE id = $2 LIMIT 1`,
+          [bid, taskId]
+        );
+        if (cyc) {
+          return NextResponse.json({
+            error: `차단 관계가 순환합니다 — "${task.title}"이(가) 이미 그 업무를 (건너서) 막고 있습니다.`,
+          }, { status: 409 });
+        }
+        const target = await queryOne<{ id: number; title: string }>(
+          `SELECT t.id, t.title FROM task t
+            WHERE t.id = $1 AND t.is_active = true AND ${visibleTaskSql("$2")}`,
+          [bid, session.id]
+        );
+        if (!target) return NextResponse.json({ error: "차단 업무를 찾을 수 없습니다." }, { status: 404 });
+        // 지목하면 막힘 표시도 함께 켠다. DB 트리거(task_blocked_derive)와 같은 규칙이지만
+        // 사유 텍스트는 **덮지 않는다** — 지목과 사유는 함께 존재할 수 있다 (§B1).
+        set("blocked_by", bid);
+        set("blocked", true);
+        if (!task.blocked) set("blocked_since", new Date().toISOString());
+        extraLogs.push(`${session.name}이(가) 차단 지정 — "${task.title}" ← #${bid} "${target.title}"`);
+      } else {
+        // "차단 없음" — 지목과 막힘 표시를 함께 푼다. 지정만 되고 해제가 안 되면 안 쓰인다.
+        set("blocked_by", null);
+        set("blocked", false);
+        set("blocked_reason", null);
+        set("blocked_since", null);
+        extraLogs.push(`${session.name}이(가) 차단 해제 — "${task.title}"`);
+      }
+      blockChanged = true;
     }
 
     // 막힘(blocked) 플래그 — 상태와 별개. 표시 시 사유 필수, 해제 시 상태 유지.
@@ -283,7 +367,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         set("blocked_reason", reason);
         // 새로 막힘 표시할 때만 시각 갱신(이미 막힌 상태의 사유 수정은 시각 유지)
         if (!task.blocked) set("blocked_since", new Date().toISOString());
-        set("blocked_by", payload.blockedBy ? Number(payload.blockedBy) : null);
+        // 같은 요청에서 blockedByTaskId 가 왔으면 그쪽이 정한 지목을 **덮지 않는다** (§B1).
+        // 사유만 고치는 요청이 지목을 조용히 지우던 자리였다.
+        if (!blockChanged) set("blocked_by", payload.blockedBy ? Number(payload.blockedBy) : null);
         extraLogs.push(
           task.blocked
             ? `${session.name}이(가) 막힘 사유 수정 — "${task.title}" (${reason})`
@@ -313,9 +399,15 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       statusLog = `${session.name}이(가) 진행률 100% 도달로 업무 완료 — "${task.title}"`;
     }
 
-    if (sets.length > 0) {
+    if (setMap.size > 0) {
+      const cols = Array.from(setMap.keys());
+      const values = cols.map((c) => setMap.get(c));
       values.push(taskId);
-      await query(`UPDATE task SET ${sets.join(", ")}, updated_at = now() WHERE id = $${values.length}`, values);
+      await query(
+        `UPDATE task SET ${cols.map((c, i) => `${c} = $${i + 1}`).join(", ")}, updated_at = now()
+          WHERE id = $${values.length}`,
+        values
+      );
     }
 
     // 진척 재계산 대상 목표 수집 (파트 B) — 변경 전 연결 목표부터.
@@ -343,6 +435,13 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         { status: 400 }
       );
     } else if (Array.isArray(payload.goalIds)) {
+      // §A2 · 28-b — 하위 업무는 목표에 직접 연결할 수 없다.
+      //   여태 막혀 있지 않았다. goal_task 에 행은 들어가는데 goalSubtreeTaskInput 이
+      //   parent_task_id IS NULL 로 걸러서 진척에는 안 잡혔다 — "붙였는데 아무 일도
+      //   안 일어나는" 조용한 실패다. 조용히 실패하느니 사유를 말하고 거절한다.
+      //   승격·강등과 같은 요청으로 올 수 있으므로 **변경 후 상태**로 판단한다.
+      const childErr = newParentId !== null ? await rejectGoalLinkIfChild(taskId) : null;
+      if (childErr) return NextResponse.json({ error: childErr }, { status: 400 });
       const priorLinks = await query<{ goal_id: number }>(
         "SELECT goal_id FROM goal_task WHERE task_id = $1",
         [taskId]
@@ -376,6 +475,31 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     // 프로젝트를 바꿔도 목표 연결은 움직이지 않는다 (MD-P-2026-030 §A4 — 상속 폐지).
 
+    // ── 28-a 하위의 변화는 **상위를 거쳐** 목표에 닿는다 ─────────────
+    //
+    // 하위 업무 자신은 목표에 붙을 수 없다(§A2). 대신 상위의 진척이 하위 완료율이므로
+    // (lib/progress.ts 규칙 2) 하위가 완료되면 상위가 붙어 있는 목표의 값이 달라진다.
+    //
+    // **이 연결이 빠져 있었다.** 하위를 완료해도 목표는 옛값에 머물렀다 —
+    // 실측(subtask-walk 28a-목표까지같은값)에서 0% 로 잡혔다.
+    // 새 계산 경로를 만들지 않는다(28-a). 계산기는 그대로 두고 **재계산 대상만** 넓힌다.
+    //
+    // §A4 승격·강등은 **양쪽**의 분모를 바꾼다 — 떠난 상위는 하위가 하나 줄고,
+    // 새 상위는 하나 는다. 한쪽만 재계산하면 옛 상위에 이 업무의 몫이 남는다.
+    const rollupChanged =
+      statusChanged || payload.progress !== undefined || payload.resolution !== undefined || parentChanged;
+    if (rollupChanged) {
+      const parents = new Set<number>();
+      if (oldParentId !== null) parents.add(oldParentId);      // 강등 전 상위 = 지금 상위
+      if (newParentId !== null) parents.add(newParentId);      // 승격·강등 후 상위
+      for (const pid of Array.from(parents)) {
+        const links = await query<{ goal_id: number }>(
+          `SELECT goal_id FROM goal_task WHERE task_id = $1`, [pid]
+        );
+        for (const l of links) affectedGoals.add(l.goal_id);
+      }
+    }
+
     // 현재(변경 후) 연결 목표 — 상태 변경 시에도 재계산 대상.
     //
     // ⚠️ **진행률도 포함해야 한다** (MD-P-2026-024 회신 10 D-5 검증 중 발견).
@@ -394,6 +518,30 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     // 프로젝트 경유 재계산은 없앴다 (§A3) — 프로젝트는 목표 집계의 재료가 아니다.
     // 연결 체인(월→분기→연간) 즉시 재계산 — 홈·목표 화면에 바로 반영 (파트 B)
     for (const gid of Array.from(affectedGoals)) await recomputeGoalChain(gid);
+
+    // ── §B4 이 업무가 완료되면, 이것 때문에 막혀 있던 업무들에게 알린다 ──
+    //
+    // **자동으로 해제하지 않는다.** 원인이 끝나도 다른 이유로 여전히 막혀 있을 수 있다.
+    // 대신 활동에 남긴다 — 사람이 화면을 안 보고 있을 수 있다(§B4).
+    if (statusChanged && payload.status === "done") {
+      const waiting = await query<{ id: number; title: string; assignee_id: number | null }>(
+        `SELECT id, title, assignee_id FROM task
+          WHERE blocked_by = $1 AND is_active = true AND blocked = true`,
+        [taskId]
+      );
+      for (const w of waiting) {
+        await logActivity({
+          userId: session.id, taskId: w.id, level: "success",
+          message: `차단 원인 #${taskId} "${task.title}" 이(가) 완료됐습니다 — "${w.title}" 의 차단을 확인하세요`,
+        });
+        if (w.assignee_id) {
+          await notify({
+            userId: w.assignee_id, type: "assign", refType: "task", refId: w.id,
+            snippet: `차단 원인 완료 · ${w.title}`, actorId: session.id,
+          });
+        }
+      }
+    }
 
     // 활동 타임라인(파트 5) — 의미 있는 변경만 기록: 상태·담당·진행률·목표연결.
     // (제목·설명 등 잡음성 필드는 제외. 코멘트는 코멘트 라우트가 기록.)
@@ -497,6 +645,23 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         goalSource: t.goal_source,
         visibility: t.visibility,
         goalLink: await goalLinkInfo(id),
+        // §A1 — 하위 업무 목록. 상위가 아니면 빈 배열이 아니라 **섹션 자체를 안 그린다**(§A2).
+        //   그 판단은 화면이 parentTaskId 로 한다. 여기서는 사실만 준다.
+        children: await childrenOf(id),
+        // §B2 역방향 — 이 업무를 blocked_by 로 가리키는 업무들. "내가 무엇을 막고 있는가".
+        //   방향을 헷갈리면 이 기능은 오히려 해롭다: 조건은 `bt.blocked_by = 이 업무` 다.
+        blocking: await query<{ id: number; title: string }>(
+          `SELECT bt.id, bt.title FROM task bt
+            WHERE bt.blocked_by = $1 AND bt.is_active = true AND ${visibleTaskSql("$2", "bt")}
+            ORDER BY bt.id`,
+          [id, session.id]
+        ),
+        // §B4 — 원인이 완료됐는가. **자동 해제하지 않는다.** 화면이 안내만 띄운다.
+        blockedByDone: t.blocked && t.blocked_by !== null
+          ? !!(await queryOne<{ id: number }>(
+              `SELECT id FROM task WHERE id = $1 AND status = 'done' AND is_active = true`,
+              [t.blocked_by]))
+          : false,
       },
       activity,
       // 양방향 링크 — 이 업무에 연결된 결정 (MD-P-2026-004 §E)
