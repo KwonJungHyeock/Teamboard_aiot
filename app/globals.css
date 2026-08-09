@@ -1902,11 +1902,13 @@ body.gpanel-open .agf-fab { display: none; }
 .prep-kpi-v.none { color: #9AA2AE; }
 .prep-kpi-l { display: block; font-size: 8.6pt; color: #6B7480; margin-top: 3px; }
 
-/* §A1 하한과 인쇄 단위 — 이 표(.prep-*)는 A4 출력물이라 크기를 pt 로 잡는다.
-   그런데 같은 마크업이 화면 미리보기로도 보이고, 그 화면에서 8pt 는 10.7px 이 된다.
-   "11px 미만 글자는 화면에 존재하지 않는다"에 걸린다. 그래서 하한을 **8.3pt(=11.07px)** 로 둔다.
-   화면용 토큰으로 바꾸지 않은 이유는 이 페이지가 "화면에 보이는 그대로 출력됩니다"를
-   약속하고 있기 때문이다 — 화면과 인쇄가 다른 값을 쓰면 그 약속이 깨진다. */
+/* §A1 적용 범위 — 이 계열(.prep-*)은 **화면 UI 가 아니라 인쇄물의 미리보기**다.
+   pt 는 물리 크기, px 는 화면 크기다. 두 매체에 같은 하한을 걸면 안 된다.
+   8pt 표는 종이에서 완전히 읽히고(신문 본문 9pt · 각주 7~8pt), 올리면 표가 한 장을
+   넘길 위험이 생긴다. 그건 규격 준수가 아니라 문서를 망가뜨리는 것이다.
+   **여기의 하한은 11px 이 아니라 7.5pt 다.** 단, 이 예외는 `pt` 로 선언되고
+   인쇄 미리보기 컨테이너(.prep) 안에 있는 것에만 해당한다 — px 로 적으면 예외가 아니다.
+   (MD-P-2026-031 §A 회신 1) */
 /* 표 — 헤더 차콜, 짝수 행 미세 음영 (§D) */
 .prep-t { width: 100%; border-collapse: collapse; font-size: 9.2pt; }
 .prep-t thead th { background: var(--sb1, #171B22); color: #E9ECF1; font-weight: 600; font-size: 8.8pt;
@@ -1920,12 +1922,12 @@ body.gpanel-open .agf-fab { display: none; }
 .prep-t tbody tr:nth-child(even) { background: var(--surface-2); }
 .prep-t tbody tr { break-inside: avoid; }
 
-.prep-lv { font-size: 8.3pt; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+.prep-lv { font-size: 8pt; font-weight: 700; padding: 1px 6px; border-radius: 999px;
   color: #3072E6; background: color-mix(in srgb, #3072E6 12%, #fff); white-space: nowrap; }
-.prep-chip { font-size: 8.3pt; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+.prep-chip { font-size: 8pt; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
 .prep-chip.none { color: #6B7480; background: #F1F3F5; }
 .prep-chip.warn { color: #B4373B; background: color-mix(in srgb, var(--coral) 13%, #fff); }
-.prep-tag { font-size: 8.3pt; font-weight: 700; padding: 1px 6px; border-radius: 999px; margin-left: 5px;
+.prep-tag { font-size: 7.8pt; font-weight: 700; padding: 1px 6px; border-radius: 999px; margin-left: 5px;
   color: #8A6100; background: color-mix(in srgb, var(--amber) 16%, #fff); white-space: nowrap; }
 .prep-tag.warn { color: #B4373B; background: color-mix(in srgb, var(--coral) 12%, #fff); }
 .prep-rat { display: block; margin-top: 3px; font-size: 8.4pt; color: #6B7480; }
@@ -1937,7 +1939,7 @@ body.gpanel-open .agf-fab { display: none; }
 .prep-track i { display: block; height: 100%; border-radius: 4px; }
 .prep-pct { font-size: 8.8pt; font-weight: 700; min-width: 30px; text-align: right; }
 .prep-pct.none { color: #9AA2AE; }
-.prep-delta { font-size: 8.3pt; font-weight: 700; white-space: nowrap; }
+.prep-delta { font-size: 8pt; font-weight: 700; white-space: nowrap; }
 .prep-delta.up { color: #12805A; }
 .prep-delta.down { color: #B4373B; }
 .prep-delta.flat { color: #8A919C; }

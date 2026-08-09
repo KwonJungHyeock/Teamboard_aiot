@@ -49,7 +49,9 @@ fs.mkdirSync(OUT, { recursive: true });
 const bad = [];      // 진짜 위반
 const clip = [];     // 가로로 잘리는 칸 (상자가 밖으로 나간 것)
 const small = [];    // 11px 미만 글자 (§A1 하한 위반)
-const sizes = {};    // 계산된 font-size 분포
+const sizes = {};    // 계산된 font-size 분포 (화면 UI)
+const printSizes = {}; // 인쇄 미리보기(.prep) 분포 — 하한이 다르다
+const printPx = [];  // 인쇄 규칙인데 px 로 적힌 것 = 예외 자격 없음
 const multi = [];    // 여러 줄 → 상단 정렬이 맞다 (예외 목록)
 const gutter = [];   // 아래 여백이 따로 있는 자리 (예외 목록)
 let seen = 0;
@@ -92,19 +94,57 @@ try {
         return { top, bottom, lines };
       };
 
-      const out = { bad: [], multi: [], gutter: [], clip: [], small: [], sizes: {}, seen: 0 };
+      const out = { bad: [], multi: [], gutter: [], clip: [], small: [], sizes: {}, printSizes: {}, printPx: [], seen: 0 };
 
-      // ── §A1 하한 — 11px 미만 글자는 화면에 존재하지 않는다 ──────
+      // ── §A1 하한 ────────────────────────────────────────────────
+      // 화면 UI 는 11px, **인쇄 미리보기(.prep)는 7.5pt(=10px)** 가 하한이다.
+      // pt 는 물리 크기이고 px 는 화면 크기다. 같은 하한을 걸면 종이를 망가뜨린다.
+      // 예외를 "검사 안 함"으로 두지 않는다 — 매체별 하한을 **둘 다 잰다.**
       // 소스를 grep 하는 것으로는 못 증명한다. 상속·계산값까지 봐야 하므로
       // **글자를 가진 요소의 계산된 font-size** 를 전부 훑는다.
+      const PT = 4 / 3;                       // 1pt = 1.333px
+      const FLOOR_UI = 11;                    // px
+      const FLOOR_PRINT = 7.5 * PT;           // 10px
       for (const el of document.querySelectorAll("body *")) {
         if (!vis(el)) continue;
         const hasOwnText = Array.from(el.childNodes)
           .some((n) => n.nodeType === 3 && n.textContent.trim());
         if (!hasOwnText) continue;
         const fs = Math.round(parseFloat(getComputedStyle(el).fontSize) * 10) / 10;
-        out.sizes[fs] = (out.sizes[fs] ?? 0) + 1;
-        if (fs < 11) out.small.push({ sel: sel(el), px: fs, txt: el.textContent.trim().slice(0, 20) });
+        const inPrint = !!el.closest(".prep");
+        (inPrint ? out.printSizes : out.sizes)[fs] = ((inPrint ? out.printSizes : out.sizes)[fs] ?? 0) + 1;
+        const floor = inPrint ? FLOOR_PRINT : FLOOR_UI;
+        if (fs < floor - 0.05) {
+          out.small.push({ sel: sel(el), px: fs, floor, media: inPrint ? "인쇄" : "화면",
+            txt: el.textContent.trim().slice(0, 20) });
+        }
+      }
+
+      // 인쇄 예외는 **단위로만** 성립한다.
+      // `.prep` 안이라도 크기를 px(또는 px 토큰)로 적었으면 화면 하한 11px 을 그대로 받는다.
+      // 그래서 11px 미만인 요소마다 **자기에게 걸린 규칙이 pt 로 적혔는지** 되짚는다.
+      // 선택자 이름만 보고 봐주면, 다음 사람이 .prep 안에 px 를 넣고 예외라고 부른다.
+      const ptDeclared = (el) => {
+        let ok = false;
+        for (const ss of document.styleSheets) {
+          let rules; try { rules = ss.cssRules; } catch { continue; }
+          for (const r of rules || []) {
+            if (!r.selectorText) continue;
+            let m = false; try { m = el.matches(r.selectorText); } catch { continue; }
+            if (!m) continue;
+            const fsv = r.style?.getPropertyValue("font-size");
+            if (!fsv) continue;
+            ok = /pt$/.test(fsv.trim());   // 나중에 이긴 선언이 답이다
+          }
+        }
+        return ok;
+      };
+      for (const el of document.querySelectorAll(".prep *")) {
+        if (!vis(el)) continue;
+        const fs = parseFloat(getComputedStyle(el).fontSize);
+        if (fs >= FLOOR_UI) continue;              // 화면 하한을 넘으면 예외를 따질 일이 없다
+        if (ptDeclared(el)) continue;              // pt 로 적혔다 = 인쇄 규격 = 예외 성립
+        out.printPx.push({ sel: sel(el), px: Math.round(fs * 10) / 10 });
       }
 
       // ── 가로로 잘리는 칸 ────────────────────────────────────────
@@ -175,7 +215,9 @@ try {
     for (const c of found.clip) clip.push({ route, ...c });
     for (const m of found.small) small.push({ route, ...m });
     for (const [k, v] of Object.entries(found.sizes)) sizes[k] = (sizes[k] ?? 0) + v;
-    console.log(`${route.padEnd(24)} 대상 ${String(found.seen).padStart(4)} · 위반 ${String(found.bad.length).padStart(3)} · 여러 줄 ${String(found.multi.length).padStart(3)} · 여백 ${found.gutter.length} · 잘림 ${found.clip.length} · 11px미만 ${found.small.length}`);
+    for (const [k, v] of Object.entries(found.printSizes)) printSizes[k] = (printSizes[k] ?? 0) + v;
+    for (const x of found.printPx) if (!printPx.some((y) => y.sel === x.sel)) printPx.push(x);
+    console.log(`${route.padEnd(24)} 대상 ${String(found.seen).padStart(4)} · 위반 ${String(found.bad.length).padStart(3)} · 여러 줄 ${String(found.multi.length).padStart(3)} · 여백 ${found.gutter.length} · 잘림 ${found.clip.length} · 하한미만 ${found.small.length}`);
   }
 
   // ── 존재 단언 — 검사가 실제로 무언가를 보고 있는가 (지시 28) ──
@@ -188,15 +230,27 @@ try {
   };
 
   console.log(`\n════ 합계 ════`);
-  console.log(`검사 대상 ${seen}개 · 세로정렬 위반 ${bad.length}건 · 가로 잘림 ${clip.length}건 · 11px 미만 ${small.length}건 · 여러 줄 예외 ${multi.length}건 · 아래여백 예외 ${gutter.length}건`);
+  console.log(`검사 대상 ${seen}개 · 세로정렬 위반 ${bad.length}건 · 가로 잘림 ${clip.length}건 · 하한 미만 ${small.length}건 · 여러 줄 예외 ${multi.length}건 · 아래여백 예외 ${gutter.length}건`);
 
-  console.log(`\n── 계산된 font-size 분포 (글자를 직접 가진 요소) ──`);
+  console.log(`\n── 화면 UI · 계산된 font-size 분포 (하한 11px) ──`);
   const szs = Object.entries(sizes).map(([k, v]) => [parseFloat(k), v]).sort((a, b) => a[0] - b[0]);
   if (!szs.length) { console.error("글자를 가진 요소가 0개다 — 화면을 못 읽은 것이다."); process.exit(1); }
-  for (const [px, n] of szs) console.log(`  ${String(px).padStart(6)}px  ${String(n).padStart(5)}개${px < 11 ? "   ← §A1 하한 위반" : ""}`);
+  for (const [px, n] of szs) console.log(`  ${String(px).padStart(6)}px  ${String(n).padStart(5)}개${px < 11 ? "   ← 하한 위반" : ""}`);
+
+  console.log(`\n── 인쇄 미리보기(.prep) 분포 (하한 7.5pt = 10px) ──`);
+  const pzs = Object.entries(printSizes).map(([k, v]) => [parseFloat(k), v]).sort((a, b) => a[0] - b[0]);
+  if (!pzs.length) console.log("  (없음) — 인쇄 미리보기를 한 번도 못 읽었다면 예외가 검사되지 않은 것이다");
+  for (const [px, n] of pzs) {
+    const pt = Math.round((px * 0.75) * 100) / 100;
+    console.log(`  ${String(px).padStart(6)}px = ${String(pt).padStart(5)}pt  ${String(n).padStart(4)}개${px < 10 ? "   ← 하한 위반" : ""}`);
+  }
+  if (printPx.length) {
+    console.log(`\n── .prep 안인데 pt 로 안 적힌 11px 미만 (예외 자격 없음) ──`);
+    for (const r of printPx) console.log(`  ${r.sel} : ${r.px}px`);
+  }
   if (small.length) {
-    console.log(`\n── 11px 미만 ──`);
-    for (const [k, rows] of group(small, (r) => `${r.route} | ${r.sel} | ${r.px}px | "${r.txt}"`)) {
+    console.log(`\n── 하한 미만 ──`);
+    for (const [k, rows] of group(small, (r) => `${r.route} | ${r.media} | ${r.sel} | ${r.px}px (하한 ${r.floor}px) | "${r.txt}"`)) {
       console.log(`  ${String(rows.length).padStart(3)}  ${k}`);
     }
   }
@@ -221,7 +275,7 @@ try {
       console.log(`  ${String(rows.length).padStart(3)}  ${k}`);
     }
   }
-  process.exit(bad.length || clip.length || small.length ? 1 : 0);
+  process.exit(bad.length || clip.length || small.length || printPx.length ? 1 : 0);
 } finally {
   await browser.close();
 }
