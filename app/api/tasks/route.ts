@@ -45,6 +45,8 @@ export interface TaskListRow {
   visibility: "team" | "private";
   /** §A3 계층 — 목록이 접기/펼치기를 그릴 재료 */
   parentTaskId: number | null;
+  /** §C — "직접 정한 순서" 의 값 */
+  sortOrder: number;
   childCount: number;
 }
 
@@ -135,6 +137,7 @@ export async function GET(request: Request) {
       visibility: "team" | "private";
       resolution: string | null;
       parent_task_id: number | null;
+      sort_order: number;
       child_count: number;
       child_counted: number;
       child_done: number;
@@ -150,7 +153,7 @@ export async function GET(request: Request) {
               t.progress,
               c.display_name AS created_by_name,
               t.blocked, t.blocked_reason, t.blocked_by, t.visibility, t.resolution,
-              t.parent_task_id,
+              t.parent_task_id, t.sort_order,
               (SELECT count(*)::int FROM task ck
                 WHERE ck.parent_task_id = t.id AND ck.is_active = true) AS child_count,
               -- 진척은 목록에서도 **계산기 하나**를 통과해야 한다 (28-a).
@@ -243,6 +246,7 @@ export async function GET(request: Request) {
       visibility: r.visibility,
       createdByName: r.created_by_name,
       parentTaskId: r.parent_task_id,
+      sortOrder: r.sort_order,
       childCount: r.child_count,
       completedAt: r.completed_at,
       createdAt: r.created_at,
@@ -346,8 +350,17 @@ export async function POST(request: Request) {
     const task = await queryOne<{ id: number }>(
       // goal_source 를 **명시**한다. 컬럼 기본값은 아직 'inherited' 이고(§A5 — 컬럼은 안 건드린다),
       // 상속이 사라진 뒤로 새 업무가 그 역사적 값을 갖게 두면 안 된다 (MD-P-2026-030 §A4).
-      `INSERT INTO task (project_id, area_id, work_type, title, description, status, assignee_id, start_date, due_date, priority, origin, created_by, visibility, goal_source, parent_task_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'human',$11,$12,$13,$14) RETURNING id`,
+      // sort_order — **맨 뒤**에 붙인다 (MD-P-2026-028 §C).
+      //   컬럼 기본값이 0 이라, 023 backfill 이후에 만들어진 업무는 전부 0 이다.
+      //   "직접 정한 순서" 로 보면 그 업무들이 **가장 앞**에 몰린다 — 새것이 위로 오는
+      //   뒤집힌 순서다. 새로 만드는 것부터 형제 중 최대값+1 로 둔다.
+      //   형제 기준은 parent_task_id 다 (§C3 — 순서는 같은 부모 안에서만 뜻이 있다).
+      `INSERT INTO task (project_id, area_id, work_type, title, description, status, assignee_id, start_date, due_date, priority, origin, created_by, visibility, goal_source, parent_task_id, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'human',$11,$12,$13,$14,
+               COALESCE((SELECT max(s.sort_order) + 1 FROM task s
+                          WHERE s.is_active = true
+                            AND s.parent_task_id IS NOT DISTINCT FROM $14), 1))
+       RETURNING id`,
       [
         projectId,
         areaId,

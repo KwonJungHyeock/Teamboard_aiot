@@ -1,0 +1,3296 @@
+[
+  {
+    "route": "/",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab.on",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/tasks",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab.on",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/tasks",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/tasks",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/tasks",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/goals",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab.on",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/goals",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/projects/1",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab.on",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/projects/1",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/projects/1",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/projects/1",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/calendar",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab.on",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/calendar",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/signals",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab.on",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/signals",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/signals?tab=decision",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/signals?tab=decision",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab.on",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "표 셀",
+    "sel": "td.num",
+    "detail": "vertical-align: top"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab.on",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 38px · 글자 중심 오프셋 -9.0px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 41px · 글자 중심 오프셋 -10.6px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 41px · 글자 중심 오프셋 -10.6px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 41px · 글자 중심 오프셋 -10.6px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 41px · 글자 중심 오프셋 -10.3px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td",
+    "detail": "컨테이너 41px · 글자 중심 오프셋 -10.3px"
+  },
+  {
+    "route": "/reports",
+    "kind": "글자 중심",
+    "sel": "td.num",
+    "detail": "컨테이너 41px · 글자 중심 오프셋 -10.3px"
+  },
+  {
+    "route": "/areas/1",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab.on",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/areas/1",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/areas/1",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  },
+  {
+    "route": "/areas/1",
+    "kind": "글자 중심",
+    "sel": "button.pg-tab",
+    "detail": "컨테이너 28px · 글자 중심 오프셋 -4.5px"
+  }
+]

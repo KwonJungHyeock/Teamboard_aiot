@@ -33,6 +33,8 @@ export interface TaskTableRow {
   /** §A3 계층 — 없으면 평면 목록으로 그린다(홈 등 compact 사용처는 안 보낸다). */
   parentTaskId?: number | null;
   childCount?: number;
+  /** §C — "직접 정한 순서" 값. 정렬은 부모(TasksView)가 이미 해서 넘긴다. */
+  sortOrder?: number;
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -63,6 +65,8 @@ export default function TaskTable({
   onStatusChange,
   accent,
   quickComplete,
+  sortable = false,
+  onReorder,
   selectable,
   checked,
   onToggleCheck,
@@ -95,6 +99,10 @@ export default function TaskTable({
   /** hover 인라인 액션(완료·열기) 활성화 — 낙관적 업데이트 + 토스트 */
   quickComplete?: boolean;
   /** 다중 선택 (MD-P-2026-027 §D3) — 체크박스 열을 맨 앞에 붙인다 */
+  /** §C1 — "직접 정한 순서" 일 때만 true. 그 밖에는 핸들을 그리지 않는다. */
+  sortable?: boolean;
+  /** §C — 보이는 행의 새 순서. 전역 sort_order 정리는 서버가 한다 (§C3). */
+  onReorder?: (parentTaskId: number | null, orderedIds: number[]) => void | Promise<void>;
   selectable?: boolean;
   checked?: Set<number>;
   onToggleCheck?: (id: number) => void;
@@ -115,6 +123,42 @@ export default function TaskTable({
   //   · 상위가 목록에 없는 하위(필터로 상위만 빠진 경우)는 제자리에 그대로 둔다 —
   //     숨기면 "검색했는데 안 나온다"가 된다.
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  // ── §C 드래그 정렬 ────────────────────────────────────────────────
+  //
+  // 순서는 **같은 부모 안에서만** 바뀐다 (§C3). 다른 부모 위로 끌면 아무 일도 안 한다 —
+  // 부모 변경을 같은 제스처에 얹으면 오조작이 난다. 부모는 §A4 의 속성 편집으로 바꾼다.
+  // 높이는 애니메이트하지 않는다: 행을 미리 벌리지 않고 **놓일 자리에 1px 선**만 그린다.
+  const [dragId, setDragId] = useState<number | null>(null);
+  const [dropAt, setDropAt] = useState<{ id: number; after: boolean } | null>(null);
+
+  /** 같은 부모의 형제 id 를 화면 순서대로. 서버가 이 순서를 전역 값으로 정리한다. */
+  const siblingIds = (parentId: number | null) =>
+    rows.filter((r) => (r.parentTaskId ?? null) === parentId).map((r) => r.id);
+
+  function moveWithin(parentId: number | null, id: number, toIndex: number) {
+    const ids = siblingIds(parentId);
+    const from = ids.indexOf(id);
+    if (from < 0) return;
+    const to = Math.max(0, Math.min(ids.length - 1, toIndex));
+    if (to === from) return;
+    ids.splice(to, 0, ...ids.splice(from, 1));
+    void onReorder?.(parentId, ids);
+  }
+
+  function dropNow(target: TaskTableRow, after: boolean) {
+    const src = rows.find((r) => r.id === dragId);
+    setDragId(null); setDropAt(null);
+    if (!src || src.id === target.id) return;
+    const parentId = src.parentTaskId ?? null;
+    // §C3 — 부모가 다르면 순서를 바꾸지 않는다. 조용히 무시한다(되돌릴 것이 없다).
+    if ((target.parentTaskId ?? null) !== parentId) return;
+    const ids = siblingIds(parentId).filter((x) => x !== src.id);
+    const at = ids.indexOf(target.id);
+    ids.splice(after ? at + 1 : at, 0, src.id);
+    void onReorder?.(parentId, ids);
+  }
+
   const toggleOpen = (id: number) =>
     setExpanded((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
@@ -238,10 +282,19 @@ export default function TaskTable({
                   [onRowClick ? "clickable" : "", selectedId === t.id ? "selected" : "",
                    doneLocal.has(t.id) ? "done-opt" : "", exiting.has(t.id) ? "row-out" : "",
                    // §A3 — 하위 행은 들여쓰기 + 나타날 때만 움직인다. 높이는 애니메이트하지 않는다.
-                   isChild ? "sub-row" : ""]
+                   isChild ? "sub-row" : "",
+                   dragId === t.id ? "row-drag" : "",
+                   dropAt?.id === t.id ? (dropAt.after ? "drop-after" : "drop-before") : ""]
                     .filter(Boolean)
                     .join(" ") || undefined
                 }
+                onDragOver={sortable ? (e) => {
+                  if (dragId === null) return;
+                  e.preventDefault();
+                  const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setDropAt({ id: t.id, after: e.clientY > box.top + box.height / 2 });
+                } : undefined}
+                onDrop={sortable ? (e) => { e.preventDefault(); dropNow(t, dropAt?.after ?? false); } : undefined}
               >
                 {selectable && (
                   <td className="col-chk" onClick={(e) => e.stopPropagation()}>
@@ -250,6 +303,31 @@ export default function TaskTable({
                   </td>
                 )}
                 <td className={isChild ? "sub-cell" : undefined}>
+                  {/* §C2 — 6점 그립. hover 와 키보드 포커스에서만 보인다.
+                      ⌥↑ / ⌥↓ 로도 한 칸씩 옮긴다 — 드래그만 되면 트랙패드에서 불편하다. */}
+                  {sortable && (
+                    <button
+                      className="dgrip" draggable
+                      aria-label={`${t.title} 순서 옮기기`}
+                      title="끌어서 옮기기 · ⌥↑ / ⌥↓"
+                      onClick={(e) => e.stopPropagation()}
+                      onDragStart={() => setDragId(t.id)}
+                      onDragEnd={() => { setDragId(null); setDropAt(null); }}
+                      onKeyDown={(e) => {
+                        if (!e.altKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+                        e.preventDefault(); e.stopPropagation();
+                        const parentId = t.parentTaskId ?? null;
+                        const at = siblingIds(parentId).indexOf(t.id);
+                        moveWithin(parentId, t.id, at + (e.key === "ArrowUp" ? -1 : 1));
+                      }}
+                    >
+                      <svg viewBox="0 0 10 16" aria-hidden="true">
+                        <circle cx="3" cy="3" r="1" /><circle cx="7" cy="3" r="1" />
+                        <circle cx="3" cy="8" r="1" /><circle cx="7" cy="8" r="1" />
+                        <circle cx="3" cy="13" r="1" /><circle cx="7" cy="13" r="1" />
+                      </svg>
+                    </button>
+                  )}
                   {/* §A3 — 하위가 있는 행의 **왼쪽에만** 캐럿. 없는 행은 자리만 비운다.
                       캐럿을 모든 행에 그리면 무엇이 열리는지 알 수 없다. */}
                   {kids.length > 0 ? (
