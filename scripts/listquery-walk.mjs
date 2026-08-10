@@ -77,6 +77,9 @@ async function openTasks(qs) {
 }
 
 const addr = () => page.evaluate(() => location.search);
+const assigneeSel = () => page.$eval('select[aria-label="담당"]', (e) => e.value);
+const areaAllOn = () => page.$$eval(".pg-filters .pg-chip", (ns) =>
+  ns.some((n) => n.textContent.trim() === "전체 영역" && n.classList.contains("on")));
 const sortSel = () => page.$eval('select[aria-label="정렬 기준"]', (e) => e.value);
 const groupSel = () => page.$eval('select[aria-label="묶는 기준"]', (e) => e.value);
 const doneOn = () => page.$$eval(".pg-filters .pg-chip", (ns) =>
@@ -97,6 +100,33 @@ try {
   reqs = await openTasks("?sort=due");
   chk("G-기본 정렬은 안 보낸다", reqs.length === 1 && !/sort=/.test(reqs[0] ?? ""),
     `요청 ${reqs.length}회 · ${reqs[0] ?? "(없음)"}`);
+
+  // ── ①-b 영역·담당 기본값은 서버가 준다 (§C 회신 5 · ⓑ) ────────
+  //
+  // 예전에는 `/api/meta/selectors` 응답을 기다려 영역을 정했고, 그 기다림을 세는
+  // 게이트(`areaDefaulted`)가 있었다. 게이트가 사라졌으니 **요청은 여전히 한 번**이고
+  // 그 한 번에 이미 내 영역이 실려 있어야 한다.
+  await clearStore();
+  reqs = await openTasks("");
+  const a0 = await addr();
+  const as0 = await assigneeSel();
+  chk("D-영역·담당 기본값을 서버가 준다",
+    reqs.length === 1 && /area=\d/.test(reqs[0] ?? "") && !/assignee=/.test(a0) && as0 === "1",
+    `요청 ${reqs.length}회 · ${reqs[0]} · 주소 "${a0}" · 담당 ${as0} (기본값이라 주소에 안 쓴다)`);
+
+  // 홈 판단 타일 진입 — **팀 전체 범위**로 연다. 이 판단도 서버가 한다.
+  reqs = await openTasks("?due=overdue&assignee=all");
+  const wideArea = await areaAllOn(), wideAs = await assigneeSel();
+  chk("D-넓게 여는 진입은 전체 영역·전체 담당",
+    reqs.length === 1 && !/area=/.test(reqs[0] ?? "") && !/assignee=/.test(reqs[0] ?? "")
+      && wideArea && wideAs === "all",
+    `요청 ${reqs.length}회 · ${reqs[0]} · 전체 영역 ${wideArea} · 담당 ${wideAs}`);
+
+  await clearStore();
+  await openTasks("?assignee=zzz");
+  const asBad = await assigneeSel(), aBad = await addr();
+  chk("D-모르는 담당은 기본값 + 주소 정정", asBad === "1" && !/assignee=/.test(aBad),
+    `담당 ${asBad} · 주소 "${aBad}"`);
 
   // ── ② 기본값은 주소에 안 쓴다 ─────────────────────────────────
   await clearStore();
@@ -199,6 +229,11 @@ try {
   const tPri = await html("/tasks?sort=priority");
   const tGone = await html("/tasks?sort=progress");
   const tDef = await html("/tasks");
+  const tWide = await html("/tasks?due=overdue&assignee=all");
+  chk("D-첫 바이트부터 전체 범위 (SSR)",
+    /pg-chip on">전체 영역/.test(tWide) && /<option value="all" selected="">/.test(tWide),
+    `전체 영역 칩 ${/pg-chip on">전체 영역/.test(tWide)} · 담당 all ${/<option value="all" selected="">/.test(tWide)}`);
+
   chk("U-공유 링크는 SSR 부터 맞다",
     sel(tPri) === "priority" && sel(tDef) === "due" && sel(tGone) === "due" && /class="sortgone"/.test(tGone),
     `?sort=priority → ${sel(tPri)} · 기본 → ${sel(tDef)} · ?sort=progress → ${sel(tGone)} + 안내 ${/class="sortgone"/.test(tGone)}`);

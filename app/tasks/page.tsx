@@ -1,25 +1,52 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
+import { userDefaults } from "@/lib/user-defaults";
 import AppShell from "@/components/AppShell";
 import TasksView from "@/components/TasksView";
 
 export const dynamic = "force-dynamic";
 
-export default function Page({ searchParams }: {
+export default async function Page({ searchParams }: {
   searchParams?: Record<string, string | string[] | undefined>;
 }) {
   const user = getSession();
   if (!user) redirect("/login");
-  // 정렬·묶기·완료 포함 — **주소에 있으면 서버가 답을 안다.** 주소가 저장값을 이기기 때문이다.
-  // 넘겨주면 공유 링크가 첫 바이트부터 맞는 값으로 그려진다. 안 넘기면 하이드레이션이
-  // 끝날 때까지 기본값(기한순 · 묶지 않음 · 완료 제외)이 보인다.
-  const one = (k: string) => {
+  const defaults = await userDefaults(user);
+
+  const q = (k: string) => {
     const v = searchParams?.[k];
-    return typeof v === "string" ? v : undefined;
+    return typeof v === "string" && v !== "" ? v : undefined;
   };
+
+  /**
+   * 홈 판단 타일·KPI 에서 들어온 링크는 **팀 전체 범위**로 연다.
+   * 「지연 27」을 눌렀는데 내 영역 · 내 담당으로 좁혀 열리면 27 이 아닌 수가 나온다 —
+   * 타일과 목록이 같은 수여야 한다는 §C1 규칙이 여기서 깨진다.
+   *
+   * 이 판단을 **서버에서 한다.** 예전에는 마운트 이펙트가 주소를 다시 읽어
+   * `setFAssignee("")` 을 했고, 그래서 첫 렌더는 내 담당, 확정 렌더는 전체 담당이었다.
+   */
+  const wide = !!(q("status") || q("due") || q("blocked") === "1" || q("blocking") === "1");
+
+  // 영역 — 주소가 먼저, 없으면 (넓게 여는 진입이면 전체 / 아니면 내 기본 영역).
+  const areaParam = q("area");
+  const initialAreas = areaParam
+    ? areaParam.split(",").map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n > 0)
+    : wide ? [] : defaults.areaIds.slice(0, 1);
+
   return (
     <AppShell user={user}>
-      <TasksView user={user} initial={{ sort: one("sort"), group: one("group"), done: one("done") }} />
+      <TasksView
+        user={user}
+        defaults={defaults}
+        initialAreas={initialAreas}
+        // 주소에 있는 값은 서버가 답을 안다 — 주소가 저장값을 이기기 때문이다.
+        // 넘겨주면 공유 링크가 첫 바이트부터 맞는 값으로 그려진다.
+        initial={{
+          sort: q("sort"), group: q("group"), done: q("done"),
+          assignee: q("assignee") ?? (wide ? "all" : undefined),
+        }}
+      />
     </AppShell>
   );
 }

@@ -4,6 +4,7 @@
 // 목록 테이블은 홈 "마감 임박"과 동일한 TaskTable을 재사용한다 (검수 포인트 6).
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/types";
+import type { UserDefaults } from "@/lib/user-defaults";
 import TaskTable, { type TaskTableRow, type TaskGroupKey, TASK_GROUP_LABEL } from "./TaskTable";
 import Skeleton from "./Skeleton";
 import { notifySavedViewsChanged } from "@/lib/saved-views-events";
@@ -105,7 +106,16 @@ const SORT_DEFAULT: SortKey = "due";
  * - `recent` 는 이름만 바뀐 같은 기능이라 **조용히** 옮긴다.
  * - `progress` 는 기능이 없어진 것이라 **한 번은 말한다.** 아무 말 없이 바뀌면 고장으로 읽힌다.
  */
-const TASKS_QUERY = {
+const tasksQuery = ((assigneeId: number) => ({
+  /**
+   * 담당 — 기본값은 **본인**이고, 그 값은 서버가 준다(`lib/user-defaults.ts`).
+   * 기본값이라 주소에 안 쓴다. 예전에는 `?assignee=1` 이 늘 붙어 있었다.
+   *
+   * `all` 은 「전체 담당」이다. 빈 문자열을 쓰지 않는 이유는 B-12 그대로 —
+   * `?assignee=` 라는 껍데기는 "지정 안 함"과 구별되지 않는다.
+   * 담당은 **저장하지 않는다**(`store` 없음). 오늘 누구 것을 보느냐는 취향이 아니다.
+   */
+  assignee: { def: String(assigneeId), test: (v: string) => v === "all" || /^[1-9]\d*$/.test(v) },
   sort: {
     def: SORT_DEFAULT,
     values: SORT_OPTIONS.map((o) => o.key),
@@ -116,19 +126,24 @@ const TASKS_QUERY = {
   // 저장 키는 보드 묶기(`tb:tasks-group`)와 갈라 쓴다 — 뜻이 다른 값이 한 칸을 쓰면 섞인다.
   group: { def: "none", values: Object.keys(TASK_GROUP_LABEL), store: "tb:list-group" },
   done: { def: "0", values: ["0", "1"], store: "tb:tasks-done" },
-} satisfies Record<string, ParamSpec>;
+})) satisfies (n: number) => Record<string, ParamSpec>;
 
-export default function TasksView({ user, initial }: {
+type TasksQueryKey = keyof ReturnType<typeof tasksQuery>;
+
+export default function TasksView({ user, defaults, initialAreas, initial }: {
   user: SessionUser;
+  /** 사용자 속성으로서의 기본값 — 서버가 매 요청 읽는다(`lib/user-defaults.ts`). */
+  defaults: UserDefaults;
+  /** 서버가 정한 첫 영역 필터. 주소 > (넓게 여는 진입이면 전체 / 아니면 내 기본 영역). */
+  initialAreas: number[];
   /** 서버가 읽은 주소 쿼리 — 훅이 첫 렌더부터 맞는 값을 쓰게 한다. */
-  initial?: Partial<Record<"sort" | "group" | "done", string>>;
+  initial?: Partial<Record<TasksQueryKey, string>>;
 }) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [inbox, setInbox] = useState<InboxItem[]>([]);
   const [actors, setActors] = useState<Option[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [areas, setAreas] = useState<AreaOption[]>([]);
-  const [myAreaIds, setMyAreaIds] = useState<number[]>([]);
   const [monthGoals, setMonthGoals] = useState<MonthGoalOption[]>([]);
   const [linkGoals, setLinkGoals] = useState<{ id: number; title: string }[]>([]);
   const [today, setToday] = useState("");
@@ -136,20 +151,18 @@ export default function TasksView({ user, initial }: {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
 
-  // 필터 (영역 · 프로젝트 · 담당 · 상태 · 기한). 담당 기본값=본인 → "내 업무" 진입.
+  // 필터 (영역 · 프로젝트 · 상태 · 기한). 담당·영역 기본값은 **서버가 준다**(훅 / initialAreas).
   //
   // 영역은 **여러 개**를 고를 수 있다 (MD-P-2026-027 §B2).
   // 사이드바에서 영역 7개를 내리고 여기 칩으로 옮겼다 — 사이드바는 "어디로 갈까"이고
   // 영역은 "무엇을 볼까"라서 필터가 맞는 자리다.
   // URL 은 `?area=2,3` 으로 쓴다. 링크로 공유·북마크된다.
-  const [fAreas, setFAreas] = useState<number[]>([]);
+  // 첫 값은 **서버가 정해서 내려준다.** 예전에는 빈 배열로 시작해 `/api/meta/selectors`
+  // 응답을 받은 뒤 이펙트가 채웠고, 그동안 "영역이 정해졌는가"를 세는 게이트가 필요했다.
+  const [fAreas, setFAreas] = useState<number[]>(initialAreas);
   const fArea = fAreas.length === 1 ? String(fAreas[0]) : "";   // 새 업무 프리셋용 (하나일 때만 의미가 있다)
   const areaParam = fAreas.join(",");
   const [fProject, setFProject] = useState("");
-  // 담당 필터. `""` 는 "전체 담당"이다.
-  // URL 에서는 빈 값 대신 **`all`** 을 쓴다 (B-12) — 빈 파라미터는 "지정 안 함"과
-  // 구별되지 않고, `?assignee=` 라는 껍데기가 주소에 남는다.
-  const [fAssignee, setFAssignee] = useState(String(user.id));
   const [fStatus, setFStatus] = useState("");
   const [fDue, setFDue] = useState("");
   const [fBlocked, setFBlocked] = useState(false);
@@ -162,14 +175,16 @@ export default function TasksView({ user, initial }: {
    * 요청이 두 번 나가고, 그 사이에 **틀린 순서가 화면에 보인다.**
    * (드래그 정렬 검사가 이 짧은 순간을 잡아냈다. 잠깐이라도 보이면 사용자도 본다.)
    */
-  const lq = useListQuery(TASKS_QUERY, initial);
+  const spec = useMemo(() => tasksQuery(defaults.assigneeId), [defaults.assigneeId]);
+  const lq = useListQuery(spec, initial);
   const sortBy = lq.value.sort as SortKey;
   const listGroup = lq.value.group as TaskGroupKey;
   const showDone = lq.value.done === "1";
+  // 담당 — 주소·상태는 `all`, API 로 나갈 때만 빈 문자열이다(서버는 빈 값을 "전체"로 읽는다).
+  const fAssignee = lq.value.assignee === "all" ? "" : lq.value.assignee;
   // 진척순이 없어졌다는 안내 — 세션당 1회. 닫으면 다시 안 뜬다.
   const sortGone = lq.dropped.includes("sort");
-  const [areaDefaulted, setAreaDefaulted] = useState(false);
-  const isMine = fAssignee === String(user.id);
+  const isMine = lq.value.assignee === String(user.id);
 
   // 새 업무 — 등록 모달 (MD-P-2026-027 §C). 지금 필터(영역·담당)를 프리셋으로 물려준다.
   const quickNew = useCallback(() => {
@@ -244,8 +259,7 @@ export default function TasksView({ user, initial }: {
 
   /** 영역 칩 토글. 다중 선택이고, 전부 끄면 "전체 영역"이다. */
   function toggleArea(id: number) {
-    setAreaDefaulted(true);
-    setFAreas((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id].sort((a, b) => a - b)));
+    setFAreas((cur) =>(cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id].sort((a, b) => a - b)));
   }
 
   // 뷰(렌즈) 전환 — 마지막 뷰·그룹 기준 기억(localStorage)
@@ -266,10 +280,11 @@ export default function TasksView({ user, initial }: {
   function pickGroup(g: BoardGroup) { setBoardGroup(g); localStorage.setItem("tb:tasks-group", g); }
 
   const load = useCallback(async () => {
-    // 정렬·영역 기본값이 **둘 다** 정해지기 전에는 안 부른다.
-    // 하나라도 나중에 정해지면 그 사이에 다른 목록이 한 번 그려진다 —
-    // 실측에서 첫 렌더가 전체 목록, 확정 렌더가 내 영역 목록으로 갈렸다.
-    if (!lq.ready || !areaDefaulted) return;
+    // 초기값이 다 정해지기 전에는 안 부른다. **조건은 이제 하나다** —
+    // 영역·담당은 서버가 첫 렌더에 정해서 내려주므로 기다릴 것이 없다.
+    // (예전에는 `areaDefaulted` 라는 게이트가 하나 더 있었다. 화면이 넷이 되면
+    //  네 곳으로 복제될 조건이었다.)
+    if (!lq.ready) return;
     try {
       const qs = new URLSearchParams();
       if (areaParam) qs.set("area", areaParam);
@@ -293,7 +308,7 @@ export default function TasksView({ user, initial }: {
     } finally {
       setLoading(false);
     }
-  }, [areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, fBlocking, sortBy, lq.ready, areaDefaulted]);
+  }, [areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, fBlocking, sortBy, lq.ready]);
 
   // 셀렉트 룩업은 목록과 분리된 /api/meta/selectors에서 (Phase 8 D-3)
   const loadSelectors = useCallback(async () => {
@@ -303,48 +318,30 @@ export default function TasksView({ user, initial }: {
       setActors(data.actors ?? []);
       setProjects(data.projects ?? []);
       setAreas(data.areas ?? []);
-      setMyAreaIds(data.myAreaIds ?? []);
+      // `myAreaIds` 는 더 읽지 않는다 — 영역 기본값은 서버가 첫 렌더에 정한다.
+      // (`/api/meta/selectors` 응답에는 그대로 있다. 다른 화면이 쓴다.)
       setMonthGoals(data.monthGoals ?? []);
       setLinkGoals(data.linkGoals ?? []);
     }
   }, []);
 
-  // 홈 KPI 카드 링크 진입 — ?status·?due 반영 + 팀 전체 범위(담당·영역 전체)로.
+  /**
+   * 홈 진입 필터(`?status` · `?due` · `?blocked` · `?blocking`) — 주소에서 한 번 읽는다.
+   *
+   * 예전에는 이 이펙트가 담당과 영역까지 손댔다(`setFAssignee("")` · `setAreaDefaulted(true)`).
+   * 그래서 첫 렌더는 내 담당 · 내 영역, 확정 렌더는 전체 담당 · 전체 영역이었다.
+   * **그 판단은 이제 서버가 한다**(`app/tasks/page.tsx`) — 여기서는 필터 값만 받는다.
+   */
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const st = sp.get("status");
     const du = sp.get("due");
-    const bl = sp.get("blocked");
-    if (sp.get("blocking") === "1") { setFBlocking(true); setFAssignee(""); setAreaDefaulted(true); }
-    if (st || du || bl === "1") {
-      if (st) setFStatus(st);
-      if (du) setFDue(du);
-      if (bl === "1") setFBlocked(true);
-      setFAssignee("");
-      setAreaDefaulted(true);
-    }
+    if (st) setFStatus(st);
+    if (du) setFDue(du);
+    if (sp.get("blocked") === "1") setFBlocked(true);
+    if (sp.get("blocking") === "1") setFBlocking(true);
     // 마운트 1회
   }, []);
-
-  // 진입 시 영역 기본값: URL ?area 우선, 없으면 본인 기본 영역(actor_area 첫 항목).
-  // "내 업무" 진입 = 담당 본인 + 영역 본인 (한 번만 적용, 이후엔 사용자 선택 존중).
-  useEffect(() => {
-    if (areaDefaulted) return;
-    const sp0 = new URLSearchParams(window.location.search);
-    // 담당 — `all` 이면 전체 담당(빈 문자열). 숫자면 그 사람. 없으면 기본값(본인) 유지.
-    const urlAssignee = sp0.get("assignee");
-    if (urlAssignee === "all") setFAssignee("");
-    else if (urlAssignee && Number.isInteger(Number(urlAssignee))) setFAssignee(urlAssignee);
-
-    const urlArea = sp0.get("area");
-    if (urlArea) {
-      const ids = urlArea.split(",").map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n > 0);
-      if (ids.length) { setFAreas(ids); setAreaDefaulted(true); }
-    } else if (myAreaIds.length > 0) {
-      setFAreas([myAreaIds[0]]);
-      setAreaDefaulted(true);
-    }
-  }, [myAreaIds, areaDefaulted]);
 
   useEffect(() => {
     load();
@@ -451,7 +448,7 @@ export default function TasksView({ user, initial }: {
   // 필터를 URL 에 반영해 링크로 공유할 수 있게 한다 (MD-P-2026-018 §D).
   // history 를 쌓지 않는다 — 뒤로가기가 필터 변경 이력으로 채워지면 화면을 벗어날 수 없다.
   //
-  // **정렬 · 묶기 · 완료 포함은 여기서 쓰지 않는다.** 훅이 쓴다.
+  // **정렬 · 묶기 · 완료 포함 · 담당은 여기서 쓰지 않는다.** 훅이 쓴다.
   // 한 파라미터를 두 곳에서 쓰면 둘 중 어느 쪽이 마지막이었는지에 따라 주소가 달라진다.
   useEffect(() => {
     if (loading) return;
@@ -459,14 +456,13 @@ export default function TasksView({ user, initial }: {
     const set = (k: string, v: string | null) => (v ? sp.set(k, v) : sp.delete(k));
     set("area", areaParam || null);
     set("project", fProject || null);
-    set("assignee", fAssignee || "all");
     set("status", fStatus || null);
     set("due", fDue || null);
     set("blocked", fBlocked ? "1" : null);
     set("blocking", fBlocking ? "1" : null);
     const qs = sp.toString();
     window.history.replaceState({}, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
-  }, [loading, areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, fBlocking]);
+  }, [loading, areaParam, fProject, fStatus, fDue, fBlocked, fBlocking]);
 
   /**
    * §C — 보이는 행의 새 순서를 서버에 보낸다.
@@ -549,7 +545,7 @@ export default function TasksView({ user, initial }: {
             value={search} onChange={(e) => setSearch(e.target.value)} />
           {/* 영역 칩 — 다중 선택. 색 점은 사이드바에서 쓰던 영역 색을 그대로 쓴다 (§B2) */}
           <button className={`pg-chip${fAreas.length === 0 ? " on" : ""}`}
-            onClick={() => { setFAreas([]); setAreaDefaulted(true); }}>전체 영역</button>
+            onClick={() => setFAreas([])}>전체 영역</button>
           {areas.map((a) => (
             <button key={a.id} className={`pg-chip area-chip${fAreas.includes(a.id) ? " on" : ""}`}
               aria-pressed={fAreas.includes(a.id)} onClick={() => toggleArea(a.id)}>
@@ -557,8 +553,10 @@ export default function TasksView({ user, initial }: {
               {a.name}
             </button>
           ))}
-          <select value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
-            <option value="">전체 담당</option>
+          {/* 값은 `all`/`<id>` 다. 빈 문자열을 쓰지 않는다 — 주소에 껍데기가 남는다(B-12). */}
+          <select value={lq.value.assignee} aria-label="담당"
+            onChange={(e) => lq.set("assignee", e.target.value)}>
+            <option value="all">전체 담당</option>
             {actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
           {/* §C1 — 잡히지 않는 핸들을 보여주면 고장으로 읽힌다. 대신 어떻게 켜는지 말한다. */}

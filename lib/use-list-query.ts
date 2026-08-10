@@ -22,6 +22,12 @@ export interface ParamSpec {
   def: string;
   /** 허용값. 목록 밖이면 400 이 아니라 기본값으로 조용히 떨어뜨린다(§C 회신 2-4). */
   values?: readonly string[];
+  /**
+   * 열거할 수 없는 값의 허용 판정(담당자 id 처럼). `values` 와 **같은 규칙**이고
+   * 적는 방법만 다르다 — 목록으로 쓸 수 있으면 `values` 를 쓴다.
+   * 둘 다 있으면 둘 다 통과해야 한다.
+   */
+  test?: (v: string) => boolean;
   /** localStorage 키. 없으면 저장하지 않는다(주소로만 산다). */
   store?: string;
   /** 옛 값 → 새 값. 이름만 바뀐 것은 **조용히** 옮긴다. */
@@ -43,7 +49,8 @@ function normalize(s: ParamSpec, raw: string | null): { v: string; gone: boolean
     gone = !!s.gone?.includes(v);
     v = s.alias[v];
   }
-  if (s.values && !s.values.includes(v)) v = s.def;   // 목록 밖이면 조용히 기본값
+  // 목록/판정 밖이면 조용히 기본값. 400 이 아니다.
+  if ((s.values && !s.values.includes(v)) || (s.test && !s.test(v))) v = s.def;
   return { v, gone };
 }
 
