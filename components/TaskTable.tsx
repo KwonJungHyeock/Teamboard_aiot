@@ -14,6 +14,7 @@ import { pfill } from "@/lib/progress-bar";
 import { dueUrgency } from "@/lib/task-view";
 import { taskBar, ticks } from "@/lib/task-bars";
 import { aggregateTasks, countTasks } from "@/lib/progress";
+import { isUnclassifiedArea } from "@/lib/area-policy";
 export interface TaskTableRow {
   id: number;
   title: string;
@@ -252,7 +253,17 @@ export default function TaskTable({
       progress: aggregateTasks(forCalc),
       counted: counted.counted,
       period: days.length ? `${fmtMd(days[0])}–${fmtMd(days[days.length - 1])}` : null,
-      area: list.find((t) => t.areaName)?.areaName ?? null,
+      // 영역은 **그 묶음이 한 영역일 때만** 적는다. 섞여 있는데 첫 행의 것을 적으면
+      // 그룹 전체가 그 영역인 것처럼 읽힌다 — 실제로 "프로젝트 없음" 묶음이 R&D 로 보였다.
+      area: (() => {
+        const names = Array.from(new Set(list.map((t) => t.areaName).filter(Boolean)));
+        return names.length === 1 ? (names[0] as string) : null;
+      })(),
+      // 두 목록 어디에도 없는 영역이면 화면에 흔적을 남긴다 — 기본값은 조용하면 안 된다.
+      unclassified: (() => {
+        const names = Array.from(new Set(list.map((t) => t.areaName).filter(Boolean)));
+        return names.length === 1 && isUnclassifiedArea(names[0] as string);
+      })(),
       who: names.length === 0 ? null : names.length <= 2 ? names.join(" · ") : `${names[0]} 외 ${names.length - 1}`,
       color: list.find((t) => t.colorKey)?.colorKey ?? "team",
     };
@@ -522,7 +533,11 @@ export default function TaskTable({
                             </span>
                           );
                         }
-                        if (!g.visible) return null;
+                        if (!g.visible) {
+                          // 기간이 없는 업무. **행을 지우지 않는다** — 목록에서 사라지면 없는 업무가 된다.
+                          // 막대 자리에 그 사실을 적는다(§C 회신 4-1). stub 과 같은 자리, 다른 문구다.
+                          return <span className="tt-nodate">기한 없음</span>;
+                        }
                         const pct = Math.max(0, Math.min(100, t.progress ?? 0));
                         return (
                           <span className={`tt-bar${g.over ? " over" : ""}`}
@@ -612,6 +627,7 @@ export default function TaskTable({
                       <em>
                         {[rl.area, `${rl.n}건`, rl.period].filter(Boolean).join(" · ")}
                       </em>
+                      {rl.unclassified && <em className="tt-grp-unc">미분류</em>}
                       <span className="gsp" />
                       {rl.who && <span className="tt-grp-who">{rl.who}</span>}
                       {rl.progress !== null && (

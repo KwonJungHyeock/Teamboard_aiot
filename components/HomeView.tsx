@@ -6,9 +6,13 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { openPanel } from "@/lib/side-panel";
+import { openTaskPanel } from "@/lib/task-panel";
 import type { HomeSummary } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
 import { dueUrgency } from "@/lib/task-view";
+import TaskTable, { type TaskTableRow } from "./TaskTable";
+import { monthRange } from "@/lib/task-bars";
+import { showsInMain } from "@/lib/area-policy";
 import PageShell from "./PageShell";
 import SectionEmpty from "./SectionEmpty";
 import HeroTimeline from "./HeroTimeline";
@@ -83,6 +87,11 @@ export default function HomeView({ summary, user }: { summary: HomeSummary; user
             onAnchorChange={setAnchor}
             compact
           />
+          {/* §C2 — 진행 중인 일. 홈에 목록이 **없던** 자리다(정리가 아니라 추가).
+              메인(R&D · 플랫폼 · 교육자료)만 펼치고 상시는 접힌 한 줄로 건수만 보인다.
+              상시라도 우선순위 높음은 메인으로 올라온다 — 분류는 lib/area-policy.ts 하나. */}
+          <DeadlineList tasks={summary.openTasks} today={summary.today} />
+
           <div className="hm-g2">
             <div className="hm-col">
               <GoalsBlock annual={summary.annualGoals} annualLabel={summary.annualLabel} quarters={quarters} myGoalCount={summary.myGoalCount} />
@@ -346,5 +355,65 @@ function TeamTab({ rows }: { rows: HomeSummary["teamStatus"] }) {
         </Link>
       ))}
     </div>
+  );
+}
+
+/* ══════════ §C2 진행 중인 일 — 기한 막대 목록 ══════════
+   **넷이 같은 컴포넌트를 쓴다**(§C4). 여기서 새로 만드는 것은 목록이 아니라
+   "무엇을 담을지"뿐이다. 그리는 일은 TaskTable 이 한다. */
+function DeadlineList({ tasks, today }: { tasks: HomeSummary["openTasks"]; today: string }) {
+  const [openRoutine, setOpenRoutine] = useState(false);
+  const main = tasks.filter(showsInMain);
+  const routine = tasks.filter((t) => !showsInMain(t));
+  const toRow = (t: HomeSummary["openTasks"][number]): TaskTableRow => ({
+    id: t.id, title: t.title, projectName: t.projectName, colorKey: t.colorKey,
+    assigneeName: t.assigneeName, status: t.status, priority: t.priority,
+    areaName: t.areaName ?? undefined, progress: t.progress,
+    dday: t.dday, overdue: t.late,
+    startDate: t.startDate, dueDate: t.dueDate,
+  });
+  const range = today ? monthRange(today) : undefined;
+  return (
+    <>
+      <TaskTable
+        rows={main.map(toRow)}
+        title="진행 중인 일"
+        sub={`${main.length}건`}
+        variant="full"
+        timeline={range}
+        groupBy="project"
+        emptyText="진행 중인 업무가 없어요"
+        onRowClick={(id) => openTaskPanel(id)}
+      />
+      {routine.length > 0 && (
+        <section className="card hm-routine">
+          {/* 상시는 접힌 한 줄. **건수와 지연만** 보인다 — 펼치는 것은 사용자가 정한다. */}
+          <button className="fold" onClick={() => setOpenRoutine((v) => !v)} aria-expanded={openRoutine}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+              strokeWidth="1.8" strokeLinecap="round" className={openRoutine ? "open" : undefined}>
+              <path d="M6 3.6L10.4 8 6 12.4" />
+            </svg>
+            <span className="t">상시 업무</span>
+            <span className="m">
+              {Array.from(new Set(routine.map((t) => t.areaName).filter(Boolean))).join(" · ")} · {routine.length}건
+            </span>
+            {routine.filter((t) => t.late).length > 0 && (
+              <span className="r"><span className="st bad">지연 {routine.filter((t) => t.late).length}</span></span>
+            )}
+          </button>
+          {openRoutine && (
+            <TaskTable
+              rows={routine.map(toRow)}
+              title=""
+              variant="full"
+              timeline={range}
+              groupBy="project"
+              emptyText="상시 업무가 없어요"
+              onRowClick={(id) => openTaskPanel(id)}
+            />
+          )}
+        </section>
+      )}
+    </>
   );
 }

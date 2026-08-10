@@ -63,6 +63,7 @@ export interface LaneTask {
   dueDate: string | null;
   status: string;
   colorKey: string | null;
+  projectName: string | null;   // §C2 기한 막대 목록의 묶기 기준
   areaName: string | null;   // 히어로 영역 롤업용
   areaColorKey: string | null;
   origin: "human" | "agent";
@@ -88,6 +89,12 @@ export interface HomeSummary {
   greetingSub: string;
   metrics: Metric[];
   lanes: Lane[];
+  /**
+   * §C2 기한 막대 목록의 재료 — **레인과 같은 행에서 나온다.**
+   * 레인은 담당자별로 나누느라 담당 없는 업무가 빠지는데, 목록은 그러면 안 된다.
+   * 그래서 레인을 만들기 전의 원본을 그대로 한 번 더 싣는다. **새 쿼리는 없다.**
+   */
+  openTasks: LaneTask[];
   events: LaneEvent[]; // 오늘(또는 조회 기간) 일정 전체 — 레인 배치는 클라이언트
   eventCount: number;
   taskCount: number;
@@ -439,8 +446,10 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     assignee_name: string | null;
     priority: string;
     progress: number;
+    project_name: string | null;
   }>(
     `SELECT t.id, t.title, t.start_date::text, t.due_date::text, t.status, p.color_key,
+            p.name AS project_name,
             ar.name AS area_name, ar.color_key AS area_color,
             t.origin, t.assignee_id, ac.display_name AS assignee_name, t.priority, t.progress
      FROM task t
@@ -473,6 +482,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
         dueDate: t.due_date,
         status: t.status,
         colorKey: t.color_key,
+        projectName: t.project_name,
         areaName: t.area_name,
         areaColorKey: t.area_color,
         origin: t.origin,
@@ -931,6 +941,16 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     greetingSub,
     metrics,
     lanes,
+    // 담당 없는 업무도 목록에는 남아야 한다 — 레인에서 빠지는 것과 목록에서 빠지는 것은 다르다.
+    openTasks: laneTasks.map((t) => ({
+      id: t.id, title: t.title, startDate: t.start_date, dueDate: t.due_date,
+      status: t.status, colorKey: t.color_key, projectName: t.project_name,
+      areaName: t.area_name, areaColorKey: t.area_color, origin: t.origin,
+      assigneeId: t.assignee_id, assigneeName: t.assignee_name, priority: t.priority,
+      late: !!t.due_date && t.due_date < today,
+      dday: t.due_date ? dday(t.due_date, today) : null,
+      progress: t.progress ?? 0,
+    })),
     events: events.map((e) => ({
       id: e.id,
       title: e.title,
