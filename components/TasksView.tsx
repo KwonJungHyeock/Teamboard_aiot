@@ -19,7 +19,6 @@ import {
 } from "@/lib/task-view";
 import { openTaskPanel, openNewTaskModal, TASK_UPDATED_EVENT } from "@/lib/task-panel";
 import InlineTaskInput from "./InlineTaskInput";
-import { monthRange } from "@/lib/task-bars";
 import { useListQuery, type ParamSpec } from "@/lib/use-list-query";
 import BulkBar from "./BulkBar";
 import ProjectCombo from "./ProjectCombo";
@@ -776,7 +775,9 @@ export default function TasksView({ user, defaults, initialAreas, initial }: {
               onStatusChange={changeStatus}
               onRowClick={(id) => openTaskPanel(id)}
               // §C2 — 기한 막대 목록. 구간은 이번 달. 넷이 같은 컴포넌트를 쓴다(§C4).
-              timeline={today ? monthRange(today) : undefined}
+              // 범위는 **컴포넌트가 정한다**(`defaultBarRange`). 여기서 안 고른다 —
+              // 이번 달 고정으로 두었더니 6행 중 3행이 구간 밖(stub 50%)이었다.
+              timelineToday={today || undefined}
               groupBy={listGroup}
             />
           </>

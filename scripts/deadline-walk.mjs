@@ -163,6 +163,30 @@ try {
   chk("C2-stub 비율 ≤20% (전체 기간)", allPct <= 20 && (await page.evaluate(() => location.search)).includes("span=all"),
     `막대 ${all.bar} · 구간 밖 ${all.stub} → ${allPct.toFixed(1)}% · 눈금 ${all.ticks}`);
 
+  /**
+   * **stub 규칙은 홈만의 것이 아니다.**
+   * 홈을 0% 로 만든 뒤에도 `/tasks` 는 이번 달 고정이라 6행 중 3행이 구간 밖(50%)이었다.
+   * 같은 병이 화면마다 다르게 났다 — 그래서 눈금 범위를 컴포넌트 기본값으로 올렸다
+   * (`defaultBarRange`). 그 기본값이 실제로 걸리는지 **화면에서** 확인한다.
+   */
+  await page.goto(`${BASE}/tasks`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(2600);
+  const tv = await bars();
+  const tvPct = tv.bar + tv.stub ? (tv.stub / (tv.bar + tv.stub)) * 100 : 0;
+  chk("C2-stub 비율 ≤20% (/tasks)", tv.bar > 0 && tvPct <= 20,
+    `막대 ${tv.bar} · 구간 밖 ${tv.stub} → ${tvPct.toFixed(1)}% · 눈금 ${tv.ticks} (범위는 컴포넌트가 정한다)`);
+
+  // 롤업 진척은 **분모를 달고 나온다.** 숫자만 있는 진척은 화면에 두지 않는다 —
+  // 같은 프로젝트가 홈 11% / 프로젝트 상세 38% 로 보였고, 다른 것은 입력 집합이었다.
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(2200);
+  const roll = await page.evaluate(() => ({
+    pct: document.querySelectorAll(".tt-grp-v").length,
+    base: Array.from(document.querySelectorAll(".tt-grp-base")).map((x) => x.textContent),
+  }));
+  chk("C2-롤업 진척은 분모를 단다", roll.pct > 0 && roll.base.length === roll.pct,
+    `진척 ${roll.pct}개 · 분모 ${roll.base.length}개 — ${roll.base.slice(0, 2).join(" / ")}`);
+
   // ── §D6 잘린 막대 — 없으니 만들어서 잰다 ─────────────────────────
   // 이번 분기(7/01~) 앞에서 시작해 분기 안에서 끝나는 업무를 하나 만든다.
   const clipped = await mkTask("ZZ-분기밖에서시작", {});

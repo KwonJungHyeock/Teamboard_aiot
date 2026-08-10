@@ -404,6 +404,8 @@ function DeadlineList({ tasks, today, span }: {
         title="진행 중인 일"
         sub={`${main.length}건`}
         variant="full"
+        // 홈만 범위를 덮어쓴다. **이유** — 홈에는 「이번 분기 / 전체 기간」 토글이 있고,
+        // 그 토글이 곧 사용자가 고른 범위라 컴포넌트 기본값보다 세다(§C 회신 3-1).
         timeline={range}
         groupBy="project"
         emptyText="진행 중인 업무가 없어요"
@@ -430,6 +432,7 @@ function DeadlineList({ tasks, today, span }: {
               rows={routine.map(toRow)}
               title=""
               variant="full"
+              // 위와 같은 이유 — 상단 기간 토글이 정한다
               timeline={range}
               groupBy="project"
               emptyText="상시 업무가 없어요"

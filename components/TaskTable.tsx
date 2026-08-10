@@ -12,7 +12,7 @@ import { useCountUp, useExiting, useFlip, useHighlight } from "@/lib/motion";
 import { notifyGoalChain } from "@/lib/goal-chain";
 import { pfill } from "@/lib/progress-bar";
 import { dueUrgency } from "@/lib/task-view";
-import { taskBar, ticks } from "@/lib/task-bars";
+import { taskBar, ticks, defaultBarRange, type BarRange } from "@/lib/task-bars";
 import { aggregateTasks, countTasks } from "@/lib/progress";
 import { isUnclassifiedArea } from "@/lib/area-policy";
 export interface TaskTableRow {
@@ -87,6 +87,7 @@ export default function TaskTable({
   onToggleCheck,
   onToggleAll,
   timeline,
+  timelineToday,
   groupBy = "none",
 }: {
   rows: TaskTableRow[];
@@ -125,10 +126,16 @@ export default function TaskTable({
   onToggleCheck?: (id: number) => void;
   onToggleAll?: () => void;
   /**
-   * §C2 — 기한 막대. 표시 구간(월)과 오늘을 받으면 눈금자 한 줄과 행마다 막대를 그린다.
-   * 안 주면 안 그린다. **없는 기간을 추정하지 않는다.**
+   * §C2 — 기한 막대를 **켠다.** 오늘 날짜만 주면 된다.
+   * **눈금 범위는 컴포넌트가 정한다**(`defaultBarRange`). 안 주면 안 그린다 —
+   * **없는 기간을 추정하지 않는다.**
    */
-  timeline?: { start: string; end: string; today: string };
+  timelineToday?: string;
+  /**
+   * 눈금 범위를 **화면이 덮어쓴다.** 덮어쓰는 화면은 **이유를 주석으로 적는다.**
+   * 화면이 각자 범위를 정하면 갈린다 — 실제로 홈 0% vs `/tasks` 50% 로 갈렸다.
+   */
+  timeline?: BarRange;
   /** §C2 — 묶는 기준. 그룹 머리줄에 롤업(건수·기간·담당·진척)을 붙인다. */
   groupBy?: TaskGroupKey;
 }) {
@@ -142,7 +149,8 @@ export default function TaskTable({
    * 기한 막대는 시간을, 퍼센트는 진척을 말한다 — 축이 다르다. 숫자까지 빼면
    * "언제까지인지"만 알고 "얼마나 됐는지"는 모르는 목록이 된다.
    */
-  const withBars = !!timeline;
+  const range = timeline ?? (timelineToday ? defaultBarRange(timelineToday) : undefined);
+  const withBars = !!range;
   const showGoal = full && !withBars;
   const showProject = !withBars;
   const showProg = full;   // 열은 늘 있다. 막대만 접힌다.
@@ -278,8 +286,8 @@ export default function TaskTable({
     }
   }
 
-  const todayAt = timeline
-    ? (() => { const g = taskBar({ startDate: timeline.today, dueDate: timeline.today }, timeline); return g.todayAt; })()
+  const todayAt = range
+    ? (() => { const g = taskBar({ startDate: range.today, dueDate: range.today }, range); return g.todayAt; })()
     : null;
 
   useFlip(bodyRef as unknown as React.RefObject<HTMLElement>, grouped.map((r) => r.id).join(","), "tr[data-flip]");
@@ -323,7 +331,7 @@ export default function TaskTable({
               {showGoal && <col style={{ width: "140px" }} />}
               <col style={{ width: "92px" }} />
               {showProject && <col style={{ width: "120px" }} />}
-              {timeline && <col />}
+              {range && <col />}
               <col style={{ width: "72px" }} />
               <col style={{ width: "88px" }} />
               {showProg && <col style={{ width: withBars ? "56px" : "124px" }} />}
@@ -335,7 +343,7 @@ export default function TaskTable({
               {/* 업무(제목)만 flex+truncate. 상태·기한은 배지가 안 잘리게 고정 폭(내용에 맞춤). */}
               <col />
               <col style={{ width: "20%" }} />
-              {timeline && <col />}
+              {range && <col />}
               <col style={{ width: "76px" }} />
               <col style={{ width: "64px" }} />
               <col style={{ width: "56px" }} />
@@ -354,7 +362,7 @@ export default function TaskTable({
             {showGoal && <th>목표</th>}
             {full && <th>영역</th>}
             {showProject && <th>프로젝트</th>}
-            {timeline && <th className="col-track">기간</th>}
+            {range && <th className="col-track">기간</th>}
             <th>담당</th>
             {full && <th className="col-pri">우선순위</th>}
             {showProg && <th>진행률</th>}
@@ -363,12 +371,12 @@ export default function TaskTable({
           </tr>
           {/* §C2 월 눈금자 — 목록 위 한 줄. **표 안에** 둔다. 밖에 div 로 그리면
               트랙 열과 1px 씩 어긋나고, 그 어긋남은 열 폭이 바뀔 때마다 달라진다. */}
-          {timeline && (
+          {range && (
             <tr className="tt-ruler">
-              <td colSpan={leftCols}>{timeline.start.slice(0, 4)}년 {Number(timeline.start.slice(5, 7))}월</td>
+              <td colSpan={leftCols}>{range.start.slice(0, 4)}년 {Number(range.start.slice(5, 7))}월</td>
               <td className="col-track">
                 <span className="tt-track">
-                  {ticks(timeline).map((t) => (
+                  {ticks(range).map((t) => (
                     <span key={t.label} className="tt-tick" style={{ left: `${t.at}%` }}>{t.label}</span>
                   ))}
                   {/* 오늘 점은 **눈금자에만 하나.** 행마다 찍으면 점의 세로 열이 된다 (§D6) */}
@@ -511,13 +519,13 @@ export default function TaskTable({
                     )}
                   </td>
                 )}
-                {timeline && (
+                {range && (
                   <td className="col-track">
                     <span className="tt-track">
                       {/* 오늘 선 — 1px 코랄. **점은 안 찍는다**(눈금자에 하나뿐이다, §D6) */}
                       {todayAt !== null && <span className="tt-now" style={{ left: `${todayAt}%` }} />}
                       {(() => {
-                        const g = taskBar(t, timeline);
+                        const g = taskBar(t, range);
                         if (g.stub) {
                           // 막대를 그릴 자리가 없다 — 방향과 날짜를 대신 놓는다.
                           // **안 보이는 지연은 없는 지연으로 읽힌다**(회신 1 · 2-1).
@@ -634,6 +642,14 @@ export default function TaskTable({
                         <>
                           <span className="tt-grp-bar"><i style={pfill(rl.progress)} /></span>
                           <em className="tt-grp-v num">{rl.progress}%</em>
+                          {/* **분모를 적는다.** 같은 프로젝트가 여기서 11%, 프로젝트 상세에서
+                              38% 로 보였다. 계산기는 하나인데 **입력 집합이 달랐다** —
+                              홈은 열린 업무만(18건), 상세는 완료 포함(26건)이라 완료가
+                              100 으로 들어간다. 어느 쪽이 옳은지는 §C4 에서 정한다.
+                              지금은 "다른 것을 재고 있다"를 화면이 말하게만 한다.
+                              형식은 프로젝트 상세(`업무 26건 기준`)에 맞춘다.
+                              「진행 중 N건」이라고 쓰지 않는다 — 완료 포함을 켜면 거짓이 된다. */}
+                          <em className="tt-grp-base">업무 {rl.counted}건 기준</em>
                         </>
                       )}
                     </span>
