@@ -19,6 +19,7 @@ import {
 import { openTaskPanel, openNewTaskModal, TASK_UPDATED_EVENT } from "@/lib/task-panel";
 import InlineTaskInput from "./InlineTaskInput";
 import { monthRange } from "@/lib/task-bars";
+import { useListQuery, type ParamSpec } from "@/lib/use-list-query";
 import BulkBar from "./BulkBar";
 import ProjectCombo from "./ProjectCombo";
 
@@ -92,22 +93,36 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "manual", label: "직접 정한 순서" },
 ];
 const SORT_DEFAULT: SortKey = "due";
+
 /**
- * 옛 값 → 새 값. **두 줄이 전부다.** 세 번째가 생기면 그때 다시 정한다.
+ * 목록 초기값 — **주소 · 저장값 · 기본값을 `useListQuery()` 하나가 읽는다** (§C 회신 4).
+ *
+ * 여기 적힌 것이 전부다. 읽는 순서도, 매핑도, 주소에 쓸지 말지도 훅이 정한다.
+ * 파라미터가 늘어도 늘어나는 것은 이 표의 한 줄이지 컴포넌트의 조건문이 아니다 —
+ * 「중간 상태도 상태다」가 두 번 다 **초기값이 하나 늘어난 순간**에 났다.
+ *
+ * `sort` 의 옛 값 두 개:
  * - `recent` 는 이름만 바뀐 같은 기능이라 **조용히** 옮긴다.
  * - `progress` 는 기능이 없어진 것이라 **한 번은 말한다.** 아무 말 없이 바뀌면 고장으로 읽힌다.
  */
-const SORT_ALIAS: Record<string, SortKey> = { recent: "created", progress: "due" };
-const SORT_GONE = new Set(["progress"]);
-function readSort(raw: string | null | undefined): { key: SortKey; dropped: boolean } | null {
-  if (!raw) return null;
-  if (SORT_OPTIONS.some((o) => o.key === raw)) return { key: raw as SortKey, dropped: false };
-  const mapped = SORT_ALIAS[raw];
-  if (mapped) return { key: mapped, dropped: SORT_GONE.has(raw) };
-  return { key: SORT_DEFAULT, dropped: false };   // 알 수 없는 값은 400 이 아니라 기본값으로
-}
+const TASKS_QUERY = {
+  sort: {
+    def: SORT_DEFAULT,
+    values: SORT_OPTIONS.map((o) => o.key),
+    store: "tb:tasks-sort",
+    alias: { recent: "created", progress: "due" },
+    gone: ["progress"],
+  },
+  // 저장 키는 보드 묶기(`tb:tasks-group`)와 갈라 쓴다 — 뜻이 다른 값이 한 칸을 쓰면 섞인다.
+  group: { def: "none", values: Object.keys(TASK_GROUP_LABEL), store: "tb:list-group" },
+  done: { def: "0", values: ["0", "1"], store: "tb:tasks-done" },
+} satisfies Record<string, ParamSpec>;
 
-export default function TasksView({ user }: { user: SessionUser }) {
+export default function TasksView({ user, initial }: {
+  user: SessionUser;
+  /** 서버가 읽은 주소 쿼리 — 훅이 첫 렌더부터 맞는 값을 쓰게 한다. */
+  initial?: Partial<Record<"sort" | "group" | "done", string>>;
+}) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [inbox, setInbox] = useState<InboxItem[]>([]);
   const [actors, setActors] = useState<Option[]>([]);
@@ -139,20 +154,20 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [fDue, setFDue] = useState("");
   const [fBlocked, setFBlocked] = useState(false);
   const [fBlocking, setFBlocking] = useState(false);   // §C1 「내가 막는 것」 // 홈 5칸 진입(?blocked=1)
-  // 완료 표시 여부 · 정렬 기준 (MD-P-2026-018 §D). 기본은 "완료 제외 + 기한순".
-  const [showDone, setShowDone] = useState(false);
-  const [sortBy, setSortBy] = useState<SortKey>(SORT_DEFAULT);
-  // 진척순이 없어졌다는 안내 — 세션당 1회. 닫으면 다시 안 뜬다.
-  const [sortGone, setSortGone] = useState(false);
   /**
-   * 주소·저장값을 읽기 **전에는 목록을 부르지 않는다.**
-   * 정렬이 서버로 넘어갔으므로, 초기값을 모른 채 한 번 부르면 기본 정렬로 받고
-   * 곧바로 다시 부르게 된다 — 요청이 두 번 나가고, 그 사이에 **틀린 순서가 화면에 보인다.**
+   * 완료 표시 · 정렬 · 묶기 — 셋 다 훅이 읽는다. 기본은 "완료 제외 + 기한순 + 묶지 않음".
+   *
+   * `lq.ready` 가 거짓인 동안에는 목록을 **부르지 않는다.** 정렬이 서버로 넘어갔으므로,
+   * 초기값을 모른 채 한 번 부르면 기본 정렬로 받고 곧바로 다시 부르게 된다 —
+   * 요청이 두 번 나가고, 그 사이에 **틀린 순서가 화면에 보인다.**
    * (드래그 정렬 검사가 이 짧은 순간을 잡아냈다. 잠깐이라도 보이면 사용자도 본다.)
    */
-  const [inited, setInited] = useState(false);
-  /** §C2 묶기 — URL `?group=`. 저장 키는 보드 묶기와 갈라 쓴다(뜻이 다르다). */
-  const [listGroup, setListGroup] = useState<TaskGroupKey>("none");
+  const lq = useListQuery(TASKS_QUERY, initial);
+  const sortBy = lq.value.sort as SortKey;
+  const listGroup = lq.value.group as TaskGroupKey;
+  const showDone = lq.value.done === "1";
+  // 진척순이 없어졌다는 안내 — 세션당 1회. 닫으면 다시 안 뜬다.
+  const sortGone = lq.dropped.includes("sort");
   const [areaDefaulted, setAreaDefaulted] = useState(false);
   const isMine = fAssignee === String(user.id);
 
@@ -241,29 +256,12 @@ export default function TasksView({ user }: { user: SessionUser }) {
     if (v && ["sheet", "board", "calendar", "timeline"].includes(v)) setLens(v);
     const g = localStorage.getItem("tb:tasks-group") as BoardGroup | null;
     if (g && ["status", "area", "assignee"].includes(g)) setBoardGroup(g);
-    // URL 이 있으면 URL 우선(공유 링크), 없으면 지난 선택을 되살린다
-    const sp = new URLSearchParams(window.location.search);
-    const urlDone = sp.get("done");
-    const savedDone = localStorage.getItem("tb:tasks-done");
-    // 주소가 있으면 주소 우선(공유 링크), 없으면 지난 선택.
-    const pick = readSort(sp.get("sort")) ?? readSort(localStorage.getItem("tb:tasks-sort"));
-    if (pick) {
-      setSortBy(pick.key);
-      // 저장값도 같이 갱신한다. 안 그러면 들어올 때마다 매핑이 다시 돈다.
-      localStorage.setItem("tb:tasks-sort", pick.key);
-      if (pick.dropped) setSortGone(true);
-    }
-    if (urlDone === "1") setShowDone(true);
-    else if (urlDone === null && savedDone === "1") setShowDone(true);
-    const lgRaw = sp.get("group") ?? localStorage.getItem("tb:list-group");
-    const lg: TaskGroupKey = (lgRaw && lgRaw in TASK_GROUP_LABEL ? lgRaw : "none") as TaskGroupKey;
-    setListGroup(lg);
-    localStorage.setItem("tb:list-group", lg);
-    setInited(true);
+    // 정렬·묶기·완료 포함은 여기서 읽지 않는다 — `useListQuery()` 하나가 읽는다.
+    // 뷰(렌즈)와 보드 그룹은 주소에 안 실리는 값이라 그대로 localStorage 만 본다.
   }, []);
 
-  function pickSort(v: SortKey) { setSortBy(v); localStorage.setItem("tb:tasks-sort", v); }
-  function toggleDone(v: boolean) { setShowDone(v); localStorage.setItem("tb:tasks-done", v ? "1" : "0"); }
+  function pickSort(v: SortKey) { lq.set("sort", v); }
+  function toggleDone(v: boolean) { lq.set("done", v ? "1" : "0"); }
   function pickLens(v: TaskLens) { setLens(v); localStorage.setItem("tb:tasks-lens", v); }
   function pickGroup(g: BoardGroup) { setBoardGroup(g); localStorage.setItem("tb:tasks-group", g); }
 
@@ -271,7 +269,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
     // 정렬·영역 기본값이 **둘 다** 정해지기 전에는 안 부른다.
     // 하나라도 나중에 정해지면 그 사이에 다른 목록이 한 번 그려진다 —
     // 실측에서 첫 렌더가 전체 목록, 확정 렌더가 내 영역 목록으로 갈렸다.
-    if (!inited || !areaDefaulted) return;
+    if (!lq.ready || !areaDefaulted) return;
     try {
       const qs = new URLSearchParams();
       if (areaParam) qs.set("area", areaParam);
@@ -295,7 +293,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
     } finally {
       setLoading(false);
     }
-  }, [areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, fBlocking, sortBy, inited, areaDefaulted]);
+  }, [areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, fBlocking, sortBy, lq.ready, areaDefaulted]);
 
   // 셀렉트 룩업은 목록과 분리된 /api/meta/selectors에서 (Phase 8 D-3)
   const loadSelectors = useCallback(async () => {
@@ -450,8 +448,11 @@ export default function TasksView({ user }: { user: SessionUser }) {
     return out;
   }, [tasks, search, showDone]);
 
-  // 필터·정렬을 URL 에 반영해 링크로 공유할 수 있게 한다 (MD-P-2026-018 §D).
+  // 필터를 URL 에 반영해 링크로 공유할 수 있게 한다 (MD-P-2026-018 §D).
   // history 를 쌓지 않는다 — 뒤로가기가 필터 변경 이력으로 채워지면 화면을 벗어날 수 없다.
+  //
+  // **정렬 · 묶기 · 완료 포함은 여기서 쓰지 않는다.** 훅이 쓴다.
+  // 한 파라미터를 두 곳에서 쓰면 둘 중 어느 쪽이 마지막이었는지에 따라 주소가 달라진다.
   useEffect(() => {
     if (loading) return;
     const sp = new URLSearchParams(window.location.search);
@@ -463,12 +464,9 @@ export default function TasksView({ user }: { user: SessionUser }) {
     set("due", fDue || null);
     set("blocked", fBlocked ? "1" : null);
     set("blocking", fBlocking ? "1" : null);
-    set("sort", sortBy === SORT_DEFAULT ? null : sortBy);
-    set("group", listGroup === "none" ? null : listGroup);
-    set("done", showDone ? "1" : null);
     const qs = sp.toString();
     window.history.replaceState({}, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
-  }, [loading, areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, fBlocking, sortBy, showDone, listGroup]);
+  }, [loading, areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, fBlocking]);
 
   /**
    * §C — 보이는 행의 새 순서를 서버에 보낸다.
@@ -568,7 +566,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
             <span className="dragoff">순서를 바꾸려면 정렬을 &lsquo;직접 정한 순서&rsquo;로 바꾸세요</span>
           )}
           <select value={listGroup} aria-label="묶는 기준"
-            onChange={(e) => { const v = e.target.value as TaskGroupKey; setListGroup(v); localStorage.setItem("tb:list-group", v); }}>
+            onChange={(e) => lq.set("group", e.target.value)}>
             {(Object.keys(TASK_GROUP_LABEL) as TaskGroupKey[]).map((k) => (
               <option key={k} value={k}>{k === "none" ? "묶지 않음 (기본)" : `${TASK_GROUP_LABEL[k]}로 묶기`}</option>
             ))}
@@ -581,7 +579,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
           {sortGone && (
             <span className="sortgone" role="status">
               진척순 정렬은 지금 제공하지 않습니다 — 기한순으로 표시합니다
-              <button type="button" onClick={() => setSortGone(false)} aria-label="안내 닫기">✕</button>
+              <button type="button" onClick={() => lq.dismiss("sort")} aria-label="안내 닫기">✕</button>
             </span>
           )}
           <button className={`pg-chip${showDone ? " on" : ""}`} onClick={() => toggleDone(!showDone)}>

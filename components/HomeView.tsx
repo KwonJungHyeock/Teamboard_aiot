@@ -12,6 +12,7 @@ import type { SessionUser } from "@/lib/types";
 import { dueUrgency } from "@/lib/task-view";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
 import { quarterRange, spanRange } from "@/lib/task-bars";
+import { useListQuery, type ParamSpec } from "@/lib/use-list-query";
 import { showsInMain } from "@/lib/area-policy";
 import PageShell from "./PageShell";
 import SectionEmpty from "./SectionEmpty";
@@ -21,6 +22,15 @@ import { pfill } from "@/lib/progress-bar";
 
 type TabKey = "overview" | "focus" | "team";
 type Range = "quarter" | "all";
+
+/**
+ * 기간 토글 — 업무 목록과 **같은 훅**이 읽는다 (§C 회신 4).
+ * 홈은 파라미터가 하나뿐이라 손으로 써도 되지만, 그렇게 두면 화면마다 규칙이 갈린다.
+ * 저장하지 않는다(`store` 없음) — 기간은 지금 보려는 범위지 취향이 아니다.
+ */
+const HOME_QUERY = {
+  span: { def: "quarter", values: ["quarter", "all"] },
+} satisfies Record<string, ParamSpec>;
 
 /** 필터바 우측 끝 NOW (§D1) — mono, 분 단위 갱신 */
 function NowStamp() {
@@ -39,22 +49,15 @@ function NowStamp() {
 
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 
-export default function HomeView({ summary, user }: { summary: HomeSummary; user: SessionUser }) {
+export default function HomeView({ summary, user, initialSpan }: {
+  summary: HomeSummary; user: SessionUser; initialSpan?: string;
+}) {
   const [anchor, setAnchor] = useState<string>(summary.today);
   const [tab, setTab] = useState<TabKey>("overview");
-  const [range, setRange] = useState<Range>("quarter");
-  // §C URL 규약 — 기본값(이번 분기)은 주소에 안 쓴다. history 를 쌓지 않는다.
-  useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    const v = sp.get("span");
-    if (v === "all" || v === "quarter") setRange(v);
-  }, []);
-  useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    if (range === "quarter") sp.delete("span"); else sp.set("span", range);
-    const qs = sp.toString();
-    window.history.replaceState({}, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
-  }, [range]);
+  // §C URL 규약 — 기본값(이번 분기)은 주소에 안 쓴다. history 를 쌓지 않는다. 훅이 한다.
+  // 서버가 읽은 값을 같이 넘긴다 — 저장값이 없는 파라미터라 서버가 답을 안다.
+  const lq = useListQuery(HOME_QUERY, { span: initialSpan });
+  const range = lq.value.span as Range;
 
   const subtitle = useMemo(() => {
     const d = new Date(`${summary.today}T12:00:00+09:00`);
@@ -84,8 +87,8 @@ export default function HomeView({ summary, user }: { summary: HomeSummary; user
       onTab={(k) => setTab(k as TabKey)}
       filters={
         <>
-          <button className={`pg-chip${range === "quarter" ? " on" : ""}`} onClick={() => setRange("quarter")}>이번 분기</button>
-          <button className={`pg-chip${range === "all" ? " on" : ""}`} onClick={() => setRange("all")}>전체 기간</button>
+          <button className={`pg-chip${range === "quarter" ? " on" : ""}`} onClick={() => lq.set("span", "quarter")}>이번 분기</button>
+          <button className={`pg-chip${range === "all" ? " on" : ""}`} onClick={() => lq.set("span", "all")}>전체 기간</button>
         </>
       }
       filterSummary={<NowStamp />}
