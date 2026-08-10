@@ -38,7 +38,15 @@ import { query } from "./db";
 import type { SessionUser } from "./types";
 
 export interface UserDefaults {
-  /** 내 기본 영역 — `actor_area` 를 sort_order 순으로. 없으면 빈 배열(= 전체 영역). */
+  /**
+   * 첫 화면의 영역 필터. **이미 결정된 값이다** — 화면이 다시 자르거나 분기하지 않는다.
+   *
+   * **비어 있으면 「전체 영역」이다. 빈 필터가 아니다** (§C 회신 6 · 2-2).
+   * 소속이 없다는 것은 "볼 것이 없다"가 아니라 **"아직 안 정했다"**는 뜻이다.
+   * 아무것도 안 보이는 화면보다 다 보이는 화면이 낫다 —
+   * §C1 「미분류 영역은 메인으로」와 같은 판단이고, 이유도 같다:
+   * **안 보이면 없는 것이 되고, 그건 되돌리기 어렵다.**
+   */
   areaIds: number[];
   /** 기본 담당 = 본인. 화면이 `user.id` 를 다시 문자열로 만들지 않게 여기서 함께 낸다. */
   assigneeId: number;
@@ -49,5 +57,19 @@ export async function userDefaults(user: SessionUser): Promise<UserDefaults> {
     `SELECT area_id FROM actor_area WHERE actor_id = $1 ORDER BY sort_order, area_id`,
     [user.id]
   );
-  return { areaIds: rows.map((r) => r.area_id), assigneeId: user.id };
+  const mine = rows.map((r) => r.area_id);
+  return {
+    // 소속이 있으면 **첫 영역 하나**로 연다(「내 업무」의 뜻). 없으면 빈 배열 = 전체 영역.
+    // 자르는 규칙이 화면에 있으면 화면마다 달라진다 — 여기 한 줄이 유일한 출처다.
+    areaIds: mine.slice(0, 1),
+    assigneeId: user.id,
+  };
 }
+
+/**
+ * 「새 계정에는 영역이 없다」 — 지금 이것은 **가정이 아니라 사실이다.**
+ * `POST /api/members` 는 actor · account · 에이전트 · agent_config 를 만들지만
+ * `actor_area` 행은 안 만든다. 앱 전체에 `actor_area` 쓰기 경로가 0곳이다(B-18).
+ * 그래서 위 폴백은 예외 처리가 아니라 **다음에 들어올 사람의 기본 경로**다.
+ * `scripts/newuser-walk.mjs` 가 실제 계정을 발급해서 이 경로를 잰다.
+ */

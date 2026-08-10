@@ -29,10 +29,12 @@ export default async function Page({ searchParams }: {
   const wide = !!(q("status") || q("due") || q("blocked") === "1" || q("blocking") === "1");
 
   // 영역 — 주소가 먼저, 없으면 (넓게 여는 진입이면 전체 / 아니면 내 기본 영역).
+  // `defaults.areaIds` 는 **이미 결정된 값**이다. 여기서 자르지 않는다 —
+  // 자르는 규칙이 화면마다 있으면 §C4 로 화면이 넷이 될 때 넷이 달라진다.
   const areaParam = q("area");
   const initialAreas = areaParam
     ? areaParam.split(",").map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n > 0)
-    : wide ? [] : defaults.areaIds.slice(0, 1);
+    : wide ? [] : defaults.areaIds;
 
   return (
     <AppShell user={user}>
