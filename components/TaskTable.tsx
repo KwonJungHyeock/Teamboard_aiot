@@ -133,15 +133,18 @@ export default function TaskTable({
 }) {
   const full = variant === "full";
   /**
-   * 막대를 켜면 **목표 · 프로젝트 · 진행률 열을 접는다.** 폭을 막대에 준다.
-   * 프로젝트는 그룹 머리줄이 이미 말하고, 진척은 막대의 채운 구간이 말한다.
-   * 목표는 §D7 의 열 목록에 아예 없다. 열 열한 개를 다 두면 막대가 114px 이 되고,
-   * 114px 짜리 막대는 기간을 못 보여준다 — 실측에서 그랬다.
+   * 막대를 켜면 **목표 · 프로젝트 열과 진행률의 「막대」를 접는다.** 폭을 기한 막대에 준다.
+   * 프로젝트는 그룹 머리줄이 이미 말하고, 목표는 §D7 의 열 목록에 아예 없다.
+   * 열 열한 개를 다 두면 기한 막대가 114px 이 되고, 114px 짜리 막대는 기간을 못 보여준다.
+   *
+   * **진척 퍼센트는 남긴다** (§D7 의 `진척 38px`). 접는 것은 진행률 **막대**뿐이다.
+   * 기한 막대는 시간을, 퍼센트는 진척을 말한다 — 축이 다르다. 숫자까지 빼면
+   * "언제까지인지"만 알고 "얼마나 됐는지"는 모르는 목록이 된다.
    */
   const withBars = !!timeline;
   const showGoal = full && !withBars;
   const showProject = !withBars;
-  const showProg = full && !withBars;
+  const showProg = full;   // 열은 늘 있다. 막대만 접힌다.
   const colCount =
     1 + (showGoal ? 1 : 0) + (full ? 1 : 0) + (showProject ? 1 : 0) + (withBars ? 1 : 0)
     + 1 + (full ? 1 : 0) + (showProg ? 1 : 0) + 2 + (selectable ? 1 : 0);
@@ -312,7 +315,7 @@ export default function TaskTable({
               {timeline && <col />}
               <col style={{ width: "72px" }} />
               <col style={{ width: "88px" }} />
-              {showProg && <col style={{ width: "124px" }} />}
+              {showProg && <col style={{ width: withBars ? "56px" : "124px" }} />}
               <col style={{ width: "92px" }} />
               <col style={{ width: "70px" }} />
             </>
@@ -544,9 +547,13 @@ export default function TaskTable({
                 )}
                 {showProg && (
                   <td className="col-prog">
-                    <div className="tt-prog" title={`진행률 ${t.progress ?? 0}%`}>
-                      <i className={t.status === "done" ? "pf-green" : "pf-blue"} style={pfill(t.progress ?? 0)} />
-                    </div>
+                    {/* 막대를 켜면 여기 막대는 접는다 — 한 행에 막대가 둘이면 어느 쪽이
+                        시간이고 어느 쪽이 진척인지 안 읽힌다. 숫자는 남는다(§D7 진척 38px). */}
+                    {!withBars && (
+                      <div className="tt-prog" title={`진행률 ${t.progress ?? 0}%`}>
+                        <i className={t.status === "done" ? "pf-green" : "pf-blue"} style={pfill(t.progress ?? 0)} />
+                      </div>
+                    )}
                     <ProgPct value={t.progress ?? 0} />
                   </td>
                 )}
