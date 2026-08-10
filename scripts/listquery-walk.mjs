@@ -68,6 +68,11 @@ page.on("request", (r) => {
  * 이 800ms 안에 걸린다.
  */
 async function openTasks(qs) {
+  // **이전 화면의 요청이 끝난 뒤에 통을 비운다.**
+  // 안 그러면 앞 페이지가 띄운 `/api/tasks` 가 통을 비운 다음에 도착해서
+  // 이번 진입의 요청으로 잡힌다 — 실측에서 6회 중 2회 그렇게 "2회"가 나왔다.
+  // 제품이 두 번 부른 것이 아니라 **검사가 남의 것을 센 것**이다.
+  await page.waitForLoadState("networkidle").catch(() => {});
   listReqs = [];
   await page.goto(`${BASE}/tasks${qs}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector('select[aria-label="정렬 기준"]', { timeout: 15000 });
