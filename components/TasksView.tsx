@@ -523,6 +523,74 @@ export default function TasksView({ user, defaults, initialAreas, initial }: {
 
   const hiddenDone = tasks.filter((t) => t.status === "done" || t.status === "dropped").length;
 
+  /**
+   * 빈 상태는 **하나가 아니라 셋이다** (§C 회신 7 · ⓓ).
+   *
+   * 예전에는 어떤 이유로 비었든 "상단 필터를 조정하거나…" 한 문장이었다.
+   * 그건 **어느 필터를 어떻게 하라는 말인지 안 알려준다.** 비는 이유마다 다음 행동이 다르다.
+   *
+   * 갈래를 **지금 걸린 필터만 보고** 정한다. 팀 전체 건수를 세지 않는다 —
+   * 숫자 하나 때문에 쿼리를 늘리지 않는다(§C 회신 7 · 2-1).
+   * 그래서 ②는 "정말 아무 조건도 없는데 0건" 일 때만 쓴다. 그때만 참이라고 말할 수 있다.
+   *
+   *   ① mine     — 좁힌 것이 기본값뿐(담당=본인, 영역=내 영역). **넓히는 버튼**을 준다.
+   *   ② none     — 좁힌 것이 하나도 없는데 0건. 진짜 비었다.
+   *   ③ filtered — 능동 조건이 걸렸거나 담당이 남이다. **걸린 조건을 그대로 나열**하고 지운다.
+   *
+   * ①의 「전체 담당으로 보기」가 신규 사용자 문제의 답이다. 기본값은 정적으로 두고
+   * 사용자가 한 번 눌러 넓힌다 — **기본값을 조건부로 만드는 것과는 완전히 다른 일**이다.
+   * 그 클릭은 §C URL 규약대로 `?assignee=all` 로 주소에 남는다.
+   */
+  const areaNameOf = useCallback(
+    (id: number) => areas.find((a) => a.id === id)?.name ?? `#${id}`,
+    [areas]
+  );
+  const emptyCase = useMemo(() => {
+    // 사용자가 **능동적으로 건** 조건. 기본값(담당·영역)은 여기 안 들어간다.
+    const conds: string[] = [];
+    if (search.trim()) conds.push(`검색어 “${search.trim()}”`);
+    if (fProject) conds.push(`프로젝트 ${projects.find((p) => String(p.id) === fProject)?.name ?? fProject}`);
+    if (fStatus) conds.push(`상태 ${STATUS_OPTIONS.find(([v]) => v === fStatus)?.[1] ?? fStatus}`);
+    if (fDue) conds.push(`기한 ${DUE_OPTIONS.find(([v]) => v === fDue)?.[1] ?? fDue}`);
+    if (fBlocked) conds.push("막힌 업무만");
+    if (fBlocking) conds.push("내가 막는 것만");
+    if (showDone) conds.push("완료 포함");
+
+    const mineOnly = lq.value.assignee === String(user.id);
+    const otherOnly = lq.value.assignee !== "all" && !mineOnly;
+    if (otherOnly) conds.push(`담당 ${actors.find((a) => String(a.id) === lq.value.assignee)?.name ?? lq.value.assignee}`);
+    if (fAreas.length) conds.push(`영역 ${fAreas.map(areaNameOf).join(" · ")}`);
+
+    // 능동 조건도 없고 담당도 전체면 — 좁힌 것이 없다. 그때만 "정말 없다"고 말한다.
+    if (!conds.length && !mineOnly) return { kind: "none" as const, conds };
+    // 좁힌 것이 기본값(담당=본인, 영역=내 영역)뿐이면 넓히는 버튼을 준다.
+    if (mineOnly && conds.every((c) => c.startsWith("영역 "))) return { kind: "mine" as const, conds };
+    return { kind: "filtered" as const, conds };
+  }, [search, fProject, fStatus, fDue, fBlocked, fBlocking, showDone,
+      fAreas, areaNameOf, lq.value.assignee, user.id, projects, actors]);
+
+  /** ③ 조건 지우기 — 좁히는 것을 **전부** 푼다. 하나만 풀면 또 0건일 수 있다. */
+  function clearFilters() {
+    setSearch(""); setFProject(""); setFStatus(""); setFDue("");
+    setFBlocked(false); setFBlocking(false); setFAreas([]);
+    lq.set("assignee", "all");
+    lq.set("done", "0");
+  }
+
+  const EMPTY_COPY = {
+    mine: {
+      text: "아직 나에게 배정된 업무가 없어요",
+      hint: emptyCase.conds.length
+        ? `${emptyCase.conds.join(" · ")} · 담당 나 로 보고 있어요`
+        : "담당이 나인 업무만 보고 있어요",
+    },
+    none: { text: "아직 업무가 없어요", hint: "첫 업무를 만들어 시작하세요" },
+    filtered: {
+      text: "조건에 맞는 업무가 없어요",
+      hint: emptyCase.conds.join(" · "),
+    },
+  }[emptyCase.kind];
+
   return (
     /* 페이지 뼈대는 공통 컴포넌트가 그린다 (MD-P-2026-019 §B) —
        브레드크럼 → 제목+액션 → 탭 → 필터바 → 본문 순서를 화면마다 다시 짜지 않는다. */
@@ -673,12 +741,26 @@ export default function TasksView({ user, defaults, initialAreas, initial }: {
               title={isMine ? "내 업무" : "업무 목록"}
               sub={`${rows.length}건`}
               emptyScope="full"
-              emptyText="아직 업무가 없어요"
-              emptyHint="상단 필터를 조정하거나, 새 업무를 만들어 시작하세요."
+              emptyText={EMPTY_COPY.text}
+              emptyHint={EMPTY_COPY.hint}
               emptyAction={
-                <button className="btn small primary" onClick={quickNew}>
-                  ＋ 새 업무
-                </button>
+                <>
+                  {/* 넓히는 버튼은 **채우지 않는다.** 코랄 채움은 화면당 1개이고,
+                      이 빈 상태에서 그 하나는 「＋ 새 업무」다 (§E1). */}
+                  {emptyCase.kind === "mine" && (
+                    <button className="btn small" onClick={() => lq.set("assignee", "all")}>
+                      전체 담당으로 보기
+                    </button>
+                  )}
+                  {emptyCase.kind === "filtered" && (
+                    <button className="btn small" onClick={clearFilters}>
+                      조건 지우기
+                    </button>
+                  )}
+                  <button className="btn small primary" onClick={quickNew}>
+                    ＋ 새 업무
+                  </button>
+                </>
               }
               variant="full"
               quickComplete

@@ -115,24 +115,42 @@ try {
   chk("N-발급 직후엔 비밀번호 벽", await page.$eval("body", (b) => /비밀번호/.test(b.innerText)),
     `${gate.join(" / ")} — 목록은 아직 안 보인다`);
 
-  // 비밀번호를 바꾼 뒤가 **재려는 화면**이다.
+  // 비밀번호를 바꾼 뒤에도 **아직 목록이 아니다.** 첫 실행 안내(FirstRun)가 덮는다.
+  //
+  // 첫 회차 측정에서 이 단계를 **놓쳤다.** DOM 만 읽어서 그 아래의 빈 상태 문구를
+  // "처음 보는 것"이라고 보고했는데, 실제로 처음 보이는 것은 이 안내다.
+  // 클릭을 넣자 대화상자가 클릭을 가로채면서 드러났다 —
+  // **덮인 것은 없는 것이 아니다.** 세기 전에 먼저 연다는 규칙의 반대 방향이다.
   await q(`UPDATE account SET must_change_pw = false WHERE actor_id = $1`, [newId]);
+  await page.goto(`${BASE}/tasks`, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1500);
+  const frn = await page.$(".frn[role=dialog]");
+  const frnT = frn ? await page.$eval(".frn h2", (e) => e.innerText.trim()) : "";
+  chk("N-그다음은 첫 실행 안내", !!frn, frn ? `"${frnT}" — 목록은 이 뒤다` : "안내가 안 떴다");
+  if (frn) {
+    await page.click(".frn .frn-skip");
+    await page.waitForTimeout(800);
+  }
 
+  // 여기서부터가 **일상 화면**이다. 세 단계 중 셋째.
   listReqs = [];
   await page.goto(`${BASE}/tasks`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector('select[aria-label="정렬 기준"]', { timeout: 15000 });
   for (let i = 0; i < 100 && listReqs.length === 0; i++) await page.waitForTimeout(100);
   await page.waitForTimeout(800);
 
+  // **재는 순간에 뜬다.** 아래에서 빈 상태 버튼을 누르면 요청이 더 나가므로,
+  // 나중에 `listReqs` 를 보면 그 클릭까지 세게 된다 — 그건 첫 진입의 수가 아니다.
+  const firstReqs = listReqs.slice();
   const rows = await page.$$eval("table tbody tr", (ns) =>
     ns.filter((n) => !n.className.includes("tt-ruler") && !n.className.includes("tt-grp")).length);
   const addr = await page.evaluate(() => location.search);
   const areaAll = await page.$$eval(".pg-filters .pg-chip", (ns) =>
     ns.some((n) => n.textContent.trim() === "전체 영역" && n.classList.contains("on")));
 
-  console.log(`\n── 영역 0개 계정이 /tasks 에서 처음 보는 것 ──`);
-  console.log(`   첫 요청 쿼리 : ${listReqs.map((s) => s || "(빈 쿼리)").join(" | ") || "(요청 없음)"}`);
-  console.log(`   요청 횟수    : ${listReqs.length}`);
+  console.log(`\n── 영역 0개 계정의 /tasks (비밀번호 벽 · 첫 실행 안내를 지난 뒤) ──`);
+  console.log(`   첫 요청 쿼리 : ${firstReqs.map((s) => s || "(빈 쿼리)").join(" | ") || "(요청 없음)"}`);
+  console.log(`   요청 횟수    : ${firstReqs.length}`);
   console.log(`   주소         : ${addr || "(없음)"}`);
   console.log(`   보이는 행 수 : ${rows}`);
   console.log(`   「전체 영역」 : ${areaAll ? "켜짐" : "꺼짐"}`);
@@ -156,9 +174,71 @@ try {
   chk("N-0건이면 빈 상태가 있다", emptyT.length > 0,
     emptyT.length ? emptyT[0] : "빈 표만 남는다 — 이게 첫인상이 된다");
 
-  chk("N-요청은 한 번", listReqs.length === 1, `${listReqs.length}회`);
-  chk("N-영역으로 좁히지 않는다", !/area=/.test(listReqs[0] ?? ""),
-    `쿼리 "${listReqs[0] ?? ""}" — 소속이 없다는 것은 "볼 것이 없다"가 아니라 "아직 안 정했다"다`);
+  // ── 빈 상태 세 갈래 (§C 회신 7 · ⓓ) ──────────────────────────
+  //
+  // 갈래마다 **다음 행동이 다르다.** 같은 문장 하나로 때우면 어느 필터를 어떻게
+  // 하라는 말인지 알 수 없다. 신규 사용자가 만나는 것은 ① 이고, ①의 버튼이
+  // 「담당 = 본인」 기본값을 안 바꾸고 문제를 푸는 자리다.
+  const title = () => page.$eval(".empty-state .es-title", (e) => e.innerText.trim());
+  const hint = () => page.$eval(".empty-state .es-hint", (e) => e.innerText.trim()).catch(() => "");
+  const acts = () => page.$$eval(".empty-state .es-action button", (ns) =>
+    ns.map((n) => `${n.innerText.trim()}${n.classList.contains("primary") ? "(채움)" : ""}`));
+
+  const t1 = await title(), h1 = await hint(), a1 = await acts();
+  chk("E①-나에게 배정된 것이 없다",
+    /나에게 배정된 업무가 없어요/.test(t1) && a1.some((s) => s.startsWith("전체 담당으로 보기")),
+    `"${t1}" / "${h1}" / [${a1.join("] [")}]`);
+  chk("E①-채움은 하나뿐",
+    a1.filter((s) => s.includes("(채움)")).length === 1,
+    `채움 ${a1.filter((s) => s.includes("(채움)")).length}개 — 코랄은 화면당 하나(§E1)`);
+
+  // ①의 버튼이 실제로 넓히는가. 주소에 남는가.
+  await page.click('.empty-state .es-action button:text-is("전체 담당으로 보기")');
+  await page.waitForTimeout(1200);
+  const wideAddr = await page.evaluate(() => location.search);
+  const wideRows = await page.$$eval("table tbody tr", (ns) =>
+    ns.filter((n) => !n.className.includes("tt-ruler") && !n.className.includes("tt-grp")).length);
+  chk("E①-누르면 넓어지고 주소에 남는다",
+    /assignee=all/.test(wideAddr) && wideRows > 1,
+    `주소 "${wideAddr}" · 행 ${wideRows} (기본값은 그대로 두고 사용자가 한 번 넓힌다)`);
+
+  // ③ — 능동 조건이 걸린 경우. 걸린 조건을 그대로 나열하고 지우는 버튼을 준다.
+  await page.goto(`${BASE}/tasks?status=doing&due=overdue&assignee=all`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector('select[aria-label="정렬 기준"]', { timeout: 15000 });
+  await page.waitForTimeout(1500);
+  await page.fill('input[type="search"], input[placeholder*="검색"]', "ZZZ없는검색어").catch(() => {});
+  await page.waitForTimeout(900);
+  const t3 = await title(), h3 = await hint(), a3 = await acts();
+  chk("E③-걸린 조건을 그대로 나열한다",
+    /조건에 맞는 업무가 없어요/.test(t3) && /검색어/.test(h3) && a3.some((s) => s.startsWith("조건 지우기")),
+    `"${t3}" / "${h3}" / [${a3.join("] [")}]`);
+
+  await page.click('.empty-state .es-action button:text-is("조건 지우기")');
+  await page.waitForTimeout(1500);
+  const clearedRows = await page.$$eval("table tbody tr", (ns) =>
+    ns.filter((n) => !n.className.includes("tt-ruler") && !n.className.includes("tt-grp")).length);
+  chk("E③-조건 지우기는 전부 푼다", clearedRows > 1,
+    `행 ${clearedRows} — 하나만 풀면 또 0건일 수 있다`);
+
+  // ② — 좁힌 것이 하나도 없는데 0건. **데이터를 비워서 재고 되돌린다.**
+  const hidden = await q(`UPDATE task SET is_active = false WHERE is_active = true RETURNING id`);
+  try {
+    await page.goto(`${BASE}/tasks?assignee=all`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector('select[aria-label="정렬 기준"]', { timeout: 15000 });
+    await page.waitForTimeout(1500);
+    const t2 = await title(), h2 = await hint(), a2 = await acts();
+    chk("E②-진짜 비었을 때만 「없어요」",
+      /^아직 업무가 없어요/.test(t2) && /첫 업무/.test(h2)
+        && !a2.some((s) => /전체 담당|조건 지우기/.test(s)),
+      `"${t2}" / "${h2}" / [${a2.join("] [")}] — 넓힐 것이 없으니 넓히는 버튼도 없다`);
+  } finally {
+    await q(`UPDATE task SET is_active = true WHERE id = ANY($1::int[])`, [hidden.map((r) => r.id)]);
+    console.log(`   (되돌림 — 업무 ${hidden.length}건 다시 활성)`);
+  }
+
+  chk("N-요청은 한 번", firstReqs.length === 1, `${firstReqs.length}회`);
+  chk("N-영역으로 좁히지 않는다", !/area=/.test(firstReqs[0] ?? ""),
+    `쿼리 "${firstReqs[0] ?? ""}" — 소속이 없다는 것은 "볼 것이 없다"가 아니라 "아직 안 정했다"다`);
   chk("N-「전체 영역」이 켜져 있다", areaAll, areaAll ? "켜짐" : "꺼짐 — 어느 칩도 안 켜진 상태다");
 
   // ── 2. 홈 ────────────────────────────────────────────────

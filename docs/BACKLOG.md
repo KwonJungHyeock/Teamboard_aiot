@@ -318,8 +318,15 @@ MD-P-2026-026 §B-4 에서 45건 삭제. 삭제 전 TSX 사용 0건을 표로 �
 > 소속을 넣는 곳은 `scripts/init-db.mjs` 와 `db/migrations/0003_area_rework.sql` 뿐이다.
 > `POST /api/members` 는 actor · account · 에이전트 · agent_config 를 만들지만
 > **`actor_area` 행은 안 만든다.** 그래서 **오늘 발급되는 계정은 영역이 0개로 시작한다.**
-> (`agent_config.work_areas` 는 에이전트의 담당 영역이고 `actor_area` 와 다른 것이다.
->  게다가 폼이 안 보내서 늘 `[]` 다.)
+**⚠ `workAreas` 를 영역 배정으로 착각하지 말 것.**
+
+`POST /api/members` 는 `payload.workAreas` 를 받아 `agent_config.work_areas` 에 넣는다.
+**이것은 사람의 `actor_area` 가 아니라 그 사람의 에이전트가 맡을 영역이다.**
+게다가 **폼이 그 값을 안 보내서 항상 `[]`** 다.
+
+> **있는 것처럼 보이지만 없다.** 이 필드를 고쳐서 영역 배정이 될 것이라고 믿으면
+> "고쳤는데 안 된다"로 하루가 간다. B-18 이 만들 것은 **`actor_area` 에 INSERT 하는
+> 새 경로**이고, `workAreas` 와는 별개다(둘 다 폼에 있어야 한다면 칸도 둘이다).
 
 **폴백 (§C 회신 6 · 2-2 · 적용됨).** `lib/user-defaults.ts` 에서 처리한다.
 

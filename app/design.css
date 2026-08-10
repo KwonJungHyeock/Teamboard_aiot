@@ -145,7 +145,9 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
   object-fit: contain; opacity: .85; margin-bottom: 6px; }
 .empty-state .es-title { margin: 0; font-size: var(--f3); font-weight: 700; color: var(--ink); }
 .empty-state .es-hint { margin: 0; font-size: var(--f4); color: var(--muted); max-width: 360px; line-height: 1.6; }
-.empty-state .es-action { margin-top: 10px; }
+/* 빈 상태의 행동은 **둘까지** 온다 (§C 회신 7 · ⓓ) — 넓히거나 지우는 버튼 + 만들기.
+   가운데 정렬을 유지한 채 벌린다. 채움(코랄)은 그중 하나뿐이다(§E1). */
+.empty-state .es-action { margin-top: 10px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 /* 빈 상태 안에 놓인 생성기(연·월 선택 + 버튼) — 좁은 폭을 물려받아 글자가 잘리지 않게 한다.
    /reports 에서 연도 select 가 "2026" 을 잘라 먹는 것을 캡처에서 발견했다. */
 .empty-state .es-action .rp-gen { display: flex; align-items: center; gap: 6px; }
