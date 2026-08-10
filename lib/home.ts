@@ -63,12 +63,18 @@ export interface LaneTask {
   dueDate: string | null;
   status: string;
   colorKey: string | null;
+  projectName: string | null;   // §C2 기한 막대 목록의 묶기 기준
   areaName: string | null;   // 히어로 영역 롤업용
   areaColorKey: string | null;
   origin: "human" | "agent";
   assigneeId: number | null;
   assigneeName: string | null;
   priority: string;          // high | mid | low (표기: 높음/보통/낮음)
+  blocked: boolean;
+  blockedBy: number | null;
+  /** §C1 — 이 업무 때문에 막혀 있는 **남의** 업무 수. 0 이면 아무도 안 기다린다. */
+  blockingOthers: number;
+  blockingWho: string | null;
   late: boolean;
   dday: string | null; // D-3 / D+2
   progress: number; // 0~100 (수동 진행률)
@@ -88,6 +94,12 @@ export interface HomeSummary {
   greetingSub: string;
   metrics: Metric[];
   lanes: Lane[];
+  /**
+   * §C2 기한 막대 목록의 재료 — **레인과 같은 행에서 나온다.**
+   * 레인은 담당자별로 나누느라 담당 없는 업무가 빠지는데, 목록은 그러면 안 된다.
+   * 그래서 레인을 만들기 전의 원본을 그대로 한 번 더 싣는다. **새 쿼리는 없다.**
+   */
+  openTasks: LaneTask[];
   events: LaneEvent[]; // 오늘(또는 조회 기간) 일정 전체 — 레인 배치는 클라이언트
   eventCount: number;
   taskCount: number;
@@ -439,10 +451,26 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     assignee_name: string | null;
     priority: string;
     progress: number;
+    project_name: string | null;
+    blocked: boolean;
+    blocked_by: number | null;
+    blocking_others: number;
+    blocking_who: string | null;
   }>(
     `SELECT t.id, t.title, t.start_date::text, t.due_date::text, t.status, p.color_key,
+            p.name AS project_name,
             ar.name AS area_name, ar.color_key AS area_color,
-            t.origin, t.assignee_id, ac.display_name AS assignee_name, t.priority, t.progress
+            t.origin, t.assignee_id, ac.display_name AS assignee_name, t.priority, t.progress,
+            t.blocked, t.blocked_by,
+            -- §C1 「내가 막는 것」 — 이 업무를 원인으로 막혀 있는 **남의** 업무 수.
+            -- 028 §B2 역방향 차단이 이미 서버에 있다. 여기서는 세기만 한다.
+            (SELECT count(*)::int FROM task bk
+              WHERE bk.blocked_by = t.id AND bk.is_active = true AND bk.blocked = true
+                AND bk.assignee_id IS DISTINCT FROM t.assignee_id) AS blocking_others,
+            (SELECT string_agg(DISTINCT bac.display_name, ' · ') FROM task bk
+               LEFT JOIN actor bac ON bac.id = bk.assignee_id
+              WHERE bk.blocked_by = t.id AND bk.is_active = true AND bk.blocked = true
+                AND bk.assignee_id IS DISTINCT FROM t.assignee_id) AS blocking_who
      FROM task t
      LEFT JOIN project p ON p.id = t.project_id
      LEFT JOIN area ar ON ar.id = t.area_id
@@ -473,12 +501,15 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
         dueDate: t.due_date,
         status: t.status,
         colorKey: t.color_key,
+        projectName: t.project_name,
         areaName: t.area_name,
         areaColorKey: t.area_color,
         origin: t.origin,
         assigneeId: t.assignee_id,
         assigneeName: t.assignee_name,
         priority: t.priority,
+        blocked: t.blocked, blockedBy: t.blocked_by,
+        blockingOthers: t.blocking_others, blockingWho: t.blocking_who,
         late: !!t.due_date && t.due_date < today,
         dday: t.due_date ? dday(t.due_date, today) : null,
         progress: t.progress ?? 0,
@@ -931,6 +962,18 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     greetingSub,
     metrics,
     lanes,
+    // 담당 없는 업무도 목록에는 남아야 한다 — 레인에서 빠지는 것과 목록에서 빠지는 것은 다르다.
+    openTasks: laneTasks.map((t) => ({
+      id: t.id, title: t.title, startDate: t.start_date, dueDate: t.due_date,
+      status: t.status, colorKey: t.color_key, projectName: t.project_name,
+      areaName: t.area_name, areaColorKey: t.area_color, origin: t.origin,
+      assigneeId: t.assignee_id, assigneeName: t.assignee_name, priority: t.priority,
+      blocked: t.blocked, blockedBy: t.blocked_by,
+      blockingOthers: t.blocking_others, blockingWho: t.blocking_who,
+      late: !!t.due_date && t.due_date < today,
+      dday: t.due_date ? dday(t.due_date, today) : null,
+      progress: t.progress ?? 0,
+    })),
     events: events.map((e) => ({
       id: e.id,
       title: e.title,

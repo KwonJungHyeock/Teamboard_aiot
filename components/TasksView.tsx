@@ -4,7 +4,8 @@
 // 목록 테이블은 홈 "마감 임박"과 동일한 TaskTable을 재사용한다 (검수 포인트 6).
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/types";
-import TaskTable, { type TaskTableRow } from "./TaskTable";
+import type { UserDefaults } from "@/lib/user-defaults";
+import TaskTable, { type TaskTableRow, type TaskGroupKey, TASK_GROUP_LABEL } from "./TaskTable";
 import Skeleton from "./Skeleton";
 import { notifySavedViewsChanged } from "@/lib/saved-views-events";
 import ErrorNote from "./ErrorNote";
@@ -18,6 +19,7 @@ import {
 } from "@/lib/task-view";
 import { openTaskPanel, openNewTaskModal, TASK_UPDATED_EVENT } from "@/lib/task-panel";
 import InlineTaskInput from "./InlineTaskInput";
+import { useListQuery, type ParamSpec } from "@/lib/use-list-query";
 import BulkBar from "./BulkBar";
 import ProjectCombo from "./ProjectCombo";
 
@@ -75,25 +77,72 @@ const DUE_OPTIONS = [
 ] as const;
 
 /** 정렬 기준 (MD-P-2026-018 §D) — 기본은 기한순. 선택은 사용자별로 기억한다. */
-type SortKey = "due" | "priority" | "recent" | "progress" | "manual";
+/**
+ * 정렬 — **네 종뿐이다** (031 §C 회신 제1부 §3). 이름은 서버 `ORDER_BY` 와 같다.
+ * 정렬은 전부 서버에서 걸린다. 여기서 다시 정렬하지 않는다 —
+ * 클라이언트가 다시 정렬하면 `LIMIT 300` 으로 자른 **뒤**를 정렬하게 되고,
+ * 300건을 넘는 순간 1페이지의 첫 행이 전체의 첫 행이 아니게 된다.
+ */
+type SortKey = "due" | "priority" | "created" | "manual";
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "due", label: "기한순" },
   { key: "priority", label: "우선순위순" },
-  { key: "recent", label: "최신 작성순" },
-  { key: "progress", label: "진척순" },
+  { key: "created", label: "최신 작성순" },
   // §C1 — 이 값일 때만 드래그가 된다. 이름은 "수동 순서" 가 아니라 **"직접 정한 순서"** 다:
   //   목표 진척에 이미 "수동 입력" 이 있어, 같은 단어가 두 개념을 가리키면 안 된다 (§B 회신 [확정]).
   { key: "manual", label: "직접 정한 순서" },
 ];
-const PRIORITY_RANK: Record<string, number> = { high: 0, mid: 1, medium: 1, normal: 1, low: 2 };
+const SORT_DEFAULT: SortKey = "due";
 
-export default function TasksView({ user }: { user: SessionUser }) {
+/**
+ * 목록 초기값 — **주소 · 저장값 · 기본값을 `useListQuery()` 하나가 읽는다** (§C 회신 4).
+ *
+ * 여기 적힌 것이 전부다. 읽는 순서도, 매핑도, 주소에 쓸지 말지도 훅이 정한다.
+ * 파라미터가 늘어도 늘어나는 것은 이 표의 한 줄이지 컴포넌트의 조건문이 아니다 —
+ * 「중간 상태도 상태다」가 두 번 다 **초기값이 하나 늘어난 순간**에 났다.
+ *
+ * `sort` 의 옛 값 두 개:
+ * - `recent` 는 이름만 바뀐 같은 기능이라 **조용히** 옮긴다.
+ * - `progress` 는 기능이 없어진 것이라 **한 번은 말한다.** 아무 말 없이 바뀌면 고장으로 읽힌다.
+ */
+const tasksQuery = ((assigneeId: number) => ({
+  /**
+   * 담당 — 기본값은 **본인**이고, 그 값은 서버가 준다(`lib/user-defaults.ts`).
+   * 기본값이라 주소에 안 쓴다. 예전에는 `?assignee=1` 이 늘 붙어 있었다.
+   *
+   * `all` 은 「전체 담당」이다. 빈 문자열을 쓰지 않는 이유는 B-12 그대로 —
+   * `?assignee=` 라는 껍데기는 "지정 안 함"과 구별되지 않는다.
+   * 담당은 **저장하지 않는다**(`store` 없음). 오늘 누구 것을 보느냐는 취향이 아니다.
+   */
+  assignee: { def: String(assigneeId), test: (v: string) => v === "all" || /^[1-9]\d*$/.test(v) },
+  sort: {
+    def: SORT_DEFAULT,
+    values: SORT_OPTIONS.map((o) => o.key),
+    store: "tb:tasks-sort",
+    alias: { recent: "created", progress: "due" },
+    gone: ["progress"],
+  },
+  // 저장 키는 보드 묶기(`tb:tasks-group`)와 갈라 쓴다 — 뜻이 다른 값이 한 칸을 쓰면 섞인다.
+  group: { def: "none", values: Object.keys(TASK_GROUP_LABEL), store: "tb:list-group" },
+  done: { def: "0", values: ["0", "1"], store: "tb:tasks-done" },
+})) satisfies (n: number) => Record<string, ParamSpec>;
+
+type TasksQueryKey = keyof ReturnType<typeof tasksQuery>;
+
+export default function TasksView({ user, defaults, initialAreas, initial }: {
+  user: SessionUser;
+  /** 사용자 속성으로서의 기본값 — 서버가 매 요청 읽는다(`lib/user-defaults.ts`). */
+  defaults: UserDefaults;
+  /** 서버가 정한 첫 영역 필터. 주소 > (넓게 여는 진입이면 전체 / 아니면 내 기본 영역). */
+  initialAreas: number[];
+  /** 서버가 읽은 주소 쿼리 — 훅이 첫 렌더부터 맞는 값을 쓰게 한다. */
+  initial?: Partial<Record<TasksQueryKey, string>>;
+}) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [inbox, setInbox] = useState<InboxItem[]>([]);
   const [actors, setActors] = useState<Option[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [areas, setAreas] = useState<AreaOption[]>([]);
-  const [myAreaIds, setMyAreaIds] = useState<number[]>([]);
   const [monthGoals, setMonthGoals] = useState<MonthGoalOption[]>([]);
   const [linkGoals, setLinkGoals] = useState<{ id: number; title: string }[]>([]);
   const [today, setToday] = useState("");
@@ -101,28 +150,40 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
 
-  // 필터 (영역 · 프로젝트 · 담당 · 상태 · 기한). 담당 기본값=본인 → "내 업무" 진입.
+  // 필터 (영역 · 프로젝트 · 상태 · 기한). 담당·영역 기본값은 **서버가 준다**(훅 / initialAreas).
   //
   // 영역은 **여러 개**를 고를 수 있다 (MD-P-2026-027 §B2).
   // 사이드바에서 영역 7개를 내리고 여기 칩으로 옮겼다 — 사이드바는 "어디로 갈까"이고
   // 영역은 "무엇을 볼까"라서 필터가 맞는 자리다.
   // URL 은 `?area=2,3` 으로 쓴다. 링크로 공유·북마크된다.
-  const [fAreas, setFAreas] = useState<number[]>([]);
+  // 첫 값은 **서버가 정해서 내려준다.** 예전에는 빈 배열로 시작해 `/api/meta/selectors`
+  // 응답을 받은 뒤 이펙트가 채웠고, 그동안 "영역이 정해졌는가"를 세는 게이트가 필요했다.
+  const [fAreas, setFAreas] = useState<number[]>(initialAreas);
   const fArea = fAreas.length === 1 ? String(fAreas[0]) : "";   // 새 업무 프리셋용 (하나일 때만 의미가 있다)
   const areaParam = fAreas.join(",");
   const [fProject, setFProject] = useState("");
-  // 담당 필터. `""` 는 "전체 담당"이다.
-  // URL 에서는 빈 값 대신 **`all`** 을 쓴다 (B-12) — 빈 파라미터는 "지정 안 함"과
-  // 구별되지 않고, `?assignee=` 라는 껍데기가 주소에 남는다.
-  const [fAssignee, setFAssignee] = useState(String(user.id));
   const [fStatus, setFStatus] = useState("");
   const [fDue, setFDue] = useState("");
-  const [fBlocked, setFBlocked] = useState(false); // 홈 5칸 진입(?blocked=1)
-  // 완료 표시 여부 · 정렬 기준 (MD-P-2026-018 §D). 기본은 "완료 제외 + 기한순".
-  const [showDone, setShowDone] = useState(false);
-  const [sortBy, setSortBy] = useState<SortKey>("due");
-  const [areaDefaulted, setAreaDefaulted] = useState(false);
-  const isMine = fAssignee === String(user.id);
+  const [fBlocked, setFBlocked] = useState(false);
+  const [fBlocking, setFBlocking] = useState(false);   // §C1 「내가 막는 것」 // 홈 5칸 진입(?blocked=1)
+  /**
+   * 완료 표시 · 정렬 · 묶기 — 셋 다 훅이 읽는다. 기본은 "완료 제외 + 기한순 + 묶지 않음".
+   *
+   * `lq.ready` 가 거짓인 동안에는 목록을 **부르지 않는다.** 정렬이 서버로 넘어갔으므로,
+   * 초기값을 모른 채 한 번 부르면 기본 정렬로 받고 곧바로 다시 부르게 된다 —
+   * 요청이 두 번 나가고, 그 사이에 **틀린 순서가 화면에 보인다.**
+   * (드래그 정렬 검사가 이 짧은 순간을 잡아냈다. 잠깐이라도 보이면 사용자도 본다.)
+   */
+  const spec = useMemo(() => tasksQuery(defaults.assigneeId), [defaults.assigneeId]);
+  const lq = useListQuery(spec, initial);
+  const sortBy = lq.value.sort as SortKey;
+  const listGroup = lq.value.group as TaskGroupKey;
+  const showDone = lq.value.done === "1";
+  // 담당 — 주소·상태는 `all`, API 로 나갈 때만 빈 문자열이다(서버는 빈 값을 "전체"로 읽는다).
+  const fAssignee = lq.value.assignee === "all" ? "" : lq.value.assignee;
+  // 진척순이 없어졌다는 안내 — 세션당 1회. 닫으면 다시 안 뜬다.
+  const sortGone = lq.dropped.includes("sort");
+  const isMine = lq.value.assignee === String(user.id);
 
   // 새 업무 — 등록 모달 (MD-P-2026-027 §C). 지금 필터(영역·담당)를 프리셋으로 물려준다.
   const quickNew = useCallback(() => {
@@ -197,8 +258,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
 
   /** 영역 칩 토글. 다중 선택이고, 전부 끄면 "전체 영역"이다. */
   function toggleArea(id: number) {
-    setAreaDefaulted(true);
-    setFAreas((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id].sort((a, b) => a - b)));
+    setFAreas((cur) =>(cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id].sort((a, b) => a - b)));
   }
 
   // 뷰(렌즈) 전환 — 마지막 뷰·그룹 기준 기억(localStorage)
@@ -209,24 +269,21 @@ export default function TasksView({ user }: { user: SessionUser }) {
     if (v && ["sheet", "board", "calendar", "timeline"].includes(v)) setLens(v);
     const g = localStorage.getItem("tb:tasks-group") as BoardGroup | null;
     if (g && ["status", "area", "assignee"].includes(g)) setBoardGroup(g);
-    // URL 이 있으면 URL 우선(공유 링크), 없으면 지난 선택을 되살린다
-    const sp = new URLSearchParams(window.location.search);
-    const urlSort = sp.get("sort") as SortKey | null;
-    const urlDone = sp.get("done");
-    const savedSort = localStorage.getItem("tb:tasks-sort") as SortKey | null;
-    const savedDone = localStorage.getItem("tb:tasks-done");
-    const sortPick = urlSort ?? savedSort;
-    if (sortPick && SORT_OPTIONS.some((o) => o.key === sortPick)) setSortBy(sortPick);
-    if (urlDone === "1") setShowDone(true);
-    else if (urlDone === null && savedDone === "1") setShowDone(true);
+    // 정렬·묶기·완료 포함은 여기서 읽지 않는다 — `useListQuery()` 하나가 읽는다.
+    // 뷰(렌즈)와 보드 그룹은 주소에 안 실리는 값이라 그대로 localStorage 만 본다.
   }, []);
 
-  function pickSort(v: SortKey) { setSortBy(v); localStorage.setItem("tb:tasks-sort", v); }
-  function toggleDone(v: boolean) { setShowDone(v); localStorage.setItem("tb:tasks-done", v ? "1" : "0"); }
+  function pickSort(v: SortKey) { lq.set("sort", v); }
+  function toggleDone(v: boolean) { lq.set("done", v ? "1" : "0"); }
   function pickLens(v: TaskLens) { setLens(v); localStorage.setItem("tb:tasks-lens", v); }
   function pickGroup(g: BoardGroup) { setBoardGroup(g); localStorage.setItem("tb:tasks-group", g); }
 
   const load = useCallback(async () => {
+    // 초기값이 다 정해지기 전에는 안 부른다. **조건은 이제 하나다** —
+    // 영역·담당은 서버가 첫 렌더에 정해서 내려주므로 기다릴 것이 없다.
+    // (예전에는 `areaDefaulted` 라는 게이트가 하나 더 있었다. 화면이 넷이 되면
+    //  네 곳으로 복제될 조건이었다.)
+    if (!lq.ready) return;
     try {
       const qs = new URLSearchParams();
       if (areaParam) qs.set("area", areaParam);
@@ -235,6 +292,9 @@ export default function TasksView({ user }: { user: SessionUser }) {
       if (fStatus) qs.set("status", fStatus);
       if (fDue) qs.set("due", fDue);
       if (fBlocked) qs.set("blocked", "1");
+      if (fBlocking) qs.set("blocking", "1");
+      // 정렬도 서버가 건다 — LIMIT 이 정렬 뒤에 걸려야 1페이지가 전체의 첫 페이지가 된다.
+      if (sortBy !== SORT_DEFAULT) qs.set("sort", sortBy);
       const res = await fetch(`/api/tasks?${qs.toString()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "업무 조회 실패");
@@ -247,7 +307,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
     } finally {
       setLoading(false);
     }
-  }, [areaParam, fProject, fAssignee, fStatus, fDue, fBlocked]);
+  }, [areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, fBlocking, sortBy, lq.ready]);
 
   // 셀렉트 룩업은 목록과 분리된 /api/meta/selectors에서 (Phase 8 D-3)
   const loadSelectors = useCallback(async () => {
@@ -257,47 +317,30 @@ export default function TasksView({ user }: { user: SessionUser }) {
       setActors(data.actors ?? []);
       setProjects(data.projects ?? []);
       setAreas(data.areas ?? []);
-      setMyAreaIds(data.myAreaIds ?? []);
+      // `myAreaIds` 는 더 읽지 않는다 — 영역 기본값은 서버가 첫 렌더에 정한다.
+      // (`/api/meta/selectors` 응답에는 그대로 있다. 다른 화면이 쓴다.)
       setMonthGoals(data.monthGoals ?? []);
       setLinkGoals(data.linkGoals ?? []);
     }
   }, []);
 
-  // 홈 KPI 카드 링크 진입 — ?status·?due 반영 + 팀 전체 범위(담당·영역 전체)로.
+  /**
+   * 홈 진입 필터(`?status` · `?due` · `?blocked` · `?blocking`) — 주소에서 한 번 읽는다.
+   *
+   * 예전에는 이 이펙트가 담당과 영역까지 손댔다(`setFAssignee("")` · `setAreaDefaulted(true)`).
+   * 그래서 첫 렌더는 내 담당 · 내 영역, 확정 렌더는 전체 담당 · 전체 영역이었다.
+   * **그 판단은 이제 서버가 한다**(`app/tasks/page.tsx`) — 여기서는 필터 값만 받는다.
+   */
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const st = sp.get("status");
     const du = sp.get("due");
-    const bl = sp.get("blocked");
-    if (st || du || bl === "1") {
-      if (st) setFStatus(st);
-      if (du) setFDue(du);
-      if (bl === "1") setFBlocked(true);
-      setFAssignee("");
-      setAreaDefaulted(true);
-    }
+    if (st) setFStatus(st);
+    if (du) setFDue(du);
+    if (sp.get("blocked") === "1") setFBlocked(true);
+    if (sp.get("blocking") === "1") setFBlocking(true);
     // 마운트 1회
   }, []);
-
-  // 진입 시 영역 기본값: URL ?area 우선, 없으면 본인 기본 영역(actor_area 첫 항목).
-  // "내 업무" 진입 = 담당 본인 + 영역 본인 (한 번만 적용, 이후엔 사용자 선택 존중).
-  useEffect(() => {
-    if (areaDefaulted) return;
-    const sp0 = new URLSearchParams(window.location.search);
-    // 담당 — `all` 이면 전체 담당(빈 문자열). 숫자면 그 사람. 없으면 기본값(본인) 유지.
-    const urlAssignee = sp0.get("assignee");
-    if (urlAssignee === "all") setFAssignee("");
-    else if (urlAssignee && Number.isInteger(Number(urlAssignee))) setFAssignee(urlAssignee);
-
-    const urlArea = sp0.get("area");
-    if (urlArea) {
-      const ids = urlArea.split(",").map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n > 0);
-      if (ids.length) { setFAreas(ids); setAreaDefaulted(true); }
-    } else if (myAreaIds.length > 0) {
-      setFAreas([myAreaIds[0]]);
-      setAreaDefaulted(true);
-    }
-  }, [myAreaIds, areaDefaulted]);
 
   useEffect(() => {
     load();
@@ -396,43 +439,29 @@ export default function TasksView({ user }: { user: SessionUser }) {
     }
     const out = tasks.filter((t) => keep.has(t.id));
 
-    const prio = (t: TaskItem) => PRIORITY_RANK[t.priority] ?? 1;
-    // 기한 없는 항목은 항상 맨 뒤 — 날짜 비교에 끌어들이면 순서가 뒤죽박죽이 된다
-    const dueKey = (t: TaskItem) => t.dueDate ?? "9999-12-31";
-    const recent = (t: TaskItem) => t.createdAt ?? "";
+    // **여기서 정렬하지 않는다.** 서버가 정렬해서 보낸 순서를 그대로 쓴다 (§C2-정렬).
+    // 걸러내기만 한다 — 걸러내기는 순서를 안 바꾼다.
+    return out;
+  }, [tasks, search, showDone]);
 
-    const cmp: Record<SortKey, (a: TaskItem, b: TaskItem) => number> = {
-      // 지연 → 임박 → 여유 → 기한없음. 동률이면 우선순위, 그다음 최신 작성순.
-      due: (a, b) =>
-        dueKey(a).localeCompare(dueKey(b)) || prio(a) - prio(b) || recent(b).localeCompare(recent(a)),
-      priority: (a, b) =>
-        prio(a) - prio(b) || dueKey(a).localeCompare(dueKey(b)) || recent(b).localeCompare(recent(a)),
-      recent: (a, b) => recent(b).localeCompare(recent(a)) || b.id - a.id,
-      progress: (a, b) => (b.progress ?? 0) - (a.progress ?? 0) || dueKey(a).localeCompare(dueKey(b)),
-      // §C — 사람이 정한 순서. 같은 값이면 id 로 갈라 **매번 같은 순서**가 되게 한다.
-      //   (023 backfill 이후 만들어진 업무는 sort_order 가 0 으로 뭉쳐 있다 — C-a 보고 참조)
-      manual: (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id - b.id,
-    };
-    return out.slice().sort(cmp[sortBy]);
-  }, [tasks, search, showDone, sortBy]);
-
-  // 필터·정렬을 URL 에 반영해 링크로 공유할 수 있게 한다 (MD-P-2026-018 §D).
+  // 필터를 URL 에 반영해 링크로 공유할 수 있게 한다 (MD-P-2026-018 §D).
   // history 를 쌓지 않는다 — 뒤로가기가 필터 변경 이력으로 채워지면 화면을 벗어날 수 없다.
+  //
+  // **정렬 · 묶기 · 완료 포함 · 담당은 여기서 쓰지 않는다.** 훅이 쓴다.
+  // 한 파라미터를 두 곳에서 쓰면 둘 중 어느 쪽이 마지막이었는지에 따라 주소가 달라진다.
   useEffect(() => {
     if (loading) return;
     const sp = new URLSearchParams(window.location.search);
     const set = (k: string, v: string | null) => (v ? sp.set(k, v) : sp.delete(k));
     set("area", areaParam || null);
     set("project", fProject || null);
-    set("assignee", fAssignee || "all");
     set("status", fStatus || null);
     set("due", fDue || null);
     set("blocked", fBlocked ? "1" : null);
-    set("sort", sortBy === "due" ? null : sortBy);
-    set("done", showDone ? "1" : null);
+    set("blocking", fBlocking ? "1" : null);
     const qs = sp.toString();
     window.history.replaceState({}, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
-  }, [loading, areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, sortBy, showDone]);
+  }, [loading, areaParam, fProject, fStatus, fDue, fBlocked, fBlocking]);
 
   /**
    * §C — 보이는 행의 새 순서를 서버에 보낸다.
@@ -477,6 +506,9 @@ export default function TasksView({ user }: { user: SessionUser }) {
           parentTaskId: t.parentTaskId ?? null,   // §A3 계층
           sortOrder: t.sortOrder ?? 0,
           childCount: t.childCount ?? 0,
+          // §C2 막대 재료. 둘 다 없으면 막대를 안 그린다 — 없는 기간을 추정하지 않는다.
+          startDate: t.startDate,
+          dueDate: t.dueDate,
         };
       });
   }, [filteredTasks, today, goalTitleOf]);
@@ -489,6 +521,74 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const emptyNow = !loading && !error && lens === "sheet" && rows.length === 0;
 
   const hiddenDone = tasks.filter((t) => t.status === "done" || t.status === "dropped").length;
+
+  /**
+   * 빈 상태는 **하나가 아니라 셋이다** (§C 회신 7 · ⓓ).
+   *
+   * 예전에는 어떤 이유로 비었든 "상단 필터를 조정하거나…" 한 문장이었다.
+   * 그건 **어느 필터를 어떻게 하라는 말인지 안 알려준다.** 비는 이유마다 다음 행동이 다르다.
+   *
+   * 갈래를 **지금 걸린 필터만 보고** 정한다. 팀 전체 건수를 세지 않는다 —
+   * 숫자 하나 때문에 쿼리를 늘리지 않는다(§C 회신 7 · 2-1).
+   * 그래서 ②는 "정말 아무 조건도 없는데 0건" 일 때만 쓴다. 그때만 참이라고 말할 수 있다.
+   *
+   *   ① mine     — 좁힌 것이 기본값뿐(담당=본인, 영역=내 영역). **넓히는 버튼**을 준다.
+   *   ② none     — 좁힌 것이 하나도 없는데 0건. 진짜 비었다.
+   *   ③ filtered — 능동 조건이 걸렸거나 담당이 남이다. **걸린 조건을 그대로 나열**하고 지운다.
+   *
+   * ①의 「전체 담당으로 보기」가 신규 사용자 문제의 답이다. 기본값은 정적으로 두고
+   * 사용자가 한 번 눌러 넓힌다 — **기본값을 조건부로 만드는 것과는 완전히 다른 일**이다.
+   * 그 클릭은 §C URL 규약대로 `?assignee=all` 로 주소에 남는다.
+   */
+  const areaNameOf = useCallback(
+    (id: number) => areas.find((a) => a.id === id)?.name ?? `#${id}`,
+    [areas]
+  );
+  const emptyCase = useMemo(() => {
+    // 사용자가 **능동적으로 건** 조건. 기본값(담당·영역)은 여기 안 들어간다.
+    const conds: string[] = [];
+    if (search.trim()) conds.push(`검색어 “${search.trim()}”`);
+    if (fProject) conds.push(`프로젝트 ${projects.find((p) => String(p.id) === fProject)?.name ?? fProject}`);
+    if (fStatus) conds.push(`상태 ${STATUS_OPTIONS.find(([v]) => v === fStatus)?.[1] ?? fStatus}`);
+    if (fDue) conds.push(`기한 ${DUE_OPTIONS.find(([v]) => v === fDue)?.[1] ?? fDue}`);
+    if (fBlocked) conds.push("막힌 업무만");
+    if (fBlocking) conds.push("내가 막는 것만");
+    if (showDone) conds.push("완료 포함");
+
+    const mineOnly = lq.value.assignee === String(user.id);
+    const otherOnly = lq.value.assignee !== "all" && !mineOnly;
+    if (otherOnly) conds.push(`담당 ${actors.find((a) => String(a.id) === lq.value.assignee)?.name ?? lq.value.assignee}`);
+    if (fAreas.length) conds.push(`영역 ${fAreas.map(areaNameOf).join(" · ")}`);
+
+    // 능동 조건도 없고 담당도 전체면 — 좁힌 것이 없다. 그때만 "정말 없다"고 말한다.
+    if (!conds.length && !mineOnly) return { kind: "none" as const, conds };
+    // 좁힌 것이 기본값(담당=본인, 영역=내 영역)뿐이면 넓히는 버튼을 준다.
+    if (mineOnly && conds.every((c) => c.startsWith("영역 "))) return { kind: "mine" as const, conds };
+    return { kind: "filtered" as const, conds };
+  }, [search, fProject, fStatus, fDue, fBlocked, fBlocking, showDone,
+      fAreas, areaNameOf, lq.value.assignee, user.id, projects, actors]);
+
+  /** ③ 조건 지우기 — 좁히는 것을 **전부** 푼다. 하나만 풀면 또 0건일 수 있다. */
+  function clearFilters() {
+    setSearch(""); setFProject(""); setFStatus(""); setFDue("");
+    setFBlocked(false); setFBlocking(false); setFAreas([]);
+    lq.set("assignee", "all");
+    lq.set("done", "0");
+  }
+
+  const EMPTY_COPY = {
+    mine: {
+      text: "아직 나에게 배정된 업무가 없어요",
+      hint: emptyCase.conds.length
+        ? `${emptyCase.conds.join(" · ")} · 담당 나 로 보고 있어요`
+        : "담당이 나인 업무만 보고 있어요",
+    },
+    none: { text: "아직 업무가 없어요", hint: "첫 업무를 만들어 시작하세요" },
+    filtered: {
+      text: "조건에 맞는 업무가 없어요",
+      hint: emptyCase.conds.join(" · "),
+    },
+  }[emptyCase.kind];
 
   return (
     /* 페이지 뼈대는 공통 컴포넌트가 그린다 (MD-P-2026-019 §B) —
@@ -512,7 +612,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
             value={search} onChange={(e) => setSearch(e.target.value)} />
           {/* 영역 칩 — 다중 선택. 색 점은 사이드바에서 쓰던 영역 색을 그대로 쓴다 (§B2) */}
           <button className={`pg-chip${fAreas.length === 0 ? " on" : ""}`}
-            onClick={() => { setFAreas([]); setAreaDefaulted(true); }}>전체 영역</button>
+            onClick={() => setFAreas([])}>전체 영역</button>
           {areas.map((a) => (
             <button key={a.id} className={`pg-chip area-chip${fAreas.includes(a.id) ? " on" : ""}`}
               aria-pressed={fAreas.includes(a.id)} onClick={() => toggleArea(a.id)}>
@@ -520,17 +620,33 @@ export default function TasksView({ user }: { user: SessionUser }) {
               {a.name}
             </button>
           ))}
-          <select value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
-            <option value="">전체 담당</option>
+          {/* 값은 `all`/`<id>` 다. 빈 문자열을 쓰지 않는다 — 주소에 껍데기가 남는다(B-12). */}
+          <select value={lq.value.assignee} aria-label="담당"
+            onChange={(e) => lq.set("assignee", e.target.value)}>
+            <option value="all">전체 담당</option>
             {actors.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
           {/* §C1 — 잡히지 않는 핸들을 보여주면 고장으로 읽힌다. 대신 어떻게 켜는지 말한다. */}
           {sortBy !== "manual" && (
             <span className="dragoff">순서를 바꾸려면 정렬을 &lsquo;직접 정한 순서&rsquo;로 바꾸세요</span>
           )}
-          <select value={sortBy} onChange={(e) => pickSort(e.target.value as SortKey)} aria-label="정렬 기준">
-            {SORT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}{o.key === "due" ? " (기본)" : ""}</option>)}
+          <select value={listGroup} aria-label="묶는 기준"
+            onChange={(e) => lq.set("group", e.target.value)}>
+            {(Object.keys(TASK_GROUP_LABEL) as TaskGroupKey[]).map((k) => (
+              <option key={k} value={k}>{k === "none" ? "묶지 않음 (기본)" : `${TASK_GROUP_LABEL[k]}로 묶기`}</option>
+            ))}
           </select>
+          <select value={sortBy} onChange={(e) => pickSort(e.target.value as SortKey)} aria-label="정렬 기준">
+            {SORT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}{o.key === SORT_DEFAULT ? " (기본)" : ""}</option>)}
+          </select>
+          {/* 진척순이 없어졌다 — **조용히 떨어뜨리되 흔적은 남긴다.** 세션당 1회.
+              이름만 바뀐 `recent → created` 와 다르다. 저건 같은 기능이고 이건 사라진 기능이다. */}
+          {sortGone && (
+            <span className="sortgone" role="status">
+              진척순 정렬은 지금 제공하지 않습니다 — 기한순으로 표시합니다
+              <button type="button" onClick={() => lq.dismiss("sort")} aria-label="안내 닫기">✕</button>
+            </span>
+          )}
           <button className={`pg-chip${showDone ? " on" : ""}`} onClick={() => toggleDone(!showDone)}>
             완료 포함
           </button>
@@ -624,12 +740,26 @@ export default function TasksView({ user }: { user: SessionUser }) {
               title={isMine ? "내 업무" : "업무 목록"}
               sub={`${rows.length}건`}
               emptyScope="full"
-              emptyText="아직 업무가 없어요"
-              emptyHint="상단 필터를 조정하거나, 새 업무를 만들어 시작하세요."
+              emptyText={EMPTY_COPY.text}
+              emptyHint={EMPTY_COPY.hint}
               emptyAction={
-                <button className="btn small primary" onClick={quickNew}>
-                  ＋ 새 업무
-                </button>
+                <>
+                  {/* 넓히는 버튼은 **채우지 않는다.** 코랄 채움은 화면당 1개이고,
+                      이 빈 상태에서 그 하나는 「＋ 새 업무」다 (§E1). */}
+                  {emptyCase.kind === "mine" && (
+                    <button className="btn small" onClick={() => lq.set("assignee", "all")}>
+                      전체 담당으로 보기
+                    </button>
+                  )}
+                  {emptyCase.kind === "filtered" && (
+                    <button className="btn small" onClick={clearFilters}>
+                      조건 지우기
+                    </button>
+                  )}
+                  <button className="btn small primary" onClick={quickNew}>
+                    ＋ 새 업무
+                  </button>
+                </>
               }
               variant="full"
               quickComplete
@@ -644,6 +774,11 @@ export default function TasksView({ user }: { user: SessionUser }) {
               }
               onStatusChange={changeStatus}
               onRowClick={(id) => openTaskPanel(id)}
+              // §C2 — 기한 막대 목록. 구간은 이번 달. 넷이 같은 컴포넌트를 쓴다(§C4).
+              // 범위는 **컴포넌트가 정한다**(`defaultBarRange`). 여기서 안 고른다 —
+              // 이번 달 고정으로 두었더니 6행 중 3행이 구간 밖(stub 50%)이었다.
+              timelineToday={today || undefined}
+              groupBy={listGroup}
             />
           </>
         )}

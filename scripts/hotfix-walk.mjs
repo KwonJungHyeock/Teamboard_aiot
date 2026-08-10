@@ -108,8 +108,14 @@ try {
   await pool.query(`UPDATE task SET due_date = CURRENT_DATE + 3 WHERE id = $1`, [rows[0].id]);
   await pool.query(`UPDATE task SET due_date = CURRENT_DATE - 5 WHERE id = $1`, [rows[1].id]);
 
+  // **필터를 먼저 연다.** /tasks 는 기본이 "내 영역 + 내 담당"이라, 우리가 손댄 업무가
+  // 그 필터 밖이면 등급이 화면에 아예 안 나타난다. 그러면 "임박이 없다"가 되는데
+  // 그건 색이 틀린 것이 아니라 **검사가 대상을 못 본 것**이다. 둘을 구별해야 한다.
   await page.goto(`${BASE}/tasks`, { waitUntil: "networkidle" });
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(900);
+  await page.getByRole("button", { name: "전체 영역" }).click().catch(() => {});
+  await page.selectOption('select[aria-label="담당"], select >> nth=0', "").catch(() => {});
+  await page.waitForTimeout(1400);
   const sheet = await readDue(".due .tt-dday");
   const late = Object.entries(sheet).find(([t]) => /^D\+\d+$/.test(t));
   const soon = Object.entries(sheet).find(([t]) => t === "D-DAY" || (/^D-(\d+)$/.test(t) && Number(RegExp.$1) <= 7));

@@ -41,6 +41,22 @@ await ctx.addCookies([{
 }]);
 const page = await ctx.newPage();
 
+/**
+ * **관측 도구부터 확인한다** (§G · MD-P-2026-031 §C).
+ * 화면이 반응하지 않을 때 코드를 의심하기 전에 화면이 살아 있는지 본다.
+ * dev 서버 청크가 404 인 상태로 잰 값은 값이 아니다 — 실제로 그렇게 한 번 헛짚었다.
+ * 콘솔 오류가 하나라도 있으면 **측정 자체를 실패로 끝낸다.**
+ */
+const consoleErrors = [];
+page.on("pageerror", (e) => consoleErrors.push(String(e).slice(0, 120)));
+page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 120)); });
+// 페이지를 떠나며 취소된 요청은 오류가 아니다 — 그것까지 세면 검사가 늘 실패한다.
+page.on("requestfailed", (r) => {
+  const why = r.failure()?.errorText ?? "";
+  if (/ABORTED/i.test(why)) return;
+  consoleErrors.push(`요청 실패 ${r.url().slice(-50)} (${why})`);
+});
+
 // 100% 배율 캡처 — §H A1 이 요구하는 근거다. 125%에서 잘 보이는 것은 근거가 아니다.
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-031/A";
 const SHOT = new Set(["/", "/tasks", "/goals", "/reports", "/members", "/areas/1"]);
@@ -229,6 +245,11 @@ try {
     return Object.entries(by).sort((a, b) => b[1].length - a[1].length);
   };
 
+  if (consoleErrors.length) {
+    console.error(`\n콘솔 오류 ${consoleErrors.length}건 — 화면이 성한 상태가 아니다. 이 값은 값이 아니다.`);
+    for (const e of consoleErrors.slice(0, 5)) console.error(`  ${e}`);
+    process.exit(1);
+  }
   console.log(`\n════ 합계 ════`);
   console.log(`검사 대상 ${seen}개 · 세로정렬 위반 ${bad.length}건 · 가로 잘림 ${clip.length}건 · 하한 미만 ${small.length}건 · 여러 줄 예외 ${multi.length}건 · 아래여백 예외 ${gutter.length}건`);
 

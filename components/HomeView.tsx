@@ -6,9 +6,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { openPanel } from "@/lib/side-panel";
+import { openTaskPanel } from "@/lib/task-panel";
 import type { HomeSummary } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
 import { dueUrgency } from "@/lib/task-view";
+import TaskTable, { type TaskTableRow } from "./TaskTable";
+import { quarterRange, spanRange } from "@/lib/task-bars";
+import { useListQuery, type ParamSpec } from "@/lib/use-list-query";
+import { showsInMain } from "@/lib/area-policy";
 import PageShell from "./PageShell";
 import SectionEmpty from "./SectionEmpty";
 import HeroTimeline from "./HeroTimeline";
@@ -17,6 +22,15 @@ import { pfill } from "@/lib/progress-bar";
 
 type TabKey = "overview" | "focus" | "team";
 type Range = "quarter" | "all";
+
+/**
+ * 기간 토글 — 업무 목록과 **같은 훅**이 읽는다 (§C 회신 4).
+ * 홈은 파라미터가 하나뿐이라 손으로 써도 되지만, 그렇게 두면 화면마다 규칙이 갈린다.
+ * 저장하지 않는다(`store` 없음) — 기간은 지금 보려는 범위지 취향이 아니다.
+ */
+const HOME_QUERY = {
+  span: { def: "quarter", values: ["quarter", "all"] },
+} satisfies Record<string, ParamSpec>;
 
 /** 필터바 우측 끝 NOW (§D1) — mono, 분 단위 갱신 */
 function NowStamp() {
@@ -35,10 +49,15 @@ function NowStamp() {
 
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 
-export default function HomeView({ summary, user }: { summary: HomeSummary; user: SessionUser }) {
+export default function HomeView({ summary, user, initialSpan }: {
+  summary: HomeSummary; user: SessionUser; initialSpan?: string;
+}) {
   const [anchor, setAnchor] = useState<string>(summary.today);
   const [tab, setTab] = useState<TabKey>("overview");
-  const [range, setRange] = useState<Range>("quarter");
+  // §C URL 규약 — 기본값(이번 분기)은 주소에 안 쓴다. history 를 쌓지 않는다. 훅이 한다.
+  // 서버가 읽은 값을 같이 넘긴다 — 저장값이 없는 파라미터라 서버가 답을 안다.
+  const lq = useListQuery(HOME_QUERY, { span: initialSpan });
+  const range = lq.value.span as Range;
 
   const subtitle = useMemo(() => {
     const d = new Date(`${summary.today}T12:00:00+09:00`);
@@ -68,8 +87,8 @@ export default function HomeView({ summary, user }: { summary: HomeSummary; user
       onTab={(k) => setTab(k as TabKey)}
       filters={
         <>
-          <button className={`pg-chip${range === "quarter" ? " on" : ""}`} onClick={() => setRange("quarter")}>이번 분기</button>
-          <button className={`pg-chip${range === "all" ? " on" : ""}`} onClick={() => setRange("all")}>전체 기간</button>
+          <button className={`pg-chip${range === "quarter" ? " on" : ""}`} onClick={() => lq.set("span", "quarter")}>이번 분기</button>
+          <button className={`pg-chip${range === "all" ? " on" : ""}`} onClick={() => lq.set("span", "all")}>전체 기간</button>
         </>
       }
       filterSummary={<NowStamp />}
@@ -83,6 +102,13 @@ export default function HomeView({ summary, user }: { summary: HomeSummary; user
             onAnchorChange={setAnchor}
             compact
           />
+          <JudgeTiles tasks={summary.openTasks} viewerId={user.id} />
+
+          {/* §C2 — 진행 중인 일. 홈에 목록이 **없던** 자리다(정리가 아니라 추가).
+              메인(R&D · 플랫폼 · 교육자료)만 펼치고 상시는 접힌 한 줄로 건수만 보인다.
+              상시라도 우선순위 높음은 메인으로 올라온다 — 분류는 lib/area-policy.ts 하나. */}
+          <DeadlineList tasks={summary.openTasks} today={summary.today} span={range} />
+
           <div className="hm-g2">
             <div className="hm-col">
               <GoalsBlock annual={summary.annualGoals} annualLabel={summary.annualLabel} quarters={quarters} myGoalCount={summary.myGoalCount} />
@@ -343,6 +369,123 @@ function TeamTab({ rows }: { rows: HomeSummary["teamStatus"] }) {
               <em className={r.avgProgress === null ? "dl-bar-na" : ""}>{r.avgProgress === null ? "—" : `${r.avgProgress}%`}</em>
             </span>
           </span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+/* ══════════ §C2 진행 중인 일 — 기한 막대 목록 ══════════
+   **넷이 같은 컴포넌트를 쓴다**(§C4). 여기서 새로 만드는 것은 목록이 아니라
+   "무엇을 담을지"뿐이다. 그리는 일은 TaskTable 이 한다. */
+function DeadlineList({ tasks, today, span }: {
+  tasks: HomeSummary["openTasks"]; today: string; span: Range;
+}) {
+  const [openRoutine, setOpenRoutine] = useState(false);
+  const main = tasks.filter(showsInMain);
+  const routine = tasks.filter((t) => !showsInMain(t));
+  const toRow = (t: HomeSummary["openTasks"][number]): TaskTableRow => ({
+    id: t.id, title: t.title, projectName: t.projectName, colorKey: t.colorKey,
+    assigneeName: t.assigneeName, status: t.status, priority: t.priority,
+    areaName: t.areaName ?? undefined, progress: t.progress,
+    dday: t.dday, overdue: t.late,
+    startDate: t.startDate, dueDate: t.dueDate,
+  });
+  /**
+   * §C 회신 3-1 — 눈금 범위는 **홈 상단의 기간 토글이 정한다.** 새 컨트롤을 만들지 않는다.
+   * 한 달 고정이었을 때 36행 중 24행에 막대가 없었다(구간 밖 16 · 기한 없음 8).
+   * 3분의 2가 막대가 아닌 기한 막대 목록은 눈금 범위가 틀린 것이다.
+   */
+  const range = !today ? undefined : span === "all" ? spanRange(tasks, today) : quarterRange(today);
+  return (
+    <>
+      <TaskTable
+        rows={main.map(toRow)}
+        title="진행 중인 일"
+        sub={`${main.length}건`}
+        variant="full"
+        // 홈만 범위를 덮어쓴다. **이유** — 홈에는 「이번 분기 / 전체 기간」 토글이 있고,
+        // 그 토글이 곧 사용자가 고른 범위라 컴포넌트 기본값보다 세다(§C 회신 3-1).
+        timeline={range}
+        groupBy="project"
+        emptyText="진행 중인 업무가 없어요"
+        onRowClick={(id) => openTaskPanel(id)}
+      />
+      {routine.length > 0 && (
+        <section className="card hm-routine">
+          {/* 상시는 접힌 한 줄. **건수와 지연만** 보인다 — 펼치는 것은 사용자가 정한다. */}
+          <button className="fold" onClick={() => setOpenRoutine((v) => !v)} aria-expanded={openRoutine}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+              strokeWidth="1.8" strokeLinecap="round" className={openRoutine ? "open" : undefined}>
+              <path d="M6 3.6L10.4 8 6 12.4" />
+            </svg>
+            <span className="t">상시 업무</span>
+            <span className="m">
+              {Array.from(new Set(routine.map((t) => t.areaName).filter(Boolean))).join(" · ")} · {routine.length}건
+            </span>
+            {routine.filter((t) => t.late).length > 0 && (
+              <span className="r"><span className="st bad">지연 {routine.filter((t) => t.late).length}</span></span>
+            )}
+          </button>
+          {openRoutine && (
+            <TaskTable
+              rows={routine.map(toRow)}
+              title=""
+              variant="full"
+              // 위와 같은 이유 — 상단 기간 토글이 정한다
+              timeline={range}
+              groupBy="project"
+              emptyText="상시 업무가 없어요"
+              onRowClick={(id) => openTaskPanel(id)}
+            />
+          )}
+        </section>
+      )}
+    </>
+  );
+}
+
+/* ══════════ §C1 판단 타일 4개 ══════════
+   **업무의 상태만 담는다.** 사람의 행동(멘션·답글·승인)은 레일이 담는다(§C 회신 ③).
+   숫자는 목록과 **같은 함수**에서 나온다 — dueUrgency() 하나.
+   타일이 따로 세면 타일의 「지연 3」과 목록의 코랄 세 줄이 언젠가 어긋난다. */
+function JudgeTiles({ tasks, viewerId }: { tasks: HomeSummary["openTasks"]; viewerId: number }) {
+  const late = tasks.filter((t) => dueUrgency(t.dday) === "late");
+  const soon = tasks.filter((t) => dueUrgency(t.dday) === "soon");
+  const blocked = tasks.filter((t) => t.blocked);
+  const blocking = tasks.filter((t) => t.assigneeId === viewerId && t.blockingOthers > 0);
+
+  // "가장 오래된 것" 은 **숫자로** 고른다. 문자열 비교면 D+9 가 D+33 보다 크다고 나온다.
+  const overdueDays = (t: { dday: string | null }) => Number(/^D\+(\d+)$/.exec(t.dday ?? "")?.[1] ?? 0);
+  const oldest = late.slice().sort((a, b) => overdueDays(b) - overdueDays(a))[0];
+  const todayN = soon.filter((t) => t.dday === "D-DAY").length;
+  const whoWaits = Array.from(new Set(blocking.map((t) => t.blockingWho).filter(Boolean))).join(" · ");
+
+  const items = [
+    { key: "late", label: "지연", n: late.length, tone: "late",
+      why: oldest ? `가장 오래된 것 ${oldest.dday} · ${oldest.title}` : "지연된 업무가 없어요",
+      href: "/tasks?due=overdue&assignee=all" },
+    { key: "soon", label: "이번 주", n: soon.length, tone: "soon",
+      why: soon.length ? `오늘 ${todayN} · 이번 주 ${soon.length - todayN}` : "이번 주 마감이 없어요",
+      href: "/tasks?due=7d&assignee=all" },
+    { key: "blocked", label: "막힘", n: blocked.length, tone: "block",
+      why: blocked.length ? (blocked[0].title) : "막힌 업무가 없어요",
+      href: "/tasks?blocked=1&assignee=all" },
+    { key: "blocking", label: "내가 막는 것", n: blocking.length, tone: "blocking",
+      why: blocking.length ? `${whoWaits}가 기다리는 중` : "내가 막고 있는 것이 없어요",
+      href: "/tasks?blocking=1&assignee=all" },
+  ];
+  return (
+    <div className="judge">
+      {items.map((it) => (
+        // 0건 타일은 **숨기지 않는다.** 사라지면 어제와 비교가 안 된다.
+        <Link key={it.key} href={it.href} className={`jt jt-${it.tone}${it.n === 0 ? " zero" : ""}`}>
+          <span className="jt-top">
+            <span className="jt-l">{it.label}</span>
+            <span className="jt-n num">{it.n}</span>
+          </span>
+          {/* 숫자만 있는 타일은 눌러보기 전까지 아무 판단도 못 하게 한다 — 한 줄 사유가 붙는다 */}
+          <span className="jt-why">{it.why}</span>
         </Link>
       ))}
     </div>

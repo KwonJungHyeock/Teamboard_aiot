@@ -651,11 +651,18 @@ function QuarterSection({
   return (
     <section className={`qsec${open ? " open" : ""}`} aria-label={`분기 목표 ${goal.title}`}>
       <div className={`qsec-h ${goal.colorKey ?? "edu"}`}>
-        <button className="qsec-fold" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        {/* §E3 (B-15) — **button 안에 button 을 두지 않는다.**
+            HTML 규격상 올 수 없어 브라우저가 파싱 단계에서 바깥을 조기 종료하거나 중첩을
+            무시한다. 그래서 화면마다 다르게 동작하고, 실제로 접기를 누르면 목표 상세가
+            열렸다. 하이드레이션 경고로도 콘솔에 뜬다 — 검사기가 그걸 잡아 여기까지 왔다.
+            바깥을 `div[role=button]` 으로 바꾸지 않는다. 그건 같은 문제를 접근성 트리에서만
+            숨기는 것이다. 접기 토글과 제목을 **형제로** 둔다. */}
+        <button className="qsec-fold" aria-expanded={open} onClick={() => setOpen((v) => !v)}
+          aria-label={`${quarterLabel(goal.periodStart)} ${open ? "접기" : "펼치기"}`}>
           <svg className="cv" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></svg>
           <span className="qsec-q">{quarterLabel(goal.periodStart)}</span>
-          <GoalTitle goal={goal} />
         </button>
+        <GoalTitle goal={goal} />
         <span className="gsp" />
         {/* 접힌 헤더에도 진척은 보인다 */}
         <GoalProgress progress={goal.progress} colorKey={goal.colorKey}
