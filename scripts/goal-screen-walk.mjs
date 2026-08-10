@@ -28,9 +28,26 @@ const bad = (id, n) => { rows.push({ id, pass: false, n }); console.log(`FAIL ${
 const chk = (id, c, n) => (c ? ok(id, n) : bad(id, n));
 
 let browser;
+/**
+ * **검사가 만든 것은 검사가 지운다 — 값뿐 아니라 「기록」도.**
+ *
+ * 이 검사는 진행률 슬라이더를 실제로 끌어서 잰다. 그러면 활동 로그에
+ * `진행률 변경 (0% → 90%)` 이 남는다. 값은 finally 에서 SQL 로 되돌리지만
+ * **되돌림은 로그를 남기지 않으므로**, 화면에는 "90 으로 올렸다"만 열 번 쌓였다.
+ *
+ * 실제로 일어난 일 — 프로젝트 상세 「최근 활동」이 같은 줄 다섯 개로 채워져
+ * 다른 활동을 밀어냈고, PM 이 캡처를 보고 **"진행률이 저장되지 않는다"** 고 읽었다.
+ * 조사 결과 API 는 정상이었다(200 · DB 90). 화면을 오독하게 만든 것은 이 잔여물이다.
+ *
+ * 그래서 시작 시점의 로그 최대 id 를 적어 두고, 끝날 때 그 뒤에 생긴 것을 지운다.
+ * **몇 건을 지웠는지 찍는다** — 조용히 지우면 그것대로 안 보인다.
+ */
+let logMark = null;
 let restore = null;   // 실측으로 바꾼 값 되돌리기
 let sliderRestore = null;
 try {
+  // 지금까지의 로그 최대 id — 이 뒤에 생긴 것이 **이 회차가 만든 것**이다.
+  logMark = (await sql(`SELECT coalesce(max(id), 0) AS m FROM activity_log`))[0].m;
   browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
     args: ["--no-proxy-server", "--no-sandbox"] });
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 } });
@@ -40,6 +57,14 @@ try {
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
   const box = (sel) => page.locator(sel).first().boundingBox();
   const css = (sel, prop) => page.locator(sel).first().evaluate((el, p) => getComputedStyle(el)[p], prop);
+  /**
+   * **규격값은 토큰에서 읽어 대조한다. 숫자를 박지 않는다.**
+   * 이 검사는 `19px` · `12.5px` 를 박아 두었다가 §A1(폰트 6단)에서 화면이 20px · 13.5px 로
+   * 바뀌자 **멀쩡한 화면을 두 건 위반으로** 잡았다. 규격이 앞서 갔고 검사가 뒤에 남은 것이다.
+   * 토큰과 대조하면 다음에 단이 바뀌어도 검사는 저절로 따라온다.
+   */
+  const token = (name) => page.evaluate((n) =>
+    getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);
 
   await page.goto(`${BASE}/goals`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1600);
@@ -54,7 +79,8 @@ try {
   const ycM = await page.locator(".ycard-m").first().innerText().catch(() => "");
   const inTree = await page.locator(".qsec .ycard, .qsec-b .ycard").count();
   await page.screenshot({ path: `${OUT}/B1-연간카드.png` });
-  chk("B1-연간카드", yc > 0 && ycTitleFs === "19px" && ycBarH && Math.round(ycBarH.height) === 6 && inTree === 0,
+  const f2 = await token("--f2");
+  chk("B1-연간카드", yc > 0 && ycTitleFs === f2 && ycBarH && Math.round(ycBarH.height) === 6 && inTree === 0,
     `연간 카드 ${yc}개 · 제목 ${ycTitleFs} · 진척 바 ${ycBarH ? Math.round(ycBarH.height) : "?"}px · 남은 기간 "${ycD}" · 진척 "${ycM.replace(/\n+/g, " ")}" · 트리 안에 남은 연간 ${inTree}개(0이어야 한다)`);
   chk("B1-세개초과", yc <= 3 || (await page.locator(".ycards.scroll").count()) === 1,
     yc <= 3 ? `연간이 ${yc}개라 가로 스크롤 조건(4개 이상) 미도달 — 검사 불가` : `연간 ${yc}개 → 가로 스크롤 컨테이너 적용`);
@@ -83,7 +109,8 @@ try {
   const nBtn = page.locator(".qsec-b .grow-n").first();
   const nTxt = await nBtn.innerText().catch(() => "(없음)");
   await page.screenshot({ path: `${OUT}/B3-월행.png` });
-  chk("B3-월행", rowBox && Math.round(rowBox.height) === 38 && rowFs === "12.5px" && rowPad === "22px",
+  const f4 = await token("--f4");
+  chk("B3-월행", rowBox && Math.round(rowBox.height) === 38 && rowFs === f4 && rowPad === "22px",
     `월 행 높이 ${rowBox ? Math.round(rowBox.height) : "?"}px · 글자 ${rowFs} · 들여쓰기 ${rowPad}`);
   chk("B3-칩기본숨김", chipsBefore === 0,
     `펼치기 전 연결 업무 칩 묶음 ${chipsBefore}개 (0이어야 한다) · 우측 버튼 "${nTxt}"`);
@@ -223,6 +250,10 @@ try {
   console.log(`합계 ${rows.length} · 통과 ${pass} · 실패 ${rows.length - pass}`);
   fs.writeFileSync(`${OUT}/walk.json`, JSON.stringify(rows, null, 2));
 } finally {
+  if (logMark !== null) {
+    const gone = await sql(`DELETE FROM activity_log WHERE id > $1 RETURNING id`, [logMark]);
+    if (gone.length) console.log(`정리 — 이 회차가 남긴 활동 로그 ${gone.length}건 삭제`);
+  }
   if (restore) {
     await sql(`UPDATE goal SET title = $1 WHERE id = $2`, [restore.title, restore.id]);
     console.log(`정리 — goal #${restore.id} 제목을 "${restore.title}" 로 되돌림`);

@@ -36,8 +36,25 @@ const COOKIE = (h) => ({ name: "tb_session", value: tok({ id:1, actorId:1, name:
   domain: h, path: "/" });
 
 let browser;
+/**
+ * **검사가 만든 것은 검사가 지운다 — 값뿐 아니라 「기록」도.**
+ *
+ * 이 검사는 진행률 슬라이더를 실제로 끌어서 잰다. 그러면 활동 로그에
+ * `진행률 변경 (0% → 90%)` 이 남는다. 값은 finally 에서 SQL 로 되돌리지만
+ * **되돌림은 로그를 남기지 않으므로**, 화면에는 "90 으로 올렸다"만 열 번 쌓였다.
+ *
+ * 실제로 일어난 일 — 프로젝트 상세 「최근 활동」이 같은 줄 다섯 개로 채워져
+ * 다른 활동을 밀어냈고, PM 이 캡처를 보고 **"진행률이 저장되지 않는다"** 고 읽었다.
+ * 조사 결과 API 는 정상이었다(200 · DB 90). 화면을 오독하게 만든 것은 이 잔여물이다.
+ *
+ * 그래서 시작 시점의 로그 최대 id 를 적어 두고, 끝날 때 그 뒤에 생긴 것을 지운다.
+ * **몇 건을 지웠는지 찍는다** — 조용히 지우면 그것대로 안 보인다.
+ */
+let logMark = null;
 let restore = null;   // 실측으로 바꾼 진척값을 되돌리기 위한 기록
 try {
+  // 지금까지의 로그 최대 id — 이 뒤에 생긴 것이 **이 회차가 만든 것**이다.
+  logMark = (await sql(`SELECT coalesce(max(id), 0) AS m FROM activity_log`))[0].m;
   browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
     args: ["--no-proxy-server", "--no-sandbox"] });
   const host = new URL(BASE).hostname;
@@ -296,6 +313,10 @@ try {
   console.log(`합계 ${rows.length} · 통과 ${pass} · 실패 ${rows.length - pass}`);
   fs.writeFileSync(`${OUT}/h4.json`, JSON.stringify(rows, null, 2));
 } finally {
+  if (logMark !== null) {
+    const gone = await sql(`DELETE FROM activity_log WHERE id > $1 RETURNING id`, [logMark]);
+    if (gone.length) console.log(`정리 — 이 회차가 남긴 활동 로그 ${gone.length}건 삭제`);
+  }
   // 실측으로 바꾼 진척값을 원래대로 되돌린다 — 자기가 건드린 것만.
   if (restore) {
     await sql(`UPDATE task SET progress = $1 WHERE id = $2`, [restore.progress, restore.id]);
