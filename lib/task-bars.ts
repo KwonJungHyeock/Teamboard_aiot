@@ -82,23 +82,84 @@ function todayPercent(r: BarRange): number | null {
 }
 
 /**
- * 눈금 — 1 · 8 · 15 · 22 · 말일 (§C2).
- * 구간이 한 달이 아니어도 같은 규칙으로 다섯 개를 낸다: 시작·1/4·중간·3/4·끝.
- * 눈금이 구간마다 개수가 다르면 눈이 기준을 못 잡는다.
+ * 눈금.
+ * - 한 달 구간이면 1 · 8 · 15 · 22 · 말일.
+ * - 여러 달이면 **월 경계**에 눈금을 놓는다(`7월` · `8월` · `9월`).
+ *   여러 달 구간에서 날짜를 다섯 개 찍으면 눈이 기준을 못 잡는다 — 달이 기준이다.
  */
 export function ticks(r: BarRange): { at: number; label: string }[] {
   const days = rangeDays(r);
   const same = r.start.slice(0, 7) === r.end.slice(0, 7);
-  const idx = same ? [0, 7, 14, 21, days - 1] : [0, Math.floor(days / 4), Math.floor(days / 2), Math.floor((days * 3) / 4), days - 1];
-  const seen = new Set<number>();
   const out: { at: number; label: string }[] = [];
-  for (const i of idx) {
-    if (i < 0 || i >= days || seen.has(i)) continue;
-    seen.add(i);
+  if (same) {
+    const seen = new Set<number>();
+    for (const i of [0, 7, 14, 21, days - 1]) {
+      if (i < 0 || i >= days || seen.has(i)) continue;
+      seen.add(i);
+      out.push({ at: (i / days) * 100, label: String(Number(addDays(r.start, i).slice(8, 10))) });
+    }
+    return out;
+  }
+  for (let i = 0; i < days; i++) {
     const day = addDays(r.start, i);
-    out.push({ at: (i / days) * 100, label: same ? String(Number(day.slice(8, 10))) : `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}` });
+    if (i === 0 || day.slice(8, 10) === "01") {
+      out.push({ at: (i / days) * 100, label: `${Number(day.slice(5, 7))}월` });
+    }
   }
   return out;
+}
+
+/**
+ * 이번 분기 (§C 회신 3-1) — **홈 목록의 기본 구간이다.**
+ * 한 달 눈금은 우리 업무 주기보다 짧다. 7월에 시작해 9월까지 가는 일이 전부
+ * 구간 밖으로 나가면, 화살표 열여섯 개가 줄줄이 서고 그건 정보가 아니라 소음이다.
+ */
+export function quarterRange(today: string): BarRange {
+  const y = Number(today.slice(0, 4));
+  const m = Number(today.slice(5, 7));
+  const q0 = Math.floor((m - 1) / 3) * 3 + 1;          // 1 · 4 · 7 · 10
+  const start = `${y}-${String(q0).padStart(2, "0")}-01`;
+  const endM = q0 + 2;
+  const last = new Date(Date.UTC(y, endM, 0)).getUTCDate();
+  return { start, end: `${y}-${String(endM).padStart(2, "0")}-${String(last).padStart(2, "0")}`, today };
+}
+
+/**
+ * 전체 기간 — 대상의 min(시작) ~ max(마감), 양쪽 5% 여백.
+ * **오늘이 범위 밖이면 그 범위를 쓰지 않는다** — 오늘 선이 없는 시간축은 읽을 기준이 없다.
+ * 날짜가 하나도 없으면 분기로 떨어진다.
+ */
+export function spanRange(
+  tasks: { startDate?: string | null; dueDate?: string | null }[],
+  today: string
+): BarRange {
+  const days = tasks
+    .flatMap((t) => [ymd(t.startDate ?? null), ymd(t.dueDate ?? null)])
+    .filter((d): d is string => !!d)
+    .sort();
+  if (!days.length) return quarterRange(today);
+  let start = days[0] < today ? days[0] : today;
+  let end = days[days.length - 1] > today ? days[days.length - 1] : today;
+  const pad = Math.max(1, Math.round((dateDiffDays(end, start) + 1) * 0.05));
+  start = addDays(start, -pad);
+  end = addDays(end, pad);
+  return { start, end, today };
+}
+
+/** 구간 밖이라 막대를 못 그린 행의 비율 — 20% 를 넘으면 **눈금 범위가 틀린 것**이다(§C 회신 3-2).
+ *  기한이 없는 행은 분모에서 뺀다. 그건 데이터가 없는 것이지 범위 문제가 아니다. */
+export function stubRatio(
+  tasks: { startDate?: string | null; dueDate?: string | null; status?: string }[],
+  r: BarRange
+): { stub: number; drawn: number; total: number; pct: number } {
+  let stub = 0, drawn = 0;
+  for (const t of tasks) {
+    const g = taskBar(t, r);
+    if (g.stub) stub++;
+    else if (g.visible) drawn++;
+  }
+  const total = stub + drawn;
+  return { stub, drawn, total, pct: total ? Math.round((stub / total) * 1000) / 10 : 0 };
 }
 
 function addDays(d: string, n: number): string {

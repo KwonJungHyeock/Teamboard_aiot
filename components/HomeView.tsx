@@ -11,7 +11,7 @@ import type { HomeSummary } from "@/lib/home";
 import type { SessionUser } from "@/lib/types";
 import { dueUrgency } from "@/lib/task-view";
 import TaskTable, { type TaskTableRow } from "./TaskTable";
-import { monthRange } from "@/lib/task-bars";
+import { quarterRange, spanRange } from "@/lib/task-bars";
 import { showsInMain } from "@/lib/area-policy";
 import PageShell from "./PageShell";
 import SectionEmpty from "./SectionEmpty";
@@ -43,6 +43,18 @@ export default function HomeView({ summary, user }: { summary: HomeSummary; user
   const [anchor, setAnchor] = useState<string>(summary.today);
   const [tab, setTab] = useState<TabKey>("overview");
   const [range, setRange] = useState<Range>("quarter");
+  // §C URL 규약 — 기본값(이번 분기)은 주소에 안 쓴다. history 를 쌓지 않는다.
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const v = sp.get("span");
+    if (v === "all" || v === "quarter") setRange(v);
+  }, []);
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (range === "quarter") sp.delete("span"); else sp.set("span", range);
+    const qs = sp.toString();
+    window.history.replaceState({}, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+  }, [range]);
 
   const subtitle = useMemo(() => {
     const d = new Date(`${summary.today}T12:00:00+09:00`);
@@ -90,7 +102,7 @@ export default function HomeView({ summary, user }: { summary: HomeSummary; user
           {/* §C2 — 진행 중인 일. 홈에 목록이 **없던** 자리다(정리가 아니라 추가).
               메인(R&D · 플랫폼 · 교육자료)만 펼치고 상시는 접힌 한 줄로 건수만 보인다.
               상시라도 우선순위 높음은 메인으로 올라온다 — 분류는 lib/area-policy.ts 하나. */}
-          <DeadlineList tasks={summary.openTasks} today={summary.today} />
+          <DeadlineList tasks={summary.openTasks} today={summary.today} span={range} />
 
           <div className="hm-g2">
             <div className="hm-col">
@@ -361,7 +373,9 @@ function TeamTab({ rows }: { rows: HomeSummary["teamStatus"] }) {
 /* ══════════ §C2 진행 중인 일 — 기한 막대 목록 ══════════
    **넷이 같은 컴포넌트를 쓴다**(§C4). 여기서 새로 만드는 것은 목록이 아니라
    "무엇을 담을지"뿐이다. 그리는 일은 TaskTable 이 한다. */
-function DeadlineList({ tasks, today }: { tasks: HomeSummary["openTasks"]; today: string }) {
+function DeadlineList({ tasks, today, span }: {
+  tasks: HomeSummary["openTasks"]; today: string; span: Range;
+}) {
   const [openRoutine, setOpenRoutine] = useState(false);
   const main = tasks.filter(showsInMain);
   const routine = tasks.filter((t) => !showsInMain(t));
@@ -372,7 +386,12 @@ function DeadlineList({ tasks, today }: { tasks: HomeSummary["openTasks"]; today
     dday: t.dday, overdue: t.late,
     startDate: t.startDate, dueDate: t.dueDate,
   });
-  const range = today ? monthRange(today) : undefined;
+  /**
+   * §C 회신 3-1 — 눈금 범위는 **홈 상단의 기간 토글이 정한다.** 새 컨트롤을 만들지 않는다.
+   * 한 달 고정이었을 때 36행 중 24행에 막대가 없었다(구간 밖 16 · 기한 없음 8).
+   * 3분의 2가 막대가 아닌 기한 막대 목록은 눈금 범위가 틀린 것이다.
+   */
+  const range = !today ? undefined : span === "all" ? spanRange(tasks, today) : quarterRange(today);
   return (
     <>
       <TaskTable
