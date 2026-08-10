@@ -27,6 +27,14 @@ export interface BarGeometry {
   stub: { side: "before" | "after"; date: string } | null;
   /** 마감을 넘겼는가 (막대에 코랄 링) */
   over: boolean;
+  /**
+   * 구간 밖으로 **이어지는** 쪽 (§D6 보강).
+   * 잘린 쪽은 라운드를 없앤다 — **둥근 끝 = 여기서 시작하거나 끝난다.
+   * 각진 끝 = 밖으로 이어진다.** 새 색도 새 요소도 쓰지 않고 모서리 하나로 구분한다.
+   * 이걸 안 하면 6월에 시작한 업무가 7/01 에 시작한 것처럼 보인다.
+   */
+  clipStart: boolean;
+  clipEnd: boolean;
 }
 
 /** 구간의 날짜 수. 양 끝을 포함하므로 +1. */
@@ -51,7 +59,10 @@ export function taskBar(
   task: { startDate?: string | null; dueDate?: string | null; status?: string },
   r: BarRange
 ): BarGeometry {
-  const none: BarGeometry = { visible: false, left: 0, width: 0, todayAt: todayPercent(r), stub: null, over: false };
+  const none: BarGeometry = {
+    visible: false, left: 0, width: 0, todayAt: todayPercent(r),
+    stub: null, over: false, clipStart: false, clipEnd: false,
+  };
   const s0 = ymd(task.startDate ?? null) ?? ymd(task.dueDate ?? null);
   const e0 = ymd(task.dueDate ?? null) ?? ymd(task.startDate ?? null);
   if (!s0 || !e0) return none;
@@ -73,6 +84,8 @@ export function taskBar(
     todayAt: todayPercent(r),
     stub: null,
     over,
+    clipStart: s < r.start,
+    clipEnd: e > r.end,
   };
 }
 

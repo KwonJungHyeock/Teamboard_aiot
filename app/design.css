@@ -1804,3 +1804,47 @@ tr.drop-after > td { box-shadow: inset 0 -1px 0 0 var(--coral); }
    목록에서 사라지면 없는 업무가 되고, 그건 되돌리기 어렵다. */
 .tt-nodate { position: absolute; top: 50%; transform: translateY(-50%); left: 0;
   font-size: var(--f6); color: var(--faint, var(--muted)); font-weight: 500; white-space: nowrap; }
+/* §D6 보강 — 구간 밖으로 이어지는 막대는 잘린 티를 낸다.
+   **둥근 끝 = 여기서 시작하거나 끝난다. 각진 끝 = 밖으로 이어진다.**
+   새 색도 새 요소도 쓰지 않는다. 모서리 하나로 구분한다.
+   안 하면 6월에 시작한 업무가 7/01 에 시작한 것처럼 보인다. */
+.tt-bar.clip-s { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.tt-bar.clip-e { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+
+/* ══════════════════════════════════════════════════════════════════
+   031 §C1 — 판단 타일 4개
+   **업무의 상태만 담는다.** 사람의 행동은 레일이 담는다.
+   숫자만 있는 타일은 눌러보기 전까지 아무 판단도 못 하게 하므로 한 줄 사유가 붙는다.
+   0건 타일은 숨기지 않는다 — 사라지면 어제와 비교가 안 된다.
+   ══════════════════════════════════════════════════════════════════ */
+.judge { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.jt {
+  display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 13px 15px 12px; box-shadow: var(--e1); text-decoration: none; color: inherit;
+  transition: box-shadow var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+.jt:hover { border-color: var(--line-hi); box-shadow: var(--e2); }
+.jt:focus-visible { outline: 2px solid var(--edu); outline-offset: 2px; }
+.jt-top { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+.jt-l { font-size: var(--f5); font-weight: 700; color: var(--ink2); }
+.jt-n { margin-left: auto; font-size: var(--f2); font-weight: 800; line-height: 1; letter-spacing: -.03em; }
+.jt-why { display: block; font-size: var(--f6); color: var(--muted); font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 색은 의미색 그대로. 새 색을 만들지 않는다. */
+.jt-late .jt-n { color: var(--coral-text); }
+.jt-soon .jt-n { color: var(--amber-text); }
+.jt-block .jt-n { color: var(--play-text); }
+.jt-blocking .jt-n { color: var(--edu-text); }
+/* 0건 — 회색으로 남긴다. 숨기지 않는다. */
+.jt.zero { background: var(--surface-2); border-color: var(--hair); box-shadow: none; }
+.jt.zero .jt-n, .jt.zero .jt-l, .jt.zero .jt-why { color: var(--muted); }
+
+/* ── 031 §C1/§C2 — 기한 색은 `.hv` 밖에서도 걸린다 ──────────────────
+   H-2 로 지연·임박 색을 정했는데 그 규칙이 `.hv` 안에서만 걸려 있었다.
+   §C2 로 홈에 새로 생긴 목록은 `.hv` 밖이라 **지연이 회색으로 떴다.**
+   같은 컴포넌트를 네 화면이 쓰는데 색이 조상에 달려 있으면 화면마다 달라진다.
+   판정은 dueUrgency() 하나인데 표시가 갈리면 그게 더 나쁘다 — 코드는 맞고 화면이 틀리다. */
+.due { font-family: var(--f-d); font-size: var(--f6); color: var(--muted); }
+.due.bad { color: var(--coral-text); font-weight: 700; }
+.due.soon { color: var(--amber-text); font-weight: 700; }
+:is(.due.bad, .due.soon) .tt-dday { font-weight: 700; }

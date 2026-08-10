@@ -110,6 +110,13 @@ export async function GET(request: Request) {
       where.push("t.due_date IS NULL");
     }
     if (blocked === "1") where.push("t.blocked = true");
+    // §C1 「내가 막는 것」 타일이 여는 목록 — 이 업무를 원인으로 **남이** 막혀 있는 것.
+    // 028 §B2 역방향 차단을 목록 조건으로 쓰는 첫 자리다. 새 개념이 아니다.
+    if (url.searchParams.get("blocking") === "1") {
+      where.push(`EXISTS (SELECT 1 FROM task bk
+                           WHERE bk.blocked_by = t.id AND bk.is_active = true AND bk.blocked = true
+                             AND bk.assignee_id IS DISTINCT FROM t.assignee_id)`);
+    }
 
     /**
      * §C2-정렬 — **정렬은 전부 서버에서 건다.**

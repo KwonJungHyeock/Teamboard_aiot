@@ -99,6 +99,8 @@ export default function HomeView({ summary, user }: { summary: HomeSummary; user
             onAnchorChange={setAnchor}
             compact
           />
+          <JudgeTiles tasks={summary.openTasks} viewerId={user.id} />
+
           {/* §C2 — 진행 중인 일. 홈에 목록이 **없던** 자리다(정리가 아니라 추가).
               메인(R&D · 플랫폼 · 교육자료)만 펼치고 상시는 접힌 한 줄로 건수만 보인다.
               상시라도 우선순위 높음은 메인으로 올라온다 — 분류는 lib/area-policy.ts 하나. */}
@@ -434,5 +436,52 @@ function DeadlineList({ tasks, today, span }: {
         </section>
       )}
     </>
+  );
+}
+
+/* ══════════ §C1 판단 타일 4개 ══════════
+   **업무의 상태만 담는다.** 사람의 행동(멘션·답글·승인)은 레일이 담는다(§C 회신 ③).
+   숫자는 목록과 **같은 함수**에서 나온다 — dueUrgency() 하나.
+   타일이 따로 세면 타일의 「지연 3」과 목록의 코랄 세 줄이 언젠가 어긋난다. */
+function JudgeTiles({ tasks, viewerId }: { tasks: HomeSummary["openTasks"]; viewerId: number }) {
+  const late = tasks.filter((t) => dueUrgency(t.dday) === "late");
+  const soon = tasks.filter((t) => dueUrgency(t.dday) === "soon");
+  const blocked = tasks.filter((t) => t.blocked);
+  const blocking = tasks.filter((t) => t.assigneeId === viewerId && t.blockingOthers > 0);
+
+  // "가장 오래된 것" 은 **숫자로** 고른다. 문자열 비교면 D+9 가 D+33 보다 크다고 나온다.
+  const overdueDays = (t: { dday: string | null }) => Number(/^D\+(\d+)$/.exec(t.dday ?? "")?.[1] ?? 0);
+  const oldest = late.slice().sort((a, b) => overdueDays(b) - overdueDays(a))[0];
+  const todayN = soon.filter((t) => t.dday === "D-DAY").length;
+  const whoWaits = Array.from(new Set(blocking.map((t) => t.blockingWho).filter(Boolean))).join(" · ");
+
+  const items = [
+    { key: "late", label: "지연", n: late.length, tone: "late",
+      why: oldest ? `가장 오래된 것 ${oldest.dday} · ${oldest.title}` : "지연된 업무가 없어요",
+      href: "/tasks?due=overdue&assignee=all" },
+    { key: "soon", label: "이번 주", n: soon.length, tone: "soon",
+      why: soon.length ? `오늘 ${todayN} · 이번 주 ${soon.length - todayN}` : "이번 주 마감이 없어요",
+      href: "/tasks?due=7d&assignee=all" },
+    { key: "blocked", label: "막힘", n: blocked.length, tone: "block",
+      why: blocked.length ? (blocked[0].title) : "막힌 업무가 없어요",
+      href: "/tasks?blocked=1&assignee=all" },
+    { key: "blocking", label: "내가 막는 것", n: blocking.length, tone: "blocking",
+      why: blocking.length ? `${whoWaits}가 기다리는 중` : "내가 막고 있는 것이 없어요",
+      href: "/tasks?blocking=1&assignee=all" },
+  ];
+  return (
+    <div className="judge">
+      {items.map((it) => (
+        // 0건 타일은 **숨기지 않는다.** 사라지면 어제와 비교가 안 된다.
+        <Link key={it.key} href={it.href} className={`jt jt-${it.tone}${it.n === 0 ? " zero" : ""}`}>
+          <span className="jt-top">
+            <span className="jt-l">{it.label}</span>
+            <span className="jt-n num">{it.n}</span>
+          </span>
+          {/* 숫자만 있는 타일은 눌러보기 전까지 아무 판단도 못 하게 한다 — 한 줄 사유가 붙는다 */}
+          <span className="jt-why">{it.why}</span>
+        </Link>
+      ))}
+    </div>
   );
 }

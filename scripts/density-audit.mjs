@@ -51,6 +51,22 @@ await ctx.addCookies([{
 }]);
 const page = await ctx.newPage();
 
+/**
+ * **관측 도구부터 확인한다** (§G · MD-P-2026-031 §C).
+ * 화면이 반응하지 않을 때 코드를 의심하기 전에 화면이 살아 있는지 본다.
+ * dev 서버 청크가 404 인 상태로 잰 값은 값이 아니다 — 실제로 그렇게 한 번 헛짚었다.
+ * 콘솔 오류가 하나라도 있으면 **측정 자체를 실패로 끝낸다.**
+ */
+const consoleErrors = [];
+page.on("pageerror", (e) => consoleErrors.push(String(e).slice(0, 120)));
+page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 120)); });
+// 페이지를 떠나며 취소된 요청은 오류가 아니다 — 그것까지 세면 검사가 늘 실패한다.
+page.on("requestfailed", (r) => {
+  const why = r.failure()?.errorText ?? "";
+  if (/ABORTED/i.test(why)) return;
+  consoleErrors.push(`요청 실패 ${r.url().slice(-50)} (${why})`);
+});
+
 const viol = [];
 let scanned = 0;
 
@@ -178,6 +194,11 @@ try {
       - a[1][0][a[1][0].kind === "오른쪽 꼬리" ? "tailPct" : "gapPct"]);
   };
 
+  if (consoleErrors.length) {
+    console.error(`\n콘솔 오류 ${consoleErrors.length}건 — 화면이 성한 상태가 아니다. 이 값은 값이 아니다.`);
+    for (const e of consoleErrors.slice(0, 5)) console.error(`  ${e}`);
+    process.exit(1);
+  }
   console.log(`\n════ 합계 ════`);
   console.log(`전체 폭 행 ${scanned}개 · 위반 ${open.length}건 · 허용 목록 ${allowed.length}건`);
 

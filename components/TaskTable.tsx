@@ -540,7 +540,7 @@ export default function TaskTable({
                         }
                         const pct = Math.max(0, Math.min(100, t.progress ?? 0));
                         return (
-                          <span className={`tt-bar${g.over ? " over" : ""}`}
+                          <span className={`tt-bar${g.over ? " over" : ""}${g.clipStart ? " clip-s" : ""}${g.clipEnd ? " clip-e" : ""}`}
                             style={{ left: `${g.left}%`, width: `${g.width}%` }}>
                             {/* 완료 구간은 영역 색 실선, 남은 구간은 **같은 색 16%**.
                                 회색으로 깔지 않는다 — 색이 둘이 되면 막대가 두 가지를 말한다. */}

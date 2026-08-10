@@ -137,7 +137,8 @@ export default function TasksView({ user }: { user: SessionUser }) {
   const [fAssignee, setFAssignee] = useState(String(user.id));
   const [fStatus, setFStatus] = useState("");
   const [fDue, setFDue] = useState("");
-  const [fBlocked, setFBlocked] = useState(false); // 홈 5칸 진입(?blocked=1)
+  const [fBlocked, setFBlocked] = useState(false);
+  const [fBlocking, setFBlocking] = useState(false);   // §C1 「내가 막는 것」 // 홈 5칸 진입(?blocked=1)
   // 완료 표시 여부 · 정렬 기준 (MD-P-2026-018 §D). 기본은 "완료 제외 + 기한순".
   const [showDone, setShowDone] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>(SORT_DEFAULT);
@@ -267,7 +268,10 @@ export default function TasksView({ user }: { user: SessionUser }) {
   function pickGroup(g: BoardGroup) { setBoardGroup(g); localStorage.setItem("tb:tasks-group", g); }
 
   const load = useCallback(async () => {
-    if (!inited) return;          // 정렬 초기값을 읽기 전에는 안 부른다
+    // 정렬·영역 기본값이 **둘 다** 정해지기 전에는 안 부른다.
+    // 하나라도 나중에 정해지면 그 사이에 다른 목록이 한 번 그려진다 —
+    // 실측에서 첫 렌더가 전체 목록, 확정 렌더가 내 영역 목록으로 갈렸다.
+    if (!inited || !areaDefaulted) return;
     try {
       const qs = new URLSearchParams();
       if (areaParam) qs.set("area", areaParam);
@@ -276,6 +280,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
       if (fStatus) qs.set("status", fStatus);
       if (fDue) qs.set("due", fDue);
       if (fBlocked) qs.set("blocked", "1");
+      if (fBlocking) qs.set("blocking", "1");
       // 정렬도 서버가 건다 — LIMIT 이 정렬 뒤에 걸려야 1페이지가 전체의 첫 페이지가 된다.
       if (sortBy !== SORT_DEFAULT) qs.set("sort", sortBy);
       const res = await fetch(`/api/tasks?${qs.toString()}`);
@@ -290,7 +295,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
     } finally {
       setLoading(false);
     }
-  }, [areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, sortBy, inited]);
+  }, [areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, fBlocking, sortBy, inited, areaDefaulted]);
 
   // 셀렉트 룩업은 목록과 분리된 /api/meta/selectors에서 (Phase 8 D-3)
   const loadSelectors = useCallback(async () => {
@@ -312,6 +317,7 @@ export default function TasksView({ user }: { user: SessionUser }) {
     const st = sp.get("status");
     const du = sp.get("due");
     const bl = sp.get("blocked");
+    if (sp.get("blocking") === "1") { setFBlocking(true); setFAssignee(""); setAreaDefaulted(true); }
     if (st || du || bl === "1") {
       if (st) setFStatus(st);
       if (du) setFDue(du);
@@ -456,12 +462,13 @@ export default function TasksView({ user }: { user: SessionUser }) {
     set("status", fStatus || null);
     set("due", fDue || null);
     set("blocked", fBlocked ? "1" : null);
+    set("blocking", fBlocking ? "1" : null);
     set("sort", sortBy === SORT_DEFAULT ? null : sortBy);
     set("group", listGroup === "none" ? null : listGroup);
     set("done", showDone ? "1" : null);
     const qs = sp.toString();
     window.history.replaceState({}, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
-  }, [loading, areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, sortBy, showDone, listGroup]);
+  }, [loading, areaParam, fProject, fAssignee, fStatus, fDue, fBlocked, fBlocking, sortBy, showDone, listGroup]);
 
   /**
    * §C — 보이는 행의 새 순서를 서버에 보낸다.
