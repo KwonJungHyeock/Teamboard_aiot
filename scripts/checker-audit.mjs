@@ -52,6 +52,22 @@ const TOKENS = {
   "13px": "(없어진 단 — --f4 13.5px 로)", "14px": "(없어진 단 — --f3 15px 로)",
 };
 
+/**
+ * ── ④ 이 검사기 자신에 대한 점검 ────────────────────────────────
+ *
+ * **빈 것끼리 같은 것은 같은 것이 아니다**(§G). 훑을 파일이 0개면 위반도 0건이고,
+ * 그러면 이 도구는 아무 말도 안 한 채 「통과」라고 적는다. 그건 통과가 아니라 미측정이다.
+ * (실제로 dev 서버가 죽은 상태에서 검사기 셋의 결과 해시가 전부 빈 문자열의 해시로
+ *  같아서 "동일"로 읽을 뻔했다.)
+ *
+ * 그래서 셋을 먼저 단언한다.
+ *   ① 훑은 스크립트가 있는가   ② 대조할 코드베이스가 있는가
+ *   ③ **탐지기가 실제로 잡는가** — 일부러 틀린 표본을 넣어 세 탐지기가 각각 반응하는지 본다.
+ * ③ 이 「짝이 되는 존재 단언」이다. 없으면 탐지기가 고장 나도 늘 0건이라 조용하다.
+ */
+const SELF = [];
+const selfChk = (ok, what) => SELF.push({ ok, what });
+
 const deadSel = [];
 const hardPx = [];
 const mute = [];
@@ -104,6 +120,32 @@ for (const f of SCRIPTS) {
   });
 }
 
+// ── ④ 자기 점검 — 세 탐지기에 일부러 틀린 표본을 물린다 ────────────
+{
+  const probe = [
+    'await page.locator(".zz-없는클래스-probe").click();',   // ① 죽은 선택자
+    'const x = fs === "12.5px";',                            // ② 박아 둔 규격 숫자
+    'await thing().catch(() => {});',                        // ③ 삼켜진 예외
+  ];
+  let hitSel = 0, hitPx = 0, hitMute = 0;
+  for (const line of probe) {
+    for (const m of line.matchAll(SEL_CALL)) {
+      for (const cls of (m[2].match(/\.[a-zA-Z][\w-]*/g) ?? [])) {
+        if (!haystack.includes(cls.slice(1))) hitSel++;
+      }
+    }
+    for (const m of line.matchAll(/"(\d+(?:\.\d+)?px)"/g)) if (TOKENS[m[1]]) hitPx++;
+    if (/catch\(\s*\(\s*\)\s*=>\s*\{\s*\}\s*\)/.test(line)) hitMute++;
+  }
+  selfChk(SCRIPTS.length > 0, `훑은 스크립트 ${SCRIPTS.length}개`);
+  selfChk(haystack.length > 1000, `대조할 코드베이스 ${Math.round(haystack.length / 1024)}KB`);
+  selfChk(hitSel === 1 && hitPx === 1 && hitMute === 1,
+    `탐지기 자기 시험 — 죽은 선택자 ${hitSel} · 규격값 ${hitPx} · 삼켜진 예외 ${hitMute} (각 1이어야 한다)`);
+}
+console.log("── ④ 이 검사기 자신 ────────────────────────────────────────");
+for (const s of SELF) console.log(`   ${s.ok ? "ok " : "✗ "} ${s.what}`);
+console.log("");
+
 console.log("── ① 코드베이스에 없는 선택자 (조용히 통과하는 단언) ──────────────");
 if (!deadSel.length) console.log("   없음");
 for (const d of deadSel) {
@@ -123,6 +165,9 @@ for (const m of mute) byFile.set(m.f, (byFile.get(m.f) ?? 0) + 1);
 for (const [f, n] of [...byFile].sort((a, b) => b[1] - a[1])) console.log(`   ${String(n).padStart(2)}  ${f}`);
 console.log("   (판정에는 아직 넣지 않는다 — 한 번에 다 고치면 그 자체가 위험하다. §D 에서 줄인다)\n");
 
-const fail = deadSel.filter((d) => d.alone).length + hardPx.length;
-console.log(`합계 — 단독 죽은 선택자 ${deadSel.filter((d) => d.alone).length} · 박아 둔 규격값 ${hardPx.length} · 삼켜진 예외 ${mute.length} · 판정 ${fail ? "실패" : "통과"}`);
+// 자기 점검이 하나라도 깨지면 **나머지 0건은 증거가 아니다.**
+const selfBad = SELF.filter((s) => !s.ok).length;
+const fail = deadSel.filter((d) => d.alone).length + hardPx.length + selfBad;
+console.log(`합계 — 자기 점검 ${selfBad ? `✗ ${selfBad}건` : "ok"} · 단독 죽은 선택자 ${deadSel.filter((d) => d.alone).length}`
+  + ` · 박아 둔 규격값 ${hardPx.length} · 삼켜진 예외 ${mute.length}(참고) · 판정 ${fail ? "실패" : "통과"}`);
 process.exit(fail ? 1 : 0);
