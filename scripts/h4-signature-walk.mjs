@@ -181,7 +181,7 @@ try {
 
   await p2.goto(`${BASE}/goals`, { waitUntil: "networkidle" });
   await p2.waitForTimeout(1600);
-  await p2.locator(".frn-x").first().click().catch(() => {});
+  await p2.locator(".frn-skip").first().click().catch(() => {});
 
   // (a) 화면 재진입 — 재생되면 안 된다
   await p2.goto(`${BASE}/tasks`, { waitUntil: "networkidle" });

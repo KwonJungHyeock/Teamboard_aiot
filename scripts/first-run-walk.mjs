@@ -18,6 +18,7 @@ import { scryptSync, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { purgeActor, purgeReport } from "./purge-actor.mjs";
 
 requireLocalDb("first-run-walk.mjs");
 
@@ -154,6 +155,18 @@ try {
   await page.waitForTimeout(900);
   await shot(page, "05-new-task-open", "빈 상태 CTA 를 눌러 새 업무 입력을 연다");
 
+  /**
+   * ⚠ **이 단계는 지금 깨끗한 DB 에서 실패한다** (§C3 에서 고친다).
+   *
+   * 이 검사는 오래전부터 정리에 실패해 매 회차 「신규 팀원」 actor 를 하나씩 흘렸다.
+   * 정리를 고쳐 DB 가 깨끗해지자 이 단계가 시간초과하기 시작했다 —
+   * 원본은 **이전 회차가 남긴 찌꺼기 덕분에 통과하고 있었다.**
+   * 즉 통과가 아니라 **오염된 상태에서의 통과**였다.
+   *
+   * 그래서 지금 보이는 실패가 진짜 상태다. 셋 다 §C3 에서 함께 본다 —
+   * 이 단계 · `32g-화면밖` · §D6 막대 최소 폭.
+   * audit:absent — `.tv-quick` 은 없는 갈래인 것을 알고 둔다. 원인 규명 전에 손대지 않는다.
+   */
   const title = page.locator(".qc-title, .tdp-title, .tv-quick input").first();
   await title.waitFor({ state: "visible", timeout: 9000 });
   await title.fill("첫 업무 — 개발 환경 세팅");
@@ -187,15 +200,10 @@ try {
   }
   // ── 정리 — 이 스크립트가 만든 것만 지운다 ──
   if (actorId) {
-    // 로그인만 해도 activity_log 가 쌓인다 — actor 를 지우기 전에 참조를 먼저 끊어야 한다
-    await sql(`DELETE FROM activity_log WHERE user_id = $1 OR task_id IN (SELECT id FROM task WHERE created_by = $1)`, [actorId]).catch((e) => console.error("activity_log", e.message));
-    await sql(`DELETE FROM signal WHERE task_id IN (SELECT id FROM task WHERE created_by = $1)`, [actorId]).catch(() => {});
-    await sql(`DELETE FROM task WHERE created_by = $1`, [actorId]).catch((e) => console.error("task 정리 실패", e.message));
-    await sql(`DELETE FROM notification WHERE user_id = $1 OR actor_id = $1`, [actorId]).catch(() => {});
-    await sql(`DELETE FROM account WHERE actor_id = $1`, [actorId]);
-    await sql(`DELETE FROM actor WHERE id = $1`, [actorId]);
-    const left = await sql(`SELECT count(*)::int n FROM actor WHERE id = $1`, [actorId]);
-    console.log(`정리 완료 — actor ${actorId} 잔여 ${left[0].n}건`);
+    // 지울 테이블을 손으로 나열하지 않는다 — `read_marker` 하나가 빠져 있어서 정리가 죽었고,
+    // 정리가 죽으니 계정이 매 회차 하나씩 남았다(실제로 셋이 쌓였다).
+    // 스키마에 물어보고 지운다. 참조 테이블이 늘어도 여기는 안 바뀐다.
+    console.log(purgeReport(actorId, await purgeActor(sql, actorId)));
   }
   await pool.end();
 }

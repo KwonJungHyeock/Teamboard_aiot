@@ -68,7 +68,7 @@ try {
   // H3-⑨⑩ 모달 열림·닫힘 — scale .96 → 1
   await page.goto(`${BASE}/tasks?assignee=all`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1100);
-  await page.locator(".frn-x").first().click().catch(() => {});
+  await page.locator(".frn-skip").first().click().catch(() => {});
   const readModal = async () => {
     const n = await page.locator(".ntm").count();
     if (n === 0) return "모달 없음";

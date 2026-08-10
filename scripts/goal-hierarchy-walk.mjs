@@ -57,7 +57,7 @@ try {
 
   await page.goto(`${BASE}/goals`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1400);
-  await page.locator(".frn-x").first().click().catch(() => {});
+  await page.locator(".frn-skip").first().click().catch(() => {});
 
   // ══ A-1 · A-2 — 전역 "＋ 새 목표" 에서: 상위 셀렉트 없음 + 없으면 묻는다 ═══
   // 분기 섹션의 "+ 월 목표" 는 이제 만든 자리가 상위를 정하므로(A-신1-1) 묻지 않는다.

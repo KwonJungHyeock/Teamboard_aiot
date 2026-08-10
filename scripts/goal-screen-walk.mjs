@@ -68,7 +68,7 @@ try {
 
   await page.goto(`${BASE}/goals`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1600);
-  await page.locator(".frn-x").first().click().catch(() => {});
+  await page.locator(".frn-skip").first().click().catch(() => {});
 
   // ══ §B1 연간 요약 카드 ═══════════════════════════════════════════
   const yc = await page.locator(".ycard").count();

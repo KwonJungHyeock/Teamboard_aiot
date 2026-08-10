@@ -1,0 +1,111 @@
+// MD-P-2026-031 §C 회신 · 2-3 — **검사기를 검사한다.**
+//
+// 브라우저도 DB 도 안 쓴다. 파일만 읽는다. 그래서 언제든 돌려도 안전하다.
+//
+// ── 왜 있는가 ──────────────────────────────────────────────────
+//
+// 「검사도 낡는다」가 **세 번** 났다.
+//   ① `subtask-walk` 의 행 높이 `=== 38` — §A2 가 44px 로 바꾸자 어긋났다.
+//   ② `goal-link-walk` 의 `.lmn` — 컴포넌트를 지웠는데 단언이 남았다.
+//   ③ `goal-screen-walk` 의 `"19px"` · `"12.5px"` — §A1 폰트 6단에서 어긋났다.
+// 세 번이면 개별 수정으로 끝낼 일이 아니다. **구조로 막는다.**
+//
+// ── 무엇이 위험한가 — 「조용히 통과하는 단언」 ───────────────────
+//
+// 없는 선택자를 세면 `count()` 가 늘 0 이다. `=== 0` 을 기대하는 단언은 **영원히 통과**한다.
+// 실패하지 않으니 아무도 모른다. **틀린 FAIL 보다 나쁘다** — 틀린 FAIL 은 최소한 보인다.
+//
+// 규격 숫자를 박아 두면 반대가 된다. 규격이 바뀌는 순간 **멀쩡한 화면이 위반으로** 잡히고,
+// 그 상태로 코드를 고치면 멀쩡한 것을 망가뜨린다.
+//
+//   node scripts/checker-audit.mjs
+import fs from "node:fs";
+import path from "node:path";
+
+const ROOT = process.cwd();
+const SCRIPTS = fs.readdirSync("scripts").filter((f) => f.endsWith(".mjs") && f !== "checker-audit.mjs");
+
+/** 코드베이스 전체(마크업 + 스타일)를 한 덩어리로 — 선택자가 어디에든 있으면 살아 있는 것이다. */
+const haystack = (() => {
+  const out = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.name === "node_modules" || e.name.startsWith(".")) continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/\.(tsx?|css)$/.test(e.name)) out.push(fs.readFileSync(p, "utf8"));
+    }
+  };
+  for (const d of ["app", "components", "lib"]) if (fs.existsSync(d)) walk(d);
+  return out.join("\n");
+})();
+
+/**
+ * §A 토큰 표 — 이 값이 검사기에 **글자로** 박혀 있으면 토큰에서 읽어야 한다.
+ * 값이 아니라 **이름**이 규격이다. 이름으로 읽으면 단이 바뀌어도 따라온다.
+ */
+const TOKENS = {
+  "26px": "--f1", "20px": "--f2", "15px": "--f3", "13.5px": "--f4", "12px": "--f5", "11px": "--f6",
+  "44px": "--row-h", "38px": "--hdr-h",
+  // 6단에서 **없어진** 값들 — 남아 있으면 그 자체로 낡은 단언이다.
+  "19px": "(없어진 단 — --f2 20px 로)", "12.5px": "(없어진 단 — --f4 13.5px 로)",
+  "13px": "(없어진 단 — --f4 13.5px 로)", "14px": "(없어진 단 — --f3 15px 로)",
+};
+
+const deadSel = [];
+const hardPx = [];
+
+// 선택자를 받는 자리만 본다. 아무 문자열이나 훑으면 SQL·문구까지 걸린다.
+const SEL_CALL = /(?:locator|querySelector|querySelectorAll|\$\$eval|\$eval|\$\$|\$|click|fill|waitForSelector|hasText)\(\s*(["'`])([^"'`]+)\1/g;
+
+for (const f of SCRIPTS) {
+  const src = fs.readFileSync(path.join("scripts", f), "utf8");
+  const lines = src.split("\n");
+
+  lines.forEach((line, i) => {
+    /**
+     * **없는 것이 정상인 선택자**가 있다 — 지운 기능이 안 돌아오는지 보는 부재 단언이다.
+     * 그건 낡은 것이 아니라 의도다. 다만 **의도라고 적혀 있어야** 봐준다.
+     * 바로 윗줄이나 같은 줄에 `audit:absent` 를 적는다. 적지 않으면 낡은 것으로 본다.
+     * (「부재 단언 옆에 존재 단언」과 짝이다 — 없어진 것을 재려면 남은 것도 같이 재라.)
+     */
+    const declared = /audit:absent/.test(line) || /audit:absent/.test(lines[i - 1] ?? "") || /audit:absent/.test(lines[i - 2] ?? "");
+    if (declared) return;
+    // ── ① 죽은 선택자 ─────────────────────────────────────────
+    for (const m of line.matchAll(SEL_CALL)) {
+      const sel = m[2];
+      if (!sel.includes(".")) continue;
+      // `a, b, c` 는 하나만 살아 있어도 동작한다 — 그래도 죽은 가지는 적는다.
+      const branches = sel.split(",").map((s) => s.trim());
+      for (const b of branches) {
+        for (const cls of b.match(/\.[a-zA-Z][\w-]*/g) ?? []) {
+          const name = cls.slice(1);
+          if (/^(mjs|json|png|css|ts|tsx|js)$/.test(name)) continue;
+          if (haystack.includes(name)) continue;
+          deadSel.push({ f, line: i + 1, sel, cls, alone: branches.length === 1 });
+        }
+      }
+    }
+    // ── ② 박아 둔 규격 숫자 ───────────────────────────────────
+    for (const m of line.matchAll(/"(\d+(?:\.\d+)?px)"/g)) {
+      const px = m[1];
+      if (TOKENS[px]) hardPx.push({ f, line: i + 1, px, token: TOKENS[px], text: line.trim().slice(0, 96) });
+    }
+  });
+}
+
+console.log("── ① 코드베이스에 없는 선택자 (조용히 통과하는 단언) ──────────────");
+if (!deadSel.length) console.log("   없음");
+for (const d of deadSel) {
+  console.log(`   ${d.alone ? "✗" : "△"} ${d.f}:${d.line}  ${d.cls}   («${d.sel}»)${d.alone ? "" : " — 여러 갈래 중 하나"}`);
+}
+console.log(`   ✗ 단독 ${deadSel.filter((d) => d.alone).length}건 · △ 갈래 ${deadSel.filter((d) => !d.alone).length}건\n`);
+
+console.log("── ② 토큰에서 읽어야 할 규격 숫자 ────────────────────────────");
+if (!hardPx.length) console.log("   없음");
+for (const h of hardPx) console.log(`   ${h.f}:${h.line}  "${h.px}" → ${h.token}\n      ${h.text}`);
+console.log(`   합계 ${hardPx.length}건\n`);
+
+const fail = deadSel.filter((d) => d.alone).length + hardPx.length;
+console.log(`합계 — 단독 죽은 선택자 ${deadSel.filter((d) => d.alone).length} · 박아 둔 규격값 ${hardPx.length} · 판정 ${fail ? "실패" : "통과"}`);
+process.exit(fail ? 1 : 0);

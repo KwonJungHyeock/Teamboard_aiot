@@ -123,8 +123,9 @@ try {
   // **덮인 것은 없는 것이 아니다.** 세기 전에 먼저 연다는 규칙의 반대 방향이다.
   await q(`UPDATE account SET must_change_pw = false WHERE actor_id = $1`, [newId]);
   await page.goto(`${BASE}/tasks`, { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(1500);
-  const frn = await page.$(".frn[role=dialog]");
+  // **사건을 기다린 뒤 센다.** 고정 대기로 재면 서버가 느린 회차에 "안 떴다"가 나온다 —
+  // 실제로 그렇게 한 번 틀린 FAIL 을 냈다. 안내는 `/api/onboarding` 응답 뒤에 그려진다.
+  const frn = await page.waitForSelector(".frn[role=dialog]", { timeout: 15000 }).catch(() => null);
   const frnT = frn ? await page.$eval(".frn h2", (e) => e.innerText.trim()) : "";
   chk("N-그다음은 첫 실행 안내", !!frn, frn ? `"${frnT}" — 목록은 이 뒤다` : "안내가 안 떴다");
   if (frn) {

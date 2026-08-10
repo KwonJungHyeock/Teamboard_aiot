@@ -88,6 +88,7 @@ try {
   await page.goto(`${BASE}/goals`, { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
   const goals = await page.evaluate(() => ({
+    // audit:absent — 없는 것이 정상. H-3 이 지운 안내가 안 돌아오는지 본다.
     notice: !!document.querySelector(".lmn"),
     banner: document.querySelector(".ulbanner")?.textContent.trim() ?? null,
   }));

@@ -51,7 +51,7 @@ try {
   // ══ §C3 목록 맨 위 한 줄 입력 ═══════════════════════════════════════
   await page.goto(`${BASE}/tasks?assignee=all`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1000);
-  await page.locator(".frn-x").first().click().catch(() => {});   // 첫 사용 안내가 떠 있으면 닫는다
+  await page.locator(".frn-skip").first().click().catch(() => {});   // 첫 사용 안내가 떠 있으면 닫는다
 
   const itiBox = await box(".iti");
   const itiPh = await page.locator(".iti-q").first().getAttribute("placeholder");
@@ -173,7 +173,7 @@ try {
   await page.locator("table .col-chk input").first().check();   // 헤더 = 보이는 행 전체
   await page.waitForTimeout(400);
   const bulkText = await page.locator(".utp-bulk").innerText().catch(() => "");
-  const headerCoral = await page.locator(".pg-actions .btn-primary").count();
+  const headerCoral = await page.locator(".pg-act .btn-primary").count();
   await shot("D3-selected");
   chk("D3-일괄줄", /선택/.test(bulkText) && headerCoral === 0 && visible >= 2,
     `검색으로 실측 ${visible}건만 남기고 전체 선택 → "${bulkText.replace(/\n+/g, " · ")}" · 헤더 코랄 ${headerCoral}개 (0이어야 한다 — 화면당 1개)`);
