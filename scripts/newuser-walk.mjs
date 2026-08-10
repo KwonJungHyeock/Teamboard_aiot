@@ -48,8 +48,18 @@ const browser = await chromium.launch({
 
 const EMAIL = "zz-newuser-walk@example.com";
 let newId = null, agentId = null;
+/**
+ * 이 검사는 **계정을 발급**한다. 계정은 지워도 「구성원 계정 발급 — ZZ-신규」 로그는
+ * 발급한 사람(팀장) 앞으로 남아 살아남는다. 회차마다 한 줄씩 쌓여 활동 화면을 채운다.
+ * **검사가 남긴 흔적은 값뿐 아니라 기록도 되돌린다**(§G). 시작 시점을 적어 두고 지운다.
+ */
+let logMark = null;
 
 async function cleanup() {
+  if (logMark !== null) {
+    const gone = await q(`DELETE FROM activity_log WHERE id > $1 RETURNING id`, [logMark]);
+    if (gone.length) console.log(`정리 — 이 회차가 남긴 활동 로그 ${gone.length}건 삭제`);
+  }
   if (!newId) return;
   await q(`DELETE FROM agent_config WHERE actor_id IN (SELECT id FROM actor WHERE owner_actor_id = $1)`, [newId]);
   await q(`DELETE FROM actor WHERE owner_actor_id = $1`, [newId]);
@@ -62,6 +72,7 @@ async function cleanup() {
 
 try {
   // ── 0. 진짜 발급 경로로 계정을 만든다 ────────────────────────
+  logMark = (await q(`SELECT coalesce(max(id), 0) AS m FROM activity_log`))[0].m;
   await q(`DELETE FROM account WHERE email = $1`, [EMAIL]);   // 이전 회차 잔여물
   const lead = await browser.newContext();
   await lead.addCookies([{

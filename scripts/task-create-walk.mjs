@@ -51,7 +51,10 @@ try {
   // ══ §C3 목록 맨 위 한 줄 입력 ═══════════════════════════════════════
   await page.goto(`${BASE}/tasks?assignee=all`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1000);
-  await page.locator(".frn-skip").first().click().catch(() => {});   // 첫 사용 안내가 떠 있으면 닫는다
+  await page.locator(".frn-skip").first().click({ timeout: 3000 })
+    // 안내는 계정에 따라 안 뜬다(`account.onboarded_at`). 실패해도 되지만
+    // **조용히 넘어가지는 않는다** — 빈 catch 는 없는 실패를 만든다(§G).
+    .catch(() => console.log("   (첫 실행 안내 없음 — 닫을 것이 없다)"));   // 첫 사용 안내가 떠 있으면 닫는다
 
   const itiBox = await box(".iti");
   const itiPh = await page.locator(".iti-q").first().getAttribute("placeholder");

@@ -54,6 +54,7 @@ const TOKENS = {
 
 const deadSel = [];
 const hardPx = [];
+const mute = [];
 
 // 선택자를 받는 자리만 본다. 아무 문자열이나 훑으면 SQL·문구까지 걸린다.
 const SEL_CALL = /(?:locator|querySelector|querySelectorAll|\$\$eval|\$eval|\$\$|\$|click|fill|waitForSelector|hasText)\(\s*(["'`])([^"'`]+)\1/g;
@@ -86,6 +87,15 @@ for (const f of SCRIPTS) {
         }
       }
     }
+    /**
+     * ── ③ 삼켜진 예외 ─────────────────────────────────────────
+     * `catch(() => {})` 는 **없는 실패**를 만든다. 다섯 검사기가 `.frn-x` 오타로
+     * 첫 실행 안내를 한 번도 못 닫으면서 몇 달을 통과한 것이 그 결과다.
+     * 실패해도 되는 동작이면 **"실패해도 된다"를 로그로 남긴다.**
+     */
+    if (/catch\(\s*\(\s*\)\s*=>\s*\{\s*\}\s*\)/.test(line)) {
+      mute.push({ f, line: i + 1, text: line.trim().slice(0, 88) });
+    }
     // ── ② 박아 둔 규격 숫자 ───────────────────────────────────
     for (const m of line.matchAll(/"(\d+(?:\.\d+)?px)"/g)) {
       const px = m[1];
@@ -106,6 +116,13 @@ if (!hardPx.length) console.log("   없음");
 for (const h of hardPx) console.log(`   ${h.f}:${h.line}  "${h.px}" → ${h.token}\n      ${h.text}`);
 console.log(`   합계 ${hardPx.length}건\n`);
 
+console.log("── ③ 삼켜진 예외 `catch(() => {})` ─────────────────────────");
+console.log(`   ${mute.length}건 — 실패해도 되는 동작이면 **그렇다고 로그를 남긴다.**`);
+const byFile = new Map();
+for (const m of mute) byFile.set(m.f, (byFile.get(m.f) ?? 0) + 1);
+for (const [f, n] of [...byFile].sort((a, b) => b[1] - a[1])) console.log(`   ${String(n).padStart(2)}  ${f}`);
+console.log("   (판정에는 아직 넣지 않는다 — 한 번에 다 고치면 그 자체가 위험하다. §D 에서 줄인다)\n");
+
 const fail = deadSel.filter((d) => d.alone).length + hardPx.length;
-console.log(`합계 — 단독 죽은 선택자 ${deadSel.filter((d) => d.alone).length} · 박아 둔 규격값 ${hardPx.length} · 판정 ${fail ? "실패" : "통과"}`);
+console.log(`합계 — 단독 죽은 선택자 ${deadSel.filter((d) => d.alone).length} · 박아 둔 규격값 ${hardPx.length} · 삼켜진 예외 ${mute.length} · 판정 ${fail ? "실패" : "통과"}`);
 process.exit(fail ? 1 : 0);

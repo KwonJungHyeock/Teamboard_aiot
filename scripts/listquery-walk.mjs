@@ -199,6 +199,10 @@ try {
   // ── 홈도 같은 훅을 쓴다 ──────────────────────────────────────
   await page.goto(`${BASE}/?span=all`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".judge", { timeout: 15000 });
+  // 주소 정정은 하이드레이션 뒤 훅의 쓰기 이펙트가 한다. **그 사건을 기다린다** —
+  // 고정 400ms 로 재면 느린 회차에 "정정 안 됨"이라는 틀린 FAIL 이 난다(실제로 났다).
+  await page.waitForFunction(() => document.readyState === "complete", null, { timeout: 8000 })
+    .catch(() => console.log("   (readyState 대기 시간초과 — 아래 값은 그 상태에서 잰 것이다)"));
   await page.waitForTimeout(400);
   const ha = await addr();
   const on = await page.$$eval(".pg-filters .pg-chip", (ns) =>
@@ -208,7 +212,10 @@ try {
 
   await page.goto(`${BASE}/?span=zzz`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".judge", { timeout: 15000 });
-  await page.waitForTimeout(400);
+  // 기본값이면 주소에서 **사라지는** 것이 정답이다. 사라질 때까지 기다린 뒤 잰다.
+  // 안 사라지면 시간초과하고, 그때는 진짜 실패다.
+  await page.waitForFunction(() => !location.search.includes("span="), null, { timeout: 8000 })
+    .catch(() => console.log("   (주소에서 span 이 끝내 안 사라졌다 — 아래 단언이 실패할 것이다)"));
   const hb = await addr();
   const on2 = await page.$$eval(".pg-filters .pg-chip", (ns) =>
     ns.filter((n) => n.classList.contains("on")).map((n) => n.textContent.trim()));
