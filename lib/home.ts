@@ -9,6 +9,8 @@ import {
 import { getDecidedStaleDays, signalVisibilityClause } from "./signals";
 import { creditState } from "./agent";
 import { decisionsThisWeek } from "./decisions";
+import { recentActivity } from "./activity";
+import { rollActivity, isRailActivity, type RolledActivity } from "./activity-roll";
 
 const TZ_OFFSET = "+09:00"; // Asia/Seoul — 팀 기준 시간대
 
@@ -196,6 +198,12 @@ export interface HomeSummary {
     /** 안읽음 — 굵게 + 좌측 코랄 점 (MD-P-2026-018 §B 규격 재사용, MD-P-2026-020 §D4) */
     unread: boolean;
   }[];
+  /**
+   * §C3 레일 「팀 활동」 — 최근 활동을 **묶어서** 6줄.
+   * 「오늘의 활동」이 아니다. 날짜 조건을 걸면 조용한 날에 빈 카드가 되고,
+   * **빈 카드는 신뢰를 깎는다**(「다가오는 일정」을 기각한 것과 같은 이유).
+   */
+  teamActivity: RolledActivity[];
   /** 팀 현황 탭 (MD-P-2026-020 §D5) — 기존 담당자별 집계를 재사용해 한 번에 뽑는다 */
   teamStatus: {
     actorId: number;
@@ -956,8 +964,27 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       ? `지연된 업무가 ${overdueTasks}건 있어요.`
       : `막힌 곳 없이 순항 중입니다.`;
 
+  /**
+   * §C3 레일 「팀 활동」 — 쿼리 **1개**.
+   *
+   * **120건을 읽는다.** 측정으로 정한 값이다 —
+   * 30/40/60건은 5줄, **80건에서 6줄이 차고** 120건부터는 더 안 늘었다(포화).
+   * 일괄 작업 한 번이 40건을 먹어서 60건까지 안 찼던 것이다.
+   * 문턱의 1.5배를 잡아 오늘보다 큰 일괄 작업이 한 번 더 있어도 여섯 줄이 차게 했다.
+   *
+   * **6줄을 못 채우면 그대로 둔다.** 더 읽지 않는다 — 일괄 등록 한 번이 수천 건일 수 있고,
+   * 여섯 줄을 쫓아 그걸 다 훑는 것은 값에 비해 비싸다. **3줄은 빈 카드가 아니라 사실이다.**
+   *
+   * 거르는 것과 묶는 것 **둘 다 서버에서** 한다. 화면에서 하면 120건을 받아 6건만 그린다.
+   */
+  const teamActivity = rollActivity(
+    (await recentActivity(120, undefined, viewerId)).filter((a) => isRailActivity(a.message)),
+    6
+  );
+
   return {
     today,
+    teamActivity,
     greetingName: viewer?.short_name || viewer?.display_name || "",
     greetingSub,
     metrics,
