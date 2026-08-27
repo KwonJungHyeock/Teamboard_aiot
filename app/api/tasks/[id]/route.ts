@@ -454,10 +454,17 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         // §B1·§B3 — 개인 업무는 **개인 목표에만** 붙는다. 팀 목표에 붙으면
         // 팀 진척 분모에 남의 개인 업무가 섞여 숫자로 존재가 새어 나간다.
         // 반대로 팀 업무를 남의 개인 목표에 붙이는 것도 막는다.
+        // 후보를 분기까지 넓히면(§C3 §1) **여기도 같이 넓혀야 한다.** 안 그러면
+        // 화면에는 분기 목표가 뜨고, 체크하면 이 SELECT 가 0행을 내고,
+        // `ON CONFLICT DO NOTHING` 이 그것을 성공처럼 삼킨다 — 위 주석이 말한
+        // 바로 그 "붙였는데 아무 일도 안 일어나는" 조용한 실패가 한 층 위에서 재현된다.
+        // 검사기 §1F 가 「연결해도 값이 그대로다」로 잡았다.
+        // 연간은 여전히 제외다 — 연간에 업무가 직접 붙으면 그 아래 분기가 영원히 빈다.
         await query(
           `INSERT INTO goal_task (goal_id, task_id)
            SELECT $1, $2 WHERE EXISTS (
-             SELECT 1 FROM goal g WHERE g.id = $1 AND g.is_active = true AND g.period_type = 'month'
+             SELECT 1 FROM goal g WHERE g.id = $1 AND g.is_active = true
+               AND g.period_type IN ('quarter', 'month')
                AND ($3 = 'team' OR (g.scope = 'personal' AND g.owner_actor_id = $4))
                AND (g.scope <> 'personal' OR g.owner_actor_id = $4)
            )

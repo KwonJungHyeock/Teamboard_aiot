@@ -20,15 +20,39 @@ export async function GET() {
       query<{ id: number; name: string; color_key: string | null; area_id: number }>(
         `SELECT id, name, color_key, area_id FROM project WHERE is_active = true ORDER BY id`
       ),
-      // 업무의 목표 후보 (MD-P-2026-024 회신 6 지시 20-1)
-      //   1) 이번 달 월 목표를 맨 앞에
-      //   2) 그 안에서는 최근에 실제로 쓴 목표(마지막 연결 시각) 순
-      // 프로젝트가 목표에 붙어 있지 않은 구조라 "프로젝트에서 따라오기"만으로는 후보가 비어버린다.
-      query<{ id: number; title: string; period_start: string; current: boolean }>(
-        `SELECT g.id, g.title, g.period_start::text,
-                (g.period_start <= $1::date AND g.period_end >= $1::date) AS current
+      /**
+       * 업무의 목표 후보 (MD-P-2026-024 회신 6 지시 20-1 · **§C3 회신 §1 에서 층 확대**).
+       *
+       * ── 왜 넓혔는가 ────────────────────────────────────────────
+       * 월 목표만 후보였다. 그래서 Q3 목표 셋(`관리자 페이지` · `2차 PoC` · `Beta Open`)이
+       * 전부 「집계 없음」이었고, 새 업무에서 `+ 목표 연결` 을 누르면
+       * 「연결 가능한 월 목표가 없습니다」가 떴다. **스키마 문제가 아니라 이 한 줄이었다.**
+       *
+       * ── 연간을 빼는 이유 ───────────────────────────────────────
+       * 연간에 업무를 직접 붙이면 그 아래 분기 목표들이 **영원히 비고 계층이 죽는다.**
+       * 그래서 후보는 **분기 · 월** 둘뿐이다.
+       *
+       * ── 기간 필터를 안 거는 이유 ──────────────────────────────
+       * 지난 분기·지난 달 목표도 후보에 남긴다. **완료한 업무를 소급 연결하면
+       * 실적으로 집계되어야 한다.** 지금 기간으로 자르면 그 길이 아예 없다.
+       * 대신 화면이 `지난 기간` 이라고 적고 회색으로 내린다 — 거르는 대신 **말한다.**
+       *
+       * ── 지난 것과 아직 안 온 것은 다르다 ──────────────────────
+       * 처음엔 `현재 기간이 아니다` 를 그대로 `past` 로 썼다. 그러면 **다음 분기
+       * 계획 목표에 「지난 기간」이라고 적힌다.** 검사기 §1E 가 `Q4 현장 적용 확대(계획)`
+       * 에 붙은 `지난 기간 · 2026-10` 을 그대로 옮겨 와서 드러났다.
+       * 「현재가 아님」은 두 가지다. 서버가 셋으로 갈라서 준다.
+       *
+       * 정렬은 ①진행 중인 기간 먼저 ②최근에 실제로 쓴 목표 순.
+       */
+      query<{ id: number; title: string; period_start: string; period_when: "past" | "current" | "future"; period_type: string; period: string | null; current: boolean }>(
+        `SELECT g.id, g.title, g.period_start::text, g.period_type, g.period,
+                (g.period_start <= $1::date AND g.period_end >= $1::date) AS current,
+                CASE WHEN g.period_end   < $1::date THEN 'past'
+                     WHEN g.period_start > $1::date THEN 'future'
+                     ELSE 'current' END AS period_when
            FROM goal g
-          WHERE g.is_active = true AND g.period_type = 'month'
+          WHERE g.is_active = true AND g.period_type IN ('quarter', 'month')
           ORDER BY current DESC,
                    (SELECT max(t.updated_at) FROM goal_task gt
                       JOIN task t ON t.id = gt.task_id
@@ -58,8 +82,17 @@ export async function GET() {
     return NextResponse.json({
       actors: actors.map((a) => ({ id: a.id, name: a.display_name })),
       projects: projects.map((p) => ({ id: p.id, name: p.name, colorKey: p.color_key, areaId: p.area_id })),
-      monthGoals: monthGoals.map((g) => ({
-        id: g.id, title: g.title, month: g.period_start.slice(0, 7), current: g.current,
+      /**
+       * 이름을 `monthGoals` 에서 바꿨다 — **분기 목표가 들어오므로 옛 이름은 거짓말이 된다.**
+       * `level` 은 화면이 「분기」/「월」 배지를 그리는 데 쓰고,
+       * `when` 은 `지난 기간`·`다음 기간` 회색 표시에 쓴다.
+       * **판정은 서버가 하고 화면은 그린다.**
+       */
+      linkableGoals: monthGoals.map((g) => ({
+        id: g.id, title: g.title,
+        level: g.period_type === "quarter" ? "분기" : "월",
+        period: g.period ?? g.period_start.slice(0, 7),
+        when: g.period_when,
       })),
       linkGoals: linkGoals.map((g) => ({
         id: g.id, title: g.title, scope: g.scope,

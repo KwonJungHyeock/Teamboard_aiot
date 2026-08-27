@@ -656,6 +656,18 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
   margin-left: auto; flex: 0 0 auto; white-space: nowrap; padding-left: 6px;
 }
 .prop-goals input[type="checkbox"] { width: 13px; height: 13px; flex: 0 0 13px; accent-color: var(--coral-d); }
+/* §C3 §1 — 후보가 **분기 · 월** 두 층이 됐다. 어느 층인지 한 글자로 먼저 보인다.
+   새 색을 만들지 않는다 — 기존 회색 배지 규격 그대로. */
+.prop-goals .gopt-lv {
+  flex: 0 0 auto; font-size: var(--f6); color: var(--muted);
+  border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; line-height: 17px;
+}
+/* 지난 기간 목표도 **후보에 남긴다** — 완료한 업무를 소급 연결해야 실적에 잡힌다.
+   거르지 않고 말한다. 그래서 지우는 색이 아니라 **알리는 색**이다(--muted 그대로).
+   이름이 `gopt-past` 였는데 「다음 기간」도 같은 칠을 쓰게 됐다. 지난 것만 가리키는
+   이름을 두면 다음 사람이 그 말을 믿는다 — `off`(지금 기간이 아님)로 바꾼다. */
+.prop-goals .gopt-off { color: var(--muted); }
+.prop-goals label:has(.gopt-off) { color: var(--ink2); }
 .prop-none { font-size: var(--f5); color: var(--muted); margin: 0; }
 /* 소속 프로젝트가 붙어 있는 목표 표시 — 지시 20-2. 새 색을 만들지 않고 기존 산호색을 쓴다. */
 .prop-sug {

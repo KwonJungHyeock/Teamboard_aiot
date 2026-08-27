@@ -58,7 +58,8 @@ interface Selectors {
   actors: { id: number; name: string }[];
   projects: { id: number; name: string; colorKey: string | null; areaId: number }[];
   areas: { id: number; name: string; colorKey: string | null }[];
-  monthGoals: { id: number; title: string; month: string }[];
+  /** 업무에 붙일 수 있는 목표 — **분기 · 월** 두 층. 연간은 후보가 아니다(§C3 §1). */
+  linkableGoals: { id: number; title: string; level: string; period: string; when: "past" | "current" | "future" }[];
 }
 interface Cmt { id: number; body: string; created_at: string; author_name: string }
 interface Act { id: number; message: string; level: string; created_at: string; user_name: string | null }
@@ -312,13 +313,16 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
     ? t.startDate && t.dueDate ? `${t.startDate} → ${t.dueDate}`
       : t.dueDate ? `~ ${t.dueDate}` : t.startDate ? `${t.startDate} ~` : ""
     : "";
-  const linkedGoals = t ? (sel?.monthGoals ?? []).filter((g) => t.goalIds.includes(g.id)) : [];
+  const linkedGoals = t ? (sel?.linkableGoals ?? []).filter((g) => t.goalIds.includes(g.id)) : [];
 
   // 목표 후보 순서 — 서버가 준 순서(이번 달 우선 · 최근 사용 순, 지시 20-1) 그대로.
   //
   // 예전에는 "소속 프로젝트가 붙어 있는 월 목표"를 맨 앞에 두고 「제안」을 달았다.
   // 프로젝트→목표 연결이 사라졌으므로(MD-P-2026-030 §A2) 그 제안의 근거도 사라졌다.
-  const goalOptions = sel?.monthGoals ?? [];
+  //
+  // §C3 §1 — 후보가 **분기 · 월** 두 층이다. 연간은 없다.
+  // 지난 기간 목표도 남는다 — 완료한 업무를 소급 연결하면 실적으로 집계되어야 한다.
+  const goalOptions = sel?.linkableGoals ?? [];
 
   const propRows: PropRow[] = !t ? [] : [
     {
@@ -425,7 +429,7 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
       empty: t.goalSource !== "none" && linkedGoals.length === 0, action: "＋ 목표 연결",
       editor: () => (
         <div className="prop-goals">
-          {(sel?.monthGoals.length ?? 0) === 0 && <p className="prop-none">연결 가능한 월 목표가 없습니다.</p>}
+          {(sel?.linkableGoals.length ?? 0) === 0 && <p className="prop-none">연결할 수 있는 분기·월 목표가 없어요</p>}
           {goalOptions.map((g) => (
             <label key={g.id}>
               <input type="checkbox" checked={t.goalIds.includes(g.id)}
@@ -433,8 +437,13 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
                   const next = e.target.checked ? [...t.goalIds, g.id] : t.goalIds.filter((x) => x !== g.id);
                   patchOpt({ goalIds: next }, { goalIds: next });
                 }} />
+              <span className="gopt-lv">{g.level}</span>
               {g.title}
-              <em>{g.month}</em>
+              {/* 거르지 않고 **말한다.** 지난 기간 목표에도 붙일 수 있어야 소급 연결이 된다.
+                  「지금이 아님」을 한 덩어리로 묶으면 다음 분기 계획 목표에 「지난 기간」이 붙는다 — 셋으로 나눈다. */}
+              {g.when === "current"
+                ? <em>{g.period}</em>
+                : <em className="gopt-off">{g.when === "past" ? "지난 기간" : "다음 기간"} · {g.period}</em>}
             </label>
           ))}
           {/* 확정 23-3 — "목표 없음"은 여기서도 고를 수 있어야 한다. 일괄 화면에서만 되면 안 된다. */}
@@ -735,7 +744,7 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
               blocks={docBlocks}
               projectId={t.projectId}
               projectName={t.projectName}
-              goals={(sel?.monthGoals ?? []).filter((g) => t.goalIds.includes(g.id))}
+              goals={(sel?.linkableGoals ?? []).filter((g) => t.goalIds.includes(g.id))}
             />
 
             {/* 관련 결정 — 이 업무에 연결된 결정 (MD-P-2026-004 §E) */}

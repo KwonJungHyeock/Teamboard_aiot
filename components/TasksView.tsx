@@ -319,7 +319,7 @@ export default function TasksView({ user, defaults, initialAreas, initial }: {
       setAreas(data.areas ?? []);
       // `myAreaIds` 는 더 읽지 않는다 — 영역 기본값은 서버가 첫 렌더에 정한다.
       // (`/api/meta/selectors` 응답에는 그대로 있다. 다른 화면이 쓴다.)
-      setMonthGoals(data.monthGoals ?? []);
+      setMonthGoals(data.linkableGoals ?? []);
       setLinkGoals(data.linkGoals ?? []);
     }
   }, []);

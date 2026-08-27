@@ -68,6 +68,8 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
       setTree(data.tree ?? []);
       setLinkableTasks(data.linkableTasks ?? []);
       setUnlinkedTasks(data.unlinkedTasks ?? []);
+      // 이 화면은 `/api/meta/selectors` 가 아니라 `/api/goals` 를 읽는다 —
+      // 저쪽에서 이름을 `linkableGoals` 로 바꿨다고 여기까지 따라 고치면 **늘 빈 목록**이 된다.
       setMonthGoals(data.monthGoals ?? []);
       setError("");
     } catch (e) {
