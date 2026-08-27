@@ -20,7 +20,13 @@
 // 추정 프로젝트의 영역이 업무 영역과 다르면 **영역도 함께 바꿔야** 하고,
 // 그건 다른 판단이다. 그 사실을 표에 적는다.
 //
-//   node scripts/a3-orphan-tasks.mjs > docs/audit/032/A3-귀속대상.md
+// ── ⚠ 다시 돌려서 덮어쓰지 말 것 ──────────────────────────────────
+// `docs/audit/032/A3-귀속대상.md` 는 **배치 ③ 실행 직전의 스냅샷**이다.
+// 지금 이 스크립트를 돌리면 **0건**이 나온다 — 19건이 이미 옮겨졌기 때문이다.
+// 실제로 한 번 덮어써서 되돌렸다. 그 표의 값은 「옮기기 전의 모습」에 있다.
+//
+//   node scripts/a3-orphan-tasks.mjs            # 화면으로만 본다
+//   node scripts/a3-orphan-tasks.mjs > 새파일    # 남길 거면 새 이름으로
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 
