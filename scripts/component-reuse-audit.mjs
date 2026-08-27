@@ -99,12 +99,22 @@ try {
     // 다른 표가 아니라 **그 컴포넌트**인지: colgroup + 머리글 「업무」로 확인한다.
     const isTaskTable = n > 0 && await page.locator(".tt-table colgroup").count() > 0
       && (await page.locator(".tt-table thead th").allTextContents()).includes("업무");
-    seen.push({ ...f, n, isTaskTable });
+    // **컴포넌트가 같은 것과 목록이 같은 것은 다르다.** 막대 재료를 안 넘기면
+    // 같은 컴포넌트가 옛 목록 모양으로 그려지고, 그래도 위 판정은 통과한다.
+    // 실제로 프로젝트 상세가 그랬다 — 표는 있는데 트랙이 없었다.
+    const track = await page.evaluate(() => {
+      const e = document.querySelector(".tt-track");
+      return e ? Math.round(e.getBoundingClientRect().width) : 0;
+    });
+    seen.push({ ...f, n, isTaskTable, track });
   }
   const dead = seen.filter((x) => !x.isTaskTable);
-  dead.length === 0
-    ? ok("②화면", seen.map((x) => `${x.name}(${x.path}) 표 ${x.n}`).join(" · "))
-    : bad("②화면", `TaskTable 이 안 그려지는 화면: ${dead.map((x) => `${x.name}(${x.path}) 표 ${x.n}`).join(" · ")}`);
+  const noBar = seen.filter((x) => x.isTaskTable && x.track === 0);
+  const fmt = (xs) => xs.map((x) => `${x.name}(${x.path}) 표 ${x.n} · 트랙 ${x.track}px`).join(" · ");
+  if (dead.length) bad("②화면", `TaskTable 이 안 그려지는 화면: ${fmt(dead)}`);
+  else if (noBar.length)
+    bad("②화면", `표는 있는데 **기한 막대가 없는 화면**: ${fmt(noBar)} — 「2층의 기한 막대 목록은 홈 전용이 아니다」(§C4)`);
+  else ok("②화면", fmt(seen));
 
   // ── ③ 두 벌 금지 ──────────────────────────────────────────────
   //
