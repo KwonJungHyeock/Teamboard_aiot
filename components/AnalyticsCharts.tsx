@@ -39,48 +39,18 @@ function WeeklyTrend({ data }: { data: HomeSummary["weeklyDone"] }) {
 }
 
 // 담당자별 부하 — 오픈 업무 stack(진행 blue · 대기 gray), 부하순
-function LoadDist({ data }: { data: HomeSummary["assigneeLoad"] }) {
-  const max = Math.max(1, ...data.map((d) => d.doing + d.waiting));
-  return (
-    <section className="card an-card" aria-label="담당자별 부하">
-      <div className="ch"><h2>담당자별 부하</h2><span className="sub">오픈 업무</span></div>
-      {data.length === 0 ? (
-        <SectionEmpty text="오픈 업무가 없어요" />
-      ) : (
-        <div className="an-load">
-          {data.map((d) => {
-            const total = d.doing + d.waiting;
-            return (
-              <div className="an-row" key={d.name}>
-                <span className="an-name">{d.name}</span>
-                <div className="an-track">
-                  {d.doing > 0 && <i className="an-doing" style={{ width: `${(d.doing / max) * 100}%` }} title={`진행 ${d.doing}`} />}
-                  {d.waiting > 0 && <i className="an-wait" style={{ width: `${(d.waiting / max) * 100}%` }} title={`대기 ${d.waiting}`} />}
-                </div>
-                <span className="an-n">{total}</span>
-              </div>
-            );
-          })}
-          <div className="an-legend">
-            <span><i className="lg-doing" />진행</span>
-            <span><i className="lg-wait" />대기</span>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-}
+/* 「담당자별 부하」(LoadDist)는 §C 회신 1 에서 지웠다 —
+   `components/AssigneeStatus.tsx` 가 같은 사람을 더 많은 사실로 말한다.
+   한 화면에 사람별 블록이 둘이면 그게 §C 가 없애려던 중복이다. */
 
 export default function AnalyticsCharts({
-  weeklyDone, assigneeLoad,
+  weeklyDone,
 }: {
   weeklyDone: HomeSummary["weeklyDone"];
-  assigneeLoad: HomeSummary["assigneeLoad"];
 }) {
   return (
     <div className="an-wrap">
       <WeeklyTrend data={weeklyDone} />
-      <LoadDist data={assigneeLoad} />
     </div>
   );
 }

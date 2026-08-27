@@ -21,7 +21,6 @@ import HomeRail from "./HomeRail";
 import { openNewTaskPanel } from "@/lib/task-panel";
 import { pfill } from "@/lib/progress-bar";
 
-type TabKey = "overview" | "focus" | "team";
 type Range = "quarter" | "all";
 
 /**
@@ -54,7 +53,6 @@ export default function HomeView({ summary, user, initialSpan }: {
   summary: HomeSummary; user: SessionUser; initialSpan?: string;
 }) {
   const [anchor, setAnchor] = useState<string>(summary.today);
-  const [tab, setTab] = useState<TabKey>("overview");
   // §C URL 규약 — 기본값(이번 분기)은 주소에 안 쓴다. history 를 쌓지 않는다. 훅이 한다.
   // 서버가 읽은 값을 같이 넘긴다 — 저장값이 없는 파라미터라 서버가 답을 안다.
   const lq = useListQuery(HOME_QUERY, { span: initialSpan });
@@ -79,13 +77,18 @@ export default function HomeView({ summary, user, initialSpan }: {
           <button className="btn-primary" onClick={() => openNewTaskPanel()}>＋ 새 업무</button>
         </>
       }
-      tabs={[
-        { key: "overview", label: "개요" },
-        { key: "focus", label: "내 초점", count: summary.myFocus.length },
-        { key: "team", label: "팀 현황", count: summary.teamStatus.length },
-      ]}
-      activeTab={tab}
-      onTab={(k) => setTab(k as TabKey)}
+      /*
+       * **탭을 두지 않는다** (§C · 회신 2-3).
+       *
+       * 「개요 · 내 초점 · 팀 현황」 셋이 있었다. 셋 다 없앤다.
+       *   · **개요** — 탭이 하나면 그건 탭이 아니다.
+       *   · **내 초점** — 개요의 「나의 초점」 블록과 **같은 목록**이었다.
+       *     지금은 같은 지연 업무가 두 곳에 떠 있고, §C1 판단 타일이 세 번째가 될 뻔했다.
+       *   · **팀 현황** — `/status` 로 흡수한다. 단 「평균 진척」은 옮기지 않는다.
+       *
+       * 탭을 두면 첫 것이 기본이 되고 나머지는 안 눌린다(허들룸이 그렇게 죽었다).
+       * **홈은 스크롤 하나짜리 한 화면이다.**
+       */
       filters={
         <>
           <button className={`pg-chip${range === "quarter" ? " on" : ""}`} onClick={() => lq.set("span", "quarter")}>이번 분기</button>
@@ -94,8 +97,7 @@ export default function HomeView({ summary, user, initialSpan }: {
       }
       filterSummary={<NowStamp />}
     >
-      {tab === "overview" && (
-        <>
+      <>
           {/* 히어로는 레일 위로 **폭 전체**를 쓴다. 3층 구조에서 레일은 1·2층 옆이 아니라
               판단 타일부터 아래로 붙는다 — 히어로를 320px 좁히면 레인이 읽히지 않는다. */}
           <HeroTimeline
@@ -136,11 +138,7 @@ export default function HomeView({ summary, user, initialSpan }: {
               user={user}
             />
           </div>
-        </>
-      )}
-
-      {tab === "focus" && <FocusTab items={summary.myFocus} />}
-      {tab === "team" && <TeamTab rows={summary.teamStatus} />}
+      </>
     </PageShell>
   );
 }
@@ -307,65 +305,19 @@ function FocusBlock({ items, agent }: { items: HomeSummary["myFocus"]; agent: Ho
   );
 }
 
-/* ══════════ §D5 내 초점 탭 — 목록 행(38px) ══════════ */
-function FocusTab({ items }: { items: HomeSummary["myFocus"] }) {
-  if (items.length === 0) {
-    return <div className="dl"><SectionEmpty text="지금 처리할 것이 없어요" /></div>;
-  }
-  return (
-    <div className="dl">
-      <div className="dl-head">
-        <span className="dl-c" style={{ flex: "0 0 60px" }}>종류</span>
-        <span className="dl-c">내용</span>
-        <span className="dl-c num" style={{ flex: "0 0 84px" }}>시각</span>
-      </div>
-      {items.map((f) => {
-        const ic = FOCUS_IC[f.kind] ?? FOCUS_IC.task;
-        const label = { mention: "멘션", approval: "승인", task: "업무", reply: "답글" }[f.kind];
-        return (
-          <Link className={`dl-row click hm-dlrow${f.unread ? " unread" : ""}`} key={f.key} href={f.href}>
-            <span className="dl-c" style={{ flex: "0 0 60px" }}>
-              <span className={`hm-ic sm ${ic.cls}`} aria-hidden="true">{ic.glyph}</span>
-              <span className="hm-sub">{label}</span>
-            </span>
-            <span className="dl-c">{f.summary}</span>
-            <span className="dl-c num" style={{ flex: "0 0 84px" }}>{focusTime(f.time)}</span>
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
+/* ══════════ §D5 내 초점 탭 · 팀 현황 탭 — **지웠다** (§C 회신 2-3) ══════════
+   `FocusTab` · `TeamTab` 을 여기서 지웠다. 탭 자체가 없어졌으므로 렌더될 자리가 없다.
 
-/* ══════════ §D5 팀 현황 탭 — 목록 행(38px) ══════════ */
-function TeamTab({ rows }: { rows: HomeSummary["teamStatus"] }) {
-  if (rows.length === 0) {
-    return <div className="dl"><SectionEmpty text="진행 중인 업무가 있는 팀원이 없어요" /></div>;
-  }
-  return (
-    <div className="dl">
-      <div className="dl-head">
-        <span className="dl-c">담당자</span>
-        <span className="dl-c num" style={{ flex: "0 0 80px" }}>진행 중</span>
-        <span className="dl-c num" style={{ flex: "0 0 80px" }}>지연</span>
-        <span className="dl-c num" style={{ flex: "0 0 110px" }}>평균 진척</span>
-      </div>
-      {rows.map((r) => (
-        <Link className={`dl-row click${r.late > 0 ? " risk" : ""}`} key={r.actorId} href={`/tasks?assignee=${r.actorId}`}>
-          <span className="dl-c">{r.name}</span>
-          <span className="dl-c num" style={{ flex: "0 0 80px" }}>{r.doing}</span>
-          <span className={`dl-c num${r.late > 0 ? " hm-over" : ""}`} style={{ flex: "0 0 80px" }}>{r.late > 0 ? r.late : "—"}</span>
-          <span className="dl-c num" style={{ flex: "0 0 110px" }}>
-            <span className="dl-bar">
-              <i><b style={pfill(r.avgProgress ?? 0)} /></i>
-              <em className={r.avgProgress === null ? "dl-bar-na" : ""}>{r.avgProgress === null ? "—" : `${r.avgProgress}%`}</em>
-            </span>
-          </span>
-        </Link>
-      ))}
-    </div>
-  );
-}
+   · 「내 초점」은 개요의 `FocusBlock` 과 **같은 목록**이었다. 같은 지연 업무가 두 곳에
+     떠 있었고, §C1 판단 타일이 세 번째가 될 뻔했다.
+   · 「팀 현황」은 `/status` 로 옮긴다. 옮기면서 **「평균 진척」은 버린다** —
+     본인이 손으로 적는 값이라 사람끼리 나란히 놓으면 **정직하게 적을수록 손해**가 된다.
+     같은 자리에 「진행 중 · 지연 · 이번 주 마감 · 막고 있는 것」을 넣는다.
+     전부 기한과 관계에서 나오는 사실이고 본인이 손으로 못 바꾼다.
+
+   `.dl-bar` / `.hm-dlrow` CSS 도 함께 지웠다 (§G 「삭제는 코드·CSS·검사 세 곳에서
+   동시에 일어난다」). `.dl` · `.dl-head` · `.dl-row` 는 다른 화면이 계속 쓴다 — 남긴다.
+*/
 
 /* ══════════ §C2 진행 중인 일 — 기한 막대 목록 ══════════
    **넷이 같은 컴포넌트를 쓴다**(§C4). 여기서 새로 만드는 것은 목록이 아니라
