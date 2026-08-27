@@ -153,7 +153,15 @@ export default function TaskTable({
   const withBars = !!range;
   const showGoal = full && !withBars;
   const showProject = !withBars;
-  const showProg = full;   // 열은 늘 있다. 막대만 접힌다.
+  /**
+   * 진척 퍼센트 열.
+   *
+   * `full` 이면 늘 있고(막대만 접힌다), **막대를 켠 `compact` 에도 둔다**(§C3 회신 2).
+   * 「막대가 진척을 말하니 숫자는 없어도 된다」가 성립하지 않기 때문이다 —
+   * **막대 7건이 최소 폭 하한(8px)에 걸려 채운 폭을 읽을 수 없다.** 그 7건에서는
+   * 막대가 진척을 말하지 못한다. 하한이 필요했다는 사실 자체가 숫자를 남길 이유다.
+   */
+  const showProg = full || withBars;
   const colCount =
     1 + (showGoal ? 1 : 0) + (full ? 1 : 0) + (showProject ? 1 : 0) + (withBars ? 1 : 0)
     + 1 + (full ? 1 : 0) + (showProg ? 1 : 0) + 2 + (selectable ? 1 : 0);
@@ -341,7 +349,9 @@ export default function TaskTable({
               {range && <col />}
               <col style={{ width: "72px" }} />
               <col style={{ width: "88px" }} />
-              {showProg && <col style={{ width: withBars ? "56px" : "124px" }} />}
+              {/* 막대를 켜면 §D7 규격값 38px. 숫자만 들어가는 열이라 이 폭이면 충분하다
+                  (머리글도 「진행률」→「진척」으로 줄인다 — 4자는 38px 에 안 들어간다). */}
+              {showProg && <col style={{ width: withBars ? "38px" : "124px" }} />}
               <col style={{ width: "92px" }} />
               <col style={{ width: "70px" }} />
             </>
@@ -359,6 +369,10 @@ export default function TaskTable({
               {showProject && <col style={{ width: "20%" }} />}
               {range && <col />}
               <col style={{ width: "76px" }} />
+              {/* 머리글 순서(업무·기간·담당·**진척**·상태·기한)와 **같은 자리**에 둔다.
+                  이 한 줄을 빼먹었더니 뒤의 고정 폭이 한 칸씩 밀려
+                  담당 76 · 진척 64 · 상태 56 · 기한 auto 가 됐다. 실측으로 잡았다. */}
+              {showProg && <col style={{ width: "38px" }} />}
               <col style={{ width: "64px" }} />
               <col style={{ width: "56px" }} />
             </>
@@ -379,7 +393,7 @@ export default function TaskTable({
             {range && <th className="col-track">기간</th>}
             <th>담당</th>
             {full && <th className="col-pri">우선순위</th>}
-            {showProg && <th>진행률</th>}
+            {showProg && <th className={`col-prog${withBars ? " narrow" : ""}`}>{withBars ? "진척" : "진행률"}</th>}
             <th>상태</th>
             <th>기한</th>
           </tr>
@@ -584,7 +598,7 @@ export default function TaskTable({
                   </td>
                 )}
                 {showProg && (
-                  <td className="col-prog">
+                  <td className={`col-prog${withBars ? " narrow" : ""}`}>
                     {/* 막대를 켜면 여기 막대는 접는다 — 한 행에 막대가 둘이면 어느 쪽이
                         시간이고 어느 쪽이 진척인지 안 읽힌다. 숫자는 남는다(§D7 진척 38px). */}
                     {!withBars && (
