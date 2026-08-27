@@ -253,33 +253,85 @@ try {
     chk("32g-직접변경", seen.length >= 3,
       `사람이 진행률을 ${target.progress}→60 으로 바꿨을 때(DB 확인 ${dbNow}) 화면 % 상태 ${seen.length}가지 (3가지 이상이어야 굴러간 것) · "${before.replace(/\n+/g, " ")}" → "${afterTxt.replace(/\n+/g, " ")}"`);
 
-    // (e) 화면 밖 — 보이지 않는 곳에서는 재생하지 않는다
+    /**
+     * (e) 화면 밖 — 보이지 않는 곳에서는 재생하지 않는다.
+     *
+     * **재조준 (§C3 ⑦).** 950px 높이에서는 목표 진척 값 6개가 전부 한 화면에 들어간다.
+     * 바닥까지 스크롤해도 **화면 밖 요소가 0개**였고, 그러면 이 줄은 검사할 대상이 없는
+     * 채로 FAIL 을 냈다. 제품이 틀린 게 아니라 **검사 조건을 못 만든 것**이었다.
+     *
+     * 그래서 이 한 줄 동안만 뷰포트를 낮춰 조건을 **실제로 만든다.**
+     * 「화면 밖이면 재생하지 않는다」는 뷰포트 높이와 무관한 성질이므로,
+     * 조건을 만들어 재는 것이 조건이 생기기를 기다리는 것보다 옳다.
+     * 다 재고 나면 원래 높이로 되돌린다 — 뒤 줄들이 이 높이를 물려받으면 안 된다.
+     */
+    const VP = p2.viewportSize();
+    await p2.setViewportSize({ width: VP.width, height: 360 });
+    await p2.waitForTimeout(200);
     await p2.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await p2.waitForTimeout(500);
-    const offscreen = await p2.evaluate(() => {
-      const el = document.querySelector(".gpv");
-      if (!el) return "요소 없음";
-      const r = el.getBoundingClientRect();
-      return r.bottom > 0 && r.top < window.innerHeight ? "여전히 보임" : "화면 밖";
-    });
+    const offCount = await p2.evaluate(() =>
+      [...document.querySelectorAll(".gpv")]
+        .filter((e) => { const r = e.getBoundingClientRect(); return !(r.bottom > 0 && r.top < window.innerHeight); }).length);
     const [each] = await Promise.all([watchEach(p2, 9000), setProg(20)]);
     const off = each.filter((x) => !x.visible);
     const on = each.filter((x) => x.visible);
     // 상태 1가지 = 값이 그대로, 2가지 = 옛값→새값으로 **툭 바뀜**(스냅), 3가지 이상 = 굴러감.
     // "화면 밖이면 재생하지 않는다"는 스냅까지 금지하는 말이 아니다 — 값은 바뀌어야 한다.
     // 처음엔 1가지를 요구했는데, 그건 "값도 바뀌지 마라"는 뜻이 돼 버린다.
-    chk("32g-화면밖", off.length > 0 && off.every((x) => x.states <= 2) && on.some((x) => x.states >= 3),
-      `스크롤 후 화면 밖 ${off.length}개 · 화면 안 ${on.length}개 — 화면 밖 % 상태 [${off.map((x) => x.states).join(",")}] (전부 2 이하 = 스냅) · 화면 안 [${on.map((x) => x.states).join(",")}] (최소 하나는 3 이상 = 굴러감, 짝이 되는 존재 단언)`);
+    /*
+     * 짝을 **같은 관찰 안에서** 세울 수 없다.
+     *
+     * 값이 바뀌는 `.gpv` 는 롤업 체인의 위쪽(연간·분기)에 몰려 있다. 바닥까지 스크롤하면
+     * 그것들이 전부 화면 밖으로 나가고, 화면 안에 남는 것은 **애초에 안 바뀌는 것들**이다.
+     * 그 상태에서 "화면 안 것 중 하나는 굴러야 한다"를 요구하면 영원히 실패한다.
+     *
+     * 반대로 화면 밖 쪽도 조심해야 한다. **안 바뀐 값이 안 구르는 것은 증거가 아니다.**
+     * 「화면 밖이라 안 굴렀다」와 「바뀐 게 없어서 안 굴렀다」가 똑같이 생겼다.
+     * 그래서 화면 밖 판정에 **「실제로 값이 바뀐 것이 최소 하나 있다」**(states === 2)를 붙인다.
+     *
+     * 굴러가는 쪽은 아래에서 **한 번 더 바꿔** 따로 잰다. 관찰이 둘이 되는 대신
+     * 두 줄 다 진짜 관찰이 된다.
+     */
+    const offChanged = off.filter((x) => x.states >= 2);
+    if (off.length === 0) {
+      bad("32g-화면밖", `검사 조건을 못 만들었다 — 뷰포트 360px 에서도 화면 밖 .gpv 가 0개다(스크롤 직후 ${offCount}개). `
+        + `제품 판정이 아니라 **미검사**다`);
+    } else if (offChanged.length === 0) {
+      bad("32g-화면밖", `화면 밖 ${off.length}개 중 **값이 바뀐 것이 하나도 없다** — 안 바뀐 값이 안 구르는 것은 증거가 아니다. `
+        + `화면 밖 상태 [${off.map((x) => x.states).join(",")}] · 화면 안 [${on.map((x) => x.states).join(",")}]`);
+    } else {
+      chk("32g-화면밖", off.every((x) => x.states <= 2),
+        `뷰포트 360px 로 낮춰 조건을 만들었다 — 화면 밖 ${off.length}개(그중 값이 실제로 바뀐 것 ${offChanged.length}개) · `
+        + `화면 밖 % 상태 [${off.map((x) => x.states).join(",")}] — 바뀌었는데도 2 이하 = **툭 바뀌고 안 굴렀다**`);
+    }
 
     // 화면 밖에서 바뀐 값이 **나중에 보일 때도** 재생되지 않는가.
     // 그때는 "방금 내가 한 일"이 아니다.
+    // **뷰포트는 아직 360px 이다** — 원래 높이로 돌려놓고 재면 화면 밖 요소가 0개가 되어
+    // "안 굴렀다"가 공짜로 참이 된다. 위 재조준과 같은 이유로 여기서도 조건을 유지한다.
     await p2.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await p2.waitForTimeout(300);
     const later = await watchEach(p2, 2500);
     await p2.evaluate(() => window.scrollTo(0, 0));
     const backUp = await watchEach(p2, 2500);
     chk("32g-나중에도안함", backUp.every((x) => x.states === 1),
-      `화면 밖에서 바뀐 뒤 다시 위로 스크롤 → % 상태 [${backUp.map((x) => x.states).join(",")}] (전부 1이어야 한다) · 스크롤 직전 [${later.map((x) => x.states).join(",")}]`);
+      `뷰포트 360px 유지 · 화면 밖에서 바뀐 뒤 다시 위로 스크롤 → % 상태 [${backUp.map((x) => x.states).join(",")}] (전부 1이어야 한다) · 스크롤 직전 [${later.map((x) => x.states).join(",")}]`);
+
+    // 짝 — 같은 변경이 **화면 안**에서는 굴러간다.
+    // 원래 높이로 되돌린 뒤 위로 올려야 목표 값들이 화면에 든다.
+    // 360px 에서는 머리줄·필터가 자리를 다 먹어 맨 위로 올려도 `.gpv` 가 한 개도 안 보인다 —
+    // 실제로 그렇게 재서 「화면 안 0개」로 실패했다. **조건을 만들지 못한 채 낸 판정이었다.**
+    await p2.setViewportSize(VP);
+    await p2.waitForTimeout(200);
+    await p2.evaluate(() => window.scrollTo(0, 0));
+    await p2.waitForTimeout(300);
+    const [eachOn] = await Promise.all([watchEach(p2, 9000), setProg(45)]);
+    const onVis = eachOn.filter((x) => x.visible);
+    if (onVis.length === 0) bad("32g-화면안굴러감", "화면 안 .gpv 가 0개다 — 조건을 못 만들었다(미검사)");
+    else chk("32g-화면안굴러감", onVis.some((x) => x.states >= 3),
+      `원래 높이로 되돌리고 위로 올린 뒤 같은 변경 — 화면 안 ${onVis.length}개 % 상태 [${onVis.map((x) => x.states).join(",")}] `
+      + `(최소 하나는 3 이상 = 굴러감). 이것이 위 「화면 밖은 안 구른다」의 짝이다`);
 
     // (f) 연달아 변경 — 겹쳐 쌓이지 않는가. 마지막 값으로 조용히 끝나야 한다.
     await p2.evaluate(() => window.scrollTo(0, 0));
