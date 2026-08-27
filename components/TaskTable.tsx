@@ -318,7 +318,14 @@ export default function TaskTable({
         <h2>{title}</h2>
         {sub && <span className="sub">{sub}</span>}
       </div>
-      <table>
+      {/* `table-layout: fixed` 를 **여기서** 건다. 이 표는 `.hv` 안에서도 밖에서도 쓰인다.
+          `app/home.css` 의 `.hv table { table-layout: fixed }` 하나에 기대고 있었는데,
+          §C3 레일이 붙은 홈은 `.hv` 밖이라 `auto` 로 돌았다 — colgroup 이 무시되고
+          제목 열이 내용대로 486px 을 가져가 기한 막대가 56px 로 남았다.
+          아래 colgroup 주석이 "colgroup 이 유일한 출처다"라고 말하고 있었는데,
+          **그 말이 이 화면에서만 참이 아니었다.** 규격은 검사가 붙어야 성립하듯,
+          단일 출처도 그것을 강제하는 선언이 같이 있어야 성립한다. */}
+      <table className="tt-table">
         <colgroup>
           {/* §A1 실측 — 폭은 여기(colgroup)가 유일한 출처다. table-layout:fixed 라
               CSS 의 width 는 col 을 못 이긴다. 34px 은 좌우 13px 여백 + 15px 체크박스를
@@ -342,7 +349,14 @@ export default function TaskTable({
             <>
               {/* 업무(제목)만 flex+truncate. 상태·기한은 배지가 안 잘리게 고정 폭(내용에 맞춤). */}
               <col />
-              <col style={{ width: "20%" }} />
+              {/* **`showProject` 조건을 여기에도 건다.** 머리글은 조건부인데 `<col>` 은
+                  무조건 나가고 있었다. 막대를 켜면 프로젝트 열이 사라지므로 이 20% 가
+                  **기간 열에 붙고**, 뒤의 고정 폭들이 한 칸씩 밀렸다.
+                  넓은 표에서는 티가 안 났고, §C3 레일이 본문을 320px 좁히자
+                  트랙이 284px → 10px 로 무너졌다. 검사기 ②가 「23/23건이 하한에 걸렸다」로 잡았다.
+                  §G 「표의 폭은 colgroup 이 유일한 출처다」 — 출처가 하나여도
+                  **조건이 두 곳에 갈리면 같은 병이 난다.** */}
+              {showProject && <col style={{ width: "20%" }} />}
               {range && <col />}
               <col style={{ width: "76px" }} />
               <col style={{ width: "64px" }} />

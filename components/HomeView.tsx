@@ -17,6 +17,7 @@ import { showsInMain } from "@/lib/area-policy";
 import PageShell from "./PageShell";
 import SectionEmpty from "./SectionEmpty";
 import HeroTimeline from "./HeroTimeline";
+import HomeRail from "./HomeRail";
 import { openNewTaskPanel } from "@/lib/task-panel";
 import { pfill } from "@/lib/progress-bar";
 
@@ -95,6 +96,8 @@ export default function HomeView({ summary, user, initialSpan }: {
     >
       {tab === "overview" && (
         <>
+          {/* 히어로는 레일 위로 **폭 전체**를 쓴다. 3층 구조에서 레일은 1·2층 옆이 아니라
+              판단 타일부터 아래로 붙는다 — 히어로를 320px 좁히면 레인이 읽히지 않는다. */}
           <HeroTimeline
             lanes={summary.lanes}
             today={summary.today}
@@ -102,22 +105,36 @@ export default function HomeView({ summary, user, initialSpan }: {
             onAnchorChange={setAnchor}
             compact
           />
-          <JudgeTiles tasks={summary.openTasks} viewerId={user.id} />
+          {/* §C3 3층 — 본문 + 오른쪽 레일 320px. 레일이 §B1 의 빈 가로 공간을 회수한다. */}
+          <div className="hm-3">
+            <div className="hm-main">
+              <JudgeTiles tasks={summary.openTasks} viewerId={user.id} />
 
-          {/* §C2 — 진행 중인 일. 홈에 목록이 **없던** 자리다(정리가 아니라 추가).
-              메인(R&D · 플랫폼 · 교육자료)만 펼치고 상시는 접힌 한 줄로 건수만 보인다.
-              상시라도 우선순위 높음은 메인으로 올라온다 — 분류는 lib/area-policy.ts 하나. */}
-          <DeadlineList tasks={summary.openTasks} today={summary.today} span={range} />
+              {/* §C2 — 진행 중인 일. 홈에 목록이 **없던** 자리다(정리가 아니라 추가).
+                  메인(R&D · 플랫폼 · 교육자료)만 펼치고 상시는 접힌 한 줄로 건수만 보인다.
+                  상시라도 우선순위 높음은 메인으로 올라온다 — 분류는 lib/area-policy.ts 하나. */}
+              <DeadlineList tasks={summary.openTasks} today={summary.today} span={range} />
 
-          <div className="hm-g2">
-            <div className="hm-col">
-              <GoalsBlock annual={summary.annualGoals} annualLabel={summary.annualLabel} quarters={quarters} myGoalCount={summary.myGoalCount} />
-              <DecisionsBlock items={summary.decisionsWaiting} decidedThisWeek={summary.decisionsThisWeek} />
+              <div className="hm-g2">
+                <div className="hm-col">
+                  <GoalsBlock annual={summary.annualGoals} annualLabel={summary.annualLabel} quarters={quarters} myGoalCount={summary.myGoalCount} />
+                  <DecisionsBlock items={summary.decisionsWaiting} decidedThisWeek={summary.decisionsThisWeek} />
+                </div>
+                <div className="hm-col">
+                  {/* 「다가오는 일정」이 있던 자리다. 소스가 개인 캘린더 하나뿐이라 대부분
+                      빈 카드가 됐다 — **빈 카드는 신뢰를 깎는다.** 영구 삭제가 아니라
+                      개념이 서기 전까지 비워 두는 것이다. 회의는 MD-P-2026-032 허들룸
+                      재설계에서 「회의 1건 = 세션 1개」로 다시 정의된 뒤에 넣는다. */}
+                  <FocusBlock items={summary.myFocus} agent={summary.agent} />
+                </div>
+              </div>
             </div>
-            <div className="hm-col">
-              <UpcomingBlock items={summary.upcoming} today={summary.today} />
-              <FocusBlock items={summary.myFocus} agent={summary.agent} />
-            </div>
+            <HomeRail
+              activity={summary.teamActivity}
+              myGoals={summary.myGoals}
+              myGoalCount={summary.myGoalCount}
+              user={user}
+            />
           </div>
         </>
       )}
@@ -225,41 +242,16 @@ function DecisionsBlock({ items, decidedThisWeek }: {
   );
 }
 
-/* ══════════ §D4 다가오는 일정 ══════════ */
-const UP_KIND: Record<string, { label: string; cls: string }> = {
-  meeting: { label: "회의", cls: "blue" },
-  review: { label: "리뷰", cls: "amber" },
-  deadline: { label: "마감", cls: "coral" },
-};
-function UpcomingBlock({ items, today }: { items: HomeSummary["upcoming"]; today: string }) {
-  // 미래만 — 과거 마감은 이 블록에 오지 않는다 (기존 규칙 유지)
-  const future = items.filter((it) => it.date >= today);
-  return (
-    <Block title="다가오는 일정" more="전체 관리 →" moreHref="/calendar">
-      {future.length === 0 ? (
-        <BlockEmpty text="예정된 일정이 없어요" />
-      ) : future.map((it) => {
-        const k = UP_KIND[it.kind];
-        const [, mm, dd] = it.date.split("-");
-        // H-2 — 판정은 lib/task-view 의 dueUrgency 한 곳에서만.
-        // 이 목록은 lib/home.ts 에서 `due_date >= today` 로 뽑는 **미래만** 담는 목록이라
-        // 지연(D+N)이 올 수 없다. 그래서 late 분기를 두지 않는다 — 안 그리는 분기는 안 만든다.
-        const urg = dueUrgency(it.dday);
-        return (
-          <Link className="hm-row hm-row-up" key={it.key} href={it.kind === "meeting" ? "/calendar" : "/tasks"}>
-            <span className="hm-c1 hm-date num">{it.date === today ? "오늘" : `${Number(mm)}/${Number(dd)}`}</span>
-            <span className="hm-c2 hm-t">{it.title}</span>
-            <span className="hm-c3">
-              {it.dday
-                ? <em className={`hm-dd num${urg === "soon" ? " over" : ""}`}>{it.dday}</em>
-                : <span className={`hm-chip ${k.cls}`}>{k.label}</span>}
-            </span>
-          </Link>
-        );
-      })}
-    </Block>
-  );
-}
+/* ══════════ §D4 다가오는 일정 — **비워 둔 자리** (§C3 ⑤) ══════════
+   블록·`UP_KIND`·`.hm-row-up` 을 여기서 지웠다. 소스가 개인 캘린더 하나뿐이라
+   대부분 빈 카드가 됐고, 빈 카드는 신뢰를 깎는다.
+
+   **영구 삭제가 아니라 개념이 서기 전까지 비워 두는 것이다.** 회의는
+   MD-P-2026-032 허들룸 재설계에서 「회의 1건 = 세션 1개」로 다시 정의된다.
+   그 정의가 선 뒤에 다시 만든다 — 지금 코드를 남겨 두면 그때 이 모양에 맞추게 된다.
+   (§G 「삭제는 코드·CSS·검사 세 곳에서 동시에 일어난다」 — 셋 다 지웠다.
+    `HomeSummary.upcoming` 은 남긴다: 프로젝트 워크스페이스가 쓴다.)
+*/
 
 /* ══════════ §D4 나의 초점 ══════════ */
 const FOCUS_IC: Record<string, { cls: string; glyph: string }> = {
@@ -403,7 +395,20 @@ function DeadlineList({ tasks, today, span }: {
         rows={main.map(toRow)}
         title="진행 중인 일"
         sub={`${main.length}건`}
-        variant="full"
+        /**
+         * §C3 ⑤ — 레일이 320px 을 가져가면서 `full` 을 쓸 수 없게 됐다.
+         *
+         * 1440px 에서 본문은 776px, 표는 738px 이다. `full` + 막대의 고정 폭 합은
+         * **766px** 이고(제목296·영역92·담당72·우선88·진행56·상태92·기한70),
+         * 남는 것이 없어 **기한 막대 트랙이 10px 로 무너졌다.** 검사기가 「23/23건이
+         * 하한에 걸렸다」로 잡았다. 열을 다 두고 막대도 두는 방법은 이 폭에 없다.
+         *
+         * 빼는 두 열은 **이 목록의 구조가 이미 말하고 있는 것**이다 —
+         * 영역은 메인/상시 구분(lib/area-policy.ts)이, 우선순위는 「상시라도 높음은
+         * 메인으로 올린다」 규칙이 이미 담고 있다. 진행률은 막대 안의 채운 폭이다.
+         * (`compact` 로 트랙 271px. `full` 로는 10px 이었다.)
+         */
+        variant="compact"
         // 홈만 범위를 덮어쓴다. **이유** — 홈에는 「이번 분기 / 전체 기간」 토글이 있고,
         // 그 토글이 곧 사용자가 고른 범위라 컴포넌트 기본값보다 세다(§C 회신 3-1).
         timeline={range}

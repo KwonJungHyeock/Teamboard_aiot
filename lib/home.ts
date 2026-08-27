@@ -5,6 +5,7 @@ import { visibleTaskSql } from "./visibility";
 import { getCurrentMonthGoals } from "./goals";
 import {
   judgeGoalStatus, countableSql, doneSql, projectProgressSql, projectCountedSql, taskProgressSql,
+  goalCountedSql,
 } from "./progress";
 import { getDecidedStaleDays, signalVisibilityClause } from "./signals";
 import { creditState } from "./agent";
@@ -171,6 +172,21 @@ export interface HomeSummary {
   quarterLabel: string; // 예: 2026 Q3
   /** 내 개인 목표 수 — 홈은 팀 목표만 보여주고 한 줄 링크로 안내 (§E) */
   myGoalCount: number;
+  /**
+   * §C3 레일 「내 목표 진척」 — 025 개인 공간의 목표.
+   * **본문은 업무를, 레일은 목표를 보여준다.** 둘이 같은 것을 말하면 레일을 둘 이유가 없다.
+   * 지금 기간에 걸친 내 목표만. 없으면 블록이 「목표를 만들어 보세요」 한 줄로 선다.
+   */
+  myGoals: {
+    id: number;
+    title: string;
+    /** 자동·수동을 이미 합친 값. 집계 대상이 없으면 null → 「집계 없음」 */
+    progress: number | null;
+    /** 집계 대상 업무 수 — 표본 가드(MIN_SAMPLE)를 화면이 걸 수 있게 함께 준다 */
+    counted: number;
+    /** `분기`·`월`·`연간` */
+    level: string;
+  }[];
   upcoming: {
     key: string;
     kind: "meeting" | "deadline" | "review";
@@ -853,6 +869,37 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     [viewerId, today]
   );
   const myGoalCount = Number(myGoalRow?.n ?? 0);
+
+  /**
+   * §C3 레일 「내 목표 진척」 — 지금 기간에 걸친 내 개인 목표.
+   *
+   * 진척은 **다시 계산하지 않는다.** `goal.progress` 는 `recomputeGoalChain` 이
+   * 유지하는 값이고, 분모(`counted`)는 `goalCountedSql` 이 센다 — 목표 상세와 같은 두 함수다.
+   * 여기서 평균을 새로 내면 홈과 상세가 다른 숫자를 말하게 된다(진척 계산기가 아홉 갈래로
+   * 갈렸던 그 경로다).
+   */
+  const myGoalRows = await query<{
+    id: number; title: string; period_type: string;
+    progress: string | null; progress_manual: string | null; counted: number;
+  }>(
+    `SELECT g.id, g.title, g.period_type, g.progress::text, g.progress_manual::text,
+            ${goalCountedSql("g.id")}::int AS counted
+       FROM goal g
+      WHERE g.is_active = true AND g.scope = 'personal' AND g.owner_actor_id = $1
+        AND g.period_start <= $2::date AND g.period_end >= $2::date
+      ORDER BY g.period_type DESC, g.id
+      LIMIT 5`,
+    [viewerId, today]
+  );
+  const myGoals: HomeSummary["myGoals"] = myGoalRows.map((g) => {
+    const manual = g.progress_manual === null ? null : Math.round(Number(g.progress_manual));
+    return {
+      id: g.id, title: g.title,
+      progress: manual !== null ? manual : (g.progress === null ? null : Math.round(Number(g.progress))),
+      counted: Number(g.counted ?? 0),
+      level: g.period_type === "year" ? "연간" : g.period_type === "quarter" ? "분기" : "월",
+    };
+  });
   const annualLabel = today.slice(0, 4);
 
   // ── 홈 재편 §3-1: 다가오는 일정 (회의 event + 마감 task, 오늘~+14일) ──
@@ -1048,6 +1095,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     })),
     annualGoals,
     myGoalCount,
+    myGoals,
     annualLabel,
     quarterGoals,
     quarterLabel,

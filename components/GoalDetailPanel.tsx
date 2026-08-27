@@ -10,6 +10,8 @@ import { toast } from "@/lib/quick";
 import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import { pfill } from "@/lib/progress-bar";
+import { pushRecent } from "@/lib/recent";
+import type { SessionUser } from "@/lib/types";
 
 interface Contribution { actorId: number | null; name: string; total: number; done: number; sharePct: number }
 interface GoalDetail {
@@ -41,7 +43,7 @@ const GOAL_STATUS: Record<GoalStatus, string> = { ontrack: "온트랙", risk: "�
 const PERIOD_LABEL: Record<string, string> = { year: "연간", quarter: "분기", month: "월간" };
 const STATUS_LABEL: Record<string, string> = { todo: "대기", doing: "진행", review: "리뷰", done: "완료", dropped: "중단" };
 
-export default function GoalDetailPanel() {
+export default function GoalDetailPanel({ user }: { user: SessionUser }) {
   const [openId, setOpenId] = useState<number | null>(null);
   const [full, setFull] = useState(false);          // §C2 확대 모달 여부
   const [d, setD] = useState<GoalDetail | null>(null);
@@ -82,7 +84,10 @@ export default function GoalDetailPanel() {
     const data: GoalDetail = await res.json();
     setD(data);
     setManualVal(data.goal.progressManual != null ? String(data.goal.progressManual) : "");
-  }, []);
+    // §C3 ④ — **읽는 데 성공한 뒤에** 담는다. 링크로 바로 들어온 경우도 여기를 지난다.
+    // 여는 함수(openGoalPanel)에서 담으면 404 나 권한 없는 id 까지 목록에 쌓인다.
+    pushRecent(user.id, "goal", id);
+  }, [user.id]);
 
   useEffect(() => { if (openId != null) load(openId); else setD(null); }, [openId, load]);
 

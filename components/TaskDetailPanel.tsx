@@ -21,6 +21,7 @@ import ProjectCombo, { type ComboProject } from "./ProjectCombo";
 import { notifyGoalChain } from "@/lib/goal-chain";
 import type { SessionUser } from "@/lib/types";
 import { pfill } from "@/lib/progress-bar";
+import { pushRecent } from "@/lib/recent";
 import {
   TASK_PANEL_EVENT,
   currentTaskRef,
@@ -128,6 +129,9 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
     const res = await fetch(`/api/tasks/${id}`);
     if (!res.ok) { setErr("업무를 불러올 수 없습니다."); return; }
     const data = await res.json();
+    // §C3 ④ — **읽는 데 성공한 뒤에** 담는다(위 `if (!res.ok) return` 아래).
+    // 여는 함수에서 담으면 지워진 id·권한 없는 id 까지 「최근 본 것」에 쌓인다.
+    pushRecent(user.id, "task", id);
     setT(data.task);
     setDescText(data.task.description ?? "");
     setProg(data.task.progress ?? 0);
@@ -135,7 +139,7 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
     setBlockErr("");
     setActivity(data.activity ?? []);
     setDecisions(data.decisions ?? []);
-  }, []);
+  }, [user.id]);
   const loadComments = useCallback(async (id: number) => {
     const res = await fetch(`/api/tasks/${id}/comments`);
     if (res.ok) setComments((await res.json()).comments ?? []);

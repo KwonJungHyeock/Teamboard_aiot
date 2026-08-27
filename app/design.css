@@ -526,10 +526,81 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .hm-hero .gt-grid > .sec-empty { grid-column: 1 / -1; color: rgba(255, 255, 255, .68); padding: 12px 0; }
 .hm-hero .gt-grid > .sec-empty .sec-empty-a { color: #fff; }
 
+/* ── §C3 3층 — 본문 + 오른쪽 레일 320px ──
+   레일이 §B1 의 빈 가로 공간을 회수하는 장치다. **레일을 빼면 §B1 위반이 다시 난다.**
+   `min-width: 0` 이 없으면 본문의 표가 그리드 칸을 밀어내 레일이 320px 아래로 찌그러진다. */
+.hm-3 { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; align-items: start; }
+.hm-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+/* "스크롤은 본문과 독립" — sticky 로 붙여 두고 레일 안에서만 넘치면 스크롤한다.
+   `--hdr-h` 를 두 번 빼지 않는다: 위 여백은 sticky top, 아래는 그만큼의 높이 제한이다. */
+.hm-rail {
+  display: flex; flex-direction: column; gap: 12px; min-width: 0;
+  position: sticky; top: 12px; max-height: calc(100vh - var(--hdr-h) - 24px); overflow: auto;
+}
+/* 레일이 들어갈 폭이 없으면 **아래로 내린다.** 320px 을 240px 로 줄이지 않는다 —
+   좁은 레일은 두 줄짜리 제목만 만들고, 그건 레일이 아니라 목록이다. */
+@media (max-width: 1240px) {
+  .hm-3 { grid-template-columns: 1fr; }
+  .hm-rail { position: static; max-height: none; overflow: visible; }
+}
+
 /* ── §D2-2 2열 그리드 ── */
-.hm-g2 { display: grid; grid-template-columns: 1fr 300px; gap: 12px; align-items: start; }
+/* 레일이 320px 을 가져가면서 본문이 좁아졌다. 오른쪽 열을 300px 로 **고정**해 두면
+   왼쪽이 먼저 찌그러진다 — 둘 다 내용이 든 열이라 절반씩 나눈다. */
+.hm-g2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
 .hm-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 @media (max-width: 1100px) { .hm-g2 { grid-template-columns: 1fr; } }
+
+/* ── §C3 레일 블록 ──
+   본문 블록(.hm-blk)과 **다른 규격**이다. 폭이 절반이라 머리줄을 한 단 낮추고(--f5)
+   좌우 여백을 13 → 11 로 줄인다. 새 색은 만들지 않는다 — 토큰 그대로다. */
+.rl-blk { background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
+  overflow: hidden; box-shadow: var(--e1); }
+.rl-h { display: flex; align-items: center; gap: 6px; padding: 8px 11px; border-bottom: 1px solid var(--hair); }
+.rl-h h2, .pg-body .rl-h h2 { font-size: var(--f5); font-weight: 800; color: var(--ink); margin: 0; letter-spacing: -.01em; }
+.rl-more { margin-left: auto; font-size: var(--f6); color: var(--muted); text-decoration: none; }
+.rl-more:hover { color: var(--ink2); }
+
+/* ① 팀 활동 — 이름·문구 한 줄 + 시각. 시각은 오른쪽 끝 고정폭이라 문구가 밀지 않는다. */
+.rl-act { display: flex; align-items: baseline; gap: 8px; width: 100%; text-align: left;
+  padding: 7px 11px; border: 0; border-bottom: 1px solid var(--hair); background: none;
+  font-size: var(--f5); color: var(--ink2); cursor: pointer; }
+.rl-act:last-child { border-bottom: 0; }
+.rl-act:hover:not(:disabled) { background: var(--surface-2); }
+/* 갈 곳이 없는 줄(업무가 안 붙은 활동)은 **커서를 바꾸지 않는다** — 눌릴 것처럼 보이면 안 된다. */
+.rl-act:disabled { cursor: default; }
+.rl-act-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rl-act-t b { font-weight: 800; color: var(--ink); margin-right: 4px; }
+.rl-act-n { font-style: normal; color: var(--muted); margin-left: 4px; }
+.rl-act-at { flex: 0 0 auto; font-size: var(--f6); color: var(--muted); }
+
+/* ② 내 목표 진척 */
+.rl-goal { display: block; padding: 8px 11px; border-bottom: 1px solid var(--hair); text-decoration: none; }
+.rl-goal:last-child { border-bottom: 0; }
+.rl-goal:hover { background: var(--surface-2); }
+.rl-goal-h { display: flex; align-items: center; gap: 6px; }
+.rl-goal-lv { flex: 0 0 auto; font-size: var(--f6); color: var(--muted);
+  border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; line-height: 17px; }
+.rl-goal-t { flex: 1; min-width: 0; font-size: var(--f5); color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rl-goal-p { flex: 0 0 auto; font-style: normal; font-size: var(--f5); font-weight: 800; color: var(--ink); }
+/* 표본이 부족하면 **값은 보이고 흐리다.** 감추지 않는다 (30-1·2). */
+.rl-goal-p.low { color: var(--muted); font-weight: 700; }
+.rl-goal-track { display: block; height: 4px; border-radius: 20px; background: var(--hair); margin: 6px 0 4px; overflow: hidden; }
+.rl-goal-track > i { display: block; height: 100%; background: var(--coral-d); }
+.rl-goal-base { display: block; font-size: var(--f6); color: var(--muted); }
+
+/* ③ 최근 본 것 — 종류 라벨 + 제목 한 줄 */
+.rl-recent { display: flex; align-items: baseline; gap: 7px; padding: 7px 11px;
+  border-bottom: 1px solid var(--hair); text-decoration: none; }
+.rl-recent:last-child { border-bottom: 0; }
+.rl-recent:hover { background: var(--surface-2); }
+.rl-recent-k { flex: 0 0 auto; font-size: var(--f6); color: var(--muted); }
+.rl-recent-t { flex: 1; min-width: 0; font-size: var(--f5); color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 첫 그림에서는 저장소를 못 읽는다(서버에 localStorage 가 없다). 자리만 잡아 둔다 —
+   높이를 안 잡으면 목록이 들어오는 순간 레일 아래가 통째로 밀린다. */
+.rl-skel { height: 44px; }
 
 /* ── §D3 블록 공통 ── */
 .hm-blk { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; box-shadow: var(--e1); }
@@ -571,10 +642,7 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .hm-chip.amber { color: var(--amber-text); background: var(--amber-bg); }
 .hm-chip.coral { color: var(--coral-text); background: var(--coral-bg); }
 
-/* 다가오는 일정 — 52 / 1fr / 60 */
-.hm-row-up .hm-c1 { flex: 0 0 52px; }
-.hm-row-up .hm-c2 { flex: 1; min-width: 0; }
-.hm-row-up .hm-c3 { flex: 0 0 60px; display: flex; justify-content: flex-end; }
+/* 「다가오는 일정」의 행 규격(.hm-row-up)은 §C3 ⑤ 에서 블록과 함께 지웠다 — components/HomeView.tsx 주석 참고. */
 .hm-date { font-size: var(--f5); font-weight: 800; color: var(--ink2); }
 .hm-dd { font-size: var(--f5); font-weight: 800; font-style: normal; color: var(--ink2); }
 /* H-2 — 임박(D-DAY~D-7)은 앰버. 등급은 lib/task-view 의 dueUrgency 하나에서 나온다.
@@ -1752,6 +1820,10 @@ tr.drop-after > td { box-shadow: inset 0 -1px 0 0 var(--coral); }
   content: ""; position: absolute; top: -3px; left: -2px; width: 5px; height: 5px;
   border-radius: 50%; background: var(--coral);
 }
+
+/* 업무 표 — 폭의 단일 출처가 colgroup 이려면 `fixed` 가 표 자신에게 붙어 있어야 한다.
+   `.hv table` 에만 걸려 있어서 `.hv` 밖(홈 §C3 레일 레이아웃)에서는 auto 로 돌았다. */
+.tt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 
 /* 막대 — 높이 16 · 완전 알약 · 안쪽 1px 링 (§D6) */
 /*
