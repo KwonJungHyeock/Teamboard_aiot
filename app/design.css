@@ -1819,6 +1819,12 @@ tr.drop-after > td { box-shadow: inset 0 -1px 0 0 var(--coral); }
 
 /* 업무 표 — 폭의 단일 출처가 colgroup 이려면 `fixed` 가 표 자신에게 붙어 있어야 한다.
    `.hv table` 에만 걸려 있어서 `.hv` 밖(홈 §C3 레일 레이아웃)에서는 auto 로 돌았다. */
+/* 영역 표시가 링크가 됐다 (B-11 진입점). 밑줄을 긋지 않는다 — 표 안의 밑줄은
+   행 전체가 링크인 것처럼 읽힌다. 눌리는 것은 hover 로 알린다.
+   (배지 모양 자체는 §D1 에서 「6px 색 사각형 + --f6」으로 바뀐다. 지금은 손대지 않는다.) */
+a.areatag { text-decoration: none; color: inherit; }
+a.areatag:hover { border-color: var(--ink2); color: var(--ink); }
+
 /* ── 카드 머리줄 `.ch` — **조상에 매달지 않는다** (§G · §C3 회신 4) ──
    `app/home.css` 에 `.hv .ch { … }` 로만 있었다. `.hv` 밖에서 쓰는 순간 아무 규칙도
    안 걸려 제목과 값이 **두 줄로 떨어진다.** §C3 레일이 홈을 `.hv` 밖으로 옮기면서

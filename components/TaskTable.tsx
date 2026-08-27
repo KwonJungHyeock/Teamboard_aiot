@@ -4,6 +4,7 @@
 // 같은 컴포넌트를 재사용한다 (Phase 5 검수 포인트 6). 컬럼 폭 고정 (프로토타입 colgroup).
 // variant="full"(/tasks): 목표·우선순위 컬럼 추가 + 상태 인라인 드롭다운. compact(홈)은 5열 유지.
 import { Fragment, useRef, useState, type CSSProperties } from "react";
+import Link from "next/link";
 import EmptyState from "./EmptyState";
 import SectionEmpty, { type SectionEmptyAction } from "./SectionEmpty";
 import { toast } from "@/lib/quick";
@@ -27,6 +28,8 @@ export interface TaskTableRow {
   priority?: string; // full 전용
   goalNames?: string[]; // full 전용
   areaName?: string; // full 전용
+  /** 영역 상세(B-11)로 가는 진입점. 없으면 링크가 아니라 글자다 — 없는 곳으로 보내지 않는다. */
+  areaId?: number | null;
   progress?: number; // full 전용 — 진행률 0~100
   blocked?: boolean;
   blockedReason?: string | null;
@@ -532,7 +535,15 @@ export default function TaskTable({
                 )}
                 {full && (
                   <td>
-                    {t.areaName ? <span className="areatag">{t.areaName}</span> : "—"}
+                    {/* **영역 상세로 가는 진입점**(B-11). 영역을 사이드바에서 내린 뒤로
+                        영역 화면에 갈 길이 없었다 — 화면을 되살렸으면 길도 같이 낸다.
+                        id 가 없으면 링크로 만들지 않는다: 갈 곳 없는 링크는 고장이다. */}
+                    {t.areaName
+                      ? t.areaId
+                        ? <Link className="areatag click" href={`/areas/${t.areaId}`}
+                            onClick={(e) => e.stopPropagation()}>{t.areaName}</Link>
+                        : <span className="areatag">{t.areaName}</span>
+                      : "—"}
                   </td>
                 )}
                 {showProject && (

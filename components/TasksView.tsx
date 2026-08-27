@@ -129,7 +129,7 @@ const tasksQuery = ((assigneeId: number) => ({
 
 type TasksQueryKey = keyof ReturnType<typeof tasksQuery>;
 
-export default function TasksView({ user, defaults, initialAreas, initial }: {
+export default function TasksView({ user, defaults, initialAreas, initial, lockedArea }: {
   user: SessionUser;
   /** 사용자 속성으로서의 기본값 — 서버가 매 요청 읽는다(`lib/user-defaults.ts`). */
   defaults: UserDefaults;
@@ -137,6 +137,19 @@ export default function TasksView({ user, defaults, initialAreas, initial }: {
   initialAreas: number[];
   /** 서버가 읽은 주소 쿼리 — 훅이 첫 렌더부터 맞는 값을 쓰게 한다. */
   initial?: Partial<Record<TasksQueryKey, string>>;
+  /**
+   * **영역 상세** (B-11) — 이 영역으로 고정한다.
+   *
+   * 영역 상세를 새 화면으로 만들지 않고 **이 화면을 고정 모드로 연다.** 목록이 둘이 되면
+   * 필터·정렬·묶기·빈 상태가 두 벌이 되고, 그게 §C4 가 막으려는 바로 그것이다.
+   * (「홈에만 만들고 나머지를 옛 목록으로 두면 이 작업은 실패다」)
+   *
+   * 고정 모드에서 달라지는 것은 셋뿐이다.
+   *   ① 영역 칩 줄을 그리지 않는다 — 영역은 주소(`/areas/3`)가 정한다
+   *   ② 「조건 지우기」가 영역을 풀지 않는다 — 풀면 다른 영역의 업무가 이 화면에 나온다
+   *   ③ 머리글이 영역 이름이다
+   */
+  lockedArea?: { id: number; name: string; colorKey: string | null };
 }) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [inbox, setInbox] = useState<InboxItem[]>([]);
@@ -158,7 +171,11 @@ export default function TasksView({ user, defaults, initialAreas, initial }: {
   // URL 은 `?area=2,3` 으로 쓴다. 링크로 공유·북마크된다.
   // 첫 값은 **서버가 정해서 내려준다.** 예전에는 빈 배열로 시작해 `/api/meta/selectors`
   // 응답을 받은 뒤 이펙트가 채웠고, 그동안 "영역이 정해졌는가"를 세는 게이트가 필요했다.
-  const [fAreas, setFAreas] = useState<number[]>(initialAreas);
+  // 고정 모드면 영역은 상태가 아니라 **주소가 정한 값**이다. 상태로 두면 화면 안에서
+  // 바뀔 수 있고, 바뀌는 순간 주소와 화면이 다른 말을 한다.
+  const [fAreasState, setFAreasState] = useState<number[]>(initialAreas);
+  const fAreas = lockedArea ? [lockedArea.id] : fAreasState;
+  const setFAreas: typeof setFAreasState = lockedArea ? (() => {}) : setFAreasState;
   const fArea = fAreas.length === 1 ? String(fAreas[0]) : "";   // 새 업무 프리셋용 (하나일 때만 의미가 있다)
   const areaParam = fAreas.join(",");
   const [fProject, setFProject] = useState("");
@@ -453,7 +470,10 @@ export default function TasksView({ user, defaults, initialAreas, initial }: {
     if (loading) return;
     const sp = new URLSearchParams(window.location.search);
     const set = (k: string, v: string | null) => (v ? sp.set(k, v) : sp.delete(k));
-    set("area", areaParam || null);
+    // 고정 모드(영역 상세)에서는 영역을 **주소에 쓰지 않는다.** 경로가 이미 `/areas/3` 이고,
+    // 여기에 `?area=3` 을 덧붙이면 같은 값이 주소 두 곳에 적힌다 — 둘이 어긋났을 때
+    // 어느 쪽이 맞는지 알 수 없고, 공유된 링크가 경로와 다른 영역을 열 수 있다.
+    set("area", lockedArea ? null : areaParam || null);
     set("project", fProject || null);
     set("status", fStatus || null);
     set("due", fDue || null);
@@ -461,7 +481,7 @@ export default function TasksView({ user, defaults, initialAreas, initial }: {
     set("blocking", fBlocking ? "1" : null);
     const qs = sp.toString();
     window.history.replaceState({}, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
-  }, [loading, areaParam, fProject, fStatus, fDue, fBlocked, fBlocking]);
+  }, [loading, areaParam, fProject, fStatus, fDue, fBlocked, fBlocking, lockedArea]);
 
   /**
    * §C — 보이는 행의 새 순서를 서버에 보낸다.
@@ -493,6 +513,7 @@ export default function TasksView({ user, defaults, initialAreas, initial }: {
           status: t.status,
           priority: t.priority,
           areaName: t.areaName,
+          areaId: t.areaId,
           // 28-a — 서버가 이미 taskProgress() 를 통과시킨 **실효 진척**을 준다.
           //   여기서 다시 셈하지 않는다. 두 번 셈하면 계산기가 둘이 된다.
           progress: t.progress,
@@ -558,7 +579,9 @@ export default function TasksView({ user, defaults, initialAreas, initial }: {
     const mineOnly = lq.value.assignee === String(user.id);
     const otherOnly = lq.value.assignee !== "all" && !mineOnly;
     if (otherOnly) conds.push(`담당 ${actors.find((a) => String(a.id) === lq.value.assignee)?.name ?? lq.value.assignee}`);
-    if (fAreas.length) conds.push(`영역 ${fAreas.map(areaNameOf).join(" · ")}`);
+    // 고정 모드에서 영역은 **조건이 아니라 화면 자체**다. 조건 줄에 적으면
+    // 「조건 지우기」로 풀 수 있는 것처럼 보인다.
+    if (!lockedArea && fAreas.length) conds.push(`영역 ${fAreas.map(areaNameOf).join(" · ")}`);
 
     // 능동 조건도 없고 담당도 전체면 — 좁힌 것이 없다. 그때만 "정말 없다"고 말한다.
     if (!conds.length && !mineOnly) return { kind: "none" as const, conds };
@@ -594,9 +617,11 @@ export default function TasksView({ user, defaults, initialAreas, initial }: {
     /* 페이지 뼈대는 공통 컴포넌트가 그린다 (MD-P-2026-019 §B) —
        브레드크럼 → 제목+액션 → 탭 → 필터바 → 본문 순서를 화면마다 다시 짜지 않는다. */
     <PageShell
-      crumb={["워크스페이스", "업무"]}
-      title={isMine ? "내 업무" : "업무"}
-      subtitle={isMine
+      crumb={lockedArea ? ["워크스페이스", "영역", lockedArea.name] : ["워크스페이스", "업무"]}
+      title={lockedArea ? lockedArea.name : isMine ? "내 업무" : "업무"}
+      subtitle={lockedArea
+        ? `${lockedArea.name} 영역의 업무입니다. 영역은 주소가 정하므로 이 화면에서는 바뀌지 않습니다.`
+        : isMine
         ? "담당이 나인 업무만 보고 있습니다. 담당을 ‘전체 담당’으로 바꾸면 전체를 조회합니다."
         : "에이전트 제안은 인박스에서 승인해야 목록·홈·캘린더에 반영됩니다."}
       // 코랄 채움은 화면당 1개다 (§B).
@@ -610,16 +635,21 @@ export default function TasksView({ user, defaults, initialAreas, initial }: {
         <>
           <input className="tsearch" placeholder="업무·프로젝트·담당 검색"
             value={search} onChange={(e) => setSearch(e.target.value)} />
-          {/* 영역 칩 — 다중 선택. 색 점은 사이드바에서 쓰던 영역 색을 그대로 쓴다 (§B2) */}
-          <button className={`pg-chip${fAreas.length === 0 ? " on" : ""}`}
-            onClick={() => setFAreas([])}>전체 영역</button>
-          {areas.map((a) => (
-            <button key={a.id} className={`pg-chip area-chip${fAreas.includes(a.id) ? " on" : ""}`}
-              aria-pressed={fAreas.includes(a.id)} onClick={() => toggleArea(a.id)}>
-              <i className={`pjdot ${a.colorKey ?? "team"}`} />
-              {a.name}
-            </button>
-          ))}
+          {/* 영역 칩 — 다중 선택. 색 점은 사이드바에서 쓰던 영역 색을 그대로 쓴다 (§B2)
+              고정 모드(영역 상세)에서는 그리지 않는다 — 누를 수 없는 칩을 두면 고장으로 읽힌다. */}
+          {!lockedArea && (
+            <>
+              <button className={`pg-chip${fAreas.length === 0 ? " on" : ""}`}
+                onClick={() => setFAreas([])}>전체 영역</button>
+              {areas.map((a) => (
+                <button key={a.id} className={`pg-chip area-chip${fAreas.includes(a.id) ? " on" : ""}`}
+                  aria-pressed={fAreas.includes(a.id)} onClick={() => toggleArea(a.id)}>
+                  <i className={`pjdot ${a.colorKey ?? "team"}`} />
+                  {a.name}
+                </button>
+              ))}
+            </>
+          )}
           {/* 값은 `all`/`<id>` 다. 빈 문자열을 쓰지 않는다 — 주소에 껍데기가 남는다(B-12). */}
           <select value={lq.value.assignee} aria-label="담당"
             onChange={(e) => lq.set("assignee", e.target.value)}>
@@ -737,7 +767,7 @@ export default function TasksView({ user, defaults, initialAreas, initial }: {
             )}
             <TaskTable
               rows={rows}
-              title={isMine ? "내 업무" : "업무 목록"}
+              title={lockedArea ? `${lockedArea.name} 업무` : isMine ? "내 업무" : "업무 목록"}
               sub={`${rows.length}건`}
               emptyScope="full"
               emptyText={EMPTY_COPY.text}
