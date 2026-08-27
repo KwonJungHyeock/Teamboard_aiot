@@ -1754,8 +1754,21 @@ tr.drop-after > td { box-shadow: inset 0 -1px 0 0 var(--coral); }
 }
 
 /* 막대 — 높이 16 · 완전 알약 · 안쪽 1px 링 (§D6) */
+/*
+   **최소 폭 8px** (§D6 · §C3 ⑥). 분기 구간(92일)에서 하루짜리 업무는 1.09% 다.
+   트랙이 240px 이면 2.6px — 알약이 아니라 점이고, 링(1px×2)이 폭의 대부분을 먹는다.
+   있는 일이 없는 일처럼 보인다.
+
+   픽셀은 CSS 가 정한다(lib/task-bars.ts 의 규약) — 그래서 하한도 여기서 건다.
+   `--l`·`--w` 는 컴포넌트가 넣는 백분율이고, 이 두 줄이 그것을 픽셀로 받아 낸다.
+
+   왼쪽도 함께 조인다. `max(--w, 8px)` 만 걸면 구간 끝에 붙은 막대가 오른쪽으로
+   삐져나가 잘린다 — 넓혀 놓고 그만큼 잘라 내면 넓힌 적이 없는 것과 같다.
+*/
 .tt-bar {
   position: absolute; top: 50%; transform: translateY(-50%);
+  left: min(var(--l), calc(100% - 8px));
+  width: max(var(--w), 8px);
   height: 16px; border-radius: 20px; display: flex; overflow: hidden;
   box-shadow: inset 0 0 0 1px rgba(16, 24, 40, .05);
 }

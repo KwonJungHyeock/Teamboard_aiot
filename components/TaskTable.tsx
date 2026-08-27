@@ -3,7 +3,7 @@
 // 업무 테이블 (Phase 3 마감 임박 → Phase 5 공용화) — 홈 "마감 임박"과 /tasks 목록이
 // 같은 컴포넌트를 재사용한다 (Phase 5 검수 포인트 6). 컬럼 폭 고정 (프로토타입 colgroup).
 // variant="full"(/tasks): 목표·우선순위 컬럼 추가 + 상태 인라인 드롭다운. compact(홈)은 5열 유지.
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useRef, useState, type CSSProperties } from "react";
 import EmptyState from "./EmptyState";
 import SectionEmpty, { type SectionEmptyAction } from "./SectionEmpty";
 import { toast } from "@/lib/quick";
@@ -548,8 +548,9 @@ export default function TaskTable({
                         }
                         const pct = Math.max(0, Math.min(100, t.progress ?? 0));
                         return (
+                          // 위치는 백분율로 넘기고 **하한(8px)은 CSS 가 건다** — 픽셀을 아는 쪽이 CSS 다.
                           <span className={`tt-bar${g.over ? " over" : ""}${g.clipStart ? " clip-s" : ""}${g.clipEnd ? " clip-e" : ""}`}
-                            style={{ left: `${g.left}%`, width: `${g.width}%` }}>
+                            style={{ "--l": `${g.left}%`, "--w": `${g.width}%` } as CSSProperties}>
                             {/* 완료 구간은 영역 색 실선, 남은 구간은 **같은 색 16%**.
                                 회색으로 깔지 않는다 — 색이 둘이 되면 막대가 두 가지를 말한다. */}
                             <i className={`pjdot-fill ${t.colorKey ?? "team"}`} style={{ width: `${pct}%` }} />
