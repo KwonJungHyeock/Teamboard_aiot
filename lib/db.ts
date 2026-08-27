@@ -1,6 +1,6 @@
 // DB 추상화 레이어 — Vercel Postgres가 아니어도 이 파일만 교체하면 됨 (PRD 10장)
 import { Pool, type QueryResultRow } from "pg";
-import { runMigrations } from "./migrate";
+import { migrationStatus, runMigrations } from "./migrate";
 
 let pool: Pool | null = null;
 
@@ -27,6 +27,17 @@ function ensureMigrated(): Promise<unknown> {
     });
   }
   return migratePromise;
+}
+
+/**
+ * 마이그레이션 적용 현황 — **읽기 전용. 적용하지 않는다.**
+ *
+ * 일부러 `ensureMigrated()` 를 부르지 않는다. 「어디까지 적용됐는가」를 묻는 일이
+ * 그 자체로 적용을 일으키면, 물어본 뒤의 답만 볼 수 있고 **묻기 전의 상태**를
+ * 영영 못 본다. 0031 이 빠진 것을 알아챘을 때 필요했던 것이 바로 그 「묻기 전」이다.
+ */
+export async function getMigrationStatus() {
+  return migrationStatus(getPool());
 }
 
 export async function query<T extends QueryResultRow = QueryResultRow>(
