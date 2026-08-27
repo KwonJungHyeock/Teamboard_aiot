@@ -25,6 +25,9 @@ export default async function Page({ searchParams }: {
    *
    * 이 판단을 **서버에서 한다.** 예전에는 마운트 이펙트가 주소를 다시 읽어
    * `setFAssignee("")` 을 했고, 그래서 첫 렌더는 내 담당, 확정 렌더는 전체 담당이었다.
+   *
+   * **지금 `wide` 가 정하는 것은 영역뿐이다.** 담당은 링크가 직접 `&assignee=all` 을
+   * 달고 온다 — 훅이 주소만 다시 읽기 때문에, 주소에 없는 값을 서버가 그리면 뒤집힌다.
    */
   const wide = !!(q("status") || q("due") || q("blocked") === "1" || q("blocking") === "1");
 
@@ -44,9 +47,19 @@ export default async function Page({ searchParams }: {
         initialAreas={initialAreas}
         // 주소에 있는 값은 서버가 답을 안다 — 주소가 저장값을 이기기 때문이다.
         // 넘겨주면 공유 링크가 첫 바이트부터 맞는 값으로 그려진다.
+        /*
+         * **담당은 주소에 있는 것만 넘긴다.**
+         *
+         * `wide` 일 때 `"all"` 을 넣고 있었다. 그런데 `assignee` 는 저장값을 안 보는 키라
+         * 훅이 마운트 때 **주소만** 다시 읽는다 — 주소에 없으면 기본값(본인)으로 돌아간다.
+         * 그래서 `/tasks?due=overdue` 는 **서버가 「전체 담당」을 그리고 곧바로 「나」로 뒤집혔다.**
+         * 실측: SSR selected=all → 하이드레이션 후 value=1.
+         *
+         * 홈 판단 타일의 링크는 이미 `&assignee=all` 을 달고 있다(HomeView). 그러니 이 폴백은
+         * 아무것도 고쳐 주지 않으면서 **어긋남만 만들고 있었다.** 주소가 말한 것만 넘긴다.
+         */
         initial={{
-          sort: q("sort"), group: q("group"), done: q("done"),
-          assignee: q("assignee") ?? (wide ? "all" : undefined),
+          sort: q("sort"), group: q("group"), done: q("done"), assignee: q("assignee"),
         }}
       />
     </AppShell>

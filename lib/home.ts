@@ -5,10 +5,13 @@ import { visibleTaskSql } from "./visibility";
 import { getCurrentMonthGoals } from "./goals";
 import {
   judgeGoalStatus, countableSql, doneSql, projectProgressSql, projectCountedSql, taskProgressSql,
+  goalCountedSql,
 } from "./progress";
 import { getDecidedStaleDays, signalVisibilityClause } from "./signals";
 import { creditState } from "./agent";
 import { decisionsThisWeek } from "./decisions";
+import { recentActivity } from "./activity";
+import { rollActivity, isRailActivity, type RolledActivity } from "./activity-roll";
 
 const TZ_OFFSET = "+09:00"; // Asia/Seoul — 팀 기준 시간대
 
@@ -121,7 +124,8 @@ export interface HomeSummary {
   }[];
   // 현황 분석 (파트 2) — 서버 집계만
   weeklyDone: { weekStart: string; count: number }[]; // 최근 8주 완료 건수 (오래된→최신)
-  assigneeLoad: { name: string; doing: number; waiting: number }[]; // 담당자별 오픈 업무 부하
+  // `assigneeLoad`(담당자별 부하)는 §C 회신 1 에서 지웠다 — `teamStatus` 가 같은 사람을
+  // 더 많은 사실로 말한다. 한 화면에 사람별 블록이 둘이면 그게 §C 가 없애려던 중복이다.
   isoWeek: number;
   dueSoon: {
     id: number;
@@ -169,6 +173,21 @@ export interface HomeSummary {
   quarterLabel: string; // 예: 2026 Q3
   /** 내 개인 목표 수 — 홈은 팀 목표만 보여주고 한 줄 링크로 안내 (§E) */
   myGoalCount: number;
+  /**
+   * §C3 레일 「내 목표 진척」 — 025 개인 공간의 목표.
+   * **본문은 업무를, 레일은 목표를 보여준다.** 둘이 같은 것을 말하면 레일을 둘 이유가 없다.
+   * 지금 기간에 걸친 내 목표만. 없으면 블록이 「목표를 만들어 보세요」 한 줄로 선다.
+   */
+  myGoals: {
+    id: number;
+    title: string;
+    /** 자동·수동을 이미 합친 값. 집계 대상이 없으면 null → 「집계 없음」 */
+    progress: number | null;
+    /** 집계 대상 업무 수 — 표본 가드(MIN_SAMPLE)를 화면이 걸 수 있게 함께 준다 */
+    counted: number;
+    /** `분기`·`월`·`연간` */
+    level: string;
+  }[];
   upcoming: {
     key: string;
     kind: "meeting" | "deadline" | "review";
@@ -196,13 +215,32 @@ export interface HomeSummary {
     /** 안읽음 — 굵게 + 좌측 코랄 점 (MD-P-2026-018 §B 규격 재사용, MD-P-2026-020 §D4) */
     unread: boolean;
   }[];
+  /**
+   * §C3 레일 「팀 활동」 — 최근 활동을 **묶어서** 6줄.
+   * 「오늘의 활동」이 아니다. 날짜 조건을 걸면 조용한 날에 빈 카드가 되고,
+   * **빈 카드는 신뢰를 깎는다**(「다가오는 일정」을 기각한 것과 같은 이유).
+   */
+  teamActivity: RolledActivity[];
   /** 팀 현황 탭 (MD-P-2026-020 §D5) — 기존 담당자별 집계를 재사용해 한 번에 뽑는다 */
+  /**
+   * 담당자별 현황 — `/status` 의 담당자 줄 (§C 회신 1-1).
+   *
+   * **「평균 진척」을 버렸다.** 진척은 본인이 손으로 적는 값이라 사람끼리 나란히
+   * 놓으면 **정직하게 적을수록 손해**가 된다. 70% 를 90% 라 적는 사람이 유능해 보이고,
+   * 그러면 진척 숫자 전체가 못 쓰게 된다.
+   *
+   * 대신 넷을 넣는다. 전부 **기한과 관계에서 나오는 사실**이고 본인이 손으로 못 바꾼다.
+   * 그리고 §C1 판단 타일과 **같은 언어**다 — 홈에서 팀 전체로 보던 것을 사람별로 쪼갠 것.
+   *
+   * 평균 진척은 **개인 자기 화면(내 목표)에만** 남긴다.
+   */
   teamStatus: {
     actorId: number;
     name: string;
     doing: number;      // 진행 중 (todo/doing/review)
     late: number;       // 지연 (기한 경과)
-    avgProgress: number | null; // 평균 진척. 오픈 업무 0건이면 null → "—"
+    thisWeek: number;   // 이번 주 마감 (오늘~이번 주 일요일). 지연과 겹치지 않는다
+    blocking: number;   // 막고 있는 것 — 028 §B2 역방향 차단을 사람 단위로 센 것
   }[];
   agent: {
     status: "working" | "pending" | "idle";
@@ -575,46 +613,48 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     [addDays(weekStart, -49), weekStart]
   );
   const weeklyDone = weeklyDoneRows.map((r) => ({ weekStart: r.ws, count: Number(r.n) }));
-  // 담당자별 부하: 오픈 업무(todo/doing/review)를 상태별로 (진행 / 대기·리뷰). 부하순 정렬.
-  const assigneeLoadRows = await query<{ name: string; doing: string; waiting: string }>(
-    `SELECT ac.display_name AS name,
-            count(*) FILTER (WHERE t.status = 'doing') AS doing,
-            count(*) FILTER (WHERE t.status IN ('todo', 'review')) AS waiting
-     FROM actor ac
-     JOIN task t ON t.assignee_id = ac.id AND t.is_active = true AND t.status IN ('todo', 'doing', 'review')
-                AND t.visibility = 'team'
-     WHERE ac.type = 'human' AND ac.is_active = true
-       AND ac.id NOT IN (SELECT actor_id FROM account WHERE email = 'robodynesystems')
-     GROUP BY ac.display_name
-     ORDER BY count(*) DESC`
-  );
-  const assigneeLoad = assigneeLoadRows.map((a) => ({
-    name: a.name, doing: Number(a.doing), waiting: Number(a.waiting),
-  }));
-
-  // 팀 현황 탭 (§D5) — 같은 오픈 업무 모집단을 한 번 더 훑어 지연·평균 진척까지 뽑는다.
-  // 신규 데이터를 만들지 않는다. avg 는 오픈 업무 0건이면 null(= "—", 0% 아님).
+  /**
+   * 담당자별 현황 (§C 회신 1-1) — 같은 오픈 업무 모집단을 한 번 더 훑는다.
+   * **신규 데이터를 만들지 않는다.** 네 값 전부 이미 있는 열에서 나온다.
+   *
+   * · 지연       기한이 오늘보다 **이전**
+   * · 이번 주    오늘 이상 ~ 이번 주 일요일 이하. **지연과 겹치지 않는다** —
+   *              겹치면 같은 업무가 두 칸에서 세어져 합이 진행 중을 넘는다.
+   * · 막고 있는 것  이 사람 업무를 원인으로 막혀 있는 **남의** 업무 수.
+   *              `blocked_by` 역방향이고 위 openTasks 쿼리가 쓰는 것과 **같은 조건**이다
+   *              (`bk.assignee_id IS DISTINCT FROM t.assignee_id` — 자기 것끼리는 안 센다).
+   *
+   * 정렬은 ①막고 있는 것 ②지연 ③진행 중. **팀장이 먼저 볼 것이 위로 온다.**
+   */
+  const weekEnd = addDays(weekStart, 6);
   const teamStatusRows = await query<{
-    id: number; name: string; doing: string; late: string; avg: string | null;
+    id: number; name: string; doing: string; late: string; this_week: string; blocking: string;
   }>(
     `SELECT ac.id, ac.display_name AS name,
             count(*) AS doing,
             count(*) FILTER (WHERE t.due_date IS NOT NULL AND t.due_date < $1::date) AS late,
-            round(avg(${taskProgressSql("t")})) AS avg
+            count(*) FILTER (WHERE t.due_date IS NOT NULL
+                               AND t.due_date >= $1::date AND t.due_date <= $2::date) AS this_week,
+            coalesce(sum((SELECT count(*) FROM task bk
+                           WHERE bk.blocked_by = t.id AND bk.is_active = true AND bk.blocked = true
+                             AND bk.assignee_id IS DISTINCT FROM t.assignee_id)), 0) AS blocking
      FROM actor ac
      JOIN task t ON t.assignee_id = ac.id AND ${OPEN_TASK} AND ${TEAM_TASK}
      WHERE ac.type = 'human' AND ac.is_active = true
-     GROUP BY ac.id, ac.display_name
-     ORDER BY count(*) FILTER (WHERE t.due_date IS NOT NULL AND t.due_date < $1::date) DESC, count(*) DESC`,
-    [today]
+     GROUP BY ac.id, ac.display_name`,
+    [today, weekEnd]
   );
-  const teamStatus = teamStatusRows.map((r) => ({
-    actorId: r.id,
-    name: r.name,
-    doing: Number(r.doing),
-    late: Number(r.late),
-    avgProgress: r.avg === null ? null : Number(r.avg),
-  }));
+  const teamStatus = teamStatusRows
+    .map((r) => ({
+      actorId: r.id,
+      name: r.name,
+      doing: Number(r.doing),
+      late: Number(r.late),
+      thisWeek: Number(r.this_week),
+      blocking: Number(r.blocking),
+    }))
+    // 정렬을 SQL 에 두면 같은 식을 SELECT 와 ORDER BY 두 곳에 적게 된다. 여기서 한 번만.
+    .sort((a, b) => b.blocking - a.blocking || b.late - a.late || b.doing - a.doing);
 
   // 뷰어 호칭 (short_name 우선)
   const viewer = await queryOne<{ display_name: string; short_name: string | null }>(
@@ -845,6 +885,37 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     [viewerId, today]
   );
   const myGoalCount = Number(myGoalRow?.n ?? 0);
+
+  /**
+   * §C3 레일 「내 목표 진척」 — 지금 기간에 걸친 내 개인 목표.
+   *
+   * 진척은 **다시 계산하지 않는다.** `goal.progress` 는 `recomputeGoalChain` 이
+   * 유지하는 값이고, 분모(`counted`)는 `goalCountedSql` 이 센다 — 목표 상세와 같은 두 함수다.
+   * 여기서 평균을 새로 내면 홈과 상세가 다른 숫자를 말하게 된다(진척 계산기가 아홉 갈래로
+   * 갈렸던 그 경로다).
+   */
+  const myGoalRows = await query<{
+    id: number; title: string; period_type: string;
+    progress: string | null; progress_manual: string | null; counted: number;
+  }>(
+    `SELECT g.id, g.title, g.period_type, g.progress::text, g.progress_manual::text,
+            ${goalCountedSql("g.id")}::int AS counted
+       FROM goal g
+      WHERE g.is_active = true AND g.scope = 'personal' AND g.owner_actor_id = $1
+        AND g.period_start <= $2::date AND g.period_end >= $2::date
+      ORDER BY g.period_type DESC, g.id
+      LIMIT 5`,
+    [viewerId, today]
+  );
+  const myGoals: HomeSummary["myGoals"] = myGoalRows.map((g) => {
+    const manual = g.progress_manual === null ? null : Math.round(Number(g.progress_manual));
+    return {
+      id: g.id, title: g.title,
+      progress: manual !== null ? manual : (g.progress === null ? null : Math.round(Number(g.progress))),
+      counted: Number(g.counted ?? 0),
+      level: g.period_type === "year" ? "연간" : g.period_type === "quarter" ? "분기" : "월",
+    };
+  });
   const annualLabel = today.slice(0, 4);
 
   // ── 홈 재편 §3-1: 다가오는 일정 (회의 event + 마감 task, 오늘~+14일) ──
@@ -956,8 +1027,27 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       ? `지연된 업무가 ${overdueTasks}건 있어요.`
       : `막힌 곳 없이 순항 중입니다.`;
 
+  /**
+   * §C3 레일 「팀 활동」 — 쿼리 **1개**.
+   *
+   * **120건을 읽는다.** 측정으로 정한 값이다 —
+   * 30/40/60건은 5줄, **80건에서 6줄이 차고** 120건부터는 더 안 늘었다(포화).
+   * 일괄 작업 한 번이 40건을 먹어서 60건까지 안 찼던 것이다.
+   * 문턱의 1.5배를 잡아 오늘보다 큰 일괄 작업이 한 번 더 있어도 여섯 줄이 차게 했다.
+   *
+   * **6줄을 못 채우면 그대로 둔다.** 더 읽지 않는다 — 일괄 등록 한 번이 수천 건일 수 있고,
+   * 여섯 줄을 쫓아 그걸 다 훑는 것은 값에 비해 비싸다. **3줄은 빈 카드가 아니라 사실이다.**
+   *
+   * 거르는 것과 묶는 것 **둘 다 서버에서** 한다. 화면에서 하면 120건을 받아 6건만 그린다.
+   */
+  const teamActivity = rollActivity(
+    (await recentActivity(120, undefined, viewerId)).filter((a) => isRailActivity(a.message)),
+    6
+  );
+
   return {
     today,
+    teamActivity,
     greetingName: viewer?.short_name || viewer?.display_name || "",
     greetingSub,
     metrics,
@@ -996,7 +1086,6 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
         Number(p.total) > 0 && p.avg_progress !== null ? Math.round(Number(p.avg_progress)) : null,
     })),
     weeklyDone,
-    assigneeLoad,
     isoWeek,
     dueSoon: dueSoonRows.map((t) => ({
       id: t.id,
@@ -1021,6 +1110,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     })),
     annualGoals,
     myGoalCount,
+    myGoals,
     annualLabel,
     quarterGoals,
     quarterLabel,

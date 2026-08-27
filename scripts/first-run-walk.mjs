@@ -18,6 +18,7 @@ import { scryptSync, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { purgeActor, purgeReport } from "./purge-actor.mjs";
 
 requireLocalDb("first-run-walk.mjs");
 
@@ -106,7 +107,27 @@ try {
   await page.waitForLoadState("networkidle").catch(() => {});
   await page.waitForTimeout(900);
 
-  // ── 3. 첫 사용 안내 (있으면) ──
+  // ── 3. 첫 사용 안내 ──
+  //
+  // **고정 시간 뒤에 세지 않는다.** 예전에는 로그인 후 900ms 를 기다렸다가 `.frn-bg` 를
+  // 셌고, 그때는 아직 `FirstRun` 이 `/api/onboarding` 응답을 못 받아 0개였다.
+  // 그래서 「안내가 뜨지 않았다」로 적고 **닫는 단계를 통째로 건너뛰었다.**
+  // 안내는 그 뒤에 떴고, 5단계에서 `.frn-bg` 가 클릭을 먹어 시간초과로 죽었다.
+  // (오래된 회차가 통과하던 이유도 이것이다 — 흘린 actor 는 이미 `onboarded_at` 이 있어
+  //  안내가 아예 안 떴다. **오염된 상태에서의 통과**였다.)
+  //
+  // 서버에게 먼저 묻는다. 「봐야 한다」면 안내가 뜨는 것이 **단언**이고,
+  // 「안 봐도 된다」면 안 뜨는 것이 정상이다. 둘을 구분해 적는다.
+  const shouldShow = await page.evaluate(async () => {
+    const r = await fetch("/api/onboarding");
+    return r.ok ? (await r.json()).show === true : null;
+  });
+  if (shouldShow === true) {
+    // 사건을 기다린다 — 시간을 기다리지 않는다.
+    await page.waitForSelector(".frn-bg", { timeout: 9000 });
+  } else {
+    console.log(`  ▸ 03-firstrun            서버가 show=${shouldShow} 라고 답했다 (안내를 안 띄우는 것이 맞다)`);
+  }
   const frn = await page.locator(".frn-bg").count();
   if (frn > 0) {
     // 클릭은 **모달 안으로 좁힌다.** 페이지 전체에서 /다음|시작/ 을 찾으면
@@ -123,10 +144,32 @@ try {
       await page.waitForTimeout(450);
     }
     const done = card.getByRole("button", { name: /시작하기|건너뛰기/ }).first();
-    if (await done.count()) { await done.click().catch(() => {}); await page.waitForTimeout(600); }
+    if (!(await done.count())) throw new Error("안내를 닫을 버튼(시작하기·건너뛰기)이 없다 — 닫지 못하면 뒤 단계가 전부 막힌다");
+    // **빈 catch 를 두지 않는다.** 여기서 조용히 실패하면 안내가 남고,
+    // 그 다음 실패는 「새 업무 버튼을 못 찾는다」로 나타나 엉뚱한 곳을 고치게 된다.
+    //
+    // 「봤음」 기록은 화면을 닫은 **뒤에** 날아가는 POST 다(fire-and-forget).
+    // 그래서 닫자마자 GET 으로 물으면 아직 안 끝난 것을 「안 남았다」로 읽는다 —
+    // 실제로 그렇게 재서 「서버는 아직 show=true」라는 **틀린 결함 보고**를 냈다.
+    // 응답을 기다린다. 고정 시간이 아니라 **그 요청**을 기다린다.
+    const posted = page.waitForResponse(
+      (r) => r.url().includes("/api/onboarding") && r.request().method() === "POST", { timeout: 9000 });
+    await done.click();
+    const res = await posted;
+    if (!res.ok()) throw new Error(`안내 「봤음」 기록이 실패했다 — POST /api/onboarding HTTP ${res.status()}`);
+    // 닫혔는지 **확인한다.** 닫는 시늉과 닫힘은 다르다.
+    await page.locator(".frn-bg").waitFor({ state: "detached", timeout: 5000 });
+    // 서버에도 남았는가 — 안 남으면 화면을 옮길 때마다 다시 뜬다.
+    const still = await page.evaluate(async () => {
+      const r = await fetch("/api/onboarding");
+      return r.ok ? (await r.json()).show : "조회실패";
+    });
+    if (still !== false) throw new Error(`안내를 닫았는데 서버는 아직 show=${still} 다 — 화면을 옮기면 다시 뜬다`);
+    console.log("  ▸ 03-firstrun            닫았다 · POST 200 · 서버 show=false 확인");
+  } else if (shouldShow === true) {
+    throw new Error("서버는 안내를 보여줘야 한다고 했는데 화면에 `.frn-bg` 가 없다");
   } else {
-    steps.push({ id: "03-firstrun", note: "첫 사용 안내가 뜨지 않았다 — 확인 필요", shot: "" });
-    console.log("  ▸ 03-firstrun            뜨지 않음");
+    steps.push({ id: "03-firstrun", note: `첫 사용 안내를 띄우지 않는 계정 (서버 show=${shouldShow})`, shot: "" });
   }
 
   // ── 4. 데이터 0 상태의 각 화면 (C-2) ──
@@ -154,12 +197,38 @@ try {
   await page.waitForTimeout(900);
   await shot(page, "05-new-task-open", "빈 상태 CTA 를 눌러 새 업무 입력을 연다");
 
-  const title = page.locator(".qc-title, .tdp-title, .tv-quick input").first();
-  await title.waitFor({ state: "visible", timeout: 9000 });
+  /**
+   * **원인 규명 완료** (§C3 ⑦).
+   *
+   * 이 단계는 깨끗한 DB 에서 시간초과로 죽었다. 원인은 새 업무 입력이 아니라
+   * **3단계에서 첫 사용 안내를 못 닫은 것**이었다 — 고정 시간(900ms) 뒤에 `.frn-bg` 를
+   * 세는 바람에 아직 안 뜬 것을 「안 뜬다」로 읽고 닫는 단계를 건너뛰었다.
+   * 안내는 그 뒤에 떴고 `.frn-bg` 가 여기서 클릭을 먹었다.
+   *
+   * 오래된 회차가 통과하던 이유도 같다. 흘린 actor 는 이미 `onboarded_at` 이 있어
+   * 안내가 아예 안 떴다 — **오염된 상태에서의 통과**였다. 정리를 고치자 드러났다.
+   *
+   * 남은 실패는 **선택자였다.** `.qc-title, .tdp-title, .tv-quick input` 셋 중
+   * 화면에 있는 것이 하나도 없었다 — 새 업무 입력은 `NewTaskModal` 의 `.ntm-title` 이다.
+   * 셋 다 죽은 선택자였고, 셋을 `,` 로 묶어 두어서 **어느 것이 잡혔는지 물을 수조차 없었다.**
+   * 하나로 좁히고, 못 찾으면 무엇이 떴는지 적는다 (§G 「선택자를 짐작하지 않는다」).
+   */
+  const title = page.locator(".ntm-title");
+  await title.waitFor({ state: "visible", timeout: 9000 }).catch(async (e) => {
+    const open = await page.evaluate(() => ({
+      modal: !!document.querySelector(".ntm"),
+      dialogs: [...document.querySelectorAll('[role="dialog"]')].map((d) => d.getAttribute("aria-label")),
+      inputs: [...document.querySelectorAll("input[type=text], input:not([type])")].map((i) => i.className || i.placeholder),
+    }));
+    throw new Error(`새 업무 제목 입력(.ntm-title)을 못 찾았다 — 화면 상태: ${JSON.stringify(open)}`);
+  });
   await title.fill("첫 업무 — 개발 환경 세팅");
   await page.waitForTimeout(300);
   await shot(page, "06-new-task-typed", "제목 입력");
-  const save = page.getByRole("button", { name: /^만들기$/ }).first();
+  // 버튼 안에 단축키 배지(`<em>⌘↵</em>`)가 들어 있어 접근성 이름이 "만들기 ⌘↵" 다.
+  // `/^만들기$/` 로는 절대 안 잡힌다. **모달 안으로 좁히고** 앵커를 풀어 잡는다 —
+  // 페이지 전체에서 /만들기/ 를 찾으면 본문의 다른 버튼을 누를 수 있다.
+  const save = page.locator(".ntm-foot .btn-primary");
   await save.waitFor({ state: "visible", timeout: 5000 });
   await save.click();
   await page.waitForTimeout(1600);
@@ -187,15 +256,10 @@ try {
   }
   // ── 정리 — 이 스크립트가 만든 것만 지운다 ──
   if (actorId) {
-    // 로그인만 해도 activity_log 가 쌓인다 — actor 를 지우기 전에 참조를 먼저 끊어야 한다
-    await sql(`DELETE FROM activity_log WHERE user_id = $1 OR task_id IN (SELECT id FROM task WHERE created_by = $1)`, [actorId]).catch((e) => console.error("activity_log", e.message));
-    await sql(`DELETE FROM signal WHERE task_id IN (SELECT id FROM task WHERE created_by = $1)`, [actorId]).catch(() => {});
-    await sql(`DELETE FROM task WHERE created_by = $1`, [actorId]).catch((e) => console.error("task 정리 실패", e.message));
-    await sql(`DELETE FROM notification WHERE user_id = $1 OR actor_id = $1`, [actorId]).catch(() => {});
-    await sql(`DELETE FROM account WHERE actor_id = $1`, [actorId]);
-    await sql(`DELETE FROM actor WHERE id = $1`, [actorId]);
-    const left = await sql(`SELECT count(*)::int n FROM actor WHERE id = $1`, [actorId]);
-    console.log(`정리 완료 — actor ${actorId} 잔여 ${left[0].n}건`);
+    // 지울 테이블을 손으로 나열하지 않는다 — `read_marker` 하나가 빠져 있어서 정리가 죽었고,
+    // 정리가 죽으니 계정이 매 회차 하나씩 남았다(실제로 셋이 쌓였다).
+    // 스키마에 물어보고 지운다. 참조 테이블이 늘어도 여기는 안 바뀐다.
+    console.log(purgeReport(actorId, await purgeActor(sql, actorId)));
   }
   await pool.end();
 }

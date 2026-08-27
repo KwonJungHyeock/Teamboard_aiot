@@ -3,7 +3,8 @@
 // 업무 테이블 (Phase 3 마감 임박 → Phase 5 공용화) — 홈 "마감 임박"과 /tasks 목록이
 // 같은 컴포넌트를 재사용한다 (Phase 5 검수 포인트 6). 컬럼 폭 고정 (프로토타입 colgroup).
 // variant="full"(/tasks): 목표·우선순위 컬럼 추가 + 상태 인라인 드롭다운. compact(홈)은 5열 유지.
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useRef, useState, type CSSProperties } from "react";
+import Link from "next/link";
 import EmptyState from "./EmptyState";
 import SectionEmpty, { type SectionEmptyAction } from "./SectionEmpty";
 import { toast } from "@/lib/quick";
@@ -27,6 +28,8 @@ export interface TaskTableRow {
   priority?: string; // full 전용
   goalNames?: string[]; // full 전용
   areaName?: string; // full 전용
+  /** 영역 상세(B-11)로 가는 진입점. 없으면 링크가 아니라 글자다 — 없는 곳으로 보내지 않는다. */
+  areaId?: number | null;
   progress?: number; // full 전용 — 진행률 0~100
   blocked?: boolean;
   blockedReason?: string | null;
@@ -153,7 +156,15 @@ export default function TaskTable({
   const withBars = !!range;
   const showGoal = full && !withBars;
   const showProject = !withBars;
-  const showProg = full;   // 열은 늘 있다. 막대만 접힌다.
+  /**
+   * 진척 퍼센트 열.
+   *
+   * `full` 이면 늘 있고(막대만 접힌다), **막대를 켠 `compact` 에도 둔다**(§C3 회신 2).
+   * 「막대가 진척을 말하니 숫자는 없어도 된다」가 성립하지 않기 때문이다 —
+   * **막대 7건이 최소 폭 하한(8px)에 걸려 채운 폭을 읽을 수 없다.** 그 7건에서는
+   * 막대가 진척을 말하지 못한다. 하한이 필요했다는 사실 자체가 숫자를 남길 이유다.
+   */
+  const showProg = full || withBars;
   const colCount =
     1 + (showGoal ? 1 : 0) + (full ? 1 : 0) + (showProject ? 1 : 0) + (withBars ? 1 : 0)
     + 1 + (full ? 1 : 0) + (showProg ? 1 : 0) + 2 + (selectable ? 1 : 0);
@@ -318,7 +329,14 @@ export default function TaskTable({
         <h2>{title}</h2>
         {sub && <span className="sub">{sub}</span>}
       </div>
-      <table>
+      {/* `table-layout: fixed` 를 **여기서** 건다. 이 표는 `.hv` 안에서도 밖에서도 쓰인다.
+          `app/home.css` 의 `.hv table { table-layout: fixed }` 하나에 기대고 있었는데,
+          §C3 레일이 붙은 홈은 `.hv` 밖이라 `auto` 로 돌았다 — colgroup 이 무시되고
+          제목 열이 내용대로 486px 을 가져가 기한 막대가 56px 로 남았다.
+          아래 colgroup 주석이 "colgroup 이 유일한 출처다"라고 말하고 있었는데,
+          **그 말이 이 화면에서만 참이 아니었다.** 규격은 검사가 붙어야 성립하듯,
+          단일 출처도 그것을 강제하는 선언이 같이 있어야 성립한다. */}
+      <table className="tt-table">
         <colgroup>
           {/* §A1 실측 — 폭은 여기(colgroup)가 유일한 출처다. table-layout:fixed 라
               CSS 의 width 는 col 을 못 이긴다. 34px 은 좌우 13px 여백 + 15px 체크박스를
@@ -334,7 +352,9 @@ export default function TaskTable({
               {range && <col />}
               <col style={{ width: "72px" }} />
               <col style={{ width: "88px" }} />
-              {showProg && <col style={{ width: withBars ? "56px" : "124px" }} />}
+              {/* 막대를 켜면 §D7 규격값 38px. 숫자만 들어가는 열이라 이 폭이면 충분하다
+                  (머리글도 「진행률」→「진척」으로 줄인다 — 4자는 38px 에 안 들어간다). */}
+              {showProg && <col style={{ width: withBars ? "38px" : "124px" }} />}
               <col style={{ width: "92px" }} />
               <col style={{ width: "70px" }} />
             </>
@@ -342,9 +362,20 @@ export default function TaskTable({
             <>
               {/* 업무(제목)만 flex+truncate. 상태·기한은 배지가 안 잘리게 고정 폭(내용에 맞춤). */}
               <col />
-              <col style={{ width: "20%" }} />
+              {/* **`showProject` 조건을 여기에도 건다.** 머리글은 조건부인데 `<col>` 은
+                  무조건 나가고 있었다. 막대를 켜면 프로젝트 열이 사라지므로 이 20% 가
+                  **기간 열에 붙고**, 뒤의 고정 폭들이 한 칸씩 밀렸다.
+                  넓은 표에서는 티가 안 났고, §C3 레일이 본문을 320px 좁히자
+                  트랙이 284px → 10px 로 무너졌다. 검사기 ②가 「23/23건이 하한에 걸렸다」로 잡았다.
+                  §G 「표의 폭은 colgroup 이 유일한 출처다」 — 출처가 하나여도
+                  **조건이 두 곳에 갈리면 같은 병이 난다.** */}
+              {showProject && <col style={{ width: "20%" }} />}
               {range && <col />}
               <col style={{ width: "76px" }} />
+              {/* 머리글 순서(업무·기간·담당·**진척**·상태·기한)와 **같은 자리**에 둔다.
+                  이 한 줄을 빼먹었더니 뒤의 고정 폭이 한 칸씩 밀려
+                  담당 76 · 진척 64 · 상태 56 · 기한 auto 가 됐다. 실측으로 잡았다. */}
+              {showProg && <col style={{ width: "38px" }} />}
               <col style={{ width: "64px" }} />
               <col style={{ width: "56px" }} />
             </>
@@ -365,7 +396,7 @@ export default function TaskTable({
             {range && <th className="col-track">기간</th>}
             <th>담당</th>
             {full && <th className="col-pri">우선순위</th>}
-            {showProg && <th>진행률</th>}
+            {showProg && <th className={`col-prog${withBars ? " narrow" : ""}`}>{withBars ? "진척" : "진행률"}</th>}
             <th>상태</th>
             <th>기한</th>
           </tr>
@@ -504,7 +535,15 @@ export default function TaskTable({
                 )}
                 {full && (
                   <td>
-                    {t.areaName ? <span className="areatag">{t.areaName}</span> : "—"}
+                    {/* **영역 상세로 가는 진입점**(B-11). 영역을 사이드바에서 내린 뒤로
+                        영역 화면에 갈 길이 없었다 — 화면을 되살렸으면 길도 같이 낸다.
+                        id 가 없으면 링크로 만들지 않는다: 갈 곳 없는 링크는 고장이다. */}
+                    {t.areaName
+                      ? t.areaId
+                        ? <Link className="areatag click" href={`/areas/${t.areaId}`}
+                            onClick={(e) => e.stopPropagation()}>{t.areaName}</Link>
+                        : <span className="areatag">{t.areaName}</span>
+                      : "—"}
                   </td>
                 )}
                 {showProject && (
@@ -548,8 +587,9 @@ export default function TaskTable({
                         }
                         const pct = Math.max(0, Math.min(100, t.progress ?? 0));
                         return (
+                          // 위치는 백분율로 넘기고 **하한(8px)은 CSS 가 건다** — 픽셀을 아는 쪽이 CSS 다.
                           <span className={`tt-bar${g.over ? " over" : ""}${g.clipStart ? " clip-s" : ""}${g.clipEnd ? " clip-e" : ""}`}
-                            style={{ left: `${g.left}%`, width: `${g.width}%` }}>
+                            style={{ "--l": `${g.left}%`, "--w": `${g.width}%` } as CSSProperties}>
                             {/* 완료 구간은 영역 색 실선, 남은 구간은 **같은 색 16%**.
                                 회색으로 깔지 않는다 — 색이 둘이 되면 막대가 두 가지를 말한다. */}
                             <i className={`pjdot-fill ${t.colorKey ?? "team"}`} style={{ width: `${pct}%` }} />
@@ -569,7 +609,7 @@ export default function TaskTable({
                   </td>
                 )}
                 {showProg && (
-                  <td className="col-prog">
+                  <td className={`col-prog${withBars ? " narrow" : ""}`}>
                     {/* 막대를 켜면 여기 막대는 접는다 — 한 행에 막대가 둘이면 어느 쪽이
                         시간이고 어느 쪽이 진척인지 안 읽힌다. 숫자는 남는다(§D7 진척 38px). */}
                     {!withBars && (

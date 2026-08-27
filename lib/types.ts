@@ -204,6 +204,8 @@ export interface ActivityEntry {
   message: string;
   level: "info" | "success" | "warn" | "error";
   created_at: string;
+  /** 귀속 업무. `SELECT a.*` 로 늘 실려 왔는데 타입에만 없었다 — 묶기가 이 값을 쓴다. */
+  task_id?: number | null;
 }
 
 export const TASK_TYPES: TaskType[] = ["자료조사", "회의록", "내용정리", "반복업무"];

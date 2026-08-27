@@ -1,4 +1,5 @@
-// 업무 현황 (관리 전용) — 홈에서 이전한 팀 분석 차트. lead 실시간 게이트(강등 즉시 반영).
+// 업무 현황 (관리 전용) — 완료 추이 + 담당자별 현황. lead 실시간 게이트(강등 즉시 반영).
+// 홈의 「팀 현황」 탭을 여기로 흡수했다 (§C 회신 1).
 import { redirect } from "next/navigation";
 import { getLiveSession } from "@/lib/auth";
 import { buildHomeSummary } from "@/lib/home";
@@ -15,7 +16,7 @@ export default async function Page() {
   const summary = await buildHomeSummary(live.user.id, true);
   return (
     <AppShell user={live.user}>
-      <StatusView weeklyDone={summary.weeklyDone} assigneeLoad={summary.assigneeLoad} />
+      <StatusView weeklyDone={summary.weeklyDone} teamStatus={summary.teamStatus} />
     </AppShell>
   );
 }

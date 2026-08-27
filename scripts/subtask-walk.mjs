@@ -150,7 +150,7 @@ try {
   const rowH = await page.locator(".tdp .stx-row").first().boundingBox();
   const iti = await page.locator(".tdp .stx .iti").count();
   // 속성 블록 아래 · 본문 위인가 — y 좌표로 잰다.
-  const yProp = (await page.locator(".tdp .prop-b, .tdp .propb, .tdp .prop-row").first().boundingBox())?.y ?? -1;
+  const yProp = (await page.locator(".tdp .prop-b, .tdp .prop-row").first().boundingBox())?.y ?? -1;
   const yStx = (await page.locator(".tdp .stx").boundingBox())?.y ?? -1;
   const yDoc = (await page.locator(".tdp .tdp-doc").boundingBox())?.y ?? -1;
   await page.screenshot({ path: `${OUT}/A1-하위업무섹션.png` });

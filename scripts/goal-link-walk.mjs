@@ -264,6 +264,8 @@ try {
   // 대신 그 자리에 무엇이 남아야 하는지를 잰다 — 지운 것과 안 그려진 것은 다르다.
   await page.goto(`${BASE}/goals`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1200);
+  // audit:absent — `.lmn` 은 **없는 것이 정상이다.** 030 의 개발 과정 안내를 지웠고,
+  // 이 줄은 그것이 다시 안 돌아오는지 보는 부재 단언이다(아래 `.ulbanner` 가 짝이 되는 존재 단언).
   const noticeGone = await page.locator(".lmn").count();
   const ulText = (await page.locator(".ulbanner").innerText().catch(() => "")).replace(/\n/g, " ");
   await page.screenshot({ path: `${OUT}/C3-안내제거.png` });

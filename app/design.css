@@ -122,11 +122,8 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .dl-head .dl-c.num { text-align: right; }
 
 
-.dl-bar { display: inline-flex; align-items: center; gap: 7px; justify-content: flex-end; width: 100%; }
-.dl-bar i { display: block; width: 52px; height: 4px; border-radius: 999px; background: var(--track-bg); flex: 0 0 52px; overflow: hidden; }
-.dl-bar i b { display: block; height: 100%; border-radius: 999px; background: var(--blue); }
-.dl-bar em { font-family: var(--f-d); font-variant-numeric: tabular-nums; font-size: var(--f5); font-style: normal; color: var(--ink2); min-width: 30px; text-align: right; }
-.dl-bar-na { color: var(--muted); }
+/* `.dl-bar` 는 「팀 현황 탭」의 **담당자별 평균 진척** 막대였다. 그 값을 버렸으므로
+   막대도 함께 지웠다 (§C 회신 1) — 남겨 두면 다음 사람이 그 자리에 또 평균을 넣는다. */
 
 /* ══════════════════════════════════════════════════════════════
    §A 빈 상태 · 로딩 · 오류 (MD-P-2026-026)
@@ -526,10 +523,81 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .hm-hero .gt-grid > .sec-empty { grid-column: 1 / -1; color: rgba(255, 255, 255, .68); padding: 12px 0; }
 .hm-hero .gt-grid > .sec-empty .sec-empty-a { color: #fff; }
 
+/* ── §C3 3층 — 본문 + 오른쪽 레일 320px ──
+   레일이 §B1 의 빈 가로 공간을 회수하는 장치다. **레일을 빼면 §B1 위반이 다시 난다.**
+   `min-width: 0` 이 없으면 본문의 표가 그리드 칸을 밀어내 레일이 320px 아래로 찌그러진다. */
+.hm-3 { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; align-items: start; }
+.hm-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+/* "스크롤은 본문과 독립" — sticky 로 붙여 두고 레일 안에서만 넘치면 스크롤한다.
+   `--hdr-h` 를 두 번 빼지 않는다: 위 여백은 sticky top, 아래는 그만큼의 높이 제한이다. */
+.hm-rail {
+  display: flex; flex-direction: column; gap: 12px; min-width: 0;
+  position: sticky; top: 12px; max-height: calc(100vh - var(--hdr-h) - 24px); overflow: auto;
+}
+/* 레일이 들어갈 폭이 없으면 **아래로 내린다.** 320px 을 240px 로 줄이지 않는다 —
+   좁은 레일은 두 줄짜리 제목만 만들고, 그건 레일이 아니라 목록이다. */
+@media (max-width: 1240px) {
+  .hm-3 { grid-template-columns: 1fr; }
+  .hm-rail { position: static; max-height: none; overflow: visible; }
+}
+
 /* ── §D2-2 2열 그리드 ── */
-.hm-g2 { display: grid; grid-template-columns: 1fr 300px; gap: 12px; align-items: start; }
+/* 레일이 320px 을 가져가면서 본문이 좁아졌다. 오른쪽 열을 300px 로 **고정**해 두면
+   왼쪽이 먼저 찌그러진다 — 둘 다 내용이 든 열이라 절반씩 나눈다. */
+.hm-g2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
 .hm-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 @media (max-width: 1100px) { .hm-g2 { grid-template-columns: 1fr; } }
+
+/* ── §C3 레일 블록 ──
+   본문 블록(.hm-blk)과 **다른 규격**이다. 폭이 절반이라 머리줄을 한 단 낮추고(--f5)
+   좌우 여백을 13 → 11 로 줄인다. 새 색은 만들지 않는다 — 토큰 그대로다. */
+.rl-blk { background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
+  overflow: hidden; box-shadow: var(--e1); }
+.rl-h { display: flex; align-items: center; gap: 6px; padding: 8px 11px; border-bottom: 1px solid var(--hair); }
+.rl-h h2, .pg-body .rl-h h2 { font-size: var(--f5); font-weight: 800; color: var(--ink); margin: 0; letter-spacing: -.01em; }
+.rl-more { margin-left: auto; font-size: var(--f6); color: var(--muted); text-decoration: none; }
+.rl-more:hover { color: var(--ink2); }
+
+/* ① 팀 활동 — 이름·문구 한 줄 + 시각. 시각은 오른쪽 끝 고정폭이라 문구가 밀지 않는다. */
+.rl-act { display: flex; align-items: baseline; gap: 8px; width: 100%; text-align: left;
+  padding: 7px 11px; border: 0; border-bottom: 1px solid var(--hair); background: none;
+  font-size: var(--f5); color: var(--ink2); cursor: pointer; }
+.rl-act:last-child { border-bottom: 0; }
+.rl-act:hover:not(:disabled) { background: var(--surface-2); }
+/* 갈 곳이 없는 줄(업무가 안 붙은 활동)은 **커서를 바꾸지 않는다** — 눌릴 것처럼 보이면 안 된다. */
+.rl-act:disabled { cursor: default; }
+.rl-act-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rl-act-t b { font-weight: 800; color: var(--ink); margin-right: 4px; }
+.rl-act-n { font-style: normal; color: var(--muted); margin-left: 4px; }
+.rl-act-at { flex: 0 0 auto; font-size: var(--f6); color: var(--muted); }
+
+/* ② 내 목표 진척 */
+.rl-goal { display: block; padding: 8px 11px; border-bottom: 1px solid var(--hair); text-decoration: none; }
+.rl-goal:last-child { border-bottom: 0; }
+.rl-goal:hover { background: var(--surface-2); }
+.rl-goal-h { display: flex; align-items: center; gap: 6px; }
+.rl-goal-lv { flex: 0 0 auto; font-size: var(--f6); color: var(--muted);
+  border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; line-height: 17px; }
+.rl-goal-t { flex: 1; min-width: 0; font-size: var(--f5); color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rl-goal-p { flex: 0 0 auto; font-style: normal; font-size: var(--f5); font-weight: 800; color: var(--ink); }
+/* 표본이 부족하면 **값은 보이고 흐리다.** 감추지 않는다 (30-1·2). */
+.rl-goal-p.low { color: var(--muted); font-weight: 700; }
+.rl-goal-track { display: block; height: 4px; border-radius: 20px; background: var(--hair); margin: 6px 0 4px; overflow: hidden; }
+.rl-goal-track > i { display: block; height: 100%; background: var(--coral-d); }
+.rl-goal-base { display: block; font-size: var(--f6); color: var(--muted); }
+
+/* ③ 최근 본 것 — 종류 라벨 + 제목 한 줄 */
+.rl-recent { display: flex; align-items: baseline; gap: 7px; padding: 7px 11px;
+  border-bottom: 1px solid var(--hair); text-decoration: none; }
+.rl-recent:last-child { border-bottom: 0; }
+.rl-recent:hover { background: var(--surface-2); }
+.rl-recent-k { flex: 0 0 auto; font-size: var(--f6); color: var(--muted); }
+.rl-recent-t { flex: 1; min-width: 0; font-size: var(--f5); color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 첫 그림에서는 저장소를 못 읽는다(서버에 localStorage 가 없다). 자리만 잡아 둔다 —
+   높이를 안 잡으면 목록이 들어오는 순간 레일 아래가 통째로 밀린다. */
+.rl-skel { height: 44px; }
 
 /* ── §D3 블록 공통 ── */
 .hm-blk { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; box-shadow: var(--e1); }
@@ -571,10 +639,7 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .hm-chip.amber { color: var(--amber-text); background: var(--amber-bg); }
 .hm-chip.coral { color: var(--coral-text); background: var(--coral-bg); }
 
-/* 다가오는 일정 — 52 / 1fr / 60 */
-.hm-row-up .hm-c1 { flex: 0 0 52px; }
-.hm-row-up .hm-c2 { flex: 1; min-width: 0; }
-.hm-row-up .hm-c3 { flex: 0 0 60px; display: flex; justify-content: flex-end; }
+/* 「다가오는 일정」의 행 규격(.hm-row-up)은 §C3 ⑤ 에서 블록과 함께 지웠다 — components/HomeView.tsx 주석 참고. */
 .hm-date { font-size: var(--f5); font-weight: 800; color: var(--ink2); }
 .hm-dd { font-size: var(--f5); font-weight: 800; font-style: normal; color: var(--ink2); }
 /* H-2 — 임박(D-DAY~D-7)은 앰버. 등급은 lib/task-view 의 dueUrgency 하나에서 나온다.
@@ -594,11 +659,10 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .hm-row-focus { position: relative; }
 .hm-row-focus .hm-t { flex: 1; }
 .hm-row-focus.unread .hm-t { font-weight: 800; }
-.hm-row-focus.unread::before, .hm-dlrow.unread::before {
+/* `.hm-dlrow` 는 「내 초점 탭」 전용이었다. 탭과 함께 지웠다 (§C 회신 2-3). */
+.hm-row-focus.unread::before {
   content: ""; position: absolute; left: 5px; top: 50%; transform: translateY(-50%);
   width: 5px; height: 5px; border-radius: 50%; background: var(--coral); }
-.hm-dlrow { position: relative; text-decoration: none; }
-.hm-dlrow.unread .dl-c:nth-child(2) { font-weight: 800; }
 .hm-time { margin-left: auto; font-size: var(--f6); color: var(--muted); flex: 0 0 auto; }
 
 /* 블록 하단 한 줄 링크 */
@@ -656,6 +720,18 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
   margin-left: auto; flex: 0 0 auto; white-space: nowrap; padding-left: 6px;
 }
 .prop-goals input[type="checkbox"] { width: 13px; height: 13px; flex: 0 0 13px; accent-color: var(--coral-d); }
+/* §C3 §1 — 후보가 **분기 · 월** 두 층이 됐다. 어느 층인지 한 글자로 먼저 보인다.
+   새 색을 만들지 않는다 — 기존 회색 배지 규격 그대로. */
+.prop-goals .gopt-lv {
+  flex: 0 0 auto; font-size: var(--f6); color: var(--muted);
+  border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; line-height: 17px;
+}
+/* 지난 기간 목표도 **후보에 남긴다** — 완료한 업무를 소급 연결해야 실적에 잡힌다.
+   거르지 않고 말한다. 그래서 지우는 색이 아니라 **알리는 색**이다(--muted 그대로).
+   이름이 `gopt-past` 였는데 「다음 기간」도 같은 칠을 쓰게 됐다. 지난 것만 가리키는
+   이름을 두면 다음 사람이 그 말을 믿는다 — `off`(지금 기간이 아님)로 바꾼다. */
+.prop-goals .gopt-off { color: var(--muted); }
+.prop-goals label:has(.gopt-off) { color: var(--ink2); }
 .prop-none { font-size: var(--f5); color: var(--muted); margin: 0; }
 /* 소속 프로젝트가 붙어 있는 목표 표시 — 지시 20-2. 새 색을 만들지 않고 기존 산호색을 쓴다. */
 .prop-sug {
@@ -1741,9 +1817,78 @@ tr.drop-after > td { box-shadow: inset 0 -1px 0 0 var(--coral); }
   border-radius: 50%; background: var(--coral);
 }
 
+/* 업무 표 — 폭의 단일 출처가 colgroup 이려면 `fixed` 가 표 자신에게 붙어 있어야 한다.
+   `.hv table` 에만 걸려 있어서 `.hv` 밖(홈 §C3 레일 레이아웃)에서는 auto 로 돌았다. */
+/* 영역 표시가 링크가 됐다 (B-11 진입점). 밑줄을 긋지 않는다 — 표 안의 밑줄은
+   행 전체가 링크인 것처럼 읽힌다. 눌리는 것은 hover 로 알린다.
+   (배지 모양 자체는 §D1 에서 「6px 색 사각형 + --f6」으로 바뀐다. 지금은 손대지 않는다.) */
+a.areatag { text-decoration: none; color: inherit; }
+a.areatag:hover { border-color: var(--ink2); color: var(--ink); }
+
+/* ── 카드 머리줄 `.ch` — **조상에 매달지 않는다** (§G · §C3 회신 4) ──
+   `app/home.css` 에 `.hv .ch { … }` 로만 있었다. `.hv` 밖에서 쓰는 순간 아무 규칙도
+   안 걸려 제목과 값이 **두 줄로 떨어진다.** §C3 레일이 홈을 `.hv` 밖으로 옮기면서
+   「진행 중인 일 / 24건」이 두 줄이 됐고, `/status` 의 새 카드도 같은 모양이었다.
+   `.hv .due`(H-2) · `.lk`/`.seg`(030) · `table-layout:fixed`(§C3 ⑤) 에 이어 **네 번째**다.
+
+   값은 액션이 아니다 — space-between 으로 양 끝에 밀지 않는다(§B1).
+   오른쪽에 진짜 액션을 두는 자리는 `.gsp`(flex:1) 스페이서로 민다. */
+.ch { display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin-bottom: 12px; }
+.ch h2 { font-size: var(--f3); font-weight: 600; }
+.ch .sub { font-family: var(--f-d); font-size: var(--f6); color: var(--muted); }
+
+/* ── 담당자별 현황 (§C 회신 1-1) — `/status` 의 담당자 줄 ──
+   숫자 넷이 **자리로** 구분되어야 한다. 색을 넷 쓰면 그게 §B 의 색면 규칙 위반이고,
+   눈이 색을 먼저 읽어 이름을 못 찾는다. 위험한 칸(지연·막고 있는 것)만 코랄로 든다.
+   `.hv` 밖이므로 폭·여백을 여기서 정한다 — 조상에 매달지 않는다(§G). */
+.as-card { overflow: hidden; }
+.as-tbl { display: flex; flex-direction: column; }
+.as-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 72px 60px 64px 92px;
+  align-items: center; gap: 8px; padding: 0 13px; height: var(--row-h);
+  border-top: 1px solid var(--hair); text-decoration: none;
+}
+.as-row.click:hover { background: var(--surface-2); }
+/* 머리줄은 값이 아니다 — 높이를 낮추고 선을 지운다. */
+.as-head { height: var(--hdr-h); border-top: 0; font-size: var(--f6); color: var(--muted); letter-spacing: .02em; }
+.as-row > span:not(.as-name) { text-align: right; }
+/* 머리줄 첫 칸에는 `.as-name` 클래스가 없어서 위 규칙에 걸렸다 — 「담당자」가 오른쪽
+   1020px 지점에 가 붙었다. 클래스로 거르는 규칙은 **클래스가 없는 형제**를 놓친다. */
+.as-head > span:first-child { text-align: left; }
+.as-name { font-size: var(--f4); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.as-n { font-size: var(--f4); color: var(--ink2); font-variant-numeric: tabular-nums; }
+/* 0 은 숫자로 두지 않는다 — 넷이 나란히 서면 어느 것이 문제인지 세어야 한다. */
+.as-zero { color: var(--muted); }
+.as-alert { color: var(--coral-d); font-weight: 800; }
+/* 왼쪽 2px 코랄 선을 넣었다가 뺐다. **지연 숫자가 이미 코랄이다** — 한 행에 같은
+   경고를 두 번 두면 눈이 둘 다 무시한다. 시드에서는 세 사람 모두 지연이 있어
+   레일이 늘 켜져 있었고, 늘 켜진 경고는 경고가 아니다(§B 색면 규칙). */
+
+.tt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+
+/* 막대를 켠 목록의 진척 열 — §D7 규격 38px.
+   기본 셀 좌우 여백(8+8)을 그대로 두면 "100%" 가 22px 안에 안 들어가 넘친다(실측).
+   숫자만 들어가는 칸이라 여백을 4px 로 줄이고 한 단 작은 글자를 쓴다. 오른쪽 정렬 —
+   퍼센트는 자릿수가 달라지므로 왼쪽을 맞추면 소수점 자리가 흔들린다. */
+.tt-table .col-prog.narrow { padding-left: 4px; padding-right: 4px; text-align: right; }
+.tt-table .col-prog.narrow .tt-prog-n { font-size: var(--f5); }
+
 /* 막대 — 높이 16 · 완전 알약 · 안쪽 1px 링 (§D6) */
+/*
+   **최소 폭 8px** (§D6 · §C3 ⑥). 분기 구간(92일)에서 하루짜리 업무는 1.09% 다.
+   트랙이 240px 이면 2.6px — 알약이 아니라 점이고, 링(1px×2)이 폭의 대부분을 먹는다.
+   있는 일이 없는 일처럼 보인다.
+
+   픽셀은 CSS 가 정한다(lib/task-bars.ts 의 규약) — 그래서 하한도 여기서 건다.
+   `--l`·`--w` 는 컴포넌트가 넣는 백분율이고, 이 두 줄이 그것을 픽셀로 받아 낸다.
+
+   왼쪽도 함께 조인다. `max(--w, 8px)` 만 걸면 구간 끝에 붙은 막대가 오른쪽으로
+   삐져나가 잘린다 — 넓혀 놓고 그만큼 잘라 내면 넓힌 적이 없는 것과 같다.
+*/
 .tt-bar {
   position: absolute; top: 50%; transform: translateY(-50%);
+  left: min(var(--l), calc(100% - 8px));
+  width: max(var(--w), 8px);
   height: 16px; border-radius: 20px; display: flex; overflow: hidden;
   box-shadow: inset 0 0 0 1px rgba(16, 24, 40, .05);
 }

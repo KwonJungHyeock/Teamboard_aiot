@@ -147,8 +147,11 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
     return {
       id: t.id, title: t.title, projectName: t.projectName, colorKey: t.colorKey,
       assigneeName: t.assigneeName, status: t.status, dday: d.text, overdue: d.overdue,
-      priority: t.priority, areaName: t.areaName, progress: t.progress,
+      priority: t.priority, areaName: t.areaName, areaId: t.areaId, progress: t.progress,
       blocked: t.blocked, blockedReason: t.blockedReason,
+      // §C4 막대 재료. 넷째 화면도 같은 목록을 그리려면 여기서 같이 실어야 한다 —
+      // 컴포넌트만 같고 재료가 없으면 「같은 목록」이 아니다.
+      startDate: t.startDate, dueDate: t.dueDate,
     };
   }), [fullTasks, data?.today]);
 
@@ -293,9 +296,13 @@ export default function ProjectWorkspace({ projectId, user }: { projectId: numbe
             </div>
             {taskView === "table" ? (
               <>
+                {/* §C4 — **기한 막대는 홈 전용이 아니다.** 넷째 화면인 여기도 켠다.
+                    눈금 범위는 컴포넌트가 정한다(`defaultBarRange`) — 화면이 각자 정하면
+                    갈린다. 실제로 홈 0% vs `/tasks` 50% 로 갈렸던 자리다. */}
                 <TaskTable rows={rows} title="업무" variant="full"
                   emptyScope="section"
                   emptyText="이 프로젝트에 업무가 없어요"
+                  timelineToday={data?.today || undefined}
                   onRowClick={(id) => openTaskPanel(id)} />
                 {/* §D2 — 목록 맨 아래 한 줄 입력. 여기서 만들면 프로젝트가 자동으로 붙는다.
                     "연결"이라는 별도 행위를 없애는 것이 목적이다. 보관된 프로젝트에는 그리지 않는다. */}

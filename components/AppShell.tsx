@@ -62,7 +62,7 @@ export default async function AppShell({
       {/* 만드는 자리(모달)와 고치는 자리(패널)를 나눈다 — MD-P-2026-027 §C */}
       <NewTaskModal user={current} />
       <SidePanel user={current} />
-      <GoalDetailPanel />
+      <GoalDetailPanel user={current} />
       <Shortcuts />
       <CommandPalette role={current.role} notionConnected={notionConnected} />
       <AgentFab user={current} />

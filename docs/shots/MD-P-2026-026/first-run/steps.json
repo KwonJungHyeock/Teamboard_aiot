@@ -1,6 +1,6 @@
 {
-  "email": "firstrun.1786083910735@local.test",
-  "actorId": 30,
+  "email": "firstrun.1787798300190@local.test",
+  "actorId": 18,
   "steps": [
     {
       "id": "01-login",
@@ -14,22 +14,22 @@
     },
     {
       "id": "03-firstrun-1",
-      "note": "첫 사용 안내 1/3 — 계정당 1회 (account.onboarded_at)",
+      "note": "첫 사용 안내 — 화면에 표시된 쪽수 \"1 / 3\" (계정당 1회)",
       "shot": "docs/shots/MD-P-2026-026/first-run/03-firstrun-1.png"
     },
     {
       "id": "03-firstrun-2",
-      "note": "첫 사용 안내 2/3",
+      "note": "첫 사용 안내 — 화면에 표시된 쪽수 \"2 / 3\" (계정당 1회)",
       "shot": "docs/shots/MD-P-2026-026/first-run/03-firstrun-2.png"
     },
     {
       "id": "03-firstrun-3",
-      "note": "첫 사용 안내 3/3",
+      "note": "첫 사용 안내 — 화면에 표시된 쪽수 \"3 / 3\" (계정당 1회)",
       "shot": "docs/shots/MD-P-2026-026/first-run/03-firstrun-3.png"
     },
     {
       "id": "04-zero_",
-      "note": "/ · 전체빈 0 · 섹션빈 1 · 오류 0 · 로딩 0",
+      "note": "/ · 전체빈 0 · 섹션빈 3 · 오류 0 · 로딩 0",
       "shot": "docs/shots/MD-P-2026-026/first-run/04-zero_.png"
     },
     {
@@ -68,6 +68,31 @@
       "shot": "docs/shots/MD-P-2026-026/first-run/04-zero_activity.png"
     },
     {
+      "id": "04-zero_projects",
+      "note": "/projects · 전체빈 0 · 섹션빈 0 · 오류 0 · 로딩 0",
+      "shot": "docs/shots/MD-P-2026-026/first-run/04-zero_projects.png"
+    },
+    {
+      "id": "04-zero_signals",
+      "note": "/signals · 전체빈 0 · 섹션빈 0 · 오류 0 · 로딩 0",
+      "shot": "docs/shots/MD-P-2026-026/first-run/04-zero_signals.png"
+    },
+    {
+      "id": "04-zero_huddle",
+      "note": "/huddle · 전체빈 1 · 섹션빈 1 · 오류 0 · 로딩 0",
+      "shot": "docs/shots/MD-P-2026-026/first-run/04-zero_huddle.png"
+    },
+    {
+      "id": "04-zero_handover",
+      "note": "/handover · 전체빈 1 · 섹션빈 0 · 오류 0 · 로딩 0",
+      "shot": "docs/shots/MD-P-2026-026/first-run/04-zero_handover.png"
+    },
+    {
+      "id": "04-zero_reports",
+      "note": "/reports · 전체빈 0 · 섹션빈 1 · 오류 0 · 로딩 0",
+      "shot": "docs/shots/MD-P-2026-026/first-run/04-zero_reports.png"
+    },
+    {
       "id": "05-new-task-open",
       "note": "빈 상태 CTA 를 눌러 새 업무 입력을 연다",
       "shot": "docs/shots/MD-P-2026-026/first-run/05-new-task-open.png"
@@ -79,14 +104,14 @@
     },
     {
       "id": "07-after-first-task",
-      "note": "첫 업무 생성 결과 — DB 1건 #195 team",
+      "note": "첫 업무 생성 결과 — DB 1건 #91 team",
       "shot": "docs/shots/MD-P-2026-026/first-run/07-after-first-task.png"
     }
   ],
   "jsErrors": [],
   "created": [
     {
-      "id": 195,
+      "id": 91,
       "title": "첫 업무 — 개발 환경 세팅",
       "visibility": "team"
     }

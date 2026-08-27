@@ -68,7 +68,10 @@ try {
   // H3-⑨⑩ 모달 열림·닫힘 — scale .96 → 1
   await page.goto(`${BASE}/tasks?assignee=all`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1100);
-  await page.locator(".frn-x").first().click().catch(() => {});
+  await page.locator(".frn-skip").first().click({ timeout: 3000 })
+    // 안내는 계정에 따라 안 뜬다(`account.onboarded_at`). 실패해도 되지만
+    // **조용히 넘어가지는 않는다** — 빈 catch 는 없는 실패를 만든다(§G).
+    .catch(() => console.log("   (첫 실행 안내 없음 — 닫을 것이 없다)"));
   const readModal = async () => {
     const n = await page.locator(".ntm").count();
     if (n === 0) return "모달 없음";
