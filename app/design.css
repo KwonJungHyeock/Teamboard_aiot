@@ -1173,6 +1173,20 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .ntm-side .prop-row { grid-template-columns: 66px 1fr; }
 .ntm-side .prop-l { font-size: var(--f5); }
 .ntm-side .prop-v { font-size: var(--f4); }
+/* ── 속성 팝오버가 모달 밖으로 94px 넘쳤다 (H2 2차) ──
+   `.prop-pop` 은 상세 패널 규격이다 — `left: 88px`(패널의 라벨 폭) + `min-width: 220px`.
+   그런데 여기 옆칸은 **폭이 220px 이고 `overflow-y: auto` 라 스크롤 컨테이너**다.
+   88 + 220 = 308px 가 196px 안쪽에 놓이니 오른쪽이 잘린다. 여덟 행 **전부** 잘렸다.
+
+   같은 파일 위쪽에서 이미 `.ntm-side .prop-row` 로 라벨 폭을 66px 로 줄여 놨는데,
+   `left: 88px` 만 상세 패널 값으로 남아 있었다 — **한 규격을 두 곳에서 정하면
+   한 곳만 따라간다.** (§G 「규격 스타일은 조상 선택자에 매달지 않는다」의 반대 방향:
+   조상이 값을 덮었는데 자식이 안 따라온 경우다.)
+
+   여기서는 행 폭에 맞춘다. 좁아서 못 담는 것(날짜 두 칸)은 세로로 쌓는다. */
+.ntm-side .prop-pop { left: 0; right: 0; min-width: 0; }
+.ntm-side .prop-dates label { flex-direction: column; align-items: stretch; gap: 3px; }
+.ntm-side .prop-dates label input { width: 100%; }
 .ntm-off { color: var(--muted); font-size: var(--f5); }
 
 .ntm-title {
