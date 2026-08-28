@@ -1,6 +1,6 @@
 // DB 추상화 레이어 — Vercel Postgres가 아니어도 이 파일만 교체하면 됨 (PRD 10장)
 import { Pool, type QueryResultRow } from "pg";
-import { runMigrations } from "./migrate";
+import { migrationStatus, runMigrations } from "./migrate";
 
 let pool: Pool | null = null;
 
@@ -27,6 +27,49 @@ function ensureMigrated(): Promise<unknown> {
     });
   }
   return migratePromise;
+}
+
+/**
+ * 마이그레이션 적용 현황 — **읽기 전용. 적용하지 않는다.**
+ *
+ * 일부러 `ensureMigrated()` 를 부르지 않는다. 「어디까지 적용됐는가」를 묻는 일이
+ * 그 자체로 적용을 일으키면, 물어본 뒤의 답만 볼 수 있고 **묻기 전의 상태**를
+ * 영영 못 본다. 0031 이 빠진 것을 알아챘을 때 필요했던 것이 바로 그 「묻기 전」이다.
+ */
+export async function getMigrationStatus() {
+  return migrationStatus(getPool());
+}
+
+/**
+ * **마이그레이션 상태와 무관하게 도는 쿼리.**
+ *
+ * ── 왜 있는가 ────────────────────────────────────────────────────
+ *
+ * 0031 이 실패했을 때 러너가 던졌고, `ensureMigrated()` 가 모든 DB 접근 앞에 있어서
+ * **로그인을 포함한 모든 요청이 500** 이 됐다. 팀 전원이 못 들어왔고,
+ * **팀장조차 들어와서 무슨 일인지 볼 수 없었다.** 손이 묶인 것이 제일 나빴다.
+ *
+ * 그래서 딱 두 가지만 연다.
+ *
+ *   · 로그인 — 사람이 들어올 수는 있어야 한다
+ *   · GET /api/admin/migrations — 들어와서 무슨 일인지 볼 수 있어야 한다
+ *     (이쪽은 `getMigrationStatus()` 가 이미 `ensureMigrated()` 를 안 부른다)
+ *
+ * ── ⚠ 호출부를 늘리지 않는다 ─────────────────────────────────────
+ *
+ * 이것은 예외이지 대안이 아니다. 나머지는 지금처럼 막는다 — 스키마가 코드보다
+ * 뒤처진 상태에서 쓰기를 받으면 무엇이 참인지 아무도 모르게 된다.
+ *
+ * 새 호출부를 더하기 전에 물을 것: **이 경로가 없으면 사람이 손이 묶이는가.**
+ * 아니라면 `query()` 를 쓴다. 검사기가 호출부 수를 세고 있다
+ * (`scripts/migrate-runner-walk.mjs`).
+ */
+export async function queryUnmigrated<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params: unknown[] = []
+): Promise<T | null> {
+  const result = await getPool().query<T>(text, params as any[]);
+  return result.rows[0] ?? null;
 }
 
 export async function query<T extends QueryResultRow = QueryResultRow>(
