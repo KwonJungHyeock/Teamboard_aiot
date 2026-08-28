@@ -60,11 +60,31 @@ try {
             [`[재현] 미귀속 업무 ${i + 1}`, lead, areaIds[i % areaIds.length]]);
   }
 
+  // ── 개인 업무를 섞는다 — **이 축을 빼먹어서 장애가 났다** ──────────
+  //
+  // 1차 재현은 PM 이 준 숫자 셋(goal 6 · 미귀속 35 · 영역 7)만 맞췄다. 그리고
+  // 「프로덕션 조건으로 재현했다」고 적었다. **재현한 것은 받은 숫자들뿐이었다.**
+  //
+  // 로컬 시드에는 `visibility='private'` 인 업무가 **0건**이다. 프로덕션에는 있다.
+  // `task_private_no_project`(0025) 는 **개인 업무가 프로젝트에 속하는 것을 막는다.**
+  // 0031 은 미귀속 업무를 전부 상시 프로젝트로 보내므로 그 제약을 정면으로 어긴다.
+  //
+  // 이제 그 축을 재현에 넣는다. **고치기 전에는 여기서 FAIL 이 나야 정상이다.**
+  // 개인 업무는 담당자를 두면 다른 트리거(task_private_owner_guard)가 막으므로
+  // assignee 를 비운다 — 만든 사람만 주인이다.
+  await q(`UPDATE task SET visibility = 'private', assignee_id = NULL
+            WHERE id IN (SELECT id FROM task
+                          WHERE is_active AND project_id IS NULL
+                          ORDER BY id LIMIT 4)`);
+
   const before = (await q(`SELECT
       (SELECT count(*)::int FROM project) AS 프로젝트,
       (SELECT count(*)::int FROM task WHERE is_active AND project_id IS NULL) AS 미귀속,
+      (SELECT count(*)::int FROM task WHERE is_active AND project_id IS NULL
+                                        AND visibility='private') AS 그중개인,
       (SELECT count(*)::int FROM area WHERE kind='workspace' AND is_active) AS 활성workspace영역`)).rows[0];
-  L(`재현 조건 — 프로젝트 ${before.프로젝트} · 미귀속 ${before.미귀속} · 활성 workspace 영역 ${before.활성workspace영역}`);
+  L(`재현 조건 — 프로젝트 ${before.프로젝트} · 미귀속 ${before.미귀속}(그중 개인 ${before.그중개인})` +
+    ` · 활성 workspace 영역 ${before.활성workspace영역}`);
   L(``);
 
   // ── 0029 → 0030 → 0031 을 러너와 **같은 순서·같은 방식**으로 ──
@@ -87,13 +107,25 @@ try {
   L(``);
   const after = (await q(`SELECT
       (SELECT count(*)::int FROM task WHERE is_active AND project_id IS NULL) AS 미귀속,
+      (SELECT count(*)::int FROM task WHERE is_active AND project_id IS NULL
+                                        AND visibility='private') AS 남은개인,
       (SELECT count(*)::int FROM project WHERE type='standing') AS 상시,
       (SELECT count(*)::int FROM task t JOIN project p ON p.id=t.project_id
-        WHERE t.is_active AND t.area_id <> p.area_id) AS 영역불일치`)).rows[0];
+        WHERE t.is_active AND t.area_id <> p.area_id) AS 영역불일치,
+      (SELECT count(*)::int FROM task WHERE visibility='private'
+                                        AND project_id IS NOT NULL) AS 개인인데프로젝트`)).rows[0];
   L(`결과 — 미귀속 ${after.미귀속} · 상시 프로젝트 ${after.상시} · 영역 불일치 ${after.영역불일치}`);
   L(``);
-  L(`판정 — 프로덕션 조건에서 0031 은 **오류 없이 돌고 빠르다.**`);
-  L(`       즉 0031 SQL 자체는 원인이 아니다.`);
+  // 짝이 되는 단언 — 「미귀속 0」만 보면 개인 업무를 삼켰는지 알 수 없다.
+  // 개인 업무는 **남아 있어야 맞다.** 그것이 이 마이그레이션이 하지 않기로 한 일이다.
+  const okPrivate = after.개인인데프로젝트 === 0 && after.남은개인 === before.그중개인;
+  L(`${okPrivate ? "OK  " : "FAIL"} 개인 업무는 옮기지 않는다 — ` +
+    `개인인데 프로젝트 있음 ${after.개인인데프로젝트} (0이어야) · ` +
+    `미귀속으로 남은 개인 ${after.남은개인}/${before.그중개인}`);
+  const okTeam = after.미귀속 === before.그중개인;
+  L(`${okTeam ? "OK  " : "FAIL"} 팀 업무는 전부 옮긴다 — ` +
+    `남은 미귀속 ${after.미귀속} (= 개인 ${before.그중개인} 뿐이어야)`);
+  if (!okPrivate || !okTeam) process.exitCode = 1;
 } catch (e) {
   console.error("재현 중 예외:", String(e && e.message ? e.message : e));
   process.exitCode = 1;
