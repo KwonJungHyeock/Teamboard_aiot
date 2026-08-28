@@ -89,7 +89,17 @@ export async function getLiveSession(): Promise<LiveSession | null> {
         message: `비활성/삭제 계정 세션 접근 차단 — actor#${tokenUser.id} (${tokenUser.email})`,
         level: "warn",
       });
-    } catch { /* 차단이 본체다 */ }
+    } catch (err) {
+      // **삼켜도 되는 이유** — 이 함수의 본 동작은 **차단**이고 그건 이미 끝났다
+      // (아래 return null). 기록은 그 사실을 남기는 부수 작업이다.
+      // 마이그레이션이 깨진 상태에서는 이 쓰기가 던지는데(B-29 §5), 그때
+      // 차단까지 못 하면 비활성 계정이 되레 통과한다. 순서가 뒤집힌다.
+      // 삼키되 **조용히는 아니다** — 빈 catch 는 다음 사람에게 이유를 안 남긴다.
+      console.error(
+        `[auth] 비활성 계정 차단은 했으나 기록에 실패 — actor#${tokenUser.id}: ` +
+        (err instanceof Error ? err.message : String(err))
+      );
+    }
     return null;
   }
   // 실시간 role·must_change_pw 반영 (승격·강등·비번변경 즉시 적용)

@@ -28,7 +28,17 @@ export async function POST(request: Request) {
     // 500 이 되면 §5 예외를 둔 의미가 없다.
     try {
       await logActivity({ userId: user.id, message: `${user.name} 로그인`, level: "info" });
-    } catch { /* 로그인이 본체다 */ }
+    } catch (err) {
+      // **삼켜도 되는 이유** — 로그인은 이미 성공했고 쿠키도 response 에 실렸다.
+      // 기록은 그 사실을 남기는 부수 작업이다. 마이그레이션이 깨진 상태에서는
+      // 이 쓰기가 던지는데(B-29 §5), 그때 로그인까지 500 이 되면 예외를 둔
+      // 의미가 없다 — 사람이 들어와서 원인을 볼 수 없게 된다.
+      // 삼키되 **조용히는 아니다** — 빈 catch 는 다음 사람에게 이유를 안 남긴다.
+      console.error(
+        `[auth] 로그인은 성공했으나 활동 기록에 실패 — actor#${user.id}: ` +
+        (err instanceof Error ? err.message : String(err))
+      );
+    }
     return response;
   } catch (error) {
     return jsonError(error);
