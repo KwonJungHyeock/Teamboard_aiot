@@ -21,7 +21,8 @@
 //   node scripts/migrate-runner-walk.mjs
 import pg from "pg";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync, rmSync, unlinkSync } from "node:fs";
+import { mkdirSync, writeFileSync, rmSync, unlinkSync, readFileSync, readdirSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import os from "node:os";
 import { requireLocalDb } from "./local-only.mjs";
@@ -31,7 +32,10 @@ requireLocalDb("migrate-runner-walk.mjs");
 const REPO = process.cwd();
 const TMP = path.join(os.tmpdir(), `mrw-${process.pid}`);
 const MIG = path.join(TMP, "db", "migrations");
-const OUT = path.join(TMP, "out");
+// 컴파일 결과는 **레포 안에** 둔다 — /tmp 에 두면 db.js 가 `pg` 를 못 찾는다
+// (node 는 모듈 위치에서 위로 올라가며 node_modules 를 찾는다).
+// 마이그레이션 경로는 cwd 로 정해지므로 여기 위치와 무관하다. 뒷정리에서 지운다.
+const OUT = path.join(REPO, ".migrate-walk-out");
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const q = async (t, p = []) => (await pool.query(t, p)).rows;
@@ -58,33 +62,34 @@ async function cleanup() {
   await q(`DROP TABLE IF EXISTS tb_walk_a, tb_walk_c, tb_walk_d`);
   await q(`DELETE FROM schema_migrations WHERE filename LIKE '9%_walk_%'`);
   rmSync(TMP, { recursive: true, force: true });
+  rmSync(OUT, { recursive: true, force: true });
 }
 
 try {
   mkdirSync(MIG, { recursive: true });
   mkdirSync(OUT, { recursive: true });
 
-  // ── 진짜 러너를 컴파일한다 ──
+  // ── 진짜 러너와 db 층을 컴파일한다 ──
+  // commonjs 로 낸다 — db.js 가 "./migrate" 를 확장자 없이 부르는데 ESM 은 그걸 못 푼다.
   execFileSync(
     path.join(REPO, "node_modules", ".bin", "tsc"),
     [
       path.join(REPO, "lib", "migrate.ts"),
+      path.join(REPO, "lib", "db.ts"),
       "--outDir", OUT,
-      "--module", "esnext",
-      "--moduleResolution", "bundler",
+      "--module", "commonjs",
+      "--moduleResolution", "node",
       "--target", "es2022",
       "--skipLibCheck",
+      "--esModuleInterop",
     ],
     { stdio: "inherit" }
   );
-  // `.js` 를 ESM 으로 읽게 한다 (러너는 node 내장 모듈만 import 한다).
-  writeFileSync(path.join(OUT, "package.json"), JSON.stringify({ type: "module" }));
 
   // 러너는 **모듈을 읽는 시점의 cwd** 로 마이그레이션 경로를 정한다. 먼저 옮긴다.
   process.chdir(TMP);
-  const { runMigrations, migrationStatus } = await import(
-    path.join(OUT, "migrate.js")
-  );
+  const req = createRequire(path.join(OUT, "noop.cjs"));
+  const { runMigrations, migrationStatus } = req(path.join(OUT, "migrate.js"));
 
   // 앞선 회차가 남긴 것이 있으면 여기서 지운다 — 검사는 매번 같은 자리에서 시작한다.
   await q(`DROP TABLE IF EXISTS tb_walk_a, tb_walk_c, tb_walk_d`);
@@ -152,6 +157,61 @@ try {
   ok("⑥ 이력에만 있고 파일이 없는 것을 짚어낸다",
      unk9.length === 1 && unk9[0] === F1,
      `9xxx unknown [${unk9.join(", ")}] · (진짜 마이그레이션 ${st2.unknown.length - unk9.length}건은 임시 cwd 라서 함께 잡힌다)`);
+
+  // ── ⑦ B-29 §5 — 마이그레이션이 깨져도 로그인 경로는 산다 ────────
+  //
+  // 0031 실패 때 팀 전원이 못 들어왔고 **팀장도 원인을 볼 수 없었다.** 손이 묶였다.
+  // 그래서 두 가지만 열어 뒀다. 열렸다고 적는 것으로는 부족해서, **깨진 상태를
+  // 실제로 만들어 놓고** query() 는 막히고 queryUnmigrated() 는 도는지 본다.
+  write(F4, `THIS IS ALSO NOT SQL;`);        // 미적용 + 실패하는 파일을 남겨 둔다
+  unlinkSync(path.join(MIG, F2));
+  unlinkSync(path.join(MIG, F3));
+  const db = req(path.join(OUT, "db.js"));
+
+  let blocked = null;
+  try { await db.query("SELECT 1 AS n"); } catch (e) { blocked = e; }
+  ok("⑦ 마이그레이션이 깨지면 보통 쿼리는 막힌다",
+     blocked !== null && String(blocked.message).includes(F4),
+     blocked ? `“${String(blocked.message).split("\n")[0]}”` : "안 막혔다 — 이러면 반쯤 적용된 스키마 위로 쓰기가 들어간다");
+
+  let openRow = null;
+  let openErr = null;
+  try { openRow = await db.queryUnmigrated("SELECT 1 AS n"); } catch (e) { openErr = e; }
+  ok("⑦ 그래도 로그인 경로(queryUnmigrated)는 돈다",
+     openErr === null && openRow?.n === 1,
+     openErr ? String(openErr.message) : `row ${JSON.stringify(openRow)}`);
+
+  // 현황 조회도 깨진 상태에서 답해야 한다 — 들어와서 무슨 일인지 보는 길이다.
+  let stErr = null;
+  let st3 = null;
+  try { st3 = await db.getMigrationStatus(); } catch (e) { stErr = e; }
+  ok("⑦ 깨진 상태에서도 현황을 답한다 (들어와서 원인을 볼 수 있다)",
+     stErr === null && st3?.ok === false && st3.missing.includes(F4),
+     stErr ? String(stErr.message) : `ok ${st3?.ok} · missing 9xxx [${(st3?.missing ?? []).filter((f) => f.startsWith("9")).join(", ")}]`);
+
+  // ── ⑧ 예외가 예외로 남는가 — **호출부를 센다** ──────────────────
+  //
+  // `queryUnmigrated` 는 예외이지 대안이다. 편해서 하나둘 늘면 어느새
+  // 「마이그레이션이 깨져도 대충 돈다」가 되고, 그건 반쯤 적용된 스키마 위에서
+  // 쓰기를 받는다는 뜻이다. **허용 목록을 코드가 아니라 검사기가 지킨다.**
+  const ALLOWED = new Set(["lib/db.ts", "lib/auth.ts"]);
+  const callers = [];
+  const scan = (d) => {
+    for (const e of readdirSync(path.join(REPO, d), { withFileTypes: true })) {
+      if (e.name === "node_modules" || e.name === ".next" || e.name === ".git") continue;
+      const rel = `${d}/${e.name}`;
+      if (e.isDirectory()) scan(rel);
+      else if (/\.tsx?$/.test(e.name) &&
+               readFileSync(path.join(REPO, rel), "utf8").includes("queryUnmigrated")) {
+        callers.push(rel);
+      }
+    }
+  };
+  for (const top of ["lib", "app", "components"]) scan(top);
+  const extra = callers.filter((f) => !ALLOWED.has(f));
+  ok("⑧ queryUnmigrated 호출부가 허용 목록을 넘지 않는다", extra.length === 0,
+     `호출부 [${callers.join(", ")}]` +
+     (extra.length ? ` · **허용 밖: ${extra.join(", ")}** — 이 경로가 없으면 사람이 손이 묶이는가? 아니면 query() 를 쓴다` : ""));
 
   L("");
   L(`${pass}/${pass + fail} 통과`);

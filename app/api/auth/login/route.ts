@@ -23,7 +23,12 @@ export async function POST(request: Request) {
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
     });
-    await logActivity({ userId: user.id, message: `${user.name} 로그인`, level: "info" });
+    // 기록은 best-effort 다. 로그인은 이미 성공했고 쿠키도 실렸다.
+    // 마이그레이션이 깨진 상태에서는 이 쓰기가 던진다 — 그때 로그인까지
+    // 500 이 되면 §5 예외를 둔 의미가 없다.
+    try {
+      await logActivity({ userId: user.id, message: `${user.name} 로그인`, level: "info" });
+    } catch { /* 로그인이 본체다 */ }
     return response;
   } catch (error) {
     return jsonError(error);

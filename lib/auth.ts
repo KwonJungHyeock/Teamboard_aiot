@@ -2,7 +2,7 @@
 // 세션은 HMAC 서명 쿠키. 비밀키는 AUTH_SECRET.
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
-import { queryOne } from "./db";
+import { queryOne, queryUnmigrated } from "./db";
 import type { Role, SessionUser } from "./types";
 
 export const SESSION_COOKIE = "tb_session";
@@ -66,7 +66,8 @@ export async function getLiveSession(): Promise<LiveSession | null> {
   const tokenUser = verifySessionToken(token);
   if (!tokenUser) return null;
 
-  const row = await queryOne<{
+  // 여기도 연다. 로그인만 되고 그다음 요청이 전부 막히면 로그인이 열린 값을 못 한다.
+  const row = await queryUnmigrated<{
     is_active: boolean;
     display_name: string;
     role: Role;
@@ -79,12 +80,16 @@ export async function getLiveSession(): Promise<LiveSession | null> {
   );
   if (!row || !row.is_active) {
     // 순환 참조 방지를 위해 동적 import
-    const { logActivity } = await import("./activity");
-    await logActivity({
-      userId: null,
-      message: `비활성/삭제 계정 세션 접근 차단 — actor#${tokenUser.id} (${tokenUser.email})`,
-      level: "warn",
-    });
+    // 기록은 best-effort 다. 이 로그를 못 남긴다고 **차단을 못 하면 안 된다** —
+    // 게다가 마이그레이션이 깨진 상태에서는 이 쓰기 자체가 던진다(B-29 §5).
+    try {
+      const { logActivity } = await import("./activity");
+      await logActivity({
+        userId: null,
+        message: `비활성/삭제 계정 세션 접근 차단 — actor#${tokenUser.id} (${tokenUser.email})`,
+        level: "warn",
+      });
+    } catch { /* 차단이 본체다 */ }
     return null;
   }
   // 실시간 role·must_change_pw 반영 (승격·강등·비번변경 즉시 적용)
@@ -144,7 +149,9 @@ export function verifyPassword(password: string, stored: string): boolean {
 
 export async function authenticate(email: string, password: string): Promise<SessionUser | null> {
   // 신규 스키마: actor(type='human', is_active) + account 조인
-  const user = await queryOne<{
+  // `queryUnmigrated` — 마이그레이션이 깨져도 **로그인은 된다**(B-29 §5).
+  // 0031 실패 때 팀 전원이 못 들어왔고 팀장도 원인을 볼 수 없었다. 손이 묶였다.
+  const user = await queryUnmigrated<{
     id: number;
     email: string;
     name: string;
@@ -158,6 +165,6 @@ export async function authenticate(email: string, password: string): Promise<Ses
   );
   if (!user) return null;
   if (!verifyPassword(password, user.password_hash)) return null;
-  await queryOne("UPDATE account SET last_login_at = now() WHERE actor_id = $1", [user.id]);
+  await queryUnmigrated("UPDATE account SET last_login_at = now() WHERE actor_id = $1", [user.id]);
   return { id: user.id, email: user.email, name: user.name, role: user.role };
 }

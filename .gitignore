@@ -34,3 +34,6 @@ next-env.d.ts
 
 # DB 백업 덤프 — 저장소에 올리지 않는다 (용량·개인정보)
 backups/
+
+# scripts/migrate-runner-walk.mjs 컴파일 산출물 (검사기가 뒷정리에서 지운다)
+.migrate-walk-out/

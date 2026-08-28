@@ -40,6 +40,38 @@ export async function getMigrationStatus() {
   return migrationStatus(getPool());
 }
 
+/**
+ * **마이그레이션 상태와 무관하게 도는 쿼리.**
+ *
+ * ── 왜 있는가 ────────────────────────────────────────────────────
+ *
+ * 0031 이 실패했을 때 러너가 던졌고, `ensureMigrated()` 가 모든 DB 접근 앞에 있어서
+ * **로그인을 포함한 모든 요청이 500** 이 됐다. 팀 전원이 못 들어왔고,
+ * **팀장조차 들어와서 무슨 일인지 볼 수 없었다.** 손이 묶인 것이 제일 나빴다.
+ *
+ * 그래서 딱 두 가지만 연다.
+ *
+ *   · 로그인 — 사람이 들어올 수는 있어야 한다
+ *   · GET /api/admin/migrations — 들어와서 무슨 일인지 볼 수 있어야 한다
+ *     (이쪽은 `getMigrationStatus()` 가 이미 `ensureMigrated()` 를 안 부른다)
+ *
+ * ── ⚠ 호출부를 늘리지 않는다 ─────────────────────────────────────
+ *
+ * 이것은 예외이지 대안이 아니다. 나머지는 지금처럼 막는다 — 스키마가 코드보다
+ * 뒤처진 상태에서 쓰기를 받으면 무엇이 참인지 아무도 모르게 된다.
+ *
+ * 새 호출부를 더하기 전에 물을 것: **이 경로가 없으면 사람이 손이 묶이는가.**
+ * 아니라면 `query()` 를 쓴다. 검사기가 호출부 수를 세고 있다
+ * (`scripts/migrate-runner-walk.mjs`).
+ */
+export async function queryUnmigrated<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params: unknown[] = []
+): Promise<T | null> {
+  const result = await getPool().query<T>(text, params as any[]);
+  return result.rows[0] ?? null;
+}
+
 export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params: unknown[] = []
