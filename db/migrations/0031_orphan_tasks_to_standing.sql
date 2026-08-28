@@ -20,11 +20,29 @@
 --
 -- 같은 영역의 상시 프로젝트로만 보내므로 `trg_task_area_match` 를 건드리지 않는다.
 -- `task.area_id` 는 그대로다.
+--
+-- ── ⚠ 개인 업무는 옮기지 않는다 ───────────────────────────────────
+--
+-- **이 줄이 없어서 프로덕션이 멈췄다.** 처음 판에는 `visibility` 조건이 없었고,
+-- 러너가 `task_private_no_project` 위반으로 던졌다. 마이그레이션은 모든 DB 접근
+-- 앞에서 도므로 **팀 전원이 로그인하지 못했다.**
+--
+--   0025_task_visibility.sql:29
+--   CHECK (visibility <> 'private' OR project_id IS NULL)
+--
+-- 규칙은 0025 가 이미 정해 뒀다 — 프로젝트는 팀 단위다. 개인 업무가 프로젝트에
+-- 들어가면 프로젝트 상세·진척·목표 롤업을 통해 팀에게 새어 나간다.
+-- 그러므로 **개인 업무는 프로젝트 없이 남는 것이 맞다.** 예외가 아니라 설계다.
+--
+-- 따라서 사후 확인의 「프로젝트 없는 활성 업무 = 0」도 틀렸다. 옳은 기준은
+-- **「프로젝트 없는 활성 *팀* 업무 = 0」**이다. 개인 업무는 남는다.
+-- 같은 이유로 B-25(`task.project_id` NOT NULL)는 **영원히 불가능하다.**
 UPDATE task t
    SET project_id = p.id
   FROM project p
  WHERE t.project_id IS NULL
    AND t.is_active = true
+   AND t.visibility <> 'private'
    AND p.area_id = t.area_id
    AND p.type = 'standing';
 
