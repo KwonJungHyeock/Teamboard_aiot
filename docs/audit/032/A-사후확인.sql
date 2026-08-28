@@ -32,10 +32,26 @@ SELECT
       AND EXISTS (SELECT 1 FROM project p WHERE p.area_id = a.id AND p.type = 'standing'))
     AS 상시있는영역;
 
-\echo '=== ③ 프로젝트 없는 활성 업무 = 0 ==='
-SELECT count(*) AS 프로젝트없는활성업무
+\echo '=== ③ 프로젝트 없는 활성 **팀** 업무 = 0  (개인 업무는 남는 것이 맞다) ==='
+--
+-- ⚠ 처음에 이 기준을 「프로젝트 없는 활성 업무 = 0」으로 적었다. **틀렸다.**
+-- `task_private_no_project`(0025) 가 개인 업무의 프로젝트 귀속을 금지한다 —
+-- 프로젝트는 팀 단위이고, 개인 업무가 프로젝트에 들어가면 진척·목표 롤업을 통해
+-- 팀에게 새어 나가기 때문이다. 그 기준을 그대로 뒀다면 마이그레이션을 고친 뒤에도
+-- 사후 확인이 실패로 읽혔을 것이다.
+SELECT count(*) AS 프로젝트없는활성팀업무
   FROM task
- WHERE is_active = true AND project_id IS NULL;
+ WHERE is_active = true AND project_id IS NULL AND visibility <> 'private';
+
+\echo '=== ③-2 참고 — 프로젝트 없이 남은 개인 업무 (판정 아님. 0이 아닌 것이 정상) ==='
+SELECT count(*) AS 프로젝트없는개인업무
+  FROM task
+ WHERE is_active = true AND project_id IS NULL AND visibility = 'private';
+
+\echo '=== ③-3 개인 업무인데 프로젝트에 들어간 것 = 0  (0025 제약이 지켜지는가) ==='
+SELECT count(*) AS 개인인데프로젝트있음
+  FROM task
+ WHERE visibility = 'private' AND project_id IS NOT NULL;
 
 \echo '=== ④ 업무 영역 ≠ 프로젝트 영역 = 0  (0이면 영역이 안 바뀐 것이다) ==='
 SELECT count(*) AS 영역불일치
@@ -64,7 +80,9 @@ SELECT p.id, p.name, count(t.id) AS 담긴업무
 --
 --   ① type 이 goal · standing **두 값뿐**            → 다른 값이 보이면 실패
 --   ② 업무있는영역 == 상시있는영역                    → 다르면 그릇이 없는 영역이 있다
---   ③ 프로젝트없는활성업무 = **0**
+--   ③ 프로젝트없는활성**팀**업무 = **0**              → 개인 업무는 세지 않는다
+--   ③-2 프로젝트없는개인업무 — 판정 없음. 0이 아닌 것이 정상
+--   ③-3 개인인데프로젝트있음 = **0**                  → 0025 제약이 지켜지는가
 --   ④ 영역불일치 = **0**                              → 0이면 영역이 안 바뀐 것
 --   ⑤ 상시인데목표있음 = **0**
 --   ⑥ 목록 — 판정 없음. **보관**한다
