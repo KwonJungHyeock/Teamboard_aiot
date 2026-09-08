@@ -61,7 +61,7 @@ interface TaskDetail {
 }
 interface Selectors {
   actors: { id: number; name: string }[];
-  projects: { id: number; name: string; colorKey: string | null; areaId: number }[];
+  projects: ComboProject[];
   areas: { id: number; name: string; colorKey: string | null }[];
   /** 업무에 붙일 수 있는 목표 — **분기 · 월** 두 층. 연간은 후보가 아니다(§C3 §1). */
   linkableGoals: { id: number; title: string; level: string; period: string; when: "past" | "current" | "future" }[];

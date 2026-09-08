@@ -16,10 +16,23 @@ export interface ComboProject {
   name: string;
   colorKey: string | null;
   areaId: number;
+  /** goal | standing (MD-P-2026-032 §B). 서버가 준다 — 이름으로 알아보지 않는다. */
+  type: "goal" | "standing";
 }
 
 const RECENT_KEY = "tb:recent-projects";
 const RECENT_MAX = 5;
+
+/**
+ * 최근 고른 프로젝트 id — **새 앞·뒤 순서대로.**
+ *
+ * §B 의 프로젝트 버튼이 문턱을 넘었을 때 이 목록을 위로 올린다(`withRecentFirst`).
+ * **새로 만들지 않고 이미 있는 것을 쓴다** — 「최근 쓴 프로젝트」가 두 벌이 되면
+ * 콤보에서 고른 것과 버튼에서 고른 것이 서로 다른 순서를 보게 된다.
+ */
+export function readRecentProjects(): number[] {
+  return readRecent();
+}
 
 function readRecent(): number[] {
   if (typeof window === "undefined") return [];
@@ -138,7 +151,10 @@ export default function ProjectCombo({
       setErr(d?.error ?? "프로젝트를 만들지 못했어요");
       return;
     }
-    const made: ComboProject = { id: d.id, name: typed, colorKey: "team", areaId: areaId ?? 0 };
+    // 화면에서 만드는 프로젝트는 **언제나 goal 이다.** 상시는 마이그레이션이 영역마다
+    // 하나씩 만들고 0032 유니크 인덱스가 그 하나를 지킨다 — 사람이 더 만들 길이 없다.
+    // DB 의 DEFAULT 도 'goal' 이라 두 곳이 같은 말을 한다.
+    const made: ComboProject = { id: d.id, name: typed, colorKey: "team", areaId: areaId ?? 0, type: "goal" };
     onCreated?.(made);
     pick(made.id);
   }

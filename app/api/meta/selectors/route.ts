@@ -18,8 +18,12 @@ export async function GET() {
         `SELECT id, display_name FROM actor WHERE type = 'human' AND is_active = true ORDER BY id`
       ),
       // 프로젝트에 area_id 포함 — 폼에서 "선택한 영역의 하위" 프로젝트만 노출하기 위함
-      query<{ id: number; name: string; color_key: string | null; area_id: number }>(
-        `SELECT id, name, color_key, area_id FROM project WHERE is_active = true ORDER BY id`
+      // `type` 을 함께 준다 (MD-P-2026-032 §B) — 등록 화면의 프로젝트 버튼이
+      // goal 과 standing 을 다르게 그린다(상시는 영역 이름이 라벨에 붙는다).
+      // 화면이 이름으로 `상시 · ` 접두어를 알아보게 하지 않는다 — 이름은 사람이
+      // 바꿀 수 있고, 바뀌는 순간 조용히 틀린다.
+      query<{ id: number; name: string; color_key: string | null; area_id: number; type: "goal" | "standing" }>(
+        `SELECT id, name, color_key, area_id, type FROM project WHERE is_active = true ORDER BY id`
       ),
       /**
        * 업무의 목표 후보 (MD-P-2026-024 회신 6 지시 20-1 · **§C3 회신 §1 에서 층 확대**).
@@ -83,7 +87,9 @@ export async function GET() {
     ]);
     return NextResponse.json({
       actors: actors.map((a) => ({ id: a.id, name: a.display_name })),
-      projects: projects.map((p) => ({ id: p.id, name: p.name, colorKey: p.color_key, areaId: p.area_id })),
+      projects: projects.map((p) => ({
+        id: p.id, name: p.name, colorKey: p.color_key, areaId: p.area_id, type: p.type,
+      })),
       /**
        * 이름을 `monthGoals` 에서 바꿨다 — **분기 목표가 들어오므로 옛 이름은 거짓말이 된다.**
        * `level` 은 화면이 「분기」/「월」 배지를 그리는 데 쓰고,

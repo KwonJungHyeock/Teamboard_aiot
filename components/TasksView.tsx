@@ -36,6 +36,8 @@ interface ProjectOption {
   name: string;
   colorKey: string | null;
   areaId: number;
+  /** goal | standing (MD-P-2026-032 §B) — 서버가 준다. 이름으로 알아보지 않는다. */
+  type: "goal" | "standing";
 }
 
 interface InboxItem {
