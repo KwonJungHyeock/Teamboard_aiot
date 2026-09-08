@@ -3,17 +3,16 @@
 //   ① lead는 본인을 비활성화할 수 없다
 //   ② 시스템에 활성 lead가 1명뿐이면 그 lead의 강등·비활성화 불가
 import { NextResponse } from "next/server";
-import { requireLiveLead, requireSession } from "@/lib/auth";
+import { requireLiveAdmin, requireSession } from "@/lib/auth";
 import { visibleTaskSql } from "@/lib/visibility";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
-import { hasLead } from "@/lib/types";
+import { isAdmin, ROLES, hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ROLES = ["lead", "member", "viewer"] as const;
 
 /** 멤버 프로필 (MD-P-2026-006 §B) — 전역 우측 패널이 읽는 공개 요약. 로그인만 요구한다. */
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
@@ -84,17 +83,37 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   }
 }
 
+/**
+ * 활성 관리자 수 — `activeLeadCount` 와 **같은 모양**이다.
+ * 새 방식을 만들지 않는다: 같은 질문은 같은 모양으로 묻는다.
+ */
+async function activeAdminCount(): Promise<number> {
+  const row = await queryOne<{ n: string }>(
+    `SELECT count(*) AS n FROM account ac JOIN actor a ON a.id = ac.actor_id
+     WHERE ac.role = 'admin' AND a.is_active = true`
+  );
+  return Number(row?.n ?? 0);
+}
+
+/**
+ * 팀장 권한을 가진 활성 계정 수 — **관리자를 포함한다.**
+ *
+ * `role = 'lead'` 만 세면 관리자 1 + 팀장 1 인 상태에서 팀장을 내릴 때
+ * 「팀장이 1명뿐」으로 막힌다. 실제로는 팀장 일을 할 수 있는 사람이 둘인데도.
+ * 등급이 포함 관계이므로(`hasLead`) 세는 쪽도 포함해서 센다 —
+ * **판정과 집계가 다른 기준을 쓰면 그 차이만큼 조용히 틀린다.**
+ */
 async function activeLeadCount(): Promise<number> {
   const row = await queryOne<{ n: string }>(
     `SELECT count(*) AS n FROM account ac JOIN actor a ON a.id = ac.actor_id
-     WHERE ac.role = 'lead' AND a.is_active = true`
+     WHERE ac.role IN ('admin', 'lead') AND a.is_active = true`
   );
   return Number(row?.n ?? 0);
 }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
-    const session = await requireLiveLead();
+    const session = await requireLiveAdmin();
     const memberId = Number(params.id);
     const payload = await request.json();
 
@@ -149,7 +168,26 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       if (!(ROLES as readonly string[]).includes(payload.role)) {
         return NextResponse.json({ error: "역할 값이 올바르지 않습니다." }, { status: 400 });
       }
-      // 마지막 활성 lead를 강등하려는 경우 차단
+      /*
+       * ── 마지막 한 명을 내리지 못하게 막는다 (MD-P-2026-035 §B-4) ──
+       *
+       * 관리자가 0 명이 되면 **아무도 계정을 발급할 수 없는데 아무도 그 사실을
+       * 모른다.** 멤버 관리 화면 자체가 관리자 전용이라 들어가 볼 수도 없다.
+       * 팀장 쪽 차단과 같은 모양으로 관리자에도 건다.
+       *
+       * 관리자 먼저 본다 — 관리자를 팀장으로 내리는 경우 두 조건에 다 걸릴 수
+       * 있는데, 그때 알려야 할 것은 「관리자가 없어진다」다.
+       *
+       * 이건 **규칙**이므로 400 이다. 권한(관리자가 아님)은 requireLiveAdmin 이
+       * 위에서 이미 403 으로 걸렀다 — 규칙을 권한보다 먼저 평가한다.
+       */
+      if (isAdmin(member.role) && !isAdmin(payload.role) && (await activeAdminCount()) <= 1) {
+        return NextResponse.json(
+          { error: "활성 관리자가 1명뿐입니다. 다른 관리자를 지정한 뒤 강등하세요." },
+          { status: 400 }
+        );
+      }
+      // 마지막 활성 팀장(관리자 포함)을 강등하려는 경우 차단 — 기존 규칙 그대로
       if (hasLead(member.role) && !hasLead(payload.role) && (await activeLeadCount()) <= 1) {
         return NextResponse.json(
           { error: "활성 팀장이 1명뿐입니다. 다른 팀장을 지정한 뒤 강등하세요." },

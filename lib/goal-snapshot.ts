@@ -95,11 +95,11 @@ export async function failedTwiceInARow(): Promise<boolean> {
   return rows.length === 2 && rows.every((r) => !r.ok);
 }
 
-/** 적립 실패를 활동 인박스 "시스템" 탭에 알린다 (§F). 팀장 전원에게 1건씩. */
+/** 적립 실패를 활동 인박스 "시스템" 탭에 알린다 (§F). 팀장 전원에게 1건씩(관리자 포함). */
 export async function notifySnapshotFailure(message: string): Promise<void> {
   const leads = await query<{ actor_id: number }>(
     `SELECT ac.actor_id FROM account ac JOIN actor a ON a.id = ac.actor_id
-      WHERE ac.role = 'lead' AND a.is_active = true`
+      WHERE ac.role IN ('admin', 'lead') AND a.is_active = true`
   );
   const day = kstTodayForGoals();
   for (const l of leads) {

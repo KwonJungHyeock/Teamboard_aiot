@@ -15,6 +15,14 @@ export type Role = "admin" | "lead" | "member" | "viewer";
  *   isAdmin  관리자만          — 멤버 관리 · 역할 변경 · 계정 발급
  *   hasLead  관리자 또는 팀장  — 그 밖의 「팀장만」 자리 전부
  */
+/**
+ * 화면·API 가 발급·변경할 수 있는 역할 목록 — **`account_role_check`(0033) 와 같아야 한다.**
+ *
+ * 두 라우트가 각자 배열을 들고 있었고 한쪽에만 `admin` 을 넣으면 화면에서 고른
+ * 값이 DB 에서 거부된다. 그 이유는 화면에 안 보인다. 한 곳에서 낸다.
+ */
+export const ROLES = ["admin", "lead", "member", "viewer"] as const;
+
 export const isAdmin = (role: Role | string | null | undefined): boolean => role === "admin";
 export const hasLead = (role: Role | string | null | undefined): boolean =>
   role === "admin" || role === "lead";

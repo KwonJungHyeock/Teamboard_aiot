@@ -2,20 +2,20 @@
 // 계정 발급 시 임시 비밀번호(must_change_pw=true) + 에이전트 actor(type='agent') 자동 생성.
 // 하드 삭제 없음 — 비활성화는 [id] 라우트의 is_active=false.
 import { NextResponse } from "next/server";
-import { requireLiveLead } from "@/lib/auth";
+import { requireLiveAdmin } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { hashPassword, generateTempPassword } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
+import { ROLES } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ROLES = ["lead", "member", "viewer"] as const;
 
 export async function GET() {
   try {
-    await requireLiveLead();
+    await requireLiveAdmin();
     const rows = await query<{
       id: number;
       display_name: string;
@@ -58,7 +58,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const session = await requireLiveLead();
+    const session = await requireLiveAdmin();
     const payload = await request.json();
     const displayName = String(payload.displayName ?? "").trim().slice(0, 60);
     const email = String(payload.email ?? "").trim().toLowerCase();
