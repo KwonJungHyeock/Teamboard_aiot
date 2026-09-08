@@ -52,6 +52,8 @@ interface TaskDetail {
   goalSource: "inherited" | "manual" | "none";   // inherited 는 역사적 값(= 미지정). 새로 안 생긴다.
   visibility: "team" | "private";
   effectiveProgress: number; rolledUpFromChildren: boolean;
+  /** 하위 진척의 분모·분자 — 「하위 N개 중 M개 완료」를 그리는 재료 (§A). */
+  childCounted?: number; childDone?: number;
   goalLink: {
     projectId: number | null; projectName: string | null;
   };
@@ -411,7 +413,15 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
         <span className="prop-prog">
           <i><b style={pfill(t.effectiveProgress)} /></i>
           <em className="num">{t.effectiveProgress}%</em>
-          {t.rolledUpFromChildren && <em className="prop-note">하위 업무로 계산 중</em>}
+          {/* 세는 방식을 적는다. 「하위 업무로 계산 중」은 왜 그 숫자인지 말하지
+              않는다 — 50% 를 보고 「하위 진척의 평균인가」로 읽을 수 있다.
+              실제로는 **완료 개수**다 (lib/progress.ts 규칙 2). 규칙은 그대로 두고
+              문구만 그 규칙을 그대로 옮긴다. */}
+          {t.rolledUpFromChildren && (
+            <em className="prop-note">
+              하위 {t.childCounted ?? 0}개 중 {t.childDone ?? 0}개 완료
+            </em>
+          )}
           {/* 왜 못 바꾸는지 **그 자리에 적는다.** 슬라이더가 그냥 없으면
               사람은 화면이 고장 났다고 생각하거나 자기 권한을 의심한다. */}
           {!progressRight.canEdit && !t.rolledUpFromChildren && (

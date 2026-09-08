@@ -678,6 +678,16 @@ export async function GET(_request: Request, { params }: { params: { id: string 
           childCounted: Number(t.child_counted), childDone: Number(t.child_done),
         }),
         rolledUpFromChildren: Number(t.child_counted) > 0,
+        /**
+         * **세는 방식을 화면이 말할 수 있게** 분모·분자를 그대로 보낸다
+         * (MD-P-2026-035 §A). 「하위 업무로 계산 중」만으로는 왜 그 숫자인지
+         * 모른다 — 「하위 2개 중 1개 완료」라야 읽는 사람이 되짚을 수 있다.
+         *
+         * `childCounted` 는 **집계 대상** 하위 수다(취소·중복은 빠진다).
+         * `childCount` 와 다를 수 있고, 분모는 이쪽이다.
+         */
+        childCounted: Number(t.child_counted),
+        childDone: Number(t.child_done),
         goalSource: t.goal_source,
         visibility: t.visibility,
         goalLink: await goalLinkInfo(id),

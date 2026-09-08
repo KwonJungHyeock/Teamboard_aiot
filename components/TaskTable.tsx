@@ -41,7 +41,7 @@ export interface TaskTableRow {
   parentTaskId?: number | null;
   /**
    * 하위 업무 수. 계층 표시에 쓰고, **진척 편집 칸을 그릴지도 이 값이 정한다**
-   * (MD-P-2026-033 §B) — 1 이상이면 진척은 하위 완료율로 계산되는 값이라 손으로
+   * (MD-P-2026-033 §B) — 1 이상이면 진척은 하위 완료 개수로 계산되는 값이라 손으로
    * 못 바꾼다. 권한과 무관한 규칙이다(lib/progress.ts 규칙 2).
    * 눌러 보고 400 을 받는 것보다 칸을 안 그리는 편이 낫다.
    */
@@ -624,7 +624,7 @@ export default function TaskTable({
                 {showProg && (
                   <td className={`col-prog${withBars ? " narrow" : ""}`}
                       title={t.status === "done" ? "완료 처리된 업무는 진척이 100% 입니다. 상태를 되돌리면 바꿀 수 있습니다."
-                             : (t.childCount ?? 0) > 0 ? "하위 업무로 계산 중입니다." : undefined}>
+                             : (t.childCount ?? 0) > 0 ? "하위 완료 개수로 계산 중입니다." : undefined}>
                     {/* 막대를 켜면 여기 막대는 접는다 — 한 행에 막대가 둘이면 어느 쪽이
                         시간이고 어느 쪽이 진척인지 안 읽힌다. 숫자는 남는다(§D7 진척 38px). */}
                     {!withBars && (

@@ -104,7 +104,7 @@ export default function PlatformSettings() {
       <p className="ps-help">
         업무 진척을 손으로 바꿀 수 있는 사람 <b>한 명</b>입니다. 팀장 역할과 무관합니다 —
         관리자가 여럿이어도 진척은 여기 지정된 한 명만 바꿉니다.
-        하위 업무가 있는 업무는 하위 완료율로 계산되므로 누구도 손으로 바꾸지 못합니다.
+        하위 업무가 있는 업무는 하위 완료 개수로 계산되므로 누구도 손으로 바꾸지 못합니다.
       </p>
 
       {msg && <p className="ps-ok">{msg}</p>}
