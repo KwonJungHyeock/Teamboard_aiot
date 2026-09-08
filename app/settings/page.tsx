@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import AppShell from "@/components/AppShell";
 import NotionScopeSettings from "@/components/NotionScopeSettings";
+import PlatformSettings from "@/components/PlatformSettings";
 import NotionConnection from "@/components/NotionConnection";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,9 @@ export default function SettingsPage() {
           <NotionConnection />
         </div>
       </div>
+      {/* 플랫폼 설정을 **위에** 둔다 — 가오픈까지 자주 만지는 값이고,
+          Notion 연결은 한 번 하고 마는 값이다. */}
+      <PlatformSettings />
       <NotionScopeSettings notionConnected={notionConnected} />
     </AppShell>
   );

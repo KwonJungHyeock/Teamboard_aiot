@@ -18,6 +18,8 @@ import PageShell from "./PageShell";
 import SectionEmpty from "./SectionEmpty";
 import HeroTimeline from "./HeroTimeline";
 import HomeRail from "./HomeRail";
+import OpenCountdown from "./OpenCountdown";
+import type { PlatformOpen } from "@/lib/platform-config";
 import { openNewTaskPanel } from "@/lib/task-panel";
 import { pfill } from "@/lib/progress-bar";
 
@@ -49,8 +51,10 @@ function NowStamp() {
 
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 
-export default function HomeView({ summary, user, initialSpan }: {
+export default function HomeView({ summary, user, initialSpan, open }: {
   summary: HomeSummary; user: SessionUser; initialSpan?: string;
+  /** 가오픈 목표 시각. 없으면 카운트다운을 안 그린다. */
+  open?: PlatformOpen;
 }) {
   const [anchor, setAnchor] = useState<string>(summary.today);
   // §C URL 규약 — 기본값(이번 분기)은 주소에 안 쓴다. history 를 쌓지 않는다. 훅이 한다.
@@ -98,6 +102,13 @@ export default function HomeView({ summary, user, initialSpan }: {
       filterSummary={<NowStamp />}
     >
       <>
+          {/* ── 가오픈 카운트다운 (MD-P-2026-033 §A) ──
+              대문 맨 위. 히어로보다 위다 — 지금 팀이 가장 자주 확인하는 수이고,
+              스크롤해서 찾는 수는 확인하지 않게 된다.
+              **오픈 뒤에는 판매 수량·활성 지수가 이 자리에 온다.** 지금 그것을
+              자리표시로 그려 두지 않는다 — 가짜 숫자는 진짜처럼 보인다. */}
+          {open && <OpenCountdown openAt={open.openAt} isDefault={open.source === "default"} />}
+
           {/* 히어로는 레일 위로 **폭 전체**를 쓴다. 3층 구조에서 레일은 1·2층 옆이 아니라
               판단 타일부터 아래로 붙는다 — 히어로를 320px 좁히면 레인이 읽히지 않는다. */}
           <HeroTimeline

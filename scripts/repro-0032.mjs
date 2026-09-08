@@ -48,7 +48,21 @@ async function mustReject(label, sql, params = []) {
   }
 }
 
+// `finally` 에서도 봐야 하므로 try 밖에 둔다.
+let idxBefore = null;
 try {
+  /*
+   * ── 롤백 확인은 **절대값이 아니라 시작 전 상태와 대조한다** ──────
+   *
+   * 처음엔 롤백 뒤 인덱스가 0개인지 봤다. 그때는 0032 가 아직 로컬에 적용되기
+   * 전이라 통과했고, **적용된 뒤에 돌리자 FAIL 이 났다** — 인덱스가 1개인 것이
+   * 정상인데도. 되돌렸는지를 재려면 「없음」이 아니라 **「원래대로」**를 봐야 한다.
+   *
+   * 검사기가 옳은 상태를 결함으로 읽은 것이다. 시작 전 값을 먼저 재 둔다.
+   */
+  idxBefore = Number((await q(
+    `SELECT count(*)::int n FROM pg_indexes WHERE indexname = $1`, [IDX])).rows[0].n);
+
   await q("BEGIN");
 
   // ── 적용 전으로 되돌린다 (트랜잭션 안) ──
@@ -136,9 +150,10 @@ try {
       (SELECT count(*)::int FROM pg_indexes WHERE indexname = '${IDX}') AS 인덱스`)).rows[0];
   console.log(
     `\n롤백 확인 — [리허설] 프로젝트 ${back.리허설프로젝트} · 영역 ${back.리허설영역} · ` +
-    `${IDX} ${back.인덱스} (셋 다 0이어야 한다)`
+    `${IDX} ${back.인덱스} (시작 전 ${idxBefore})`
   );
-  if (back.리허설프로젝트 || back.리허설영역 || back.인덱스) process.exitCode = 1;
+  // 리허설이 만든 것은 0 이어야 하고, 인덱스는 **시작 전과 같아야** 한다.
+  if (back.리허설프로젝트 || back.리허설영역 || back.인덱스 !== idxBefore) process.exitCode = 1;
   client.release();
   await pool.end().catch(() => {});
 }

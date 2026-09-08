@@ -15,6 +15,7 @@ import TaskCombo, { rememberTask } from "./TaskCombo";
 import PropertyBlock, { type PropRow } from "./PropertyBlock";
 import LinkedResources from "./LinkedResources";
 import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution } from "@/lib/progress";
+import { canEditProgress } from "@/lib/progress-permission";
 import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import ProjectCombo, { type ComboProject } from "./ProjectCombo";
@@ -61,6 +62,8 @@ interface Selectors {
   areas: { id: number; name: string; colorKey: string | null }[];
   /** 업무에 붙일 수 있는 목표 — **분기 · 월** 두 층. 연간은 후보가 아니다(§C3 §1). */
   linkableGoals: { id: number; title: string; level: string; period: string; when: "past" | "current" | "future" }[];
+  /** 진척을 손으로 바꿀 수 있는 단 한 사람 (MD-P-2026-033 §B). 없으면 아무도 못 바꾼다. */
+  progressEditorId?: number | null;
 }
 interface Cmt { id: number; body: string; created_at: string; author_name: string }
 interface Act { id: number; message: string; level: string; created_at: string; user_name: string | null }
@@ -328,6 +331,16 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
   // 지난 기간 목표도 남는다 — 완료한 업무를 소급 연결하면 실적으로 집계되어야 한다.
   const goalOptions = sel?.linkableGoals ?? [];
 
+  /**
+   * 진척을 손으로 바꿀 수 있는가 — **API 와 같은 함수**로 판정한다.
+   * 두 벌이 되면 「화면은 되는데 저장은 403」이 되고 그게 제일 나쁜 모양이다.
+   */
+  const progressRight = canEditProgress(
+    user.id,
+    sel?.progressEditorId ?? null,
+    { childCount: t?.childCount ?? 0 }
+  );
+
   const propRows: PropRow[] = !t ? [] : [
     {
       key: "status", label: "상태",
@@ -388,9 +401,16 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
           <i><b style={pfill(t.effectiveProgress)} /></i>
           <em className="num">{t.effectiveProgress}%</em>
           {t.rolledUpFromChildren && <em className="prop-note">하위 업무로 계산 중</em>}
+          {/* 왜 못 바꾸는지 **그 자리에 적는다.** 슬라이더가 그냥 없으면
+              사람은 화면이 고장 났다고 생각하거나 자기 권한을 의심한다. */}
+          {!progressRight.canEdit && !t.rolledUpFromChildren && (
+            <em className="prop-note">{progressRight.message}</em>
+          )}
         </span>
       ),
-      editor: () => (
+      // 못 바꿀 때는 `editor` 를 **주지 않는다.** PropertyBlock 이 그 행을
+      // 읽기 전용(`.prop-v.ro`)으로 그린다 — 이미 있는 길이라 새로 만들지 않는다.
+      editor: !progressRight.canEdit ? undefined : () => (
         <div className="prop-prog-edit">
           <input type="range" min={0} max={100} step={5} value={prog} autoFocus
             onChange={(e) => setProg(Number(e.target.value))}

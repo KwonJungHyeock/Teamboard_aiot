@@ -4,6 +4,7 @@
 // 목록 테이블은 홈 "마감 임박"과 동일한 TaskTable을 재사용한다 (검수 포인트 6).
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/types";
+import { canEditProgress } from "@/lib/progress-permission";
 import type { UserDefaults } from "@/lib/user-defaults";
 import TaskTable, { type TaskTableRow, type TaskGroupKey, TASK_GROUP_LABEL } from "./TaskTable";
 import Skeleton from "./Skeleton";
@@ -157,6 +158,8 @@ export default function TasksView({ user, defaults, initialAreas, initial, locke
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [areas, setAreas] = useState<AreaOption[]>([]);
   const [monthGoals, setMonthGoals] = useState<MonthGoalOption[]>([]);
+  /** 진척을 손으로 바꿀 수 있는 단 한 사람 (MD-P-2026-033 §B). 서버가 정한다. */
+  const [progressEditorId, setProgressEditorId] = useState<number | null>(null);
   const [linkGoals, setLinkGoals] = useState<{ id: number; title: string }[]>([]);
   const [today, setToday] = useState("");
   const [loading, setLoading] = useState(true);
@@ -338,6 +341,9 @@ export default function TasksView({ user, defaults, initialAreas, initial, locke
       // (`/api/meta/selectors` 응답에는 그대로 있다. 다른 화면이 쓴다.)
       setMonthGoals(data.linkableGoals ?? []);
       setLinkGoals(data.linkGoals ?? []);
+      setProgressEditorId(
+        typeof data.progressEditorId === "number" ? data.progressEditorId : null
+      );
     }
   }, []);
 
@@ -388,6 +394,26 @@ export default function TasksView({ user, defaults, initialAreas, initial, locke
   }
 
   // 인라인 상태 변경 (목록에서 즉시). 권한 규칙은 서버가 유지. 중단은 사유가 필요해 제외.
+  /**
+   * 목록에서 진척을 바로 고친다 (MD-P-2026-033 §B).
+   *
+   * 판정은 **API 와 같은 함수**(`canEditProgress`)로 한다. 여기서 다시 조건을 쓰면
+   * 두 벌이 되고, 어긋나는 방향이 「화면은 되는데 저장은 403」이라 제일 나쁘다.
+   * 하위가 있는 행은 표가 애초에 칸을 안 그린다(`childCount`).
+   */
+  async function changeProgress(id: number, progress: number) {
+    const res = await fetch(`/api/tasks/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ progress }),
+    });
+    if (!res.ok) {
+      setError((await res.json()).error ?? "진척 변경 실패");
+      return;
+    }
+    load();
+  }
+
   async function changeStatus(id: number, status: string) {
     const res = await fetch(`/api/tasks/${id}`, {
       method: "PUT",
@@ -803,6 +829,11 @@ export default function TasksView({ user, defaults, initialAreas, initial, locke
                 setChecked((prev) => (rows.every((r) => prev.has(r.id)) ? new Set() : new Set(rows.map((r) => r.id))))
               }
               onStatusChange={changeStatus}
+              /* 콜백을 **줄지 말지로** 권한을 표현한다. 표가 권한을 알면 규칙이
+                 표마다 갈린다 — 판정은 lib/progress-permission.ts 하나가 한다. */
+              onProgressChange={
+                canEditProgress(user.id, progressEditorId).canEdit ? changeProgress : undefined
+              }
               onRowClick={(id) => openTaskPanel(id)}
               // §C2 — 기한 막대 목록. 구간은 이번 달. 넷이 같은 컴포넌트를 쓴다(§C4).
               // 범위는 **컴포넌트가 정한다**(`defaultBarRange`). 여기서 안 고른다 —

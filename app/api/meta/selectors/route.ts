@@ -5,6 +5,7 @@ import { kstTodayForGoals } from "@/lib/goals";
 import { requireSession } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { jsonError } from "@/lib/api";
+import { getProgressEditorId } from "@/lib/platform-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const session = requireSession();
-    const [actors, projects, monthGoals, linkGoals, areas, myAreas] = await Promise.all([
+    const [actors, projects, monthGoals, linkGoals, areas, myAreas, progressEditorId] = await Promise.all([
       query<{ id: number; display_name: string }>(
         `SELECT id, display_name FROM actor WHERE type = 'human' AND is_active = true ORDER BY id`
       ),
@@ -78,6 +79,7 @@ export async function GET() {
         `SELECT area_id FROM actor_area WHERE actor_id = $1 ORDER BY sort_order, area_id`,
         [session.id]
       ),
+      getProgressEditorId(),
     ]);
     return NextResponse.json({
       actors: actors.map((a) => ({ id: a.id, name: a.display_name })),
@@ -100,6 +102,13 @@ export async function GET() {
         period: g.period ?? g.period_start.slice(0, 7),
       })),
       areas: areas.map((a) => ({ id: a.id, name: a.name, colorKey: a.color_key })),
+      /**
+       * 진척을 손으로 바꿀 수 있는 **단 한 사람**의 actor id (MD-P-2026-033 §B).
+       * 화면이 이 값과 `lib/progress-permission.ts` 로 판정한다 — API 와 **같은 함수**다.
+       * 여기에 얹는 이유는 업무 상세·목록이 이미 이 응답을 부르기 때문이다.
+       * 새 엔드포인트를 만들면 화면마다 한 번씩 더 부르게 된다.
+       */
+      progressEditorId,
       myAreaIds: myAreas.map((r) => r.area_id),
     });
   } catch (error) {
