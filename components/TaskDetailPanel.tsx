@@ -343,7 +343,10 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
     sel?.progressEditorId ?? null,
     // 화면은 상태도 넘긴다 — 완료 업무의 진척은 이미 계산이 이기므로(taskProgress),
     // 바꿀 수 있는 것처럼 보여 주면 「바꿨는데 안 바뀐다」가 된다. API 는 안 넘긴다.
-    { childCount: t?.childCount ?? 0, status: t?.status }
+    // **집계 대상 수**를 넘긴다 — 계산이 보는 값과 같아야 한다 (MD-P-2026-036 §B).
+    // `childCount`(전체)를 넘기면 하위가 전부 취소·중복인 업무를 막는데,
+    // 그 업무의 진척은 실제로 자기 값이다.
+    { childCount: t?.childCounted ?? 0, status: t?.status }
   );
 
   const propRows: PropRow[] = !t ? [] : [

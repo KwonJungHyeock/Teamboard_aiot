@@ -402,7 +402,7 @@ export default function TasksView({ user, defaults, initialAreas, initial, locke
    *
    * 판정은 **API 와 같은 함수**(`canEditProgress`)로 한다. 여기서 다시 조건을 쓰면
    * 두 벌이 되고, 어긋나는 방향이 「화면은 되는데 저장은 403」이라 제일 나쁘다.
-   * 하위가 있는 행은 표가 애초에 칸을 안 그린다(`childCount`).
+   * 하위로 **계산되는** 행은 표가 애초에 칸을 안 그린다(`childCounted`).
    */
   async function changeProgress(id: number, progress: number) {
     const res = await fetch(`/api/tasks/${id}`, {
@@ -556,6 +556,9 @@ export default function TasksView({ user, defaults, initialAreas, initial, locke
           parentTaskId: t.parentTaskId ?? null,   // §A3 계층
           sortOrder: t.sortOrder ?? 0,
           childCount: t.childCount ?? 0,
+          // **집계 대상** 하위 수 — 진척 편집 칸을 그릴지 이 값이 정한다.
+          // 계층 배지는 childCount, 편집 판정은 childCounted 다 (MD-P-2026-036 §B).
+          childCounted: t.childCounted ?? 0,
           // §C2 막대 재료. 둘 다 없으면 막대를 안 그린다 — 없는 기간을 추정하지 않는다.
           startDate: t.startDate,
           dueDate: t.dueDate,

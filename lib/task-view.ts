@@ -30,6 +30,11 @@ export interface TaskItem {
   /** §A3 계층 (MD-P-2026-028) — 목록이 접기/펼치기를 그릴 재료 */
   parentTaskId?: number | null;
   childCount?: number;
+  /**
+   * **집계 대상** 하위 수 — 취소·중복 하위는 빠진다 (MD-P-2026-036 §B).
+   * 진척이 하위로 계산되는지는 이 값이 정한다. `childCount`(전체)와 다를 수 있다.
+   */
+  childCounted?: number;
   /** §C — "직접 정한 순서" */
   sortOrder?: number;
   /** §B3 — 차단 원인 업무 */

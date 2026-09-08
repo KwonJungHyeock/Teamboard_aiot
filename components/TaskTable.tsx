@@ -39,13 +39,19 @@ export interface TaskTableRow {
   visibility?: "team" | "private";
   /** §A3 계층 — 없으면 평면 목록으로 그린다(홈 등 compact 사용처는 안 보낸다). */
   parentTaskId?: number | null;
-  /**
-   * 하위 업무 수. 계층 표시에 쓰고, **진척 편집 칸을 그릴지도 이 값이 정한다**
-   * (MD-P-2026-033 §B) — 1 이상이면 진척은 하위 완료 개수로 계산되는 값이라 손으로
-   * 못 바꾼다. 권한과 무관한 규칙이다(lib/progress.ts 규칙 2).
-   * 눌러 보고 400 을 받는 것보다 칸을 안 그리는 편이 낫다.
-   */
+  /** 하위 업무 수 — **계층 표시용**. 접힘 배지에 쓴다. */
   childCount?: number;
+  /**
+   * **집계 대상** 하위 수 — 진척 편집 칸을 그릴지 이 값이 정한다
+   * (MD-P-2026-033 §B · MD-P-2026-036 §B).
+   *
+   * 1 이상이면 진척은 하위 완료 개수로 계산되는 값이라 손으로 못 바꾼다.
+   * **`childCount`(전체)가 아니라 이 값이다** — 하위가 전부 취소·중복이면
+   * 전체는 2인데 집계 대상은 0이고, 그때 진척은 자기 값이라 바꿀 수 있어야 한다.
+   * 눌러 보고 400 을 받는 것보다 칸을 안 그리는 편이 낫지만,
+   * **막을 이유가 없을 때 막는 것은 그보다 나쁘다.**
+   */
+  childCounted?: number;
   /** §C — "직접 정한 순서" 값. 정렬은 부모(TasksView)가 이미 해서 넘긴다. */
   sortOrder?: number;
   /** §C2 기한 막대 재료. 없으면 막대를 안 그린다 — 없는 기간을 추정하지 않는다. */
@@ -624,7 +630,7 @@ export default function TaskTable({
                 {showProg && (
                   <td className={`col-prog${withBars ? " narrow" : ""}`}
                       title={t.status === "done" ? "완료 처리된 업무는 진척이 100% 입니다. 상태를 되돌리면 바꿀 수 있습니다."
-                             : (t.childCount ?? 0) > 0 ? "하위 완료 개수로 계산 중입니다." : undefined}>
+                             : (t.childCounted ?? 0) > 0 ? "하위 완료 개수로 계산 중입니다." : undefined}>
                     {/* 막대를 켜면 여기 막대는 접는다 — 한 행에 막대가 둘이면 어느 쪽이
                         시간이고 어느 쪽이 진척인지 안 읽힌다. 숫자는 남는다(§D7 진척 38px). */}
                     {!withBars && (
@@ -635,7 +641,7 @@ export default function TaskTable({
                     {/* 완료 업무는 진척이 100 으로 계산되므로(taskProgress) 편집 칸을
                         그리지 않는다. **새 규칙이 아니라 이미 참인 사실의 표시다** —
                         그려 두면 「바꿨는데 안 바뀐다」가 된다 (§C). */}
-                    {onProgressChange && (t.childCount ?? 0) === 0 && t.status !== "done" ? (
+                    {onProgressChange && (t.childCounted ?? 0) === 0 && t.status !== "done" ? (
                       <ProgEdit
                         value={t.progress ?? 0}
                         onCommit={(v) => onProgressChange(t.id, v)}

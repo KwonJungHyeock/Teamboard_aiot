@@ -122,9 +122,54 @@ try {
   const r3 = await patch(parent.id, { id: editor.id, name: editor.display_name, role: "member" }, { progress: 55 });
   const b3 = await r3.json().catch(() => ({}));
   const after3 = await one(`SELECT progress FROM task WHERE id=$1`, [parent.id]);
-  ok("② 하위가 있으면 지정된 사람도 막힌다", r3.status === 400, `${r3.status} · ${b3.error ?? ""}`);
+  ok("⑨-① 하위가 둘 다 유효하면 지정된 사람도 막힌다 (안 깨졌다)", r3.status === 400,
+     `${r3.status} · ${b3.error ?? ""}`);
   ok("② 이유가 권한이 아니라 **규칙**으로 온다", b3.reason === "auto-from-children", `reason ${b3.reason}`);
   ok("② 값도 안 바뀌었다", after3.progress === 10, `progress ${after3.progress}`);
+
+  // ── ⑨ 판정은 **계산이 보는 값**을 본다 (MD-P-2026-036 §B) ────────
+  //
+  // 계산은 `child_counted`(집계 대상)를, 판정은 `child_count`(전체)를 보고 있었다.
+  // 그래서 **하위가 전부 취소·중복인 업무**가 이런 상태였다 —
+  // 진척은 자기 값인데 「하위로 계산된다」며 막혔다. 막는 이유가 사실이 아니었다.
+  //
+  // ①이 그대로인지가 「안 깨졌다」의 증거이고, ②가 이번에 고친 자리다.
+  const dead = await one(
+    `INSERT INTO task (title, status, progress, created_by, assignee_id, work_type, area_id, project_id, is_demo)
+     VALUES ($1, 'doing', 33, $2, $2, 'team', $3, $4, true) RETURNING id`,
+    [`${TITLE} 죽은하위`, editor.id, area.id, proj?.id ?? null]);
+  madeIds.push(dead.id);
+  for (const r of ["canceled", "duplicate"]) {
+    const k = await one(
+      `INSERT INTO task (title, status, progress, resolution, created_by, assignee_id, work_type, area_id, project_id, parent_task_id, is_demo)
+       VALUES ($1, 'done', 0, $2, $3, $3, 'team', $4, $5, $6, true) RETURNING id`,
+      [`${TITLE} 죽은하위 ${r}`, r, editor.id, area.id, proj?.id ?? null, dead.id]);
+    madeIds.push(k.id);
+  }
+  const counts = await one(
+    `SELECT (SELECT count(*)::int FROM task c WHERE c.parent_task_id = $1 AND c.is_active) AS 전체,
+            (SELECT count(*)::int FROM task c WHERE c.parent_task_id = $1 AND ${"c.is_active = true AND c.status <> 'proposed' AND c.status <> 'dropped' AND c.work_type <> 'routine' AND (c.resolution IS NULL OR c.resolution NOT IN ('canceled','duplicate'))"}) AS 집계대상`,
+    [dead.id]);
+  console.log(`  (조건) 하위 전체 ${counts.전체} · 집계 대상 ${counts.집계대상}`);
+
+  // ② 집계 대상이 0 이면 **바꿀 수 있어야 한다**
+  const rDead = await patch(dead.id, { id: editor.id, name: editor.display_name, role: "member" }, { progress: 66 });
+  const bDead = await rDead.json().catch(() => ({}));
+  const afterDead = await one(`SELECT progress FROM task WHERE id=$1`, [dead.id]);
+  ok("⑨-② 하위가 전부 취소·중복이면 바꿀 수 있다", rDead.ok,
+     `${rDead.status} ${bDead.error ?? ""}`);
+  ok("⑨-② 그리고 값이 **실제로 바뀐다**", afterDead.progress === 66,
+     `progress ${afterDead.progress} (66 이어야)`);
+
+  // ③ 그 업무의 진척은 자기 값이고 하위로 계산되지 않는다
+  const detail = await (await fetch(`${BASE}/api/tasks/${dead.id}`, {
+    headers: { cookie: `tb_session=${tok({ id: editor.id, name: editor.display_name, role: "member" })}` },
+  })).json();
+  ok("⑨-③ effectiveProgress 가 자기 값이다",
+     detail.task?.effectiveProgress === 66, `effectiveProgress ${detail.task?.effectiveProgress}`);
+  ok("⑨-③ rolledUpFromChildren 이 false 다",
+     detail.task?.rolledUpFromChildren === false,
+     `rolledUpFromChildren ${detail.task?.rolledUpFromChildren} · childCount ${detail.task?.childCount} · childCounted ${detail.task?.childCounted}`);
 
   // ── ⑥ 완료 전환으로 100 이 되는 길은 안 막힌다 ──────────────────
   // 여기까지 막으면 「완료 처리를 한 사람만 할 수 있다」가 되어 버린다 — 다른 규칙이다.

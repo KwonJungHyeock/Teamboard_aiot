@@ -289,9 +289,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     //    「완료 처리를 지정된 한 사람만 할 수 있다」가 되어 버린다 — 다른 규칙이다.
     let nextProgress: number | undefined;
     if (payload.progress !== undefined) {
+      // **집계 대상** 하위 수를 센다 — 계산(`taskProgress`)이 보는 것과 같은 값이다.
+      // 전체 수를 세면 하위가 전부 취소·중복인 업무를 「하위로 계산된다」며 막는데,
+      // 그 업무는 실제로는 자기 값이 쓰인다 (MD-P-2026-036 §B).
       const childCount = Number(
         (await queryOne<{ n: string }>(
-          `SELECT count(*)::int AS n FROM task WHERE parent_task_id = $1 AND is_active = true`,
+          `SELECT count(*)::int AS n FROM task WHERE parent_task_id = $1 AND ${countableSql("task")}`,
           [taskId]
         ))?.n ?? 0
       );
