@@ -9,6 +9,18 @@ import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
 import { ROLES } from "@/lib/types";
 
+/*
+ * ⚠ **관리자 전용입니다.** 담당자 선택처럼 팀장·팀원이 멤버 이름을 봐야 하는
+ *    자리에서는 이 API 를 쓰지 마십시오. 그런 자리는 `/api/meta/selectors` 의
+ *    `actors` 를 씁니다(requireSession — 로그인만 하면 볼 수 있습니다).
+ *
+ *    확인해 둔 사용처 (MD-P-2026-036 §D)
+ *      GET  /api/members        → MemberManager 하나뿐
+ *      GET  /api/members/{id}   → SidePanel. **requireSession 이라 안 좁혔습니다**
+ *      PUT  /api/members/{id}   → MemberManager. 관리자 전용
+ *    업무 담당자·프로젝트 담당·리뷰 지정·언급(@) 전부 selectors 경로입니다.
+ */
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

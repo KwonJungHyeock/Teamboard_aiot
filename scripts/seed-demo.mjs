@@ -6,6 +6,43 @@
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 
+/*
+ * ── 시드보다 마이그레이션이 **먼저** 돌아야 한다 ──────────────────
+ *
+ * `db:init` 은 `db/schema.sql` 만 적용하고 `db/migrations/` 는 안 돌린다.
+ * 그건 앱이 첫 요청에서 `ensureMigrated()` 로 한다. 그래서 순서가 이렇게 되면
+ *
+ *     db:init  →  db:seed-demo  →  (dev 서버 첫 요청) 마이그레이션
+ *
+ * **시드가 넣은 것을 마이그레이션이 뒤늦게 덮는다.** 실제로 그랬다 —
+ * `0009_task_progress.sql` 의 「샘플 목표 전량 보관」
+ * (`UPDATE goal SET is_active = false`) 이 시드 15분 뒤에 돌아서
+ * 방금 넣은 목표 7건을 전부 껐다. 목표 화면이 비어 보이던 원인이다.
+ *
+ * 값을 명시해서 덮는다고 될 일이 아니다 — 마이그레이션은 조건 없이 전부 끈다.
+ * **순서를 지키게 하는 것**이 답이고, 안 지켜졌으면 **조용히 넘어가지 않는다.**
+ */
+async function requireMigrated(q) {
+  const { readdirSync } = await import("node:fs");
+  const files = readdirSync("db/migrations").filter((f) => f.endsWith(".sql")).sort();
+  const done = new Set((await q(
+    `SELECT filename FROM schema_migrations`
+  )).rows.map((r) => r.filename));
+  const missing = files.filter((f) => !done.has(f));
+  if (missing.length === 0) return;
+  console.error(
+    `시드를 멈춥니다 — 미적용 마이그레이션 ${missing.length}건: ${missing.join(", ")}\n` +
+    `\n` +
+    `  마이그레이션이 시드보다 **나중에** 돌면 시드가 넣은 것을 덮습니다.\n` +
+    `  (0009 는 목표를 전량 보관 처리합니다 — 시드한 목표가 전부 꺼집니다)\n` +
+    `\n` +
+    `  먼저 앱을 한 번 띄워 마이그레이션을 적용한 뒤 다시 시드하십시오.\n` +
+    `    npm run dev   → 아무 화면이나 한 번 열기 → Ctrl+C\n` +
+    `    npm run db:seed-demo\n`
+  );
+  process.exit(1);
+}
+
 requireLocalDb("seed-demo.mjs");
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -16,6 +53,9 @@ if (!DATABASE_URL) {
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 const q = (text, params = []) => pool.query(text, params);
+
+// **마이그레이션이 먼저다.** 안 그러면 시드한 것을 뒤늦게 덮는다 (위 주석).
+await requireMigrated(q);
 
 const seeded = await q("SELECT 1 FROM config WHERE key = 'demo_seeded'");
 if (seeded.rows.length > 0) {
