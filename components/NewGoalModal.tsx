@@ -4,6 +4,7 @@
 // 진척은 서버가 연결 업무 가중평균으로 자동 산출. 팀 목표=lead / 개인 목표=본인(서버에서 강제).
 import { useEffect, useMemo, useState } from "react";
 import type { GoalNode } from "@/lib/goals";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import { toast } from "@/lib/quick";
 
@@ -30,7 +31,7 @@ export default function NewGoalModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const canTeam = user.role === "lead";
+  const canTeam = hasLead(user.role);
   const [scope, setScope] = useState<Scope>(canTeam ? initialScope : "personal");
   const [period, setPeriod] = useState<Period>("month");
   const [gy, setGy] = useState(year);

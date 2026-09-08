@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "@/lib/quick";
 import { countTasks, basisLabel, progressDisplay, uncountedChildrenLabel } from "@/lib/progress";
 import type { GoalNode } from "@/lib/goals";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import GoalProgress from "./GoalProgress";
 import SectionEmpty from "./SectionEmpty";
@@ -431,7 +432,7 @@ function MonthGoalRow({
   parentPeriod?: { start: string; end: string; label: string; title?: string } | null;
   onChanged: () => void;
 }) {
-  const canEdit = user.role === "lead" || goal.ownerActorId === user.id;
+  const canEdit = hasLead(user.role) || goal.ownerActorId === user.id;
   const [editing, setEditing] = useState(false);
   const [manualValue, setManualValue] = useState(goal.progress ?? 0);
   const [selected, setSelected] = useState<number[]>(goal.tasks.map((t) => t.id));
@@ -560,7 +561,7 @@ function MonthGoalRow({
           <button className="lk" disabled={busy} onClick={() => save({ taskIds: selected })}>
             연결 저장
           </button>
-          {user.role === "lead" && (
+          {hasLead(user.role) && (
             <div className="gedit-r garchive-r">
               <button className="gbtn mu" disabled={busy} onClick={() => setConfirming(true)}>
                 보관
@@ -590,7 +591,7 @@ function YearCard({
   scope: "team" | "personal"; canAdd: boolean; onChanged: () => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const canEdit = user.role === "lead" || goal.ownerActorId === user.id;
+  const canEdit = hasLead(user.role) || goal.ownerActorId === user.id;
   const open = useContext(OpenGoalCtx);
   // 표시 결정은 GoalProgress 와 **같은 함수**에서 나온다 (지시 30-5).
   // 판정만 공유하면 라벨 조립이 또 갈라진다 — 실제로 그렇게 갈라졌다.
@@ -625,7 +626,7 @@ function YearCard({
       {canEdit && (
         <button className="lk mu ycard-e" onClick={() => setEditing((v) => !v)}>{editing ? "닫기" : "편집"}</button>
       )}
-      {editing && <NodeEditPanel goal={goal} isLead={user.role === "lead"} onChanged={onChanged} />}
+      {editing && <NodeEditPanel goal={goal} isLead={hasLead(user.role)} onChanged={onChanged} />}
     </section>
   );
 }
@@ -645,7 +646,7 @@ function QuarterSection({
 }) {
   const [open, setOpen] = useState(() => isCurrentQuarter(goal.periodStart, goal.periodEnd));
   const [editing, setEditing] = useState(false);
-  const canEdit = user.role === "lead" || goal.ownerActorId === user.id;
+  const canEdit = hasLead(user.role) || goal.ownerActorId === user.id;
   const parentPeriod = { start: goal.periodStart, end: goal.periodEnd, label: quarterLabel(goal.periodStart), title: goal.title };
 
   return (
@@ -672,7 +673,7 @@ function QuarterSection({
           <button className="lk mu gedit-b" onClick={() => setEditing((v) => !v)}>{editing ? "닫기" : "편집"}</button>
         )}
       </div>
-      {editing && <NodeEditPanel goal={goal} isLead={user.role === "lead"} onChanged={onChanged} />}
+      {editing && <NodeEditPanel goal={goal} isLead={hasLead(user.role)} onChanged={onChanged} />}
       {open && (
         <div className="qsec-b">
           {goal.children.length === 0 ? (
@@ -706,7 +707,7 @@ function BranchNode({
   onChanged: () => void;
   children: React.ReactNode;
 }) {
-  const canEdit = user.role === "lead" || goal.ownerActorId === user.id;
+  const canEdit = hasLead(user.role) || goal.ownerActorId === user.id;
   const [editing, setEditing] = useState(false);
   const isYear = goal.periodType === "year";
 
@@ -742,7 +743,7 @@ function BranchNode({
           </button>
         )}
       </summary>
-      {editing && <NodeEditPanel goal={goal} isLead={user.role === "lead"} onChanged={onChanged} />}
+      {editing && <NodeEditPanel goal={goal} isLead={hasLead(user.role)} onChanged={onChanged} />}
       {children}
     </details>
   );
@@ -765,7 +766,7 @@ export default function GoalTree({
   onOpenGoal?: (id: number) => void;
   scope?: "team" | "personal";
 }) {
-  const isLead = user.role === "lead";
+  const isLead = hasLead(user.role);
   // 팀 목표는 lead만 추가, 개인 목표는 본인 누구나 추가 (파트 A/C)
   const canAdd = scope === "personal" || isLead;
   const years = tree.filter((n) => n.periodType === "year");

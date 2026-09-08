@@ -10,6 +10,7 @@ import { NOTION_SELECT_PROPERTIES, NOTION_TIMELINE_SCHEMA, type NotionPropertySp
 import { logActivity } from "@/lib/activity";
 import { query } from "@/lib/db";
 import { jsonError } from "@/lib/api";
+import { hasLead } from "@/lib/types";
 
 // 로깅 실패가 응답 상태를 바꾸지 않도록 best-effort
 async function safeLog(p: Parameters<typeof logActivity>[0]) {
@@ -23,7 +24,7 @@ export const maxDuration = 60;
 export async function GET() {
   try {
   const session = requireSession();
-  if (session.role !== "lead") {
+  if (!hasLead(session.role)) {
     return NextResponse.json({ error: "팀장만 사용할 수 있습니다." }, { status: 403 });
   }
 

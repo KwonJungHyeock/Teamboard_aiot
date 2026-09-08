@@ -20,6 +20,7 @@ import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import ProjectCombo, { type ComboProject } from "./ProjectCombo";
 import { notifyGoalChain } from "@/lib/goal-chain";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import { pfill } from "@/lib/progress-bar";
 import { pushRecent } from "@/lib/recent";
@@ -60,7 +61,7 @@ interface TaskDetail {
 }
 interface Selectors {
   actors: { id: number; name: string }[];
-  projects: { id: number; name: string; colorKey: string | null; areaId: number }[];
+  projects: ComboProject[];
   areas: { id: number; name: string; colorKey: string | null }[];
   /** 업무에 붙일 수 있는 목표 — **분기 · 월** 두 층. 연간은 후보가 아니다(§C3 §1). */
   linkableGoals: { id: number; title: string; level: string; period: string; when: "past" | "current" | "future" }[];
@@ -457,7 +458,7 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
           value={t.projectId}
           projects={sel?.projects ?? []}
           areaId={t.areaId}
-          canCreate={user.role === "lead"}
+          canCreate={hasLead(user.role)}
           disabled={t.visibility === "private"}
           disabledReason={t.visibility === "private" ? "개인 업무는 프로젝트에 넣을 수 없습니다" : undefined}
           onChange={(id) =>

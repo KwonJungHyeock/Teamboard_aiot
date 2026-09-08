@@ -8,6 +8,7 @@ import path from "path";
 import { requireSession } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ const run = promisify(execFile);
 export async function POST() {
   try {
     const session = requireSession();
-    if (session.role !== "lead") {
+    if (!hasLead(session.role)) {
       return NextResponse.json({ error: "팀장만 데모 시드를 주입할 수 있습니다." }, { status: 403 });
     }
 

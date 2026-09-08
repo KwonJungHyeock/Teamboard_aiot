@@ -14,6 +14,7 @@ import { jsonError } from "@/lib/api";
 import { decisionsForTask } from "@/lib/decisions";
 import { notify } from "@/lib/notify";
 import { visibleTaskSql, isVisibility } from "@/lib/visibility";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -229,7 +230,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       }
       // 인박스 승인·기각(proposed의 상태 전이)은 담당자 본인 또는 lead만 — drafts 승인 규칙과 동일
       if (task.status === "proposed" && payload.status !== "proposed") {
-        const canJudge = session.role === "lead" || task.assignee_id === session.id;
+        const canJudge = hasLead(session.role) || task.assignee_id === session.id;
         if (!canJudge) {
           return NextResponse.json(
             { error: "제안 업무의 승인·기각은 담당자 본인 또는 팀장만 할 수 있습니다." },

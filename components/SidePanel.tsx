@@ -4,6 +4,7 @@
 // 업무 상세는 편집기 규모가 커 TaskDetailPanel이 렌더하지만, 같은 셸(.gpanel*)·같은 규칙을 쓴다.
 // 규칙: 폭 420px · Esc 닫기 · 좌측 목록 계속 조작(배경 차단 없음) · 스택 깊이 1 · URL 반영.
 import { useCallback, useEffect, useState } from "react";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import SignalThread from "./SignalThread";
 import { DecisionCard, decTime, type Decision } from "./decision-ui";
@@ -107,7 +108,7 @@ function MemberBody({ id }: { id: number }) {
 
   if (err) return <ErrorNote message="구성원 정보를 불러오지 못했어요" cause={err} />;
   if (!d) return <Skeleton variant="block" height={140} />;
-  const role = d.member.isAgent ? "에이전트" : d.member.role === "lead" ? "팀장" : d.member.role === "viewer" ? "뷰어" : "팀원";
+  const role = d.member.isAgent ? "에이전트" : hasLead(d.member.role) ? "팀장" : d.member.role === "viewer" ? "뷰어" : "팀원";
   return (
     <div className="spm">
       <div className="spm-h">

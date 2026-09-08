@@ -16,6 +16,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { getMigrationStatus } from "@/lib/db";
 import { jsonError } from "@/lib/api";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const session = requireSession();
-    if (session.role !== "lead") {
+    if (!hasLead(session.role)) {
       return NextResponse.json({ error: "팀장만 사용할 수 있습니다." }, { status: 403 });
     }
 

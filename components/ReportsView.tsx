@@ -11,6 +11,7 @@ import EmptyState from "./EmptyState";
 import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import ErrorNote from "./ErrorNote";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 
 interface ReportListItem {
@@ -40,7 +41,7 @@ interface ReportDetail {
 }
 
 export default function ReportsView({ user, notionConnected = true }: { user: SessionUser; notionConnected?: boolean }) {
-  const isLead = user.role === "lead";
+  const isLead = hasLead(user.role);
   const [mainTab, setMainTab] = useState<"perf" | "approval">("perf");
   const now = new Date();
   const [list, setList] = useState<ReportListItem[]>([]);

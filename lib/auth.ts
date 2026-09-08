@@ -3,7 +3,7 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { queryOne, queryUnmigrated } from "./db";
-import type { Role, SessionUser } from "./types";
+import { hasLead, isAdmin, type Role, type SessionUser } from "./types";
 
 export const SESSION_COOKIE = "tb_session";
 const SESSION_TTL_SEC = 60 * 60 * 24 * 7; // 7일
@@ -113,7 +113,7 @@ export async function getLiveSession(): Promise<LiveSession | null> {
 export async function requireLiveLead(): Promise<SessionUser> {
   const live = await getLiveSession();
   if (!live) throw new AuthError(401, "세션이 만료되었거나 비활성화된 계정입니다.");
-  if (live.user.role !== "lead") throw new AuthError(403, "팀장만 접근할 수 있습니다.");
+  if (!hasLead(live.user.role)) throw new AuthError(403, "팀장만 접근할 수 있습니다.");
   return live.user;
 }
 
@@ -125,8 +125,30 @@ export function requireSession(): SessionUser {
 
 export function requireLead(): SessionUser {
   const session = requireSession();
-  if (session.role !== "lead") throw new AuthError(403, "팀장만 접근할 수 있습니다.");
+  if (!hasLead(session.role)) throw new AuthError(403, "팀장만 접근할 수 있습니다.");
   return session;
+}
+
+/**
+ * **관리자 전용.** `hasLead` 와 달리 팀장은 통과하지 못한다.
+ *
+ * 거는 곳은 세 자리뿐이다 — 멤버 관리 화면 · 역할 변경 · 계정 발급
+ * (MD-P-2026-035 §B-3). 마이그레이션 **조회**에는 걸지 않는다:
+ * §5 예외로 팀장까지 열어 둔다. 마이그레이션이 깨졌을 때 원인을 볼 수 있는
+ * 사람을 줄이면, 고칠 방법이 사라진다.
+ */
+export function requireAdmin(): SessionUser {
+  const session = requireSession();
+  if (!isAdmin(session.role)) throw new AuthError(403, "관리자만 접근할 수 있습니다.");
+  return session;
+}
+
+/** 실시간 역할로 확인하는 관리자 게이트 — 강등 즉시 반영(토큰이 아니라 DB 기준). */
+export async function requireLiveAdmin(): Promise<SessionUser> {
+  const live = await getLiveSession();
+  if (!live) throw new AuthError(401, "세션이 만료되었거나 비활성화된 계정입니다.");
+  if (!isAdmin(live.user.role)) throw new AuthError(403, "관리자만 접근할 수 있습니다.");
+  return live.user;
 }
 
 export class AuthError extends Error {

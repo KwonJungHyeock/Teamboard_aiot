@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import { viewHref, type SavedView } from "@/lib/saved-views";
 import { SAVED_VIEWS_EVENT } from "@/lib/saved-views-events";
@@ -297,7 +298,7 @@ export default function Sidebar({
     window.location.href = "/login";
   }
 
-  const isLead = user.role === "lead";
+  const isLead = hasLead(user.role);
   const cur = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
@@ -428,7 +429,7 @@ export default function Sidebar({
           <span className="av">{user.name.slice(0, 1)}</span>
           <div>
             <b>{user.name}</b>
-            <span>{user.role === "lead" ? "LEAD" : user.role.toUpperCase()}</span>
+            <span>{hasLead(user.role) ? "LEAD" : user.role.toUpperCase()}</span>
           </div>
         </Link>
         <div className="acct-a">

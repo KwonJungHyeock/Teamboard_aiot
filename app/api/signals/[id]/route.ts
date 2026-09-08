@@ -11,6 +11,7 @@ import { jsonError } from "@/lib/api";
 import { reactionsFor } from "@/lib/reactions";
 import { decisionsForDiscussion } from "@/lib/decisions";
 import { NEW_TASK_GOAL_SOURCE } from "@/lib/goal-inherit";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,7 +53,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     const session = requireSession();
     const signal = await loadSignal(Number(params.id));
     if (!signal) return NextResponse.json({ error: "시그널을 찾을 수 없습니다." }, { status: 404 });
-    if (!canView(signal, session.id, session.role === "lead")) {
+    if (!canView(signal, session.id, hasLead(session.role))) {
       return NextResponse.json({ error: "접근 권한이 없습니다." }, { status: 403 });
     }
 
@@ -164,7 +165,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const session = requireSession();
     const signal = await loadSignal(Number(params.id));
     if (!signal) return NextResponse.json({ error: "시그널을 찾을 수 없습니다." }, { status: 404 });
-    const isLead = session.role === "lead";
+    const isLead = hasLead(session.role);
     if (!canView(signal, session.id, isLead)) {
       return NextResponse.json({ error: "접근 권한이 없습니다." }, { status: 403 });
     }

@@ -6,6 +6,7 @@ import { query } from "@/lib/db";
 import { jsonError } from "@/lib/api";
 import { buildPerfReport, type ReportScope } from "@/lib/perf-report";
 import { kstTodayForGoals } from "@/lib/goals";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,14 +35,14 @@ export async function GET(request: Request) {
       : null;
 
     // §F — 개인 리포트는 본인 + 팀장만
-    if (scope === "personal" && actorId !== session.id && session.role !== "lead") {
+    if (scope === "personal" && actorId !== session.id && !hasLead(session.role)) {
       return NextResponse.json({ error: "다른 구성원의 개인 리포트는 열람할 수 없습니다." }, { status: 403 });
     }
 
     const report = await buildPerfReport({ year, month, scope, actorId, viewerId: session.id });
 
     // 팀장에게만 대상자 선택지를 함께 내려준다
-    const members = session.role === "lead"
+    const members = hasLead(session.role)
       ? await query<{ id: number; display_name: string }>(
           `SELECT id, display_name FROM actor WHERE type = 'human' AND is_active = true ORDER BY id`
         )
@@ -50,7 +51,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       report,
       members: members.map((m) => ({ id: m.id, name: m.display_name })),
-      viewer: { id: session.id, isLead: session.role === "lead" },
+      viewer: { id: session.id, isLead: hasLead(session.role) },
     });
   } catch (error) {
     return jsonError(error);

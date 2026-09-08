@@ -13,6 +13,7 @@ import {
   notifySnapshotFailure, recentSnapshotRuns,
 } from "@/lib/goal-snapshot";
 import { kstTodayForGoals } from "@/lib/goals";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
   try {
     const session = getSession();
     const byCron = isCronCaller(request);
-    if (!byCron && (!session || session.role !== "lead")) {
+    if (!byCron && (!session || !hasLead(session.role))) {
       return NextResponse.json({ error: "팀장만 스냅샷을 저장할 수 있습니다." }, { status: 403 });
     }
     const result = await run(byCron ? "auto" : "manual");
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
 export async function PATCH() {
   try {
     const session = getSession();
-    if (!session || session.role !== "lead") {
+    if (!session || !hasLead(session.role)) {
       return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
     }
     return NextResponse.json({ runs: await recentSnapshotRuns(20) });

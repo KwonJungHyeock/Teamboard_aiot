@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { recentActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
   try {
     const session = requireSession();
     const url = new URL(request.url);
-    const all = url.searchParams.get("scope") === "all" && session.role === "lead";
+    const all = url.searchParams.get("scope") === "all" && hasLead(session.role);
     const entries = await recentActivity(30, all ? undefined : session.id, session.id);
     return NextResponse.json({ entries });
   } catch (error) {

@@ -6,6 +6,7 @@
 // 질의가 비어 있으면 최근 항목을 먼저 보여준다(최근 방문 우선).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { hasLead } from "@/lib/types";
 import type { Role } from "@/lib/types";
 import { openTaskPanel, notifyTaskUpdated } from "@/lib/task-panel";
 import { openQuickCreate } from "@/lib/quick";
@@ -91,7 +92,7 @@ export default function CommandPalette({ role, notionConnected = true }: { role:
     return SECTIONS.map(({ title, items }) => ({
       title,
       items: items.filter((item) => {
-        if (item.leadOnly && role !== "lead") return false;
+        if (item.leadOnly && !hasLead(role)) return false;
         if (item.notionOnly && !notionConnected) return false;
         if (!needle) return true;
         return (item.label + " " + item.keywords).toLowerCase().includes(needle);

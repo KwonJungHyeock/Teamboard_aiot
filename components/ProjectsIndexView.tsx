@@ -9,6 +9,7 @@ import EmptyState from "./EmptyState";
 import AreaFilter, { useAreaChips, useAreaSelection } from "./AreaFilter";
 import Skeleton from "./Skeleton";
 import ErrorNote from "./ErrorNote";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import { pfill } from "@/lib/progress-bar";
 
@@ -188,7 +189,7 @@ export default function ProjectsIndexView({ user }: { user: SessionUser }) {
             ))}
         </div>
 
-        {user.role === "lead" && <NewProjectForm onDone={load} />}
+        {hasLead(user.role) && <NewProjectForm onDone={load} />}
       </div>
     </div>
   );

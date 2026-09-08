@@ -3,6 +3,7 @@
 // 논의·결정 화면 — SignalPanel(홈과 공유) + 새 논의 폼 + 결정 로그 탭.
 // 스레드는 전역 우측 패널이 연다 (MD-P-2026-006 §B) — 목록은 열린 채로 계속 조작할 수 있다.
 import { useCallback, useEffect, useState } from "react";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import { toast } from "@/lib/quick";
 import PageShell from "./PageShell";
@@ -75,7 +76,7 @@ export function toPanelItem(s: ApiSignal, user?: SessionUser): SignalPanelItem {
   let quick: SignalPanelItem["quick"] = null;
   if (user && active) {
     const isAuthor = s.authorId === user.id;
-    const isLead = user.role === "lead";
+    const isLead = hasLead(user.role);
     const isTarget = s.targetActorId === user.id;
     if (s.type === "decision" && (isAuthor || isLead)) quick = { label: "확정", kind: "decide" };
     else if (s.type === "review" && (isTarget || isLead)) quick = { label: "확인", kind: "confirm" };

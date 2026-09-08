@@ -5,6 +5,7 @@
 // 서버 PDF 렌더링은 쓰지 않는다(§B) — window.print() + @page A4.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PerfReport as PerfReportData, PerfTaskRow } from "@/lib/perf-report";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
@@ -97,7 +98,7 @@ export default function PerfReport({ user }: { user: SessionUser }) {
           <button aria-pressed={scope === "personal"} onClick={() => setScope("personal")}>개인</button>
         </div>
 
-        {scope === "personal" && user.role === "lead" && members.length > 0 && (
+        {scope === "personal" && hasLead(user.role) && members.length > 0 && (
           <select className="prep-who" value={actorId} onChange={(e) => setActorId(Number(e.target.value))}>
             {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>

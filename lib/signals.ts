@@ -32,7 +32,8 @@ export function signalVisibilityClause(viewerParam: string): string {
     OR (s.type = 'review' AND (
           s.author_id = ${viewerParam}
           OR s.target_actor_id = ${viewerParam}
-          OR EXISTS (SELECT 1 FROM account acc WHERE acc.actor_id = ${viewerParam} AND acc.role = 'lead')
+          OR EXISTS (SELECT 1 FROM account acc WHERE acc.actor_id = ${viewerParam}
+                       AND acc.role IN ('admin', 'lead'))
        ))
   )`;
 }

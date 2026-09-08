@@ -4,6 +4,7 @@
 // 이미지: 붙여넣기(⌘/Ctrl+V)·드롭·파일 → Vercel Blob 업로드 후 URL 저장(미설정 시 URL 직접 입력).
 // 확정(lead) → 논의·결정(signal) 레코드 자동 생성. 실시간 반영은 4초 폴링(허들룸 채널 재사용).
 import { useCallback, useEffect, useRef, useState } from "react";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import { AttachButton, DropZone } from "./Attach";
 import { pfill } from "@/lib/progress-bar";
@@ -111,7 +112,7 @@ export default function ReviewSession({
 }: {
   sessionId: number; user: SessionUser; onClose: () => void;
 }) {
-  const isLead = user.role === "lead";
+  const isLead = hasLead(user.role);
   const [d, setD] = useState<Detail | null>(null);
   const [err, setErr] = useState("");
   const [zoom, setZoom] = useState<string | null>(null);

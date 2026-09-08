@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { getInboxCount } from "@/lib/db";
 import { getLiveSession } from "@/lib/auth";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import Sidebar from "./Sidebar";
 import CommandPalette from "./CommandPalette";
@@ -47,7 +48,7 @@ export default async function AppShell({
 
   // 사이드바에서 영역·프로젝트 트리를 내렸으므로(027 §B2) 그 조인 쿼리도 뺀다.
   // 안 쓰는 데이터를 매 페이지 로드마다 실어 나르지 않는다.
-  const inboxCount = await getInboxCount(current.id, current.role === "lead");
+  const inboxCount = await getInboxCount(current.id, hasLead(current.role));
   // 파트 Z — Notion 토큰 유무로 관련 UI 자동 분기(미연결 시 숨김)
   const notionConnected = !!process.env.NOTION_TOKEN;
   return (

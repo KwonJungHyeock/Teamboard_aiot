@@ -4,13 +4,14 @@ import AppShell from "@/components/AppShell";
 import NotionScopeSettings from "@/components/NotionScopeSettings";
 import PlatformSettings from "@/components/PlatformSettings";
 import NotionConnection from "@/components/NotionConnection";
+import { hasLead } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default function SettingsPage() {
   const user = getSession();
   if (!user) redirect("/login");
-  if (user.role !== "lead") redirect("/assistant");
+  if (!hasLead(user.role)) redirect("/assistant");
   const notionConnected = !!process.env.NOTION_TOKEN;
   return (
     <AppShell user={user}>

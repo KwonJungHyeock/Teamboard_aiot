@@ -9,6 +9,7 @@ import { kstToday } from "@/lib/home";
 import { projectTasks, rollupProgress } from "@/lib/projects";
 import { listDecisions } from "@/lib/decisions";
 import { signalVisibilityClause } from "@/lib/signals";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -111,7 +112,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       members: members.map((m) => ({ id: m.id, name: m.display_name, avatarUrl: m.avatar_url })),
       tasks, discussions, openDiscussions, decisions, upcoming, activity,
       today,
-      canEdit: session.role === "lead" || project.owner_id === session.id,
+      canEdit: hasLead(session.role) || project.owner_id === session.id,
     });
   } catch (error) {
     return jsonError(error);
