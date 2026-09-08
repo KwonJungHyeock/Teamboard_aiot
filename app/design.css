@@ -1277,6 +1277,10 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 }
 .tt-prog-e:focus { outline: none; border-color: var(--brand); }
 
+/* §C 완료→100 안내 (MD-P-2026-034). 접두어로 스스로 선다. */
+.prop-st-edit { display: flex; flex-direction: column; gap: 6px; }
+.prop-hint { margin: 0; font-size: var(--f6); color: var(--muted); line-height: 1.4; }
+
 /* ── §D1 프로젝트 검색형 콤보박스 ─────────────────────────────────── */
 .pcb { position: relative; }
 .pcb-v {

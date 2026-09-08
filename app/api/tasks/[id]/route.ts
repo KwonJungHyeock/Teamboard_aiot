@@ -294,6 +294,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
           [taskId]
         ))?.n ?? 0
       );
+      // `status` 를 **일부러 안 넘긴다** (MD-P-2026-034 §C).
+      // 넘기면 「완료된 업무의 진척을 못 바꾼다」는 새 규칙이 생긴다.
+      // 완료 업무의 100 은 계산이 이기는 값이라 화면이 미리 말해 줄 뿐이고,
+      // 서버 규칙은 이번에 바뀌지 않는다.
       const right = canEditProgress(session.id, await getProgressEditorId(), { childCount });
       if (!right.canEdit) {
         // 규칙(하위 자동 계산)은 400, 권한은 403 — 받는 쪽이 구분할 수 있어야 한다.

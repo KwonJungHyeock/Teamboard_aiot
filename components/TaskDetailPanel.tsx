@@ -338,7 +338,9 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
   const progressRight = canEditProgress(
     user.id,
     sel?.progressEditorId ?? null,
-    { childCount: t?.childCount ?? 0 }
+    // 화면은 상태도 넘긴다 — 완료 업무의 진척은 이미 계산이 이기므로(taskProgress),
+    // 바꿀 수 있는 것처럼 보여 주면 「바꿨는데 안 바뀐다」가 된다. API 는 안 넘긴다.
+    { childCount: t?.childCount ?? 0, status: t?.status }
   );
 
   const propRows: PropRow[] = !t ? [] : [
@@ -346,11 +348,20 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
       key: "status", label: "상태",
       value: <span className={`prop-st st-${t.status}`}>{labelOf(STATUS, t.status)}</span>,
       editor: (close) => (
-        <select autoFocus value={STATUS.some(([v]) => v === t.status) ? t.status : ""}
-          onChange={(e) => { patchOpt({ status: e.target.value }, { status: e.target.value }); close(); }}>
-          {!STATUS.some(([v]) => v === t.status) && <option value="">{t.status}</option>}
-          {STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
+        <div className="prop-st-edit">
+          <select autoFocus value={STATUS.some(([v]) => v === t.status) ? t.status : ""}
+            onChange={(e) => { patchOpt({ status: e.target.value }, { status: e.target.value }); close(); }}>
+            {!STATUS.some(([v]) => v === t.status) && <option value="">{t.status}</option>}
+            {STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          {/* 완료로 바꾸면 진척이 100 이 된다 — **지금은 아무도 그 사실을 모른다**
+              (MD-P-2026-034 §C). 진척 편집 권한이 없는 사람도 이 경로로는 100 을
+              만들 수 있고, 그건 막지 않는 것이 맞다(완료 처리는 다른 규칙이다).
+              막지 않는 대신 **말한다.** */}
+          {t.status !== "done" && (
+            <p className="prop-hint">완료로 바꾸면 진척이 100% 가 됩니다.</p>
+          )}
+        </div>
       ),
     },
     {

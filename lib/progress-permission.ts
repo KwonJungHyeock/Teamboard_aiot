@@ -12,7 +12,7 @@
 // 그래서 「권한이 없습니다」로 뭉뚱그리지 않고 **이유를 따로 낸다.**
 // 뭉뚱그리면 권한을 받은 사람이 「내 권한이 잘못됐나」를 의심하며 시간을 버린다.
 
-export type ProgressBlockReason = "not-editor" | "auto-from-children";
+export type ProgressBlockReason = "not-editor" | "auto-from-children" | "done-is-100";
 
 export interface ProgressEditRight {
   canEdit: boolean;
@@ -24,6 +24,20 @@ export interface ProgressEditRight {
 export interface ProgressEditSubject {
   /** 하위 업무 수. 1 이상이면 진척은 계산값이다. */
   childCount?: number | null;
+  /**
+   * 업무 상태. **넘기면** 완료 업무의 편집을 막는다.
+   *
+   * ── 왜 넘기는 쪽이 정하는가 (MD-P-2026-034 §C) ──────────────────
+   *
+   * 완료 업무의 진척은 이미 계산이 이긴다 — `taskProgress()` 가
+   * `status === "done"` 이면 무조건 100 을 낸다. 그러니 손으로 바꿔도
+   * 화면에는 100 으로 보이고, **바꿨는데 안 바뀐 것처럼 보인다.**
+   * 화면은 그 사실을 미리 말하려고 상태를 넘긴다.
+   *
+   * **API 는 넘기지 않는다.** 넘기면 「완료된 업무의 진척을 못 바꾼다」는
+   * 새 규칙이 생기고, 그건 이번에 만들기로 한 것이 아니다. 표시만 더한다.
+   */
+  status?: string | null;
 }
 
 export function canEditProgress(
@@ -38,6 +52,14 @@ export function canEditProgress(
       canEdit: false,
       reason: "auto-from-children",
       message: "하위 업무가 있어 진척은 하위 완료율로 계산됩니다. 손으로 바꿀 수 없습니다.",
+    };
+  }
+  // 완료 업무도 규칙이 이긴다 — 권한보다 먼저 본다(위와 같은 이유).
+  if (task.status === "done") {
+    return {
+      canEdit: false,
+      reason: "done-is-100",
+      message: "완료 처리된 업무는 진척이 100 입니다. 상태를 되돌리면 바꿀 수 있습니다.",
     };
   }
   // 아무도 지정되지 않았으면 **아무도 못 바꾼다.** 「지정 안 했으니 전부 허용」이

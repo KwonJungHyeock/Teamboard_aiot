@@ -622,7 +622,9 @@ export default function TaskTable({
                   </td>
                 )}
                 {showProg && (
-                  <td className={`col-prog${withBars ? " narrow" : ""}`}>
+                  <td className={`col-prog${withBars ? " narrow" : ""}`}
+                      title={t.status === "done" ? "완료 처리된 업무는 진척이 100% 입니다. 상태를 되돌리면 바꿀 수 있습니다."
+                             : (t.childCount ?? 0) > 0 ? "하위 업무로 계산 중입니다." : undefined}>
                     {/* 막대를 켜면 여기 막대는 접는다 — 한 행에 막대가 둘이면 어느 쪽이
                         시간이고 어느 쪽이 진척인지 안 읽힌다. 숫자는 남는다(§D7 진척 38px). */}
                     {!withBars && (
@@ -630,7 +632,10 @@ export default function TaskTable({
                         <i className={t.status === "done" ? "pf-green" : "pf-blue"} style={pfill(t.progress ?? 0)} />
                       </div>
                     )}
-                    {onProgressChange && (t.childCount ?? 0) === 0 ? (
+                    {/* 완료 업무는 진척이 100 으로 계산되므로(taskProgress) 편집 칸을
+                        그리지 않는다. **새 규칙이 아니라 이미 참인 사실의 표시다** —
+                        그려 두면 「바꿨는데 안 바뀐다」가 된다 (§C). */}
+                    {onProgressChange && (t.childCount ?? 0) === 0 && t.status !== "done" ? (
                       <ProgEdit
                         value={t.progress ?? 0}
                         onCommit={(v) => onProgressChange(t.id, v)}
@@ -645,6 +650,9 @@ export default function TaskTable({
                     <select
                       className={`stsel st-${t.status}`}
                       value={t.status}
+                      /* 목록에는 안내 줄을 놓을 자리가 없다. 툴팁으로 말한다 —
+                         상세에는 문장으로 적혀 있다 (§C). */
+                      title={t.status === "done" ? undefined : "완료로 바꾸면 진척이 100% 가 됩니다."}
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => {
                         e.stopPropagation();
