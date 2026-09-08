@@ -1355,6 +1355,11 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .prop-open.late { color: var(--brand); font-weight: 500; }
 .prop-open.none { color: var(--ink2); }
 
+/* §A 상위 후보 0개일 때의 이유 (MD-P-2026-038). 접두어로 스스로 선다. */
+.gadd-why { margin: 4px 0 0; font-size: var(--f6); color: var(--muted); line-height: 1.5; }
+.gadd-why.warn { color: var(--ink2); }
+.gadd-why.warn b { color: var(--brand); }
+
 /* ── §D1 프로젝트 검색형 콤보박스 ─────────────────────────────────── */
 .pcb { position: relative; }
 .pcb-v {

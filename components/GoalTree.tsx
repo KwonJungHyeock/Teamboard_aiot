@@ -211,6 +211,10 @@ function defaultSlot(periodType: "year" | "quarter" | "month", year: number): nu
 interface ParentInfo {
   spec: { periodType: string; periodStart: string; label: string } | null;
   candidates: { id: number; title: string }[];
+  /** team | personal — 안내 문구에 넣는다. 「팀 목표가 없다」와 「내 목표가 없다」는 다르다. */
+  scope?: string;
+  /** 같은 기간에 걸치지만 시작일이 달라 후보가 못 된 것들 (MD-P-2026-038 §A). */
+  nearMisses?: { id: number; title: string; periodStart: string }[];
 }
 
 /**
@@ -399,8 +403,28 @@ function AddGoalForm({
         <div className="gadd-mkparent">
           <label>
             <input type="checkbox" checked={alsoMake} onChange={(e) => setAlsoMake(e.target.checked)} />
-            {parent!.spec!.label} 목표가 없습니다. 함께 만들까요?
+            {parent!.scope === "personal" ? "내" : "팀"}{" "}
+            {parent!.spec!.label} 목표가 없어 상위를 고를 수 없습니다. 함께 만들까요?
           </label>
+          {/* ── 왜 못 찾았는지 **값으로** 적는다 (MD-P-2026-038 §A) ──
+              「없습니다」만 적으면 왜 없는지를 또 찾아야 한다. 상위는
+              `period_start` **완전 일치**로 찾으므로 기대 시작일을 적어 준다. */}
+          <p className="gadd-why">
+            상위는 시작일이 <b className="num">{parent!.spec!.periodStart}</b> 인
+            {" "}{parent!.spec!.periodType === "year" ? "연간" : "분기"} 목표만 찾습니다.
+          </p>
+          {/* **「없다」와 「있는데 못 찾는다」는 다르다.** 있는데 못 찾은 것이면
+              그 사실을 짚는다 — 안 짚으면 사람이 새로 만들어 같은 분기가 둘이 된다. */}
+          {(parent!.nearMisses?.length ?? 0) > 0 && (
+            <p className="gadd-why warn">
+              같은 기간에 <b>{parent!.nearMisses!.length}건</b>이 있지만 시작일이 달라
+              후보가 되지 못했습니다 —{" "}
+              {parent!.nearMisses!.map((g) => `“${g.title}” (${g.periodStart})`).join(", ")}.
+              <br />
+              새로 만들기 전에 그 목표의 시작일을 고치는 편이 낫습니다. 새로 만들면
+              같은 기간 목표가 둘이 됩니다.
+            </p>
+          )}
           {alsoMake && (
             <input
               className="gadd-ptitle"

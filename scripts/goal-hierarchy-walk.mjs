@@ -62,6 +62,31 @@ try {
     // **조용히 넘어가지는 않는다** — 빈 catch 는 없는 실패를 만든다(§G).
     .catch(() => console.log("   (첫 실행 안내 없음 — 닫을 것이 없다)"));
 
+  // ══ A0 — 후보 0개일 때 **이유를 말한다** (MD-P-2026-038 §A) ═════════
+  //
+  // ③의 조건은 관측보다 먼저 만든다(§G) — 2월을 고르면 상위 spec 은
+  // quarter/2026-01-01 이고 시드에는 그 분기 목표가 없다. 즉 **후보 0개**가
+  // 이미 참이다. 그 사실부터 값으로 확인하고 화면을 본다.
+  const zeroWant = (await sql(
+    `SELECT count(*)::int n FROM goal WHERE is_active AND period_type='quarter'
+       AND period_start=$1::date AND scope='team'`, [`${UI_YEAR}-01-01`]))[0].n;
+  console.log(`   (조건) ${UI_YEAR} Q1 팀 목표 ${zeroWant}건 — 0이라야 이 단언이 뜻을 가진다`);
+
+  await page.locator(".gadd-open", { hasText: "＋ 새 목표" }).first().click();
+  await page.waitForTimeout(400);
+  await page.locator(".gadd select[aria-label='월']").selectOption("2");
+  await page.waitForTimeout(1200);
+  const zSel = await page.locator(".gadd select[aria-label='상위 목표']").count();
+  const zWhy = (await page.locator(".gadd-why").allInnerTexts()).join(" ").replace(/\n+/g, " ");
+  chk("A0-후보0-셀렉트없음", zeroWant === 0 && zSel === 0,
+    `Q1 팀 목표 ${zeroWant}건 · 상위 셀렉트 ${zSel}개`);
+  // 「없습니다」만으로는 왜 없는지를 또 찾아야 한다. **값이 들어갔는지**를 본다.
+  chk("A0-후보0-이유가값을담는다",
+    zWhy.includes(`${UI_YEAR}-01-01`) && /분기 목표만 찾습니다/.test(zWhy),
+    `이유 문구 "${zWhy}"`);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(1200);
+
   // ══ A-1 · A-2 — 전역 "＋ 새 목표" 에서: 상위 셀렉트 없음 + 없으면 묻는다 ═══
   // 분기 섹션의 "+ 월 목표" 는 이제 만든 자리가 상위를 정하므로(A-신1-1) 묻지 않는다.
   // 묻는 화면은 **전역 진입점**에서만 뜬다.
@@ -78,7 +103,12 @@ try {
 
   const askText = await page.locator(".gadd-mkparent label").innerText().catch(() => "(없음)");
   await page.screenshot({ path: `${OUT}/A2-묻는화면.png` });
-  chk("A2-묻는화면", /목표가 없습니다\. 함께 만들까요\?/.test(askText),
+  // 문구가 바뀌었다 (MD-P-2026-038 §A) — 이제 **왜 못 고르는지**까지 적는다.
+  //   전: "2026 Q1 목표가 없습니다. 함께 만들까요?"
+  //   후: "팀 2026 Q1 목표가 없어 상위를 고를 수 없습니다. 함께 만들까요?"
+  // 글자를 통째로 박지 않고 **들어 있어야 할 것**을 본다 — scope · label · 물음.
+  chk("A2-묻는화면",
+    /함께 만들까요\?/.test(askText) && askText.includes(`${UI_YEAR} Q1`) && /^(팀|내)\s/.test(askText),
     `${UI_YEAR}년 2월 선택 → 화면 문구 "${askText.replace(/\n+/g, " ")}"`);
 
   // 체크하고 함께 만든다
@@ -137,7 +167,29 @@ try {
   // 아무것도 재지 못한다.
   chk("A3-화면이고르게함", q3n > 1 && pickSel === 1,
     `${UI_YEAR}년 8월 선택 · Q3 후보 ${q3n}개 → 상위 셀렉트 ${pickSel}개 [${pickOpts.join(", ")}]`);
-  void q3b;
+
+  // ── ② 후보가 **하나**면 셀렉트도 안내도 없다 (짝) ────────────────
+  //
+  // ①(둘 → 셀렉트)과 ③(0 → 안내)만 보면 「언제나 뭔가 뜬다」와 구분이 안 된다.
+  // 조용해야 하는 자리가 실제로 조용한지 본다. 조건은 먼저 만든다 —
+  // 방금 만든 둘째 Q3 를 지워 후보를 하나로 되돌린다.
+  await sql(`DELETE FROM goal WHERE id = $1`, [q3b.id]);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(1300);
+  await page.locator(".gadd-open", { hasText: "＋ 새 목표" }).first().click();
+  await page.waitForTimeout(400);
+  await page.locator(".gadd select[aria-label='월']").selectOption("8");
+  await page.waitForTimeout(1200);
+  const oneN = (await sql(
+    `SELECT count(*)::int n FROM goal WHERE is_active AND period_type='quarter'
+       AND period_start=$1::date AND scope='team'`, [`${UI_YEAR}-07-01`]))[0].n;
+  const oneSel = await page.locator(".gadd select[aria-label='상위 목표']").count();
+  const oneWhy = await page.locator(".gadd-why").count();
+  const oneWhere = (await page.locator(".gadd-where").allInnerTexts()).join(" ").replace(/\n+/g, " ");
+  chk("A3짝-후보1-조용하다", oneN === 1 && oneSel === 0 && oneWhy === 0,
+    `Q3 후보 ${oneN}개 · 셀렉트 ${oneSel}개 · 이유 ${oneWhy}개 — 어디로 들어가는지만 적는다 "${oneWhere}"`);
+  // 폼은 **열어 둔 채** 넘긴다 — 바로 아래 A-신1-1 이 "취소" 를 누르는 것으로
+  // 시작한다. 여기서 닫으면 그 클릭이 찾을 것을 못 찾는다(실제로 그렇게 죽었다).
 
   // A-신1-1 — 분기 섹션의 "+ 월 목표" 에서는 **묻지 않는다**. 짝이 되는 부재 단언.
   await page.locator(".gadd .lk", { hasText: "취소" }).first().click();
