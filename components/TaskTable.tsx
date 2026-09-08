@@ -12,6 +12,7 @@ import { notifyTaskUpdated } from "@/lib/task-panel";
 import { useCountUp, useExiting, useFlip, useHighlight } from "@/lib/motion";
 import { notifyGoalChain } from "@/lib/goal-chain";
 import { pfill } from "@/lib/progress-bar";
+import { openDueMark } from "@/lib/open-due";
 import { dueUrgency } from "@/lib/task-view";
 import { taskBar, ticks, defaultBarRange, type BarRange } from "@/lib/task-bars";
 import { aggregateTasks, countTasks } from "@/lib/progress";
@@ -105,6 +106,7 @@ export default function TaskTable({
   timelineToday,
   groupBy = "none",
   onProgressChange,
+  openAtMs,
 }: {
   rows: TaskTableRow[];
   /**
@@ -113,6 +115,12 @@ export default function TaskTable({
    * 표는 「콜백이 있는가」만 본다. 표가 권한을 알면 규칙이 표마다 갈린다.
    */
   onProgressChange?: (id: number, value: number) => void;
+  /**
+   * 가오픈 목표 시각 (ms). 주면 기한 옆에 **가오픈 기준 D 표기**가 붙고,
+   * 가오픈 뒤인 기한은 눈에 띄게 그린다 (MD-P-2026-037 §B).
+   * 주지 않으면 아무것도 안 그린다 — 없는 기준을 지어내지 않는다.
+   */
+  openAtMs?: number;
   title?: string;
   sub?: string;
   /**
@@ -681,6 +689,21 @@ export default function TaskTable({
                 </td>
                 <td className={`due col-due ${dueCls}`}>
                   <span className="tt-dday">{t.dday ?? "—"}</span>
+                  {/* 가오픈 기준 표기 — **등록된 기한은 그대로 두고 옆에 적기만 한다.**
+                      D 는 대문 카운트다운과 같은 함수로 센다(lib/open-due → countdown).
+                      완료·중단은 안 그린다 — 이미 끝난 일에 「가오픈 +18일」은 할 일처럼 읽힌다. */}
+                  {openAtMs !== undefined && t.status !== "done" && t.status !== "dropped" && (() => {
+                    const om = openDueMark(t.dueDate ?? null, openAtMs);
+                    if (om.bucket === "none") {
+                      return <span className="tt-open none" title="기한이 없습니다 — 가오픈 기준으로 셀 수 없습니다">기한 없음</span>;
+                    }
+                    return (
+                      <span className={`tt-open${om.bucket === "after" ? " late" : ""}`}
+                            title={om.bucket === "after" ? "기한이 가오픈일 이후입니다" : undefined}>
+                        {om.label}
+                      </span>
+                    );
+                  })()}
                   {quickComplete && t.status !== "done" && t.status !== "dropped" && (
                     <span className="tt-row-act">
                       <button className="tt-act c" onClick={(e) => completeNow(t.id, e)} title="완료 처리" aria-label="완료 처리">

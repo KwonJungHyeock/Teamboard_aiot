@@ -16,6 +16,7 @@ import PropertyBlock, { type PropRow } from "./PropertyBlock";
 import LinkedResources from "./LinkedResources";
 import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution } from "@/lib/progress";
 import { canEditProgress } from "@/lib/progress-permission";
+import { openDueMark } from "@/lib/open-due";
 import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import ProjectCombo, { type ComboProject } from "./ProjectCombo";
@@ -67,6 +68,8 @@ interface Selectors {
   linkableGoals: { id: number; title: string; level: string; period: string; when: "past" | "current" | "future" }[];
   /** 진척을 손으로 바꿀 수 있는 단 한 사람 (MD-P-2026-033 §B). 없으면 아무도 못 바꾼다. */
   progressEditorId?: number | null;
+  /** 가오픈 목표 시각 (ms) — 기한 옆 「가오픈 D-N」의 기준 (§B). */
+  openAtMs?: number;
 }
 interface Cmt { id: number; body: string; created_at: string; author_name: string }
 interface Act { id: number; message: string; level: string; created_at: string; user_name: string | null }
@@ -338,6 +341,8 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
    * 진척을 손으로 바꿀 수 있는가 — **API 와 같은 함수**로 판정한다.
    * 두 벌이 되면 「화면은 되는데 저장은 403」이 되고 그게 제일 나쁜 모양이다.
    */
+  const openAtMs = sel?.openAtMs;
+
   const progressRight = canEditProgress(
     user.id,
     sel?.progressEditorId ?? null,
@@ -387,7 +392,19 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
     },
     {
       key: "period", label: "기간",
-      value: <span className="num">{period}</span>, empty: !period, action: "기간 미정",
+      value: (
+        <span className="num">
+          {period}
+          {/* 가오픈 기준 — **기한은 그대로 두고 옆에 적기만 한다** (§B).
+              대문 카운트다운과 같은 함수로 센다. 완료·중단은 안 그린다. */}
+          {openAtMs !== undefined && t.status !== "done" && t.status !== "dropped" && (() => {
+            const om = openDueMark(t.dueDate, openAtMs);
+            if (om.bucket === "none") return <em className="prop-open none"> 기한 없음</em>;
+            return <em className={`prop-open${om.bucket === "after" ? " late" : ""}`}> · {om.label}</em>;
+          })()}
+        </span>
+      ),
+      empty: !period, action: "기간 미정",
       editor: () => (
         <div className="prop-dates">
           <label>시작

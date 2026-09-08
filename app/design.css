@@ -1333,6 +1333,28 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .pp-b:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .pp-off { color: var(--muted); font-size: var(--f5); padding-top: 5px; margin: 0; }
 
+/* ── §B 가오픈 기준 기한 표기 (MD-P-2026-037) ───────────────────────
+   등록된 기한 **옆에** 적기만 한다. 날짜를 옮기지 않는다.
+   접두어로 스스로 선다 — 조상 결합자를 쓰지 않는다. */
+.tt-open {
+  display: inline-block; margin-left: 6px;
+  font-size: var(--f6); color: var(--muted); white-space: nowrap;
+}
+/* 가오픈 뒤인 기한 — 눈에 띄게. **색만으로 나누지 않는다**(테두리를 함께 준다). */
+.tt-open.late {
+  color: var(--brand); font-weight: 500;
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);
+  border-radius: 4px; padding: 0 4px;
+}
+/* 기한 없음 — 늦은 것보다 위험하다. 「아무 날에도 안 걸린다」가 보여야 한다. */
+.tt-open.none {
+  color: var(--ink2); border: 1px dashed var(--line-hi);
+  border-radius: 4px; padding: 0 4px;
+}
+.prop-open { font-style: normal; font-size: var(--f5); color: var(--muted); }
+.prop-open.late { color: var(--brand); font-weight: 500; }
+.prop-open.none { color: var(--ink2); }
+
 /* ── §D1 프로젝트 검색형 콤보박스 ─────────────────────────────────── */
 .pcb { position: relative; }
 .pcb-v {

@@ -163,6 +163,7 @@ export default function TasksView({ user, defaults, initialAreas, initial, locke
   const [monthGoals, setMonthGoals] = useState<MonthGoalOption[]>([]);
   /** 진척을 손으로 바꿀 수 있는 단 한 사람 (MD-P-2026-033 §B). 서버가 정한다. */
   const [progressEditorId, setProgressEditorId] = useState<number | null>(null);
+  const [openAtMs, setOpenAtMs] = useState<number | undefined>(undefined);
   const [linkGoals, setLinkGoals] = useState<{ id: number; title: string }[]>([]);
   const [today, setToday] = useState("");
   const [loading, setLoading] = useState(true);
@@ -347,6 +348,8 @@ export default function TasksView({ user, defaults, initialAreas, initial, locke
       setProgressEditorId(
         typeof data.progressEditorId === "number" ? data.progressEditorId : null
       );
+      // 가오픈 기준 기한 표기의 기준값 — 대문 카운트다운과 같은 config 다 (§B).
+      setOpenAtMs(typeof data.openAtMs === "number" ? data.openAtMs : undefined);
     }
   }, []);
 
@@ -835,6 +838,7 @@ export default function TasksView({ user, defaults, initialAreas, initial, locke
                 setChecked((prev) => (rows.every((r) => prev.has(r.id)) ? new Set() : new Set(rows.map((r) => r.id))))
               }
               onStatusChange={changeStatus}
+              openAtMs={openAtMs}
               /* 콜백을 **줄지 말지로** 권한을 표현한다. 표가 권한을 알면 규칙이
                  표마다 갈린다 — 판정은 lib/progress-permission.ts 하나가 한다. */
               onProgressChange={

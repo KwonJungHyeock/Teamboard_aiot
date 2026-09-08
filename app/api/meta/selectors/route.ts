@@ -5,7 +5,7 @@ import { kstTodayForGoals } from "@/lib/goals";
 import { requireSession } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { jsonError } from "@/lib/api";
-import { getProgressEditorId } from "@/lib/platform-config";
+import { getPlatformOpen, getProgressEditorId } from "@/lib/platform-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const session = requireSession();
-    const [actors, projects, monthGoals, linkGoals, areas, myAreas, progressEditorId] = await Promise.all([
+    const [actors, projects, monthGoals, linkGoals, areas, myAreas, progressEditorId, platformOpen] = await Promise.all([
       query<{ id: number; display_name: string }>(
         `SELECT id, display_name FROM actor WHERE type = 'human' AND is_active = true ORDER BY id`
       ),
@@ -84,6 +84,7 @@ export async function GET() {
         [session.id]
       ),
       getProgressEditorId(),
+      getPlatformOpen(),
     ]);
     return NextResponse.json({
       actors: actors.map((a) => ({ id: a.id, name: a.display_name })),
@@ -115,6 +116,12 @@ export async function GET() {
        * 새 엔드포인트를 만들면 화면마다 한 번씩 더 부르게 된다.
        */
       progressEditorId,
+      /**
+       * 가오픈 목표 시각 (ms) — 기한 옆의 「가오픈 D-N」이 이 값을 기준으로 센다
+       * (MD-P-2026-037 §B). 대문 카운트다운과 **같은 config 값**이다.
+       * 날짜를 코드에 박지 않으므로 /settings 에서 바꾸면 여기도 따라 바뀐다.
+       */
+      openAtMs: Date.parse(platformOpen.openAt),
       myAreaIds: myAreas.map((r) => r.area_id),
     });
   } catch (error) {
