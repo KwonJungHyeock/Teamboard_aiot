@@ -4,6 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { jsonError } from "@/lib/api";
 import { isDemoMode } from "@/lib/llm";
+import { hasLead } from "@/lib/types";
 import type { Draft } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
     const status = url.searchParams.get("status");
     const scope = url.searchParams.get("scope");
 
-    const all = scope === "all" && session.role === "lead";
+    const all = scope === "all" && hasLead(session.role);
     const conditions: string[] = [];
     const params: unknown[] = [];
 

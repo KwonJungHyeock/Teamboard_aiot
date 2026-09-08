@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { GoalNode } from "@/lib/goals";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import PageShell from "./PageShell";
 import GoalTree, { type LinkableTask } from "./GoalTree";
@@ -141,7 +142,7 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
         : "내 목표 — 본인과 팀장만 봅니다. 같은 3계층·같은 집계 규칙으로 관리하세요."}
       actions={
         <>
-          {user.role === "lead" && <SnapshotMenu onSaved={load} />}
+          {hasLead(user.role) && <SnapshotMenu onSaved={load} />}
           <button className="btn-primary" onClick={() => setShowNew(true)}>＋ 새 목표</button>
         </>
       }
@@ -207,7 +208,7 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
                 : "개인 목표를 세우고 내 업무를 연결해 나만의 진척을 관리하세요. 나만 볼 수 있어요."
           }
           action={
-            tab === "personal" || user.role === "lead" ? (
+            tab === "personal" || hasLead(user.role) ? (
               <button className="btn-primary" onClick={() => setShowNew(true)}>목표 만들기</button>
             ) : undefined
           }
@@ -240,7 +241,7 @@ export default function GoalsView({ user, initialYear }: { user: SessionUser; in
               <span className="dl-c">{goal.title}</span>
               <span className="dl-c num" style={{ flex: "0 0 100px" }}>{goal.period_start}</span>
               <span className="dl-c" style={{ flex: "0 0 60px", textAlign: "right" }}>
-                {user.role === "lead" && <button className="lk" onClick={() => restore(goal)}>복구</button>}
+                {hasLead(user.role) && <button className="lk" onClick={() => restore(goal)}>복구</button>}
               </span>
             </div>
           ))}

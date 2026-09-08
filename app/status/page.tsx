@@ -5,13 +5,14 @@ import { getLiveSession } from "@/lib/auth";
 import { buildHomeSummary } from "@/lib/home";
 import AppShell from "@/components/AppShell";
 import StatusView from "@/components/StatusView";
+import { hasLead } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const live = await getLiveSession();
   if (!live) redirect("/api/auth/logout?reason=inactive");
-  if (live.user.role !== "lead") redirect("/assistant");
+  if (!hasLead(live.user.role)) redirect("/assistant");
   // 기존 홈 집계 재사용 — 팀 전체 관점(isLead=true)
   const summary = await buildHomeSummary(live.user.id, true);
   return (

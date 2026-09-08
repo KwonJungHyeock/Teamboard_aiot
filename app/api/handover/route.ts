@@ -5,6 +5,7 @@ import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const session = requireSession();
-    const isLead = session.role === "lead";
+    const isLead = hasLead(session.role);
 
     const base = `
       SELECT h.id, h.title, h.status, h.area_id, ar.name AS area_name, ar.color_key,

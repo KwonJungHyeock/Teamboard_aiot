@@ -7,6 +7,7 @@ import { requireSession } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const session = requireSession();
-    if (session.role !== "lead") {
+    if (!hasLead(session.role)) {
       return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
     }
     const count = async (table: string) =>
@@ -40,7 +41,7 @@ export async function GET() {
 export async function POST() {
   try {
     const session = requireSession();
-    if (session.role !== "lead") {
+    if (!hasLead(session.role)) {
       return NextResponse.json({ error: "팀장만 데모 데이터를 비울 수 있습니다." }, { status: 403 });
     }
 

@@ -7,6 +7,7 @@ import { jsonError } from "@/lib/api";
 import { logActivity } from "@/lib/activity";
 import { notify } from "@/lib/notify";
 import { listDecisions, getDecision, type DecisionStatus } from "@/lib/decisions";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
     );
     if (!signal) return NextResponse.json({ error: "논의를 찾을 수 없습니다." }, { status: 404 });
 
-    const isLead = session.role === "lead";
+    const isLead = hasLead(session.role);
     const isAuthor = signal.author_id === session.id;
     const isTarget = signal.target_actor_id === session.id;
     // 가시성 — private은 작성자만, review는 작성자·대상·lead

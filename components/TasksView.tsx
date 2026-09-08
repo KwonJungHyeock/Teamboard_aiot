@@ -3,6 +3,7 @@
 // 업무 화면 (Phase 5) — 인박스(에이전트 제안) + 필터 목록 + 상세 편집.
 // 목록 테이블은 홈 "마감 임박"과 동일한 TaskTable을 재사용한다 (검수 포인트 6).
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import { canEditProgress } from "@/lib/progress-permission";
 import type { UserDefaults } from "@/lib/user-defaults";
@@ -781,7 +782,7 @@ export default function TasksView({ user, defaults, initialAreas, initial, locke
                   value={bulkProject}
                   projects={projects}
                   areaId={fArea ? Number(fArea) : undefined}
-                  canCreate={user.role === "lead"}
+                  canCreate={hasLead(user.role)}
                   placeholder="프로젝트 선택…"
                   onChange={setBulkProject}
                   onCreated={(p) => setProjects((cur) => [...cur, p])}

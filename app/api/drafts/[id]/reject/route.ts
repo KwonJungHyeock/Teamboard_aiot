@@ -4,6 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
+import { hasLead } from "@/lib/types";
 import type { Draft } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -20,7 +21,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (draft.status !== "pending") {
       return NextResponse.json({ error: "승인 대기 상태의 초안이 아닙니다." }, { status: 409 });
     }
-    if (draft.user_id !== session.id && session.role !== "lead") {
+    if (draft.user_id !== session.id && !hasLead(session.role)) {
       return NextResponse.json({ error: "반려 권한이 없습니다." }, { status: 403 });
     }
 

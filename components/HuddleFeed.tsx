@@ -3,6 +3,7 @@
 // 허들룸 피드 (Phase 6) — 개인 메모를 팀과 공유해 코멘트를 받는 통로 (SPEC 2.4).
 // 메모(private) → [허들룸으로 보내기] → huddle 스레드 → [결정으로 승격] → decision → Task.
 import { useCallback, useEffect, useState } from "react";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import type { ApiSignal } from "./SignalsView";
 import SignalThread from "./SignalThread";
@@ -196,7 +197,7 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
             {reviews.length === 0 && (
               <SectionEmpty
                 text="진행 중인 리뷰 세션이 없어요"
-                action={user.role === "lead" ? { label: "리뷰 세션 시작 →", onClick: startReview } : undefined}
+                action={hasLead(user.role) ? { label: "리뷰 세션 시작 →", onClick: startReview } : undefined}
               />
             )}
             {reviews.map((r) => {
@@ -216,7 +217,7 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
                 </article>
               );
             })}
-            {user.role === "lead" && (
+            {hasLead(user.role) && (
               <button className="hud-add" disabled={busy} onClick={startReview}>＋ 새 리뷰 세션 시작</button>
             )}
           </div>
@@ -304,7 +305,7 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
         <MeetingMode
           signalId={meetingId}
           userId={user.id}
-          isLead={user.role === "lead"}
+          isLead={hasLead(user.role)}
           onClose={() => { setMeetingId(null); load(); }}
         />
       )}

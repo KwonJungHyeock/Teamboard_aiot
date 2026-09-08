@@ -1,6 +1,23 @@
 // 도메인 타입 — docs/SPEC.md 5장 스키마 기준
 
-export type Role = "lead" | "member" | "viewer";
+export type Role = "admin" | "lead" | "member" | "viewer";
+
+/**
+ * 등급은 **포함 관계**다 (MD-P-2026-035 §B).
+ *
+ * `role === "lead"` 를 그대로 두면 관리자로 올린 순간 그 사람이 **팀장 권한을
+ * 잃는다** — 목표 보관 · 프로젝트 생성 · 리뷰가 막힌다. 등급을 올렸는데 할 수
+ * 있는 일이 줄어드는 것은 아무도 기대하지 않는다.
+ *
+ * 그래서 판정 함수를 둔다. **직접 비교를 남기지 않는다** — 남으면 그 자리만
+ * 조용히 다르게 동작하고, 그 사실을 아무도 모른다.
+ *
+ *   isAdmin  관리자만          — 멤버 관리 · 역할 변경 · 계정 발급
+ *   hasLead  관리자 또는 팀장  — 그 밖의 「팀장만」 자리 전부
+ */
+export const isAdmin = (role: Role | string | null | undefined): boolean => role === "admin";
+export const hasLead = (role: Role | string | null | undefined): boolean =>
+  role === "admin" || role === "lead";
 export type ActorType = "human" | "agent";
 export type TaskType = "자료조사" | "회의록" | "내용정리" | "반복업무";
 export type DraftTaskType = TaskType | "monthly_report";

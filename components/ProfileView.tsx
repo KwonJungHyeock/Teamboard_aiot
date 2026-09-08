@@ -3,6 +3,7 @@
 // 개별 프로필 (신규) — 본인 이름·닉네임·비밀번호만. 이메일·역할은 표시만(수정 불가, lead 전용).
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 
 export default function ProfileView({
@@ -122,7 +123,7 @@ export default function ProfileView({
                 </div>
                 <div className="tform-r">
                   <label>역할 (변경 불가 · 팀장 전용)</label>
-                  <input value={user.role === "lead" ? "LEAD" : user.role.toUpperCase()} disabled />
+                  <input value={hasLead(user.role) ? "LEAD" : user.role.toUpperCase()} disabled />
                 </div>
                 {profileErr && <p className="gerr">{profileErr}</p>}
                 {profileMsg && <p className="rp-notice">{profileMsg}</p>}

@@ -12,6 +12,7 @@
 //   오른쪽 220px  공개 범위 · 프로젝트 · 목표 · 담당 · 상태 · 우선순위 · 기한 · 영역
 //   하단          취소 · "만들고 계속 추가" · 만들기(코랄 1개)
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import PropertyBlock, { type PropRow } from "./PropertyBlock";
 import ProjectCombo, { type ComboProject } from "./ProjectCombo";
@@ -224,7 +225,7 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
             value={d.projectId}
             projects={sel?.projects ?? []}
             areaId={d.areaId || undefined}
-            canCreate={user.role === "lead"}
+            canCreate={hasLead(user.role)}
             onChange={(id) => setD({ ...d, projectId: id })}
             onCreated={(p) => setSel((s) => (s ? { ...s, projects: [...s.projects, p] } : s))}
           />

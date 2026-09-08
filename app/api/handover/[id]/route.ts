@@ -6,6 +6,7 @@ import { visibleTaskSql } from "@/lib/visibility";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ interface HandoverRow {
 async function canView(session: { id: number; role: string }, h: HandoverRow): Promise<boolean> {
   if (h.author_id === session.id) return true;
   if (h.status !== "shared") return false;
-  if (session.role === "lead") return true;
+  if (hasLead(session.role)) return true;
   if (h.area_id == null) return false;
   const row = await queryOne<{ n: number }>(
     `SELECT count(*)::int AS n FROM actor_area WHERE actor_id = $1 AND area_id = $2`,

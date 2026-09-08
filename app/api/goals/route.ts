@@ -5,6 +5,7 @@ import { unlinkedTaskSql } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { getGoalTree, recomputeGoalChain, kstTodayForGoals, validateGoalParent } from "@/lib/goals";
+import { hasLead } from "@/lib/types";
 import type { GoalPeriodType } from "@/lib/types";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
       .split(",").map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n > 0);
     const tree = await getGoalTree({
       year: Number.isFinite(year) ? year : undefined,
-      scope, viewerId: session.id, isLead: session.role === "lead", areaIds,
+      scope, viewerId: session.id, isLead: hasLead(session.role), areaIds,
     });
 
     // 프로젝트→목표 연결은 없앴다 (MD-P-2026-030 §A1) — unlinkedProjects 도 함께 내린다.
@@ -120,7 +121,7 @@ export async function POST(request: Request) {
     const payload = await request.json();
     // 스코프: team=팀 목표(lead만 생성) / personal=개인 목표(본인만, owner=자기 강제)
     const scope = payload.scope === "personal" ? "personal" : "team";
-    if (scope === "team" && session.role !== "lead") {
+    if (scope === "team" && !hasLead(session.role)) {
       return NextResponse.json({ error: "팀 목표는 팀장만 생성할 수 있습니다." }, { status: 403 });
     }
 
@@ -180,7 +181,7 @@ export async function POST(request: Request) {
     if (parentId === null && candidates.length === 0 && wantParent) {
       const spec = parentSpecOf(periodType as GoalPeriod, periodStart);
       if (spec) {
-        if (scope === "team" && session.role !== "lead") {
+        if (scope === "team" && !hasLead(session.role)) {
           return NextResponse.json({ error: "팀 목표는 팀장만 생성할 수 있습니다." }, { status: 403 });
         }
         const pTitle = String(payload.createParent.title).trim().slice(0, 200);

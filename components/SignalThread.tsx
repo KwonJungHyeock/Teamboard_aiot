@@ -4,6 +4,7 @@
 // 상시 하단 컴포저(@멘션·이모지·전송) + LED 상태 + "✓ 해결로 표시" + 생명주기 액션.
 // 답글은 signal_id에 붙어 허들 공유·결정 승격 후에도 보존된다.
 import { useCallback, useEffect, useState } from "react";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import { VoteButtons, ImageThumb } from "./huddle-ui";
 import { Avatar, ReactionChips, MentionComposer, renderRich, relTime, type ReactionSummary, type Person } from "./collab-ui";
@@ -184,7 +185,7 @@ export default function SignalThread({
   const openish = active || decided;
   const isAuthor = signal.authorId === user.id;
   const isTarget = signal.targetActorId === user.id;
-  const isLead = user.role === "lead";
+  const isLead = hasLead(user.role);
   const led = STATUS_LED[signal.status] ?? { label: signal.status, tone: "open" };
 
   // "✓ 해결로 표시" — 타입·권한에 맞을 때만. 클릭하면 결정 확정 팝오버가 뜨고(화면 이동 없음),

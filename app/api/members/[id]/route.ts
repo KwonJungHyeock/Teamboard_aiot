@@ -8,6 +8,7 @@ import { visibleTaskSql } from "@/lib/visibility";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -115,7 +116,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       if (member.id === session.id) {
         return NextResponse.json({ error: "본인 계정은 비활성화할 수 없습니다." }, { status: 400 });
       }
-      if (member.role === "lead" && (await activeLeadCount()) <= 1) {
+      if (hasLead(member.role) && (await activeLeadCount()) <= 1) {
         return NextResponse.json(
           { error: "활성 팀장이 1명뿐입니다. 다른 팀장을 지정한 뒤 비활성화하세요." },
           { status: 400 }
@@ -149,7 +150,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         return NextResponse.json({ error: "역할 값이 올바르지 않습니다." }, { status: 400 });
       }
       // 마지막 활성 lead를 강등하려는 경우 차단
-      if (member.role === "lead" && payload.role !== "lead" && (await activeLeadCount()) <= 1) {
+      if (hasLead(member.role) && !hasLead(payload.role) && (await activeLeadCount()) <= 1) {
         return NextResponse.json(
           { error: "활성 팀장이 1명뿐입니다. 다른 팀장을 지정한 뒤 강등하세요." },
           { status: 400 }

@@ -5,6 +5,7 @@ import { goalCountedSql, countedLabel } from "@/lib/progress";
 import { requireSession } from "@/lib/auth";
 import { visibleTaskSql } from "@/lib/visibility";
 import { validateGoalParent } from "@/lib/goals";
+import { hasLead } from "@/lib/types";
 import type { GoalPeriodType } from "@/lib/types";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
@@ -48,10 +49,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     );
     if (!g) return NextResponse.json({ error: "목표를 찾을 수 없습니다." }, { status: 404 });
     // 개인 목표는 본인과 팀장만 열람 (§E)
-    if (g.scope === "personal" && g.owner_actor_id !== session.id && session.role !== "lead") {
+    if (g.scope === "personal" && g.owner_actor_id !== session.id && !hasLead(session.role)) {
       return NextResponse.json({ error: "열람 권한이 없습니다." }, { status: 403 });
     }
-    const canEdit = g.scope === "personal" ? g.owner_actor_id === session.id : session.role === "lead";
+    const canEdit = g.scope === "personal" ? g.owner_actor_id === session.id : hasLead(session.role);
 
     // ── §A4 팀장 열람 경계 ──────────────────────────────────────────
     //
@@ -160,7 +161,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
           FROM goal WHERE id = $1`, [goalId]);
     if (!goal) return NextResponse.json({ error: "목표를 찾을 수 없습니다." }, { status: 404 });
 
-    const isLead = session.role === "lead";
+    const isLead = hasLead(session.role);
     const isOwner = goal.owner_actor_id === session.id;
     // 팀 목표는 lead만, 개인 목표는 본인만 (개인 목표는 lead도 접근 불가) — 파트 A
     if (goal.scope === "personal") {

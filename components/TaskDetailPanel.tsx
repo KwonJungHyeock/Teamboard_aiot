@@ -20,6 +20,7 @@ import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import ProjectCombo, { type ComboProject } from "./ProjectCombo";
 import { notifyGoalChain } from "@/lib/goal-chain";
+import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import { pfill } from "@/lib/progress-bar";
 import { pushRecent } from "@/lib/recent";
@@ -457,7 +458,7 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
           value={t.projectId}
           projects={sel?.projects ?? []}
           areaId={t.areaId}
-          canCreate={user.role === "lead"}
+          canCreate={hasLead(user.role)}
           disabled={t.visibility === "private"}
           disabledReason={t.visibility === "private" ? "개인 업무는 프로젝트에 넣을 수 없습니다" : undefined}
           onChange={(id) =>

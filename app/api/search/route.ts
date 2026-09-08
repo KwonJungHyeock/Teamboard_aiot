@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { jsonError } from "@/lib/api";
 import { visibleTaskSql } from "@/lib/visibility";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -101,7 +102,7 @@ export async function GET(request: Request) {
       })),
       ...people.map((a) => ({
         kind: "person" as const, id: a.id, title: a.display_name,
-        meta: a.type === "agent" ? "에이전트" : a.role === "lead" ? "팀장" : "팀원",
+        meta: a.type === "agent" ? "에이전트" : hasLead(a.role) ? "팀장" : "팀원",
       })),
       ...notes.map((n) => ({
         kind: "note" as const, id: n.id, title: n.title || "제목 없는 메모",

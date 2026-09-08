@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import PageShell from "./PageShell";
 import { useRouter } from "next/navigation";
+import { hasLead } from "@/lib/types";
 import type { SessionUser, Draft } from "@/lib/types";
 import { toast } from "@/lib/quick";
 import ApproveModal, { type DraftSummary } from "./ApproveModal";
@@ -60,7 +61,7 @@ export default function InboxView({ user }: { user: SessionUser }) {
 
   const load = useCallback(async () => {
     try {
-      const scope = user.role === "lead" ? "&scope=all" : "";
+      const scope = hasLead(user.role) ? "&scope=all" : "";
       const [dRes, tRes] = await Promise.all([
         fetch(`/api/drafts?status=pending${scope}`),
         fetch("/api/tasks"),

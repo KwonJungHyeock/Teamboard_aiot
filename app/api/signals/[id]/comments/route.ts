@@ -6,6 +6,7 @@ import { query, queryOne } from "@/lib/db";
 import { jsonError } from "@/lib/api";
 import { parseScope } from "@/lib/blob";
 import { notify, notifyMentions } from "@/lib/notify";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,7 +40,7 @@ async function guardSignal(signalId: number, viewerId: number, isLead: boolean) 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {
     const session = requireSession();
-    const guarded = await guardSignal(Number(params.id), session.id, session.role === "lead");
+    const guarded = await guardSignal(Number(params.id), session.id, hasLead(session.role));
     if (guarded.error) return guarded.error;
     const comments = await query<{
       id: number;
@@ -70,7 +71,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = requireSession();
-    const guarded = await guardSignal(Number(params.id), session.id, session.role === "lead");
+    const guarded = await guardSignal(Number(params.id), session.id, hasLead(session.role));
     if (guarded.error) return guarded.error;
     const payload = await request.json();
     const body = String(payload.body ?? "").trim().slice(0, 2000);
@@ -106,7 +107,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = requireSession();
-    const guarded = await guardSignal(Number(params.id), session.id, session.role === "lead");
+    const guarded = await guardSignal(Number(params.id), session.id, hasLead(session.role));
     if (guarded.error) return guarded.error;
     const payload = await request.json();
     const commentId = Number(payload.id);

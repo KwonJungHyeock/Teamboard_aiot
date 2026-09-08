@@ -5,13 +5,11 @@ import { query, queryOne } from "@/lib/db";
 import { createTimelinePage } from "@/lib/notion";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
-import {
-  NOTION_WORK_AREAS,
+import { hasLead, NOTION_WORK_AREAS,
   NOTION_PRIORITIES,
   NOTION_STATUSES,
   NOTION_WORK_TYPES,
-  type Draft,
-} from "@/lib/types";
+  type Draft, } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -41,7 +39,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: "승인 대기 상태의 초안이 아닙니다." }, { status: 409 });
     }
     // 담당자 본인 또는 팀장만 승인 가능
-    if (draft.user_id !== session.id && session.role !== "lead") {
+    if (draft.user_id !== session.id && !hasLead(session.role)) {
       return NextResponse.json({ error: "승인 권한이 없습니다." }, { status: 403 });
     }
 

@@ -78,6 +78,25 @@ try {
   await q(DOWN);
   await q(`DELETE FROM schema_migrations WHERE filename = $1`, [FILE]);
 
+  /*
+   * ── 「시작 전」이 **두 개**다. 헷갈리면 옳은 상태를 결함으로 읽는다 ──
+   *
+   * `defBefore` 는 **트랜잭션 밖** — 이 검사기를 돌리기 전의 진짜 DB 상태다.
+   * 로컬에 0033 이 이미 적용돼 있으면 여기엔 `admin` 이 들어 있다.
+   *
+   * 그런데 왕복 검증은 트랜잭션 안에서 **적용 전으로 되돌린 뒤** 시작한다.
+   * 그러니 루프 안의 「롤백 후」가 돌아가야 할 곳은 `defBefore` 가 아니라
+   * **바로 이 시점**이다. 둘을 같은 것으로 보다가 FAIL 이 났다 —
+   * 실제로 그렇게 났고, 옳은 상태였다.
+   *
+   * 승격된 §G(「절대값이 아니라 시작 전 상태와 대조한다」)를 적용할 때
+   * **「시작 전」이 어느 경계인지**를 함께 정해야 한다.
+   *   · 루프 안 왕복  → `defDown` (되돌린 직후)
+   *   · finally 뒷정리 → `defBefore` (검사기를 돌리기 전)
+   */
+  const defDown = await checkDef();
+  const shapeDown = await shape();
+
   // ── 왕복 3회 ────────────────────────────────────────────────────
   for (let round = 1; round <= 3; round += 1) {
     await q(UP);
@@ -112,17 +131,17 @@ try {
       await q("RELEASE SAVEPOINT ins");
     }
 
-    ok(`④-${round} 적용 후 행 수·분포가 그대로다`, shp === shapeBefore,
-       `${shp} (시작 전 ${shapeBefore})`);
+    ok(`④-${round} 적용 후 행 수·분포가 그대로다`, shp === shapeDown,
+       `${shp} (적용 전 ${shapeDown})`);
 
     if (round < 3) {
       await q(DOWN);
       const backDef = await checkDef();
       const backShape = await shape();
-      ok(`④-${round} 롤백 후 CHECK 가 시작 전과 같다`, backDef === defBefore,
-         backDef === defBefore ? "동일" : `${backDef} vs ${defBefore}`);
-      ok(`④-${round} 롤백 후 행 수·분포가 그대로다`, backShape === shapeBefore,
-         `${backShape} (시작 전 ${shapeBefore})`);
+      ok(`④-${round} 롤백 후 CHECK 가 적용 전과 같다`, backDef === defDown,
+         backDef === defDown ? "동일" : `${backDef} vs ${defDown}`);
+      ok(`④-${round} 롤백 후 행 수·분포가 그대로다`, backShape === shapeDown,
+         `${backShape} (적용 전 ${shapeDown})`);
     }
   }
 
