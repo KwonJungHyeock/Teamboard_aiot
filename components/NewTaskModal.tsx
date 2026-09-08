@@ -15,7 +15,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import PropertyBlock, { type PropRow } from "./PropertyBlock";
-import ProjectCombo, { type ComboProject } from "./ProjectCombo";
+import { type ComboProject } from "./ProjectCombo";
+import ProjectPicker from "./ProjectPicker";
+import { projectButtons } from "@/lib/project-buttons";
 import ErrorNote from "./ErrorNote";
 import { toast } from "@/lib/quick";
 import { durToken, prefersReduced } from "@/lib/motion";
@@ -28,7 +30,17 @@ interface Sel {
   actors: { id: number; name: string }[];
   projects: ComboProject[];
   areas: { id: number; name: string; colorKey: string | null }[];
-  monthGoals: { id: number; title: string; month: string }[];
+  /**
+   * 업무에 붙일 수 있는 목표 — **분기 · 월** 두 층 (§C3 §1).
+   *
+   * ⚠ 여기는 `monthGoals` 를 읽고 있었다. 그런 필드는 `/api/meta/selectors` 응답에
+   * **없다**(`/api/goals` 에만 있다). 그래서 목록이 **언제나 비어 있었고**,
+   * 「＋ 목표 연결」을 누르면 늘 「연결 가능한 월 목표가 없습니다」가 떴다.
+   * §C3 §1 에서 서버를 넓혔지만 이 화면은 옛 이름을 그대로 보고 있었다.
+   */
+  linkableGoals: { id: number; title: string; level: string; period: string; when: "past" | "current" | "future" }[];
+  /** 내 소속 영역 — **순서가 우선순위다**(`actor_area.sort_order`). 상시 버튼이 이 순서로 선다. */
+  myAreaIds: number[];
 }
 
 const STATUS = [["todo", "대기"], ["doing", "진행"], ["review", "리뷰"], ["done", "완료"]] as const;
@@ -79,6 +91,8 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
   // §H3 모달 닫힘 — 역방향 애니메이션(--dur-2)이 끝난 뒤에 언마운트한다.
   // 바로 지우면 닫히는 모습이 없다.
   const [closing, setClosing] = useState(false);
+  // 고급 접힘. **저장하지 않는다** — 모달이 닫히면 사라지고 다음에 다시 닫힌 채로 뜬다.
+  const [adv, setAdv] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
   // ── 열림 상태: 이벤트 + URL(?panel=task:new) + 뒤로가기 ──
@@ -99,7 +113,7 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
   }, []);
 
   useEffect(() => {
-    if (!open) { setD(null); setErr(""); setMade(0); setKeepOpen(false); setClosing(false); return; }
+    if (!open) { setD(null); setErr(""); setMade(0); setKeepOpen(false); setClosing(false); setAdv(false); return; }
     setD(blank(prefill, user.id));
     setErr("");
     // 열 때마다 다시 받는다 — 방금 만든 프로젝트·목표가 후보로 떠야 한다.
@@ -109,6 +123,25 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
   // 영역 기본값은 selectors 도착 후 채운다 (프리필이 없을 때만)
   useEffect(() => {
     if (open && sel && d && !d.areaId && sel.areas[0]) setD({ ...d, areaId: sel.areas[0].id });
+  }, [open, sel, d]);
+
+  /**
+   * 프로젝트 기본값 — **1순위 영역의 상시**가 처음부터 눌려 있다 (§B).
+   *
+   * 「미선택 시 1순위 영역의 상시」를 저장 시점에 몰래 채우지 않는다. 그러면
+   * 사람이 무엇을 만들었는지 만든 뒤에야 안다. **눌린 채로 보여 주고 바꿀 수 있게**
+   * 한다 — 필수 입력은 여전히 제목 하나이고, 프로젝트는 이미 답이 있는 칸이다.
+   *
+   * 한 번만 채운다 — 사람이 토글로 벗겨 낸 것을 다시 씌우면 벗길 수가 없다.
+   */
+  const projectSeeded = useRef(false);
+  useEffect(() => { if (!open) projectSeeded.current = false; }, [open]);
+  useEffect(() => {
+    if (!open || !sel || !d || projectSeeded.current) return;
+    projectSeeded.current = true;
+    if (d.projectId !== null || d.visibility === "private") return;
+    const { defaultId } = projectButtons(sel.projects, sel.myAreaIds ?? [], sel.areas);
+    if (defaultId !== null) setD({ ...d, projectId: defaultId });
   }, [open, sel, d]);
 
   // 열릴 때 제목에 포커스 (§C2)
@@ -161,7 +194,10 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
       if (!g || !g.ok) {
         setBusy(false);
         notifyTaskUpdated();
-        setErr("업무는 만들었지만 목표 연결에 실패했어요. 업무 상세에서 다시 연결하거나, 목표 화면의 미연결 업무에서 한 번에 붙일 수 있어요.");
+        // 「연결」을 쓰지 않는다 (§B). 목표 화면의 이름(「목표 미연결 업무」)을 그대로
+        // 부르지도 않는다 — 그 화면 이름을 바꾸는 것은 등록 화면의 일이 아니므로,
+        // 이름 대신 **어디로 가면 되는지**로 말한다.
+        setErr("업무는 만들었지만 목표를 붙이지 못했어요. 업무 상세에서 다시 고르거나, 목표 화면에서 한 번에 붙일 수 있어요.");
         return;
       }
     }
@@ -191,7 +227,7 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
     return () => window.removeEventListener("keydown", onKey);
   }); // 의존성을 걸지 않는다 — draft 가 매 입력마다 바뀌고, 핸들러는 항상 최신 값을 봐야 한다
 
-  const goalOptions = useMemo(() => sel?.monthGoals ?? [], [sel]);
+  const goalOptions = useMemo(() => sel?.linkableGoals ?? [], [sel]);
 
   if (!open || !d) return null;
 
@@ -218,25 +254,13 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
       ),
     },
     {
-      key: "project", label: "프로젝트",
-      value: isPrivate ? <span className="ntm-off">개인 업무는 프로젝트에 넣지 않습니다</span>
-        : (
-          <ProjectCombo
-            value={d.projectId}
-            projects={sel?.projects ?? []}
-            areaId={d.areaId || undefined}
-            canCreate={hasLead(user.role)}
-            onChange={(id) => setD({ ...d, projectId: id })}
-            onCreated={(p) => setSel((s) => (s ? { ...s, projects: [...s.projects, p] } : s))}
-          />
-        ),
-    },
-    {
+      // **「연결」이라는 말을 쓰지 않는다** (§B). 업무는 목표에 **속하는** 것이지
+      // 나중에 이어 붙이는 것이 아니다. 등록 화면에서 그 단어가 0건이어야 한다.
       key: "goals", label: "목표",
-      value: linkedGoalNames.join(", "), empty: linkedGoalNames.length === 0, action: "＋ 목표 연결",
+      value: linkedGoalNames.join(", "), empty: linkedGoalNames.length === 0, action: "＋ 목표 고르기",
       editor: () => (
         <div className="prop-goals">
-          {goalOptions.length === 0 && <p className="prop-none">연결 가능한 월 목표가 없습니다.</p>}
+          {goalOptions.length === 0 && <p className="prop-none">고를 수 있는 목표가 없습니다.</p>}
           {goalOptions.map((g) => (
             <label key={g.id}>
               <input type="checkbox" checked={d.goalIds.includes(g.id)}
@@ -244,7 +268,7 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
                   ...d,
                   goalIds: e.target.checked ? [...d.goalIds, g.id] : d.goalIds.filter((x) => x !== g.id),
                 })} />
-              {g.title}<em>{g.month}</em>
+              {g.title}<em>{g.level} · {g.period}</em>
             </label>
           ))}
         </div>
@@ -283,16 +307,6 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
       ),
     },
     {
-      key: "period", label: "기한",
-      value: <span className="num">{period}</span>, empty: !period, action: "기한 미정",
-      editor: () => (
-        <div className="prop-dates">
-          <label>시작<input type="date" value={d.startDate} onChange={(e) => setD({ ...d, startDate: e.target.value })} /></label>
-          <label>마감<input type="date" value={d.dueDate} onChange={(e) => setD({ ...d, dueDate: e.target.value })} /></label>
-        </div>
-      ),
-    },
-    {
       key: "area", label: "영역",
       value: sel?.areas.find((a) => a.id === d.areaId)?.name ?? "—",
       editor: (close) => (
@@ -322,6 +336,39 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
               value={d.title}
               onChange={(e) => setD({ ...d, title: e.target.value })}
             />
+
+            {/* ── 프로젝트 — 드롭다운이 아니라 버튼이다 (§B) ──
+                열고·읽고·고르고·닫는 네 동작이 아무도 안 고르게 만들었다.
+                버튼은 한 동작이고, 무엇이 있는지 열기 전에 보인다. */}
+            <div className="ntm-f">
+              <span className="ntm-fl">프로젝트</span>
+              <ProjectPicker
+                projects={sel?.projects ?? []}
+                myAreaIds={sel?.myAreaIds ?? []}
+                areas={sel?.areas ?? []}
+                value={d.projectId}
+                onChange={(id) => setD({ ...d, projectId: id })}
+                disabled={isPrivate}
+                disabledNote="개인 업무는 프로젝트에 넣지 않습니다"
+                canCreate={hasLead(user.role)}
+                onCreated={(p) => setSel((s) => (s ? { ...s, projects: [...s.projects, p] } : s))}
+              />
+            </div>
+
+            {/* ── 기간 — 옆 속성 줄에서 앞으로 끌어올렸다 ──
+                언제까지인지는 나중에 채우는 값이 아니라 **적을 때 아는 값**이다.
+                뒤에 두면 기한 없는 업무가 쌓이고, 그러면 지연을 셀 수 없다. */}
+            <div className="ntm-f">
+              <span className="ntm-fl">기간</span>
+              <div className="ntm-when">
+                <input type="date" aria-label="시작" value={d.startDate}
+                  onChange={(e) => setD({ ...d, startDate: e.target.value })} />
+                <span className="ntm-tilde">–</span>
+                <input type="date" aria-label="마감" value={d.dueDate}
+                  onChange={(e) => setD({ ...d, dueDate: e.target.value })} />
+                {!period && <span className="ntm-off">비워 두면 기한 없음</span>}
+              </div>
+            </div>
             {/* 본문 — 문서형 편집기의 축약본이다 (§C1).
                 슬래시 명령·임베드는 없다. 아직 존재하지 않는 업무에는 붙일 문서가 없고,
                 링크 카드를 언퍼할 대상도 없다. 서식만 남긴다. */}
@@ -332,15 +379,25 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
             />
           </div>
 
-          <aside className="ntm-side" aria-label="속성">
-            <PropertyBlock rows={rows} collapseAfter={rows.length} />
-          </aside>
+          {/* ── 고급 — **언제나 닫힌 채로 시작한다** ──
+              열린 상태를 기억하지 않는다. 한 번 연 사람이 계속 열린 채로 보면
+              네 칸으로 줄인 의미가 없다. 고급은 예외 경로이고,
+              **예외가 기본이 되면 그건 더 이상 예외가 아니다.** */}
+          {adv && (
+            <aside className="ntm-side" aria-label="고급 속성">
+              <PropertyBlock rows={rows} collapseAfter={rows.length} />
+            </aside>
+          )}
         </div>
 
         {err && <div className="ntm-err"><ErrorNote message={err} /></div>}
 
         <div className="ntm-foot">
           <button className="btn-ghost" onClick={requestClose}>취소</button>
+          <button type="button" className={`ntm-adv${adv ? " on" : ""}`}
+            aria-expanded={adv} onClick={() => setAdv((v) => !v)}>
+            고급
+          </button>
           <span className="gsp" />
           <label className="ntm-keep">
             <input type="checkbox" checked={keepOpen} onChange={(e) => setKeepOpen(e.target.checked)} />
@@ -409,7 +466,7 @@ function NoteEditor({ value, onChange, onSubmit }: {
         ref={ref}
         className="ntm-desc"
         value={value}
-        placeholder="본문 — 무엇을, 왜, 어디까지 하면 끝인지"
+        placeholder="특이사항 — 무엇을, 왜, 어디까지 하면 끝인지"
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSubmit(); }

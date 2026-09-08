@@ -1281,6 +1281,58 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .prop-st-edit { display: flex; flex-direction: column; gap: 6px; }
 .prop-hint { margin: 0; font-size: var(--f6); color: var(--muted); line-height: 1.4; }
 
+/* ── §B 등록 모달 — 네 칸 + 고급 접힘 (MD-P-2026-032) ───────────────
+   제목 · 프로젝트 · 기간 · 특이사항. 나머지 여섯은 「고급」 뒤로 접힌다.
+   **조상 결합자를 쓰지 않는다** — `.ntm-f` 는 인라인 한 줄 등록과 빠른 만들기에서도
+   같은 모양이어야 한다. 이번 회차에만 네 번 어겼던 자리다. */
+.ntm-f { display: flex; align-items: flex-start; gap: 10px; }
+.ntm-fl {
+  flex: 0 0 66px; padding-top: 5px;
+  font-size: var(--f5); color: var(--muted);
+}
+.ntm-when { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ntm-when input {
+  /* **폭을 준다.** 안 주면 date 입력이 기본 폭(늘어남)을 다 먹어 두 칸이 세로로
+     떨어지고, 「기간」이 세 줄이 된다. 캡처에서 실제로 그렇게 났다. */
+  width: 132px; flex: 0 0 auto;
+  font-size: var(--f4); padding: 3px 6px;
+  border: 1px solid var(--line); border-radius: 5px;
+  background: var(--surface); color: var(--ink);
+}
+.ntm-when input:focus { outline: none; border-color: var(--line-hi); }
+.ntm-tilde { color: var(--muted); font-size: var(--f5); }
+
+/* 고급 토글 — 취소 옆에 둔다. 주 동작(만들기)에서 멀리. */
+.ntm-adv {
+  padding: 5px 10px; border-radius: 6px;
+  border: 1px solid transparent; background: none;
+  font-size: var(--f4); color: var(--muted); cursor: pointer;
+}
+.ntm-adv:hover { background: var(--surface-2); color: var(--ink2); }
+.ntm-adv.on { border-color: var(--line); color: var(--ink); background: var(--surface-2); }
+
+/* ── §B 프로젝트 버튼 줄 ────────────────────────────────────────────
+   드롭다운을 열고·읽고·고르고·닫는 네 동작이 한 동작이 된다. */
+.pp { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.pp-b {
+  padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface);
+  font-size: var(--f5); color: var(--ink2); cursor: pointer;
+  white-space: nowrap;
+}
+.pp-b:hover { border-color: var(--line-hi); color: var(--ink); }
+/* 상시는 테두리를 점선으로 — 「목표가 붙은 프로젝트」와 다른 종류임이 보인다.
+   색으로 구분하지 않는다. 색만으로 나누면 못 보는 사람이 있다. */
+.pp-b.st { border-style: dashed; }
+.pp-b.on {
+  /* `--brand-weak` 같은 토큰은 없다. 지어내지 않고 `color-mix` 로 낸다. */
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 10%, var(--surface));
+  color: var(--ink); font-weight: 500; border-style: solid;
+}
+.pp-b:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.pp-off { color: var(--muted); font-size: var(--f5); padding-top: 5px; margin: 0; }
+
 /* ── §D1 프로젝트 검색형 콤보박스 ─────────────────────────────────── */
 .pcb { position: relative; }
 .pcb-v {
