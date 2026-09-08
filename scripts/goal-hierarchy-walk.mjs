@@ -100,7 +100,30 @@ try {
   chk("A2-함께생성", made2?.ptitle === `${MARK} ${UI_YEAR} Q1`,
     `체크한 제목으로 상위가 실제 생성됨 — 현재 상위 "${made2?.ptitle}"`);
 
-  // 8월 — 그 분기(Q3)가 **둘**인 경우: 화면이 고르게 한다 (§A3)
+  // ══ A-3 — 그 분기(Q3)가 **둘**인 경우: 화면이 고르게 한다 ═══════════
+  //
+  // ⚠ **조건을 만들지 않으면 이 단언은 제품을 결함으로 읽는다.**
+  //
+  //   예전 시드에는 2026 Q3 목표가 둘이었고, 그래서 이 검사기는 조건을 만들지
+  //   않고도 통과했다. 지금 시드에는 하나뿐이다(`Q3 제품 코어 확정`).
+  //   후보가 하나면 화면은 **묻지 않는 것이 맞다**(§A3 — 후보 1개면 그것으로
+  //   정하고 묻지 않는다). 그런데 이 단언은 셀렉트를 기대하므로 FAIL 이 났다.
+  //
+  //   실측 — 2026-08 의 상위 spec 은 quarter/2026-07-01 이고
+  //     GET /api/goals/parent?periodType=month&periodStart=2026-08-01&scope=team
+  //     → candidates 1개 ("Q3 제품 코어 확정"). 제품은 옳았다.
+  //
+  //   **조건은 관측보다 먼저 만든다** (§G). Q3 를 하나 더 만들어 둘로 만든다.
+  //   MARK 가 붙으므로 뒷정리에서 함께 지워진다.
+  const q3b = (await sql(
+    `INSERT INTO goal (period_type, period_start, period_end, title, scope, owner_actor_id, progress_mode, progress, is_active)
+     VALUES ('quarter', $1::date, $2::date, $3, 'team', $4, 'auto', 0, true) RETURNING id`,
+    [`${UI_YEAR}-07-01`, `${UI_YEAR}-09-30`, `${MARK} ${UI_YEAR} Q3 (둘째)`, 1]))[0];
+  const q3n = (await sql(
+    `SELECT count(*)::int n FROM goal WHERE is_active AND period_type='quarter'
+       AND period_start=$1::date AND scope='team'`, [`${UI_YEAR}-07-01`]))[0].n;
+  console.log(`   (조건) ${UI_YEAR} Q3 팀 목표를 ${q3n}개로 만들었다 — 둘 이상이라야 화면이 묻는다`);
+
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(1400);
   await page.locator(".gadd-open", { hasText: "＋ 새 목표" }).first().click();
@@ -110,8 +133,11 @@ try {
   const pickSel = await page.locator(".gadd select[aria-label='상위 목표']").count();
   const pickOpts = await page.locator(".gadd select[aria-label='상위 목표'] option").allTextContents().catch(() => []);
   await page.screenshot({ path: `${OUT}/A3-고르게함.png` });
-  chk("A3-화면이고르게함", pickSel === 1,
-    `전역 "＋ 새 목표" 에서 ${UI_YEAR}년 8월 선택 → Q3 후보가 둘이라 상위 셀렉트 ${pickSel}개 등장 [${pickOpts.join(", ")}]`);
+  // 조건을 못 만들었으면 통과시키지 않는다 — 「1개 == 1개」로 넘어가면 이 단언은
+  // 아무것도 재지 못한다.
+  chk("A3-화면이고르게함", q3n > 1 && pickSel === 1,
+    `${UI_YEAR}년 8월 선택 · Q3 후보 ${q3n}개 → 상위 셀렉트 ${pickSel}개 [${pickOpts.join(", ")}]`);
+  void q3b;
 
   // A-신1-1 — 분기 섹션의 "+ 월 목표" 에서는 **묻지 않는다**. 짝이 되는 부재 단언.
   await page.locator(".gadd .lk", { hasText: "취소" }).first().click();
