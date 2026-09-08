@@ -3,7 +3,7 @@
 // 업무 테이블 (Phase 3 마감 임박 → Phase 5 공용화) — 홈 "마감 임박"과 /tasks 목록이
 // 같은 컴포넌트를 재사용한다 (Phase 5 검수 포인트 6). 컬럼 폭 고정 (프로토타입 colgroup).
 // variant="full"(/tasks): 목표·우선순위 컬럼 추가 + 상태 인라인 드롭다운. compact(홈)은 5열 유지.
-import { Fragment, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import EmptyState from "./EmptyState";
 import SectionEmpty, { type SectionEmptyAction } from "./SectionEmpty";
@@ -39,6 +39,12 @@ export interface TaskTableRow {
   visibility?: "team" | "private";
   /** §A3 계층 — 없으면 평면 목록으로 그린다(홈 등 compact 사용처는 안 보낸다). */
   parentTaskId?: number | null;
+  /**
+   * 하위 업무 수. 계층 표시에 쓰고, **진척 편집 칸을 그릴지도 이 값이 정한다**
+   * (MD-P-2026-033 §B) — 1 이상이면 진척은 하위 완료율로 계산되는 값이라 손으로
+   * 못 바꾼다. 권한과 무관한 규칙이다(lib/progress.ts 규칙 2).
+   * 눌러 보고 400 을 받는 것보다 칸을 안 그리는 편이 낫다.
+   */
   childCount?: number;
   /** §C — "직접 정한 순서" 값. 정렬은 부모(TasksView)가 이미 해서 넘긴다. */
   sortOrder?: number;
@@ -92,8 +98,15 @@ export default function TaskTable({
   timeline,
   timelineToday,
   groupBy = "none",
+  onProgressChange,
 }: {
   rows: TaskTableRow[];
+  /**
+   * 진척을 목록에서 바로 바꿀 때 (MD-P-2026-033 §B).
+   * **주지 않으면 편집 칸이 안 생긴다** — 권한 판정은 호출자가 하고,
+   * 표는 「콜백이 있는가」만 본다. 표가 권한을 알면 규칙이 표마다 갈린다.
+   */
+  onProgressChange?: (id: number, value: number) => void;
   title?: string;
   sub?: string;
   /**
@@ -617,7 +630,14 @@ export default function TaskTable({
                         <i className={t.status === "done" ? "pf-green" : "pf-blue"} style={pfill(t.progress ?? 0)} />
                       </div>
                     )}
-                    <ProgPct value={t.progress ?? 0} />
+                    {onProgressChange && (t.childCount ?? 0) === 0 ? (
+                      <ProgEdit
+                        value={t.progress ?? 0}
+                        onCommit={(v) => onProgressChange(t.id, v)}
+                      />
+                    ) : (
+                      <ProgPct value={t.progress ?? 0} />
+                    )}
                   </td>
                 )}
                 <td className={`col-st${hot.has(`st-${t.id}`) ? " hl" : ""}`}>
@@ -709,4 +729,43 @@ export default function TaskTable({
 function ProgPct({ value }: { value: number }) {
   const n = useCountUp(value);
   return <span className="tt-prog-n">{n}%</span>;
+}
+
+/**
+ * 목록에서 진척을 바로 고치는 칸 (MD-P-2026-033 §B).
+ *
+ * ── 왜 표에서 고치게 하는가 ──────────────────────────────────────
+ * 지시가 「작업리스트별로」였다. 한 건 고치자고 상세를 열고 닫으면 열 건은
+ * 안 고친다 — §B 등록 모달을 네 칸으로 줄인 것과 같은 이유다.
+ *
+ * ── 왜 `blur`/`Enter` 에서만 보내는가 ────────────────────────────
+ * 타이핑마다 PATCH 를 보내면 `4` 를 지우고 `40` 을 칠 때 「0%」가 한 번 저장된다.
+ * 그 순간 목표 진척과 롤업이 함께 흔들린다. **다 치고 나서 한 번** 보낸다.
+ */
+function ProgEdit({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
+  const [v, setV] = useState(String(value));
+  // 밖에서 값이 바뀌면(다른 사람이 고쳤거나 낙관 갱신이 되돌아왔을 때) 따라간다.
+  useEffect(() => { setV(String(value)); }, [value]);
+  const commit = () => {
+    const n = Math.max(0, Math.min(100, Math.round(Number(v))));
+    if (!Number.isFinite(n)) { setV(String(value)); return; }
+    if (n !== value) onCommit(n);
+    setV(String(n));
+  };
+  return (
+    <input
+      className="tt-prog-e num"
+      type="number" min={0} max={100} value={v}
+      aria-label="진행률"
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
+        // Esc 는 되돌린다 — 잘못 친 것을 되돌릴 길이 없으면 고치기가 무서워진다.
+        if (e.key === "Escape") { setV(String(value)); (e.target as HTMLInputElement).blur(); }
+      }}
+    />
+  );
 }

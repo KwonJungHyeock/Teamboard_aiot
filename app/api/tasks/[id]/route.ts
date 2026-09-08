@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { markGoalManual, markGoalNone, clearGoalNone, goalLinkInfo } from "@/lib/goal-inherit";
 import { checkParent, rejectGoalLinkIfChild, childrenOf } from "@/lib/subtask";
 import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution, countableSql, doneSql, taskProgress } from "@/lib/progress";
+import { canEditProgress } from "@/lib/progress-permission";
+import { getProgressEditorId } from "@/lib/platform-config";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
@@ -275,8 +277,31 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     // 진행률(파트 4) — 수동 0~100. 완료 전환 시 100으로 정합. 중복 set 방지 위해 단일 처리.
+    //
+    // ── 손으로 바꾸는 것은 **지정된 한 사람만** (MD-P-2026-033 §B) ──
+    //
+    // 판정은 `lib/progress-permission.ts` 하나가 한다. 화면도 같은 함수를 부른다 —
+    // 두 벌이 되면 「화면은 되는데 저장은 403」이 되고 그게 제일 나쁜 모양이다.
+    //
+    // ⚠ `status === "done"` 으로 100 이 되는 것은 **막지 않는다.** 그건 손으로
+    //    진척을 정하는 것이 아니라 상태 전이의 결과다. 여기서 막으면
+    //    「완료 처리를 지정된 한 사람만 할 수 있다」가 되어 버린다 — 다른 규칙이다.
     let nextProgress: number | undefined;
     if (payload.progress !== undefined) {
+      const childCount = Number(
+        (await queryOne<{ n: string }>(
+          `SELECT count(*)::int AS n FROM task WHERE parent_task_id = $1 AND is_active = true`,
+          [taskId]
+        ))?.n ?? 0
+      );
+      const right = canEditProgress(session.id, await getProgressEditorId(), { childCount });
+      if (!right.canEdit) {
+        // 규칙(하위 자동 계산)은 400, 권한은 403 — 받는 쪽이 구분할 수 있어야 한다.
+        return NextResponse.json(
+          { error: right.message, reason: right.reason },
+          { status: right.reason === "auto-from-children" ? 400 : 403 }
+        );
+      }
       const p = Math.round(Number(payload.progress));
       if (!Number.isNaN(p)) nextProgress = Math.max(0, Math.min(100, p));
     }

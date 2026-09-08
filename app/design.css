@@ -1224,6 +1224,59 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .ntm-keep input { width: 15px; height: 15px; accent-color: var(--brand); }
 .ntm-kbd { margin-left: 7px; font-style: normal; font-size: var(--f6); opacity: .75; }
 
+/* ── §A 가오픈 카운트다운 (MD-P-2026-033) ───────────────────────────
+   대문 맨 위. 다크 히어로 바로 위라 **어둡게 가지 않는다** — 둘 다 검으면
+   히어로가 배경이 되고 타임라인이 안 읽힌다. 밝은 판에 숫자만 크게. */
+.oc {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  padding: 14px 18px; margin-bottom: 10px;
+  border: 1px solid var(--line); border-radius: 9px;
+  background: var(--surface);
+}
+.oc-l { display: flex; flex-direction: column; gap: 2px; }
+.oc-cap { font-size: var(--f5); color: var(--muted); letter-spacing: .04em; }
+.oc-d {
+  font-size: var(--f1); line-height: 1.05; font-weight: 700;
+  color: var(--brand); font-variant-numeric: tabular-nums;
+}
+.oc-r { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.oc-clock { display: flex; align-items: baseline; gap: 12px; }
+.oc-u { display: inline-flex; align-items: baseline; gap: 3px; }
+/* `tabular-nums` — 자릿수가 같은 폭이라야 초가 바뀔 때 숫자가 안 흔들린다. */
+.oc-u b {
+  font-size: var(--f2); font-weight: 650; color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.oc-u em { font-style: normal; font-size: var(--f5); color: var(--muted); }
+.oc-when { font-size: var(--f5); color: var(--muted); }
+.oc-def { font-style: normal; color: var(--brand); }
+/* 오픈 뒤 — **판매 수량·활성 지수가 들어올 자리다.** 지금은 사실만 적는다. */
+.oc-past .oc-done { font-size: var(--f2); font-weight: 650; color: var(--ink); }
+.oc-past { gap: 12px; }
+
+/* ── 플랫폼 설정 (MD-P-2026-033) ────────────────────────────────────
+   조상 결합자를 쓰지 않는다 — `.ps-*` 로 접두어를 붙여 스스로 선다. */
+.ps-row { display: flex; align-items: flex-start; gap: 12px; margin-top: 10px; }
+.ps-l { flex: 0 0 84px; padding-top: 6px; font-size: var(--f5); color: var(--muted); }
+.ps-v { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.ps-v input, .ps-v select {
+  font-size: var(--f4); padding: 4px 7px;
+  border: 1px solid var(--line); border-radius: 5px;
+  background: var(--surface); color: var(--ink);
+}
+.ps-v input:focus, .ps-v select:focus { outline: none; border-color: var(--line-hi); }
+.ps-help { margin: 6px 0 0 96px; font-size: var(--f5); color: var(--muted); }
+.ps-note { font-size: var(--f5); color: var(--muted); }
+.ps-warn { font-size: var(--f5); color: var(--brand); }
+.ps-ok { margin-top: 8px; font-size: var(--f5); color: var(--muted); }
+/* 진척 편집 칸 — 목록에서 바로 고친다. 폭을 주지 않으면 표 열이 흔들린다. */
+.tt-prog-e {
+  width: 46px; padding: 2px 4px; text-align: right;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface); color: var(--ink); font-size: var(--f5);
+}
+.tt-prog-e:focus { outline: none; border-color: var(--brand); }
+
 /* ── §D1 프로젝트 검색형 콤보박스 ─────────────────────────────────── */
 .pcb { position: relative; }
 .pcb-v {
