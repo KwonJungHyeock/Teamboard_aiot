@@ -26,6 +26,25 @@ export const ROLES = ["admin", "lead", "member", "viewer"] as const;
 export const isAdmin = (role: Role | string | null | undefined): boolean => role === "admin";
 export const hasLead = (role: Role | string | null | undefined): boolean =>
   role === "admin" || role === "lead";
+
+/**
+ * 역할의 **이름**. 권한 판정과 다른 물건이다.
+ *
+ * `hasLead` 는 「이 사람이 팀장 자리를 쓸 수 있는가」를 답한다. 그걸 이름표에
+ * 쓰면 관리자가 화면에서 **팀장으로 보인다** — 등급을 올려 놓고 올린 사실이
+ * 어디에도 안 보인다. 포함 관계는 **권한**에만 있고 **정체**에는 없다.
+ *
+ * `Record<Role, string>` 이라 역할이 하나 늘면 여기가 컴파일에 걸린다 —
+ * 이름 없는 역할이 화면에 raw 문자열로 새는 길을 막는다.
+ */
+export const ROLE_LABEL: Record<Role, string> = {
+  admin: "관리자",
+  lead: "팀장",
+  member: "팀원",
+  viewer: "뷰어",
+};
+export const roleLabel = (role: Role | string | null | undefined): string =>
+  ROLE_LABEL[role as Role] ?? String(role ?? "—");
 export type ActorType = "human" | "agent";
 export type TaskType = "자료조사" | "회의록" | "내용정리" | "반복업무";
 export type DraftTaskType = TaskType | "monthly_report";

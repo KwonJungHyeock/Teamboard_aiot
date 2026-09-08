@@ -1360,6 +1360,20 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .gadd-why.warn { color: var(--ink2); }
 .gadd-why.warn b { color: var(--brand); }
 
+/* ── §B-1 에이전트 흔적 집계 (MD-P-2026-038) — 읽기 전용 화면 ────────
+   접두어로 스스로 선다. 조상 결합자를 쓰지 않는다. */
+.au-top { margin-left: 0; }
+.au-h { margin: 18px 0 6px; font-size: var(--f4); font-weight: 600; color: var(--ink); }
+.au-t { width: 100%; border-collapse: collapse; font-size: var(--f5); }
+.au-t th, .au-t td {
+  text-align: left; padding: 6px 8px;
+  border-bottom: 1px solid var(--line); vertical-align: top;
+}
+.au-t th { color: var(--muted); font-weight: 500; }
+.au-n { text-align: right; white-space: nowrap; }
+.au-w { color: var(--muted); line-height: 1.5; }
+.au-off { font-style: normal; color: var(--muted); }
+
 /* ── §D1 프로젝트 검색형 콤보박스 ─────────────────────────────────── */
 .pcb { position: relative; }
 .pcb-v {

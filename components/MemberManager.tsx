@@ -3,6 +3,7 @@
 // 구성원 관리 (Phase 8) — lead 전용. 목록 + 계정 발급(임시 비밀번호 표시) + 역할/활성 제어.
 import { useCallback, useEffect, useState } from "react";
 import PageShell from "./PageShell";
+import { roleLabel } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import Skeleton from "./Skeleton";
 import ErrorNote from "./ErrorNote";
@@ -20,7 +21,8 @@ interface Member {
   assistantName: string | null;
 }
 
-const ROLE_LABEL: Record<string, string> = { lead: "팀장", member: "팀원", viewer: "뷰어" };
+// 역할 이름은 `lib/types.ts` 한 곳에서 온다 — 여기 사본은 `admin` 이 빠져 있어
+// 관리자가 "admin" 이라는 raw 값으로 읽혔다.
 function shortDate(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -211,7 +213,7 @@ export default function MemberManager({ user }: { user: SessionUser }) {
                       value={m.role}
                       disabled={!m.isActive}
                       onChange={(e) => patch(m.id, { role: e.target.value })}
-                      aria-label={`역할 (${ROLE_LABEL[m.role] ?? m.role})`}
+                      aria-label={`역할 (${roleLabel(m.role)})`}
                     >
                       <option value="member">팀원</option>
                       <option value="lead">팀장</option>

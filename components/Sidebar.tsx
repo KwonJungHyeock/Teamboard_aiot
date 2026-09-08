@@ -5,7 +5,8 @@
 //   내 공간 : 내 업무 · 내 목표 · 메모 · 내 캘린더 · 저장됨  (+ 저장된 뷰 핀)
 //   팀     : 홈 · 목표 · 프로젝트 · 업무 · 캘린더 · 타임라인 · 논의·결정 ·
 //            허들룸 · 활동 · 승인 대기 · 월간 보고
-//   관리   : 구성원 · 업무 현황 · 인수인계 · 내 에이전트     ← 기본 접힘
+//   관리   : 구성원 · 에이전트 흔적 (관리자) · 업무 현황 (팀장) ·
+//            인수인계 · 내 에이전트                          ← 기본 접힘
 //   하단   : 계정 · 프로필 · 설정 · 로그아웃
 //
 // 설정은 「관리」에 두지 않는다 (§B 회신 B1-a). 팀장 전용이 아닌데
@@ -19,7 +20,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { hasLead } from "@/lib/types";
+import { hasLead, isAdmin, roleLabel } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import { viewHref, type SavedView } from "@/lib/saved-views";
 import { SAVED_VIEWS_EVENT } from "@/lib/saved-views-events";
@@ -299,6 +300,7 @@ export default function Sidebar({
   }
 
   const isLead = hasLead(user.role);
+  const isAdminUser = isAdmin(user.role);   // 관리자만 — 팀장은 통과하지 못한다
   const cur = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
@@ -409,12 +411,16 @@ export default function Sidebar({
           <span className="gname">관리</span>
           <Chevron />
         </summary>
-        {isLead && (
+        {/* 보이면 눌린다(§G). 그러니 **링크의 조건과 화면의 조건이 같아야 한다.**
+            「구성원」은 화면이 `isAdmin` 인데 여기선 `hasLead` 로 그려서, 팀장이
+            누르면 이유 없이 /assistant 로 튕겼다. 두 자리의 등급을 갈라 놓는다. */}
+        {isAdminUser && (
           <>
             <NavLink href="/members" icon={IC.members} label="구성원" current={cur("/members")} />
-            <NavLink href="/status" icon={IC.status} label="업무 현황" current={cur("/status")} />
+            <NavLink href="/admin/agent-usage" icon={IC.bot} label="에이전트 흔적" current={cur("/admin/agent-usage")} />
           </>
         )}
+        {isLead && <NavLink href="/status" icon={IC.status} label="업무 현황" current={cur("/status")} />}
         <NavLink href="/handover" icon={IC.handover} label="인수인계" current={cur("/handover")} />
         <NavLink href="/assistant" icon={IC.bot} label="내 에이전트" current={cur("/assistant")} />
       </details>
@@ -429,7 +435,9 @@ export default function Sidebar({
           <span className="av">{user.name.slice(0, 1)}</span>
           <div>
             <b>{user.name}</b>
-            <span>{hasLead(user.role) ? "LEAD" : user.role.toUpperCase()}</span>
+            {/* 이름표는 **자기 역할**을 그린다. `hasLead` 를 쓰면 관리자가
+                LEAD 로 보여서, 등급을 올린 사실이 화면 어디에도 안 남는다. */}
+            <span>{roleLabel(user.role)}</span>
           </div>
         </Link>
         <div className="acct-a">
