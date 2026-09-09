@@ -23,7 +23,60 @@ export type Role = "admin" | "lead" | "member" | "viewer";
  */
 export const ROLES = ["admin", "lead", "member", "viewer"] as const;
 
-export const isAdmin = (role: Role | string | null | undefined): boolean => role === "admin";
+/**
+ * 관리자 판정의 재료 (MD-P-2026-039).
+ *
+ * `role` 은 **정체**고 `adminGrant` 는 **권한**이다. 팀장이 당분간 관리자 일을
+ * 할 때 role 을 admin 으로 바꾸면 화면에 관리자로 보인다 — 정체가 틀려진다.
+ * 포함 관계는 권한에만 있고 정체에는 없다(§G). 그래서 둘을 따로 든다.
+ *
+ * 두 칸 다 **필수**다. 선택으로 두면 `adminGrant` 를 안 넘긴 자리가 조용히
+ * 「권한 없음」이 되고, 그 자리만 다르게 판정하는데 아무도 모른다.
+ * 필수로 두면 컴파일러가 빠진 곳을 전부 짚어 준다(§G).
+ */
+export interface AdminSubject {
+  role: Role | string | null | undefined;
+  adminGrant: boolean | null | undefined;
+}
+
+/**
+ * **관리자 판정 — 여기 한 곳뿐이다.**
+ *
+ * 부르는 자리는 그대로다(구성원 화면 · 역할 변경 · 계정 발급 · 에이전트 흔적).
+ * 판정만 넓어졌다. 「관리자가 몇 명인가」를 세는 SQL 도 **이 식과 같아야 한다** —
+ * 판정과 집계가 다른 기준을 쓰면 그 차이만큼 조용히 틀린다(035 에서 겪은 그대로).
+ * 그 SQL 은 `adminCountSql()` 하나로 낸다.
+ */
+export const isAdmin = (subject: AdminSubject): boolean =>
+  subject.role === "admin" || subject.adminGrant === true;
+
+/**
+ * 「관리자 권한」 배지를 그리는가 — **정체가 아니라 권한을 가리키는 자리다.**
+ *
+ * role='admin' 인 사람에게는 안 그린다. 이미 이름표가 「관리자」라서
+ * 「관리자」+「관리자 권한」이 나란히 뜨면 두 개가 다른 뜻인 줄로 읽힌다.
+ * 배지 조건이 화면마다 달라지지 않도록 여기서 한 번만 정한다.
+ */
+export const showsAdminGrantBadge = (subject: AdminSubject): boolean =>
+  subject.adminGrant === true && subject.role !== "admin";
+
+/**
+ * `isAdmin` 과 **같은 기준**을 SQL 로 쓴 것. 「관리자가 몇 명인가」는 이걸로만 센다.
+ *
+ * 판정은 TypeScript 에 있고 집계는 SQL 에 있어서 둘이 저절로 같아지지는 않는다.
+ * 그래서 **바로 옆에 둔다** — 한쪽을 고치면서 다른 쪽을 못 보고 지나가는 일을
+ * 줄이는 것이 목적이다. 035 에서 `activeLeadCount` 가 admin 을 안 세서
+ * 판정은 통과하는데 집계는 「1명뿐」이라 막던 일이 있었다.
+ */
+export const adminWhereSql = (accountAlias: string): string =>
+  `(${accountAlias}.role = 'admin' OR ${accountAlias}.admin_grant = true)`;
+
+/**
+ * 팀장 권한 — **039 에서 건드리지 않았다.**
+ * 관리자 권한이 팀장 권한을 포함하는지는 별개 문제다. 지금 관리자 권한을 받는
+ * 팀장은 이미 `role='lead'` 라 그대로 다 되고, 대표는 `role='admin'` 이라
+ * 아래 `admin` 가지에 걸린다(035 에서 그렇게 만들어 뒀다).
+ */
 export const hasLead = (role: Role | string | null | undefined): boolean =>
   role === "admin" || role === "lead";
 
@@ -62,6 +115,13 @@ export interface SessionUser {
   email: string;
   name: string;
   role: Role;
+  /**
+   * 관리자 권한 (039). **필수**다 — 빠뜨린 자리를 컴파일러가 짚게 한다.
+   *
+   * 옛 쿠키에는 이 칸이 없다. 그런 토큰은 `false` 로 읽는다 — 없는 값을
+   * 권한 있음으로 읽는 쪽이 훨씬 나쁘다.
+   */
+  adminGrant: boolean;
 }
 
 export interface Actor {

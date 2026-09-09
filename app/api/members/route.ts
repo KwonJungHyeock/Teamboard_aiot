@@ -39,9 +39,10 @@ export async function GET() {
       last_login_at: string | null;
       created_at: string | null;
       assistant_name: string | null;
+      admin_grant: boolean;
     }>(
       `SELECT a.id, a.display_name, a.short_name, ac.email, ac.role, ac.must_change_pw,
-              a.is_active, ac.last_login_at::text, a.created_at::text,
+              ac.admin_grant, a.is_active, ac.last_login_at::text, a.created_at::text,
               ag.display_name AS assistant_name
        FROM actor a
        JOIN account ac ON ac.actor_id = a.id
@@ -56,6 +57,9 @@ export async function GET() {
         shortName: r.short_name,
         email: r.email,
         role: r.role,
+        // 정체(role)와 **따로** 실어 보낸다. 화면이 둘을 합치지 않게 하려면
+        // 값도 합쳐서 오면 안 된다 (039 §B-2).
+        adminGrant: r.admin_grant,
         mustChangePw: r.must_change_pw,
         isActive: r.is_active,
         lastLoginAt: r.last_login_at,

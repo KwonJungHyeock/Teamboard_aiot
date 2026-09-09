@@ -35,6 +35,9 @@
 - 적용 이력은 `schema_migrations` 테이블에 남는다.
 - **되돌리는 마이그레이션은 없다.** 컬럼 삭제·타입 변경처럼 위험한 변경은
   add-only(새 컬럼 추가 + 나중에 정리)로 쪼개서 낸다.
+- 컬럼을 더하는 마이그레이션이라도 **사람이 한 번 해 줘야 하는 일**이 딸릴 수 있다.
+  0034(`admin_grant`)가 그렇다 — 적용만으로는 아무도 관리자가 되지 않는다.
+  「6. 계정 운영」의 부트스트랩 SQL 을 함께 보라.
 
 확인:
 ```sql
@@ -178,7 +181,38 @@ pg_restore -d "$DATABASE_URL" --clean --if-exists mission-deck-YYYYMMDD.dump   #
 
 - 신규 팀원: **구성원 관리** 화면에서 추가. 임시 비밀번호가 발급되고 첫 로그인 때 변경을 요구한다.
 - 퇴사·이동: 계정을 **지우지 말고 비활성**으로 둔다. 작성한 업무·결정 기록이 함께 사라진다.
-- 권한은 `lead` / `member` 두 가지다. 관리 화면(구성원·설정·업무 현황)은 `lead` 전용이며,
+
+### 정체와 권한은 다른 값이다 (MD-P-2026-039)
+
+| | 값 | 무엇인가 |
+|---|---|---|
+| 정체 | `account.role` — `admin` · `lead` · `member` · `viewer` | 그 사람이 **누구인지**. 화면 이름표가 이걸 읽는다. |
+| 권한 | `account.admin_grant` — true/false | role 과 무관하게 따로 켜고 끄는 **관리자 권한**. |
+
+- 판정은 `isAdmin()` 하나뿐이다 — `role='admin'` **또는** `admin_grant=true`.
+- 팀장이 당분간 관리자 일을 할 때 `role` 을 바꾸지 않는다. 권한만 켠다.
+  role 을 바꾸면 화면에 관리자로 보여서 **정체가 틀려진다.**
+- `role='admin'` 인 사람의 권한은 켜고 끌 수 없다. 이미 있고, 꺼도 안 없어진다.
+- 마지막 관리자는 못 내린다 — 역할을 내리는 것도, 권한을 끄는 것도(자기 자신 포함) 막힌다.
+  관리자가 0명이 되면 **아무도 계정을 발급할 수 없는데 아무도 그 사실을 모른다.**
+
+**최초 관리자 권한은 DB 에서 `admin_grant` 를 켜서 시작한다.**
+화면에는 그 길이 없다 — 「관리자가 0명이면 팀장이 임명할 수 있다」 같은 규칙을 두면
+평소엔 안 쓰이는 우회로가 상시로 열려 있게 된다. 부트스트랩은 사람이 한 번 한다.
+
+```sql
+-- 켤 사람을 먼저 확인한다. 이메일로 고른다 — 이름은 겹칠 수 있다.
+SELECT ac.actor_id, a.display_name, ac.email, ac.role, ac.admin_grant
+  FROM account ac JOIN actor a ON a.id = ac.actor_id ORDER BY ac.actor_id;
+
+UPDATE account SET admin_grant = true WHERE email = '<확인한 이메일>';
+
+-- 켠 뒤 반드시 센다. 1 이상이라야 관리 화면에 들어갈 사람이 있다.
+SELECT count(*) FROM account ac JOIN actor a ON a.id = ac.actor_id
+ WHERE (ac.role = 'admin' OR ac.admin_grant = true) AND a.is_active = true;
+```
+
+- 관리 화면(구성원 · 에이전트 흔적)은 **관리자 전용**, 업무 현황·설정은 팀장까지다.
   URL로 직접 들어가도 막힌다(MD-P-2026-015 §C에서 26건 전수 확인).
 
 ---

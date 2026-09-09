@@ -14,6 +14,8 @@ interface Member {
   shortName: string | null;
   email: string;
   role: string;
+  /** 관리자 권한 — 정체(role)와 **따로** 온다 (039 §B-2). */
+  adminGrant: boolean;
   mustChangePw: boolean;
   isActive: boolean;
   lastLoginAt: string | null;
@@ -167,20 +169,24 @@ export default function MemberManager({ user }: { user: SessionUser }) {
           {loading && <Skeleton variant="list" />}
           <table>
             <colgroup>
-              <col style={{ width: "17%" }} />
-              <col style={{ width: "21%" }} />
-              <col style={{ width: "16%" }} />
+              <col style={{ width: "15%" }} />
+              <col style={{ width: "19%" }} />
               <col style={{ width: "11%" }} />
-              <col style={{ width: "10%" }} />
               <col style={{ width: "11%" }} />
-              <col style={{ width: "14%" }} />
+              <col style={{ width: "15%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "9%" }} />
+              <col style={{ width: "12%" }} />
             </colgroup>
             <thead>
+              {/* 「역할」과 「관리자 권한」은 **다른 열**이다. 한 칸에 넣으면
+                  정체와 권한이 한 값처럼 읽힌다 (039 §B-2). */}
               <tr>
                 <th>이름</th>
                 <th>이메일</th>
                 <th>에이전트</th>
                 <th>역할</th>
+                <th>관리자 권한</th>
                 <th>가입</th>
                 <th>최근 접속</th>
                 <th>관리</th>
@@ -201,12 +207,17 @@ export default function MemberManager({ user }: { user: SessionUser }) {
                       <span className={`led ${m.isActive ? "s-done" : "s-drop"}`} title={m.isActive ? "활성" : "비활성"} aria-hidden="true" />
                       <span className="mbr-nm">
                         {m.displayName}
+                        {/* 관리자 권한 배지는 여기 안 붙인다 — H-1 규칙(이 칸은
+                            사람 이름 하나만)이고, 바로 옆 「관리자 권한」 열이
+                            같은 말을 한다. 이름표(사이드바)에서는 옆에 열이
+                            없으니 거기서 배지로 붙인다. */}
                         {m.mustChangePw && <small className="mbr-sub">비번변경 대기</small>}
                       </span>
                     </span>
                   </td>
                   <td>{m.email}</td>
                   <td className="mbr-agent">{m.assistantName ?? "—"}</td>
+                  {/* 역할 = **정체**. 고르는 값이 곧 이름표다. */}
                   <td>
                     <select
                       className={`role-sel role-${m.role}`}
@@ -215,10 +226,29 @@ export default function MemberManager({ user }: { user: SessionUser }) {
                       onChange={(e) => patch(m.id, { role: e.target.value })}
                       aria-label={`역할 (${roleLabel(m.role)})`}
                     >
-                      <option value="member">팀원</option>
+                      <option value="admin">관리자</option>
                       <option value="lead">팀장</option>
+                      <option value="member">팀원</option>
                       <option value="viewer">뷰어</option>
                     </select>
+                  </td>
+                  {/* 관리자 권한 = **정체와 무관한 권한**. 역할이 관리자면 칸을
+                      안 그리고 이유를 적는다 — 이미 권한이 있고, 꺼도 안 없어진다.
+                      빈 칸만 두면 「왜 못 만지는지」를 볼 데가 없다. */}
+                  <td className="mbr-grant">
+                    {m.role === "admin" ? (
+                      <span className="mbr-grant-why">역할이 관리자라 항상 권한이 있습니다</span>
+                    ) : (
+                      <label className="mbr-grant-l">
+                        <input
+                          type="checkbox"
+                          checked={m.adminGrant}
+                          disabled={!m.isActive}
+                          onChange={(e) => patch(m.id, { adminGrant: e.target.checked })}
+                        />
+                        <span>{m.adminGrant ? "있음" : "없음"}</span>
+                      </label>
+                    )}
                   </td>
                   <td className="num mbr-date">{shortDate(m.createdAt)}</td>
                   <td className="num mbr-date">{shortDate(m.lastLoginAt)}</td>

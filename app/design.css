@@ -2163,3 +2163,24 @@ a.areatag:hover { border-color: var(--ink2); color: var(--ink); }
 .due.bad { color: var(--coral-text); font-weight: 700; }
 .due.soon { color: var(--amber-text); font-weight: 700; }
 :is(.due.bad, .due.soon) .tt-dday { font-weight: 700; }
+
+/* ── 039 — 정체와 권한을 가른다 ─────────────────────────────────────
+   「관리자」(정체)와 「관리자 권한」(권한)은 다른 말이다. 그러니 **다르게 보여야**
+   한다 — 이름표에서는 역할이 본문이고 권한은 옆에 붙는 표시다.
+   색을 새로 만들지 않는다: 사이드바가 이미 쓰는 강조색을 그대로 쓴다. */
+.side .acct-g { display: inline-block; margin-left: 6px; padding: 1px 5px; border-radius: 4px;
+  font-family: var(--f-d); font-size: var(--f6); font-style: normal; font-weight: 700;
+  color: var(--sb-ink); background: rgba(255,255,255,.10); }
+
+/* 구성원 표의 권한 칸 — 켜고 끄는 자리다. */
+.mbr-grant-l { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.mbr-grant-l input { margin: 0; cursor: pointer; }
+.mbr-grant-l span { font-size: var(--f6); color: var(--muted); }
+.mbr-grant-l input:checked + span { color: var(--edu-text); font-weight: 700; }
+.mbr-grant-l input:disabled, .mbr-grant-l input:disabled + span { cursor: default; opacity: .5; }
+/* 역할이 관리자면 칸을 안 그리고 **이유를 적는다.** 빈 칸만 두면 왜 못 만지는지
+   볼 데가 없다 — 「보인다 = 눌린다」의 뒷면이다.
+   `white-space: normal` 이 꼭 필요하다 — 표가 한 줄 유지를 걸어 두고 있어서
+   이 문장이 열 폭에서 잘렸다. **적어 뒀는데 읽을 수 없으면 적은 것이 아니다.** */
+.mbr-grant-why { display: block; white-space: normal; font-size: var(--f6);
+  color: var(--muted); line-height: 1.35; }

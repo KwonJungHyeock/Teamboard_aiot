@@ -8,7 +8,7 @@ import { visibleTaskSql } from "@/lib/visibility";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
-import { isAdmin, ROLES, hasLead } from "@/lib/types";
+import { isAdmin, ROLES, hasLead, adminWhereSql } from "@/lib/types";
 
 /*
  * ⚠ **관리자 전용입니다.** 담당자 선택처럼 팀장·팀원이 멤버 이름을 봐야 하는
@@ -96,13 +96,17 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 }
 
 /**
- * 활성 관리자 수 — `activeLeadCount` 와 **같은 모양**이다.
- * 새 방식을 만들지 않는다: 같은 질문은 같은 모양으로 묻는다.
+ * 활성 관리자 수 — **`isAdmin` 과 같은 기준으로 센다** (MD-P-2026-039 §B-4).
+ *
+ * 예전엔 `role='admin'` 만 셌다. 그 사이 판정이 `admin_grant` 도 보게 됐으므로
+ * 그대로 두면 **권한으로 관리자인 사람이 안 세어진다** — 판정은 통과시키는데
+ * 집계는 「1명뿐」이라 막는다. 035 에서 `activeLeadCount` 가 admin 을 빠뜨려
+ * 똑같은 일이 났다. 그래서 세는 식을 `adminWhereSql` 하나에서 낸다.
  */
 async function activeAdminCount(): Promise<number> {
   const row = await queryOne<{ n: string }>(
     `SELECT count(*) AS n FROM account ac JOIN actor a ON a.id = ac.actor_id
-     WHERE ac.role = 'admin' AND a.is_active = true`
+     WHERE ${adminWhereSql("ac")} AND a.is_active = true`
   );
   return Number(row?.n ?? 0);
 }
@@ -134,8 +138,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       display_name: string;
       role: string;
       is_active: boolean;
+      admin_grant: boolean;
     }>(
-      `SELECT a.id, a.display_name, ac.role, a.is_active
+      `SELECT a.id, a.display_name, ac.role, a.is_active, ac.admin_grant
        FROM actor a JOIN account ac ON ac.actor_id = a.id
        WHERE a.id = $1 AND a.type = 'human'`,
       [memberId]
@@ -175,17 +180,50 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ ok: true });
     }
 
-    // ── 역할 변경 ──
-    if (payload.role !== undefined) {
-      if (!(ROLES as readonly string[]).includes(payload.role)) {
-        return NextResponse.json({ error: "역할 값이 올바르지 않습니다." }, { status: 400 });
-      }
+    /*
+     * ── 역할(정체)과 관리자 권한 — **한자리에서 본다** (MD-P-2026-039 §B) ──
+     *
+     * 두 값을 따로따로 막으면 **한 요청에 둘 다 담겼을 때 둘 다 통과한다.**
+     * 역할만 보면 "권한이 남으니 괜찮다", 권한만 보면 "역할이 남으니 괜찮다"가
+     * 되고, 실제로는 마지막 관리자가 사라진다. 그래서 바뀐 뒤 상태를 먼저
+     * 만들고, 그 상태를 하나의 판정에 넣는다.
+     */
+    const roleChanged = payload.role !== undefined;
+    const grantChanged = payload.adminGrant !== undefined;
+
+    if (roleChanged && !(ROLES as readonly string[]).includes(payload.role)) {
+      return NextResponse.json({ error: "역할 값이 올바르지 않습니다." }, { status: 400 });
+    }
+    if (grantChanged && typeof payload.adminGrant !== "boolean") {
+      return NextResponse.json({ error: "관리자 권한 값이 올바르지 않습니다." }, { status: 400 });
+    }
+    /*
+     * `role='admin'` 인 사람의 권한은 켤 수도 끌 수도 없다 — 이미 권한이 있고,
+     * 꺼도 없어지지 않는다. 화면에는 칸을 아예 안 그리고 이유를 적는다.
+     * 화면이 안 그린다고 API 가 열려 있으면 안 된다 — **막은 것을 여기서도 막는다.**
+     */
+    if (grantChanged && member.role === "admin") {
+      return NextResponse.json(
+        { error: "역할이 관리자라 항상 권한이 있습니다. 권한을 따로 켜고 끌 수 없습니다." },
+        { status: 400 }
+      );
+    }
+
+    if (roleChanged || grantChanged) {
+      const before = { role: member.role, adminGrant: member.admin_grant };
+      const after = {
+        role: roleChanged ? payload.role : member.role,
+        adminGrant: grantChanged ? payload.adminGrant : member.admin_grant,
+      };
       /*
-       * ── 마지막 한 명을 내리지 못하게 막는다 (MD-P-2026-035 §B-4) ──
+       * ── 마지막 한 명을 내리지 못하게 막는다 (035 §B-4 · 039 §B-4) ──
        *
        * 관리자가 0 명이 되면 **아무도 계정을 발급할 수 없는데 아무도 그 사실을
        * 모른다.** 멤버 관리 화면 자체가 관리자 전용이라 들어가 볼 수도 없다.
-       * 팀장 쪽 차단과 같은 모양으로 관리자에도 건다.
+       *
+       * 자기 자신의 권한을 끄는 것은 **막지 않는다** — 팀장이 나중에 손수
+       * 내릴 자리다. 다만 그게 마지막 한 명이면 여기 걸린다. 남이 끄든 자기가
+       * 끄든 관리자가 0명이 되는 것은 똑같기 때문이다.
        *
        * 관리자 먼저 본다 — 관리자를 팀장으로 내리는 경우 두 조건에 다 걸릴 수
        * 있는데, 그때 알려야 할 것은 「관리자가 없어진다」다.
@@ -193,24 +231,36 @@ export async function PUT(request: Request, { params }: { params: { id: string }
        * 이건 **규칙**이므로 400 이다. 권한(관리자가 아님)은 requireLiveAdmin 이
        * 위에서 이미 403 으로 걸렀다 — 규칙을 권한보다 먼저 평가한다.
        */
-      if (isAdmin(member.role) && !isAdmin(payload.role) && (await activeAdminCount()) <= 1) {
+      if (isAdmin(before) && !isAdmin(after) && (await activeAdminCount()) <= 1) {
         return NextResponse.json(
-          { error: "활성 관리자가 1명뿐입니다. 다른 관리자를 지정한 뒤 강등하세요." },
+          { error: "활성 관리자가 1명뿐입니다. 다른 관리자를 지정한 뒤 내리세요." },
           { status: 400 }
         );
       }
-      // 마지막 활성 팀장(관리자 포함)을 강등하려는 경우 차단 — 기존 규칙 그대로
-      if (hasLead(member.role) && !hasLead(payload.role) && (await activeLeadCount()) <= 1) {
+      // 마지막 활성 팀장(관리자 포함)을 강등하려는 경우 차단 — 기존 규칙 그대로.
+      // 팀장 판정은 정체(role)만 본다 — 039 에서 `hasLead` 는 건드리지 않았다.
+      if (hasLead(before.role) && !hasLead(after.role) && (await activeLeadCount()) <= 1) {
         return NextResponse.json(
           { error: "활성 팀장이 1명뿐입니다. 다른 팀장을 지정한 뒤 강등하세요." },
           { status: 400 }
         );
       }
-      await query("UPDATE account SET role = $1 WHERE actor_id = $2", [payload.role, memberId]);
-      await logActivity({
-        userId: session.id,
-        message: `${session.name}이(가) 역할 변경 — ${member.display_name} → ${payload.role}`,
-      });
+
+      if (roleChanged) {
+        await query("UPDATE account SET role = $1 WHERE actor_id = $2", [payload.role, memberId]);
+        await logActivity({
+          userId: session.id,
+          message: `${session.name}이(가) 역할 변경 — ${member.display_name} → ${payload.role}`,
+        });
+      }
+      if (grantChanged) {
+        await query("UPDATE account SET admin_grant = $1 WHERE actor_id = $2", [payload.adminGrant, memberId]);
+        await logActivity({
+          userId: session.id,
+          message: `${session.name}이(가) 관리자 권한 ${payload.adminGrant ? "부여" : "회수"} — ${member.display_name}`,
+          level: "warn",
+        });
+      }
     }
 
     // ── short_name 수정 ──

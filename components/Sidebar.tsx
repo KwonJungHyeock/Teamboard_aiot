@@ -20,7 +20,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { hasLead, isAdmin, roleLabel } from "@/lib/types";
+import { hasLead, isAdmin, roleLabel, showsAdminGrantBadge } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import { viewHref, type SavedView } from "@/lib/saved-views";
 import { SAVED_VIEWS_EVENT } from "@/lib/saved-views-events";
@@ -300,7 +300,7 @@ export default function Sidebar({
   }
 
   const isLead = hasLead(user.role);
-  const isAdminUser = isAdmin(user.role);   // 관리자만 — 팀장은 통과하지 못한다
+  const isAdminUser = isAdmin(user);   // 관리자만 — 팀장은 통과하지 못한다
   const cur = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
@@ -436,8 +436,13 @@ export default function Sidebar({
           <div>
             <b>{user.name}</b>
             {/* 이름표는 **자기 역할**을 그린다. `hasLead` 를 쓰면 관리자가
-                LEAD 로 보여서, 등급을 올린 사실이 화면 어디에도 안 남는다. */}
-            <span>{roleLabel(user.role)}</span>
+                LEAD 로 보여서, 등급을 올린 사실이 화면 어디에도 안 남는다.
+                관리자 권한은 **정체가 아니라서** 옆에 따로 붙는다 —
+                「팀장」이면서 「관리자 권한」인 상태를 한 낱말로 못 적는다. */}
+            <span>
+              {roleLabel(user.role)}
+              {showsAdminGrantBadge(user) && <em className="acct-g">관리자 권한</em>}
+            </span>
           </div>
         </Link>
         <div className="acct-a">

@@ -13,7 +13,7 @@ export default async function Page() {
   // 실시간 role 게이트 — 강등 즉시 반영 (토큰 role 이 아니라 DB 기준).
   const live = await getLiveSession();
   if (!live) redirect("/api/auth/logout?reason=inactive");
-  if (!isAdmin(live.user.role)) redirect("/assistant");
+  if (!isAdmin(live.user)) redirect("/assistant");
   return (
     <AppShell user={live.user}>
       <AgentUsage />

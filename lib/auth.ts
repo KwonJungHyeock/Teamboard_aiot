@@ -18,6 +18,23 @@ function sign(payload: string): string {
   return createHmac("sha256", secret()).update(payload).digest("base64url");
 }
 
+/**
+ * `account.admin_grant` 를 **컬럼이 아직 없어도 던지지 않게** 읽는다 (039 §A).
+ *
+ * 0031 때 마이그레이션 하나가 실패하자 팀 전원이 로그인조차 못 했다. 그래서
+ * 로그인·라이브 세션 조회에 §5 예외를 뒀다(`queryUnmigrated`). 그런데 그 조회에
+ * `ac.admin_grant` 를 그냥 적으면 **0034 가 안 끝난 순간 로그인이 다시 죽는다** —
+ * 예외를 뚫어 놓고 그 옆에 같은 구멍을 내는 셈이다.
+ *
+ * `to_jsonb(행) ->> '이름'` 은 그 키가 없으면 NULL 을 낸다. 던지지 않는다.
+ * 컬럼이 없다 → NULL → **권한 없음**으로 읽힌다. 없는 값을 권한 있음으로
+ * 읽는 쪽이 훨씬 나쁘므로 이 방향이 맞다.
+ *
+ * `scripts/repro-0034.mjs` 가 이 문자열을 **여기서 읽어다** 컬럼 없는 상태에
+ * 대고 돌린다 — 검사기가 사본을 들면 사본만 맞고 제품은 틀릴 수 있다.
+ */
+const ADMIN_GRANT_SQL = `(to_jsonb(ac) ->> 'admin_grant')::boolean AS admin_grant`;
+
 export function createSessionToken(user: SessionUser): string {
   const payload = Buffer.from(
     JSON.stringify({ ...user, exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SEC })
@@ -37,7 +54,11 @@ export function verifySessionToken(token: string): SessionUser | null {
   try {
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
     if (typeof data.exp !== "number" || data.exp < Math.floor(Date.now() / 1000)) return null;
-    return { id: data.id, email: data.email, name: data.name, role: data.role as Role };
+    return {
+      id: data.id, email: data.email, name: data.name, role: data.role as Role,
+      // 039 이전에 발급된 쿠키에는 이 칸이 없다. **없으면 권한 없음이다.**
+      adminGrant: data.adminGrant === true,
+    };
   } catch {
     return null;
   }
@@ -72,8 +93,9 @@ export async function getLiveSession(): Promise<LiveSession | null> {
     display_name: string;
     role: Role;
     must_change_pw: boolean;
+    admin_grant: boolean | null;
   }>(
-    `SELECT a.is_active, a.display_name, ac.role, ac.must_change_pw
+    `SELECT a.is_active, a.display_name, ac.role, ac.must_change_pw, ${ADMIN_GRANT_SQL}
      FROM actor a JOIN account ac ON ac.actor_id = a.id
      WHERE a.id = $1 AND a.type = 'human'`,
     [tokenUser.id]
@@ -102,9 +124,13 @@ export async function getLiveSession(): Promise<LiveSession | null> {
     }
     return null;
   }
-  // 실시간 role·must_change_pw 반영 (승격·강등·비번변경 즉시 적용)
+  // 실시간 role·admin_grant·must_change_pw 반영 (승격·강등·권한 회수 즉시 적용).
+  // 권한을 회수하면 **다음 요청부터** 막힌다 — 쿠키가 만료될 때까지 기다리지 않는다.
   return {
-    user: { id: tokenUser.id, email: tokenUser.email, name: row.display_name, role: row.role },
+    user: {
+      id: tokenUser.id, email: tokenUser.email, name: row.display_name, role: row.role,
+      adminGrant: row.admin_grant === true,
+    },
     mustChangePassword: row.must_change_pw,
   };
 }
@@ -136,10 +162,15 @@ export function requireLead(): SessionUser {
  * (MD-P-2026-035 §B-3). 마이그레이션 **조회**에는 걸지 않는다:
  * §5 예외로 팀장까지 열어 둔다. 마이그레이션이 깨졌을 때 원인을 볼 수 있는
  * 사람을 줄이면, 고칠 방법이 사라진다.
+ *
+ * ⚠ 이건 **쿠키를 보는** 게이트다. 권한을 회수해도 그 쿠키가 새로 발급될
+ *   때까지는 통과한다. 관리자 자리는 전부 아래 `requireLiveAdmin` 을 쓴다 —
+ *   이 함수는 지금 부르는 곳이 없다. 지우지 않고 둔 이유는 `requireLead` 와
+ *   짝을 이루는 자리이기 때문이고, 쓸 때는 이 성질을 알고 써야 한다.
  */
 export function requireAdmin(): SessionUser {
   const session = requireSession();
-  if (!isAdmin(session.role)) throw new AuthError(403, "관리자만 접근할 수 있습니다.");
+  if (!isAdmin(session)) throw new AuthError(403, "관리자만 접근할 수 있습니다.");
   return session;
 }
 
@@ -147,7 +178,7 @@ export function requireAdmin(): SessionUser {
 export async function requireLiveAdmin(): Promise<SessionUser> {
   const live = await getLiveSession();
   if (!live) throw new AuthError(401, "세션이 만료되었거나 비활성화된 계정입니다.");
-  if (!isAdmin(live.user.role)) throw new AuthError(403, "관리자만 접근할 수 있습니다.");
+  if (!isAdmin(live.user)) throw new AuthError(403, "관리자만 접근할 수 있습니다.");
   return live.user;
 }
 
@@ -189,8 +220,9 @@ export async function authenticate(email: string, password: string): Promise<Ses
     name: string;
     role: Role;
     password_hash: string;
+    admin_grant: boolean | null;
   }>(
-    `SELECT a.id, ac.email, a.display_name AS name, ac.role, ac.password_hash
+    `SELECT a.id, ac.email, a.display_name AS name, ac.role, ac.password_hash, ${ADMIN_GRANT_SQL}
      FROM account ac JOIN actor a ON a.id = ac.actor_id
      WHERE ac.email = $1 AND a.is_active = true`,
     [email.trim().toLowerCase()]
@@ -198,5 +230,8 @@ export async function authenticate(email: string, password: string): Promise<Ses
   if (!user) return null;
   if (!verifyPassword(password, user.password_hash)) return null;
   await queryUnmigrated("UPDATE account SET last_login_at = now() WHERE actor_id = $1", [user.id]);
-  return { id: user.id, email: user.email, name: user.name, role: user.role };
+  return {
+    id: user.id, email: user.email, name: user.name, role: user.role,
+    adminGrant: user.admin_grant === true,
+  };
 }

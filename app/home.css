@@ -1427,6 +1427,9 @@
 .hv .mbr-agent { color: var(--muted); }
 .hv .mbr-date { font-size: var(--f5); color: var(--ink-soft); }
 .hv .role-sel { width: auto; min-width: 74px; height: 30px; font-size: var(--fs-badge); font-weight: 700; border-radius: 8px; padding: 0 10px; border: 1px solid var(--line-hi); background: var(--card); }
+/* 039 — `admin` 은 035 에서 생겼는데 여기 색이 없어 혼자 밋밋했다.
+   나머지 셋이 색으로 구분되는 자리에서 하나만 무색이면 「값이 안 들어갔다」로 읽힌다. */
+.hv .role-sel.role-admin { color: var(--edu-text); background: var(--blue-bg); border-color: color-mix(in srgb, var(--edu) 30%, transparent); }
 .hv .role-sel.role-lead { color: var(--coral-text); background: var(--coral-bg); border-color: color-mix(in srgb, var(--coral) 30%, transparent); }
 .hv .role-sel.role-member { color: var(--ink-soft); background: var(--glass); border-color: var(--line-hi); }
 .hv .role-sel.role-viewer { color: var(--muted); background: color-mix(in srgb, var(--muted) 10%, var(--card)); border-color: var(--line-hi); }

@@ -1,0 +1,36 @@
+-- MD-P-2026-039 §A — 정체와 권한을 가른다 (`admin_grant` 컬럼 추가)
+--
+-- ── 무엇을 하는가 ────────────────────────────────────────────────
+--
+-- **컬럼 하나를 더한다. 데이터를 옮기지 않는다.**
+--
+--   role         정체 — admin(대표) / lead(팀장) / member / viewer
+--   admin_grant  권한 — role 과 무관하게 따로 켜고 끈다
+--
+-- 팀장이 당분간 관리자 일을 할 때 `role` 을 `admin` 으로 바꾸면 화면에
+-- 관리자로 보인다 — **정체가 틀려진다.** 포함 관계는 권한에만 있고
+-- 정체에는 없다(§G). 그래서 권한을 따로 든다.
+--
+-- 0033 은 그대로 둔다. 대표 계정이 `role='admin'` 을 쓰므로 살아 있다.
+--
+-- ── 실행 전 확인 ─────────────────────────────────────────────────
+--
+-- `account` 제약 전량을 먼저 조회했다(`pg_constraint`). 부딪히는 것은 없다 —
+-- 새 이름의 컬럼을 더할 뿐이라 CHECK · FK · PK · UNIQUE 어느 것도 건드리지 않는다.
+--
+--   CHECK   account_role_check     role IN ('admin','lead','member','viewer')
+--   FK      account_actor_id_fkey  → actor(id)
+--   PK      account_pkey (actor_id)
+--   UNIQUE  account_email_key (email)
+--
+-- ── 기존 행 ──────────────────────────────────────────────────────
+--
+-- `DEFAULT false` 이므로 **전부 권한 없음으로 들어온다.** 이 파일은 아무에게도
+-- 권한을 주지 않는다. 최초 한 명은 사람이 DB 에서 직접 켠다(§D) —
+-- 「관리자가 0명이면 팀장이 임명할 수 있다」 같은 우회로를 코드에 열지 않는다.
+-- 평소엔 안 쓰이는 길이 상시로 열려 있게 되기 때문이다.
+--
+-- 되돌리기: db/migrations/rollback/0034_account_admin_grant_down.sql
+--   ⚠ 되돌리기는 **켜 둔 권한을 통째로 날린다.** 컬럼을 지우기 때문이다.
+
+ALTER TABLE account ADD COLUMN IF NOT EXISTS admin_grant boolean NOT NULL DEFAULT false;
