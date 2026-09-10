@@ -42,3 +42,5 @@ backups/
 .migrate-walk-out/
 .pp-walk-out/
 .od-walk-out/
+.v3k-out/
+.v3d-out/

@@ -124,16 +124,20 @@ try {
    * 고정 900ms 로 뒀더니 「불러오는 중」에서 통과 판정을 시도했다.
    * 번호를 알아야 기다릴 수 있으므로 DB 조회를 먼저 한다.
    */
+  //
+  // 045 에서는 도착지가 **옛 패널**(`aside.tdp`)이었다. 046 §B-3 에서
+  // `taskHref()` 가 새 상세로 옮겨 갔으므로 여기가 보는 화면도 옮긴다.
+  // 묻는 것은 그대로 「그 업무에 도착했는가」다.
   if (made) {
-    await page.locator("aside.tdp").filter({ hasText: `#${made.id}` })
+    await page.locator(".v3-dmeta").filter({ hasText: `#${made.id}` })
       .first().waitFor({ timeout: 10000 }).catch(() => {});
   }
   chk("③-저장됐다", !!made && made.area_id === areas[0].id,
       made ? `#${made.id} "${made.title}" · area ${made.area_id} (${pickName})` : "**저장 안 됨**");
 
-  const panel = (await page.locator("aside.tdp").first().innerText().catch(() => "")).replace(/\s+/g, " ");
+  const panel = (await page.locator(".v3-dmeta").first().innerText().catch(() => "")).replace(/\s+/g, " ");
   chk("④-저장-후-그-업무에-도착", made ? panel.includes(`#${made.id}`) : false,
-      `${new URL(page.url()).pathname}${new URL(page.url()).search} · 패널 "${panel.slice(0, 60)}"`);
+      `${new URL(page.url()).pathname}${new URL(page.url()).search} · 상세 줄 "${panel.slice(0, 60)}"`);
 
   // ── ⑧ 기록이 description 에 ────────────────────────────────────
   chk("⑧-기록은-description-에", made?.description?.includes("기록이 여기 들어간다") === true,
@@ -159,7 +163,9 @@ try {
    * `POST /api/tasks` 가 `assigneeId` 를 안 보내면 세션 사용자를 넣는다.
    * 「안 정함」을 고를 수 있게 두면 화면이 거짓말을 하게 되므로, 화면은
    * 기본값을 나로 두고 그 사실을 적는다. 여기서는 **그렇게 저장됐는지**를 잰다.
-   * (담당 없음 자리(`.v3-av.none`)는 옛 데이터에만 있을 수 있다.)
+   *
+   * 담당 없음 자리(`.v3-av.none`)는 046 §0 에서 아예 거뒀다 — 이 셈은 이제
+   * 「0이어야 한다」가 아니라 「그 표시가 없다」를 확인하는 자리다.
    */
   chk("⑥짝-담당은-서버가-채운다", made?.assignee_id === me.id && avNone === 0,
       `담당 = actor#${made?.assignee_id} (세션 ${me.id}) · 담당 없음 자리 ${avNone}개`);
@@ -193,7 +199,8 @@ try {
   await page.locator(".v3-title-in").waitFor({ timeout: 8000 });
   await page.locator(".v3-title-in").fill(`${MARK} 캡처용`);
   await page.locator(".v3-catbtn").filter({ hasText: areas[0].name }).first().click();
-  await page.locator(".v3-chip.dashed").first().click();
+  // 접힌 입력 칩. 046 §A 에서 `.v3-chip.dashed`(거르개) 와 갈라져 `.v3-ichip` 가 됐다.
+  await page.locator(".v3-ichip").filter({ hasText: "기한" }).first().click();
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${OUT}/v3-new.png`, fullPage: true });
 

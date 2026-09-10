@@ -280,17 +280,27 @@ try {
       `?cat=${u9.searchParams.get("cat")} · 행 ${n9} (만든 ${madeTasks.length}건)`);
   await page.screenshot({ path: `${OUT}/v3-tasks-filtered.png`, fullPage: true });
 
-  // ── ⑩ 상세로 가는 링크가 안 삼켜진다 ────────────────────────────
+  /*
+   * ── ⑩ 상세로 가는 링크가 안 삼켜진다 ──────────────────────────
+   *
+   * 044 에서는 도착지가 **옛 패널**(`aside.tdp`)이었다. v3 에 상세가 없어서
+   * `taskHref()` 가 옛 화면을 가리켰기 때문이다. 046 §B-3 에서 그 한 줄이
+   * 새 상세(`/v3/tasks/{id}`)로 옮겨 갔으므로 **여기가 보는 화면도 옮긴다.**
+   *
+   * 묻는 것은 그대로다: 「그 업무에 도착했는가」. 도착을 주소가 아니라
+   * **화면으로** 본다(§G) — 목록으로 삼켜진 것과 상세로 간 것을 주소만으로는
+   * 못 가른다(045 에서 실제로 삼켜졌던 자리다).
+   */
   const href = await page.locator(".v3-row .v3-row-t").first().getAttribute("href");
-  const wantId = (href ?? "").match(/task:(\d+)/)?.[1] ?? "";
+  const wantId = (href ?? "").match(/(\d+)$/)?.[1] ?? "";
   await page.locator(".v3-row .v3-row-t").first().click();
   // **시간이 아니라 상태를 기다린다.** 「불러오는 중」에서 통과하면 도착을 안 본 것이다(§G).
-  await page.locator("aside.tdp").filter({ hasText: `#${wantId}` })
+  await page.locator(".v3-dmeta").filter({ hasText: `#${wantId}` })
     .first().waitFor({ timeout: 10000 }).catch(() => {});
-  const panelTxt = (await page.locator("aside.tdp").first().innerText().catch(() => "")).slice(0, 60);
+  const panelTxt = (await page.locator(".v3-dmeta").first().innerText().catch(() => "")).slice(0, 60);
   chk("⑩-상세-링크가-살아있다",
-      new URL(page.url()).pathname === "/tasks" && panelTxt.includes(`#${wantId}`),
-      `${href} → ${new URL(page.url()).pathname} · 패널 "${panelTxt.replace(/\n/g, " ")}"`);
+      new URL(page.url()).pathname === `/v3/tasks/${wantId}` && panelTxt.includes(`#${wantId}`),
+      `${href} → ${new URL(page.url()).pathname} · 상세 줄 "${panelTxt.replace(/\n/g, " ")}"`);
 
   chk("⑪-콘솔오류", errs.length === 0, `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}`);
 

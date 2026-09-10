@@ -21,7 +21,7 @@
 // 그걸 채운다** — 그래서 카테고리가 필수다.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, Chip, Button } from "./parts";
+import { Card, InputChip, Button } from "./parts";
 import type { AreaView } from "@/lib/v3/category";
 import { taskHref } from "@/lib/v3/routes";
 
@@ -140,14 +140,20 @@ export default function NewTaskView({
           onChange={(e) => setNote(e.target.value)}
         />
 
-        {/* 접힌 점선 칩 — 안 채워도 저장된다. 여는 것은 사람이 정한다. */}
+        {/*
+          입력 칩 — **거르개가 아니다** (046 §A).
+          예전에는 `Chip` 을 그대로 썼고, 그래서 「담당 · 권정혁」이 검게 채워져
+          **골라진 필터**처럼 보였다. 여기서 검정 채움은 「이걸로 걸렀다」는 뜻인데
+          담당은 거른 적이 없다 — 값이 들어 있을 뿐이다.
+          값 있음(연한 바탕) · 펼침(흰 바탕 · 실선) · 값 없음(점선)로 가른다.
+        */}
         <div className="v3-chips">
-          <Chip dashed on={open.has("assignee")} onClick={() => toggle("assignee")}>
+          <InputChip filled open={open.has("assignee")} onClick={() => toggle("assignee")}>
             {`담당 · ${people.find((p) => String(p.id) === assigneeId)?.name ?? me.name}`}
-          </Chip>
-          <Chip dashed on={open.has("due")} onClick={() => toggle("due")}>
+          </InputChip>
+          <InputChip filled={dueDate !== ""} open={open.has("due")} onClick={() => toggle("due")}>
             {dueDate ? `기한 · ${dueDate}` : "＋ 기한"}
-          </Chip>
+          </InputChip>
         </div>
 
         {open.has("assignee") && (

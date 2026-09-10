@@ -28,10 +28,19 @@ export function StateTag({ tone, children }: { tone: "warn" | "late"; children: 
 }
 
 /* ── Avatar ──────────────────────────────────────────────────────
-   담당이 없으면 빈칸이 아니라 **점선 ＋** 다. 빈칸은 「아직 안 불러왔나」로
-   읽히고, 점선 자리는 「비어 있다」로 읽힌다. */
+   042 에서는 담당이 없으면 **점선 ＋** 를 그렸다. 046 §0 에서 지시자가 그 표시를
+   거뒀다 — 「담당 없음은 이 API 에서 만들 수 없는 상태」라는 이유였다.
+
+   조사해 보면 절반만 그렇다(§B-1 보고):
+     · `POST /api/tasks` 는 **못 만든다** — `payload.assigneeId ? … : session.id`
+     · `PATCH /api/tasks/{id}` 는 **만들 수 있다** — `assigneeId: null` 이 그대로 간다
+
+   그래서 ＋ 는 지우되(v3 에는 담당을 비우는 자리가 없으므로 눌러도 갈 데가
+   없는 자리였다) **없는 것을 없다고 말하는 자리**는 남긴다: 목록에서는 아바타
+   칸이 비고, 상세에서는 「담당 없음」이 글자로 선다. 빈 동그라미로 거짓말하지
+   않고, 누를 수 없는 ＋ 로 부르지도 않는다. */
 export function Avatar({ name }: { name: string | null }) {
-  if (!name) return <span className="v3-av none" title="담당 없음" aria-label="담당 없음">＋</span>;
+  if (!name) return null;
   return <span className="v3-av" title={name} aria-label={name}>{name.slice(0, 1)}</span>;
 }
 
@@ -54,6 +63,32 @@ export function Chip({
             className={`v3-chip${dashed ? " dashed" : ""}`}>
       {children}
       {count !== undefined && <span className="v3-chip-n">{count}</span>}
+    </button>
+  );
+}
+
+/* ── InputChip — 거르개가 아니라 **입력**이다 (MD-P-2026-046 §A) ──
+
+   같은 알약 모양을 두 가지 일에 쓰고 있었다. 그래서 새 업무의 「담당 · 권정혁」이
+   **골라진 필터**처럼 검게 채워졌다 — 거르개에서 검정 채움은 「이걸로 걸렀다」는
+   뜻인데, 여기서는 아무것도 안 골랐고 그냥 값이 들어 있을 뿐이다.
+
+   두 종류를 가른다. 거르개(`Chip`)는 검정 채움을 그대로 쓰고, 입력은 안 쓴다.
+
+     값 없음·접힘   점선 테두리 · 회색 글자        「아직 안 정했다」
+     펼침           실선 테두리 진하게 · 흰 바탕   「지금 고르는 중」
+     값 있음        연한 바탕 + 진한 글자          「정해져 있다」  (태그와 같은 결)
+
+   `aria-pressed` 가 아니라 `aria-expanded` 다. 이건 고른 상태가 아니라 **여닫는
+   자리**이고, 두 낱말을 섞으면 스크린리더가 「선택됨」이라고 읽는다. */
+export function InputChip({
+  open, filled, children, ...rest
+}: { open?: boolean; filled?: boolean; children: React.ReactNode }
+  & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button {...rest} type="button" aria-expanded={open ? "true" : "false"}
+            className={`v3-ichip${filled ? " filled" : ""}${open ? " open" : ""}`}>
+      {children}
     </button>
   );
 }
