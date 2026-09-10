@@ -37,6 +37,20 @@ export const ROUTE_PAIRS: RoutePair[] = [
   { old: "/", v3: `${V3_BASE}`, what: "오늘 (옛 홈)" },
 ];
 
+/**
+ * 업무 하나로 가는 곳. **한 곳에서 정한다.**
+ *
+ * C-1 을 내면서 행 링크를 `${V3_BASE}/tasks/{id}` 로 적었는데 **그 화면이 아직
+ * 없다**(C-4 에서 생긴다). 보이면 눌리고, 눌렀는데 없으면 그건 없는 화면이
+ * 아니라 고장이다(§G). 그래서 지금은 옛 상세 패널로 보낸다 —
+ * 스위치가 켜져도 `/tasks` 는 짝이 없어 옛 화면 그대로다.
+ *
+ * C-4 가 생기면 **이 한 줄만** 바꾼다.
+ */
+export function taskHref(id: number): string {
+  return `/tasks?panel=task:${id}`;
+}
+
 /** 옛 경로가 v3 에서 어디로 가는가. 짝이 없으면 `null` — **보내지 않는다.** */
 export function v3Destination(oldPath: string): string | null {
   return ROUTE_PAIRS.find((p) => p.old === oldPath)?.v3 ?? null;

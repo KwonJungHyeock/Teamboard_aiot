@@ -7,7 +7,9 @@
 //   ① 꺼짐에서 `/` 는 **옛 홈** 그대로다
 //   ② 켜면 `/` 에서 v3 「오늘」에 **도착한다** — 주소가 아니라 화면을 본다(§G)
 //   ③ 큰 숫자 셋이 **DB 에서 직접 센 값**과 같다
-//   ④ 「오늘 할 일」 = 기한 지남 + 오늘 마감 · **지난 것이 위** · 지남은 코랄 테두리
+//   ④ 「오늘 할 일」 = 오늘 마감 + 지남 **7일 이내** · 지난 것이 위 · 코랄 테두리
+//   ④-2 지남 **7일 초과**는 오늘 할 일에 **없고** 접힌 줄 안에 있다 · 코랄 아니다
+//   ④-3 접힌 줄 건수 + 오늘 할 일 건수 = 기한이 오늘이거나 지난 것 전부 (안 샌다)
 //   ⑤ 「오늘 마친 것」 = `completed_at` 이 **오늘**인 것만 · 취소선
 //   ⑥ 빈 목록에 **이유와 다음 행동**이 있다
 //   ⑦ 가오픈 D 가 대문 카운트다운과 **같은 숫자**다
@@ -61,7 +63,7 @@ try {
      "--outDir", TMP, "--module", "commonjs", "--moduleResolution", "node",
      "--target", "es2022", "--skipLibCheck", "--esModuleInterop"], { stdio: "inherit" });
   const req = createRequire(path.join(TMP, "noop.cjs"));
-  const { countToday, splitToday } = req(path.join(TMP, "v3", "today.js"));
+  const { countToday, splitToday, daysLate, STALE_DAYS } = req(path.join(TMP, "v3", "today.js"));
   const { dDay } = req(path.join(TMP, "countdown.js"));
 
   const swRow = (await sql(`SELECT value FROM config WHERE key = $1`, [KEY]))[0];
@@ -89,15 +91,19 @@ try {
                        created_by, assignee_id)
      VALUES ($1, $2, $3::date, $4::timestamptz, $5, 'team', 'team', $6, $6) RETURNING id`,
     [`${MARK} ${title}`, status, due, completed, area.id, me.id]))[0].id;
-  const yday = new Date(`${today}T00:00:00Z`); yday.setUTCDate(yday.getUTCDate() - 3);
-  const y = yday.toISOString().slice(0, 10);
+  const back = (n) => { const d = new Date(`${today}T00:00:00Z`); d.setUTCDate(d.getUTCDate() - n);
+    return d.toISOString().slice(0, 10); };
+  const y3 = back(3), y40 = back(40);
 
-  made.push(await mk("기한 지남", "doing", y, null));
+  made.push(await mk("지남 3일", "doing", y3, null));
+  made.push(await mk("지남 40일", "todo", y40, null));
   made.push(await mk("오늘 마감", "todo", today, null));
   made.push(await mk("오늘 마침", "done", today, `${today}T05:20:00+09:00`));
-  made.push(await mk("어제 마침", "done", today, `${y}T05:20:00+09:00`));
+  made.push(await mk("어제 마침", "done", today, `${y3}T05:20:00+09:00`));
+  // §G 회귀 방지 — **KST 08:00** 에 마친 것. UTC 로 자르면 어제로 읽힌다.
+  made.push(await mk("오늘 아침 마침", "done", today, `${today}T08:00:00+09:00`));
   made.push(await mk("기한 없음", "todo", null, null));
-  console.log(`   (조건) ${MARK} 업무 ${made.length}건 만들었다 (오늘 ${today} · 지남 ${y})`);
+  console.log(`   (조건) ${MARK} 업무 ${made.length}건 (오늘 ${today} · 지남 ${y3} · 오래 ${y40})`);
 
   browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
     args: ["--no-proxy-server", "--no-sandbox"] });
@@ -151,17 +157,54 @@ try {
   chk("③-숫자-셋이-직접-센-값", seen.join(",") === [want.doing, want.thisWeek, want.noDue].join(","),
       `화면 [${seen}] · 직접 [${want.doing},${want.thisWeek},${want.noDue}]`);
 
-  // ④ 오늘 할 일
+  // ④ 오늘 할 일 — 오늘 마감 + 지남 7일 이내
   const lists = splitToday(rows, today);
   const cards = page.locator(".v3-card");
   const todoCard = cards.filter({ hasText: "오늘 할 일" }).first();
-  const todoRows = todoCard.locator(".v3-row");
+  const todoRows = todoCard.locator(".v3-row:not(.v3-stale-r)");
   const nTodo = await todoRows.count();
-  const firstLate = await todoRows.first().evaluate((el) => el.classList.contains("late"));
-  const lateBorder = await todoRows.first().evaluate((el) =>
-    getComputedStyle(el).borderLeftColor);
-  chk("④-오늘-할-일", nTodo === lists.todo.length && firstLate,
-      `화면 ${nTodo}행 · 직접 ${lists.todo.length}행 · 첫 행이 지남 ${firstLate} · 왼쪽 테두리 ${lateBorder}`);
+  const todoText = await todoCard.innerText();
+  chk("④-오늘-할-일", nTodo === lists.todo.length
+        && todoText.includes(`${MARK} 지남 3일`) && todoText.includes(`${MARK} 오늘 마감`),
+      `화면 ${nTodo}행 · 직접 ${lists.todo.length}행 · 지남3일 있음 · 오늘마감 있음`);
+
+  // 지남 3일짜리가 **코랄**인가. 클래스가 아니라 계산된 테두리색을 읽는다.
+  const late3 = todoRows.filter({ hasText: `${MARK} 지남 3일` }).first();
+  const c3 = await late3.evaluate((el) => ({
+    late: el.classList.contains("late"),
+    border: getComputedStyle(el).borderLeftColor,
+  }));
+  chk("④-①-지남-3일은-코랄", c3.late && c3.border === "rgb(224, 82, 79)",
+      `late=${c3.late} · 왼쪽 테두리 ${c3.border}`);
+
+  // ④-2 지남 40일짜리는 오늘 할 일에 **없다**. 접힌 줄 안에 있다.
+  const notInTodo = !todoText.includes(`${MARK} 지남 40일`)
+    || (await todoRows.filter({ hasText: `${MARK} 지남 40일` }).count()) === 0;
+  const staleHead = todoCard.locator(".v3-stale-h");
+  const headTxt = (await staleHead.innerText().catch(() => "")).trim();
+  chk("④-②-지남-40일은-접힌-줄", notInTodo && /오래 밀린 일 \d+건 · 가장 오래된 것/.test(headTxt),
+      `오늘 할 일에 없음 ${notInTodo} · 접힌 줄 "${headTxt}"`);
+
+  await staleHead.click();
+  await page.waitForTimeout(300);
+  const staleRows = todoCard.locator(".v3-stale-r");
+  const nStale = await staleRows.count();
+  const s40 = staleRows.filter({ hasText: `${MARK} 지남 40일` }).first();
+  const cs = await s40.evaluate((el) => ({
+    late: el.classList.contains("late"),
+    border: getComputedStyle(el).borderLeftColor,
+  }));
+  const reBtn = await s40.locator("a").filter({ hasText: "기한 다시 정하기" }).count();
+  chk("④-②-펼치면-있고-코랄이-아니다",
+      nStale === lists.stale.length && !cs.late && cs.border !== "rgb(224, 82, 79)" && reBtn === 1,
+      `펼친 ${nStale}행 · 직접 ${lists.stale.length}행 · late=${cs.late} · 테두리 ${cs.border} · 「기한 다시 정하기」 ${reBtn}개`);
+
+  // ④-3 합이 안 샌다 — 둘을 더하면 「기한이 오늘이거나 지난 것」 전부다.
+  const allDue = rows.filter((t) => ["todo", "doing", "review"].includes(t.status)
+    && t.dueDate !== null && t.dueDate <= today).length;
+  chk("④-③-합이-안-샌다", nTodo + nStale === allDue,
+      `오늘 ${nTodo} + 오래 ${nStale} = ${nTodo + nStale} · 기한 지났거나 오늘인 것 전부 ${allDue}`);
+
   const titles = [];
   for (let i = 0; i < nTodo; i++) titles.push((await todoRows.nth(i).locator(".v3-row-t").innerText()).trim());
   chk("④-지난-것이-위", titles.join(" | ") === lists.todo.map((t) => t.title).join(" | "),
@@ -178,6 +221,18 @@ try {
         && doneText.includes(`${MARK} 오늘 마침`) && !doneText.includes(`${MARK} 어제 마침`)
         && String(deco).includes("line-through"),
       `화면 ${nDone}행 · 직접 ${lists.done.length}행 · 어제 것 ${doneText.includes("어제 마침") ? "**떴다**" : "안 뜸"} · 취소선 ${deco}`);
+
+  /*
+   * ④-④ §G 회귀 방지 — **KST 08:00 에 마친 업무가 오늘 목록에 뜬다.**
+   *
+   * 043 에서 `completedAt.slice(0,10)` 로 잘라 KST 오늘과 비교했다가 오전 아홉 시
+   * 이전에 마친 것이 통째로 사라졌다. 그 자리를 지키는 검사다 —
+   * 조건(08:00 에 마친 업무)을 위에서 미리 만들어 뒀다.
+   */
+  chk("④-④-KST-08시-마감이-뜬다", doneText.includes(`${MARK} 오늘 아침 마침`),
+      doneText.includes(`${MARK} 오늘 아침 마침`)
+        ? "KST 08:00 완료가 오늘 목록에 있다 (UTC 로 자르면 어제가 된다)"
+        : "**KST 08:00 완료가 사라졌다 — 시간대를 안 맞추고 잘랐다**");
 
   // ⑥ 빈 목록 — 받은함이 비었으면 이유와 다음 행동이 있어야 한다
   const inboxCard = cards.filter({ hasText: "받은함" }).first();

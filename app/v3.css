@@ -197,3 +197,19 @@
 /* 안 읽음 — 점 하나. 「읽었다」와 「처리했다」는 다르므로 읽어도 목록엔 남는다. */
 .v3-unread { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%;
   background: var(--v3-rail); }
+
+/* ── 044 §A — 오래 밀린 일 ─────────────────────────────────────────
+   접힌 줄 하나. **회색이다** — 코랄은 「오늘 할 일」에만 쓴다. 여기까지 코랄로
+   칠하면 강조가 전부에 걸려서 강조가 아니게 된다. */
+.v3-stale { margin-top: 6px; border-top: 1px solid var(--v3-line); }
+.v3-stale-h { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px;
+  padding: 0 4px; border: 0; background: none; font: inherit; font-size: 13px;
+  font-weight: 600; color: var(--v3-ink-2); cursor: pointer; text-align: left; }
+.v3-stale-h:hover { color: var(--v3-ink); }
+.v3-stale-cv { color: var(--v3-ink-3); }
+/* 펼친 행은 체크가 없다 — 여기 있는 것들에 필요한 것은 체크가 아니라 새 날짜다. */
+.v3-stale-r { padding-left: 22px; }
+.v3-stale-r .v3-row-t { font-weight: 500; color: var(--v3-ink-2); }
+.v3-stale-r .v3-row-t:hover { color: var(--v3-ink); }
+.v3-stale-r .v3-due { color: var(--v3-ink-3); }
+.v3-btn-s { height: 30px; padding: 0 12px; font-size: 12px; text-decoration: none; }

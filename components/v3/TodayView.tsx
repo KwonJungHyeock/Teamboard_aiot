@@ -16,18 +16,19 @@
 // 「없습니다」만 적으면 고장인지 비어 있는 건지 모른다. 셋 다 다른 말을 한다.
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Card, StatTile, ListRow, Empty, Tag } from "./parts";
+import { Card, StatTile, ListRow, Empty, Tag, Avatar } from "./parts";
 import type { CbState } from "./parts";
 import {
-  countToday, splitToday, childLine, shortDue, inboxItems, weekEnd, kstDate,
+  countToday, splitToday, childLine, shortDue, inboxItems, weekEnd, shortDate,
+  staleLine, STALE_DAYS,
   type TodayTask, type InboxItem,
 } from "@/lib/v3/today";
 import { areaOf, type AreaView } from "@/lib/v3/category";
-import { V3_BASE } from "@/lib/v3/routes";
+import { V3_BASE, taskHref } from "@/lib/v3/routes";
 
 /** 알림이 가리키는 곳. 종류마다 갈 데가 다르다. */
 function inboxHref(i: InboxItem): string {
-  if (i.refType === "task" && i.refId) return `${V3_BASE}/tasks/${i.refId}`;
+  if (i.refType === "task" && i.refId) return taskHref(i.refId);
   if (i.refType === "signal" && i.refId) return `/signals?panel=signal:${i.refId}`;
   if (i.refType === "handover") return "/handover";
   return "/activity";
@@ -60,6 +61,8 @@ export default function TodayView({
   const [tasks, setTasks] = useState<TodayTask[] | null>(null);
   const [inbox, setInbox] = useState<InboxItem[] | null>(null);
   const [err, setErr] = useState("");
+  // 오래 밀린 일은 **접혀서** 시작한다. 펼치는 것은 사람이 정한다.
+  const [openStale, setOpenStale] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -99,11 +102,11 @@ export default function TodayView({
 
       <div className="v3-stats">
         <StatTile n={view?.counts.doing ?? 0} label="진행 중" />
-        <StatTile n={view?.counts.thisWeek ?? 0} label={`이번 주 마감 (~${weekEnd(today).slice(5)})`} />
+        <StatTile n={view?.counts.thisWeek ?? 0} label={`이번 주 마감 (~${shortDate(weekEnd(today))})`} />
         <StatTile n={view?.counts.noDue ?? 0} label="기한 없음" warn />
       </div>
 
-      <Card title="오늘 할 일" sub={view ? `${view.todo.length}건 · 기한이 지났거나 오늘 마감` : undefined}>
+      <Card title="오늘 할 일" sub={view ? `${view.todo.length}건 · 오늘 마감이거나 ${STALE_DAYS}일 이내로 지난 것` : undefined}>
         {!view ? <p className="v3-loading">불러오는 중…</p>
           : view.todo.length === 0 ? (
             <Empty
@@ -118,7 +121,7 @@ export default function TodayView({
           ) : view.todo.map((t) => (
             <ListRow
               key={t.id}
-              href={`${V3_BASE}/tasks/${t.id}`}
+              href={taskHref(t.id)}
               title={t.title}
               sub={childLine(t, tasks ?? [])}
               state={stateOf(t.status)}
@@ -127,6 +130,43 @@ export default function TodayView({
               late={t.late}
             />
           ))}
+
+        {/*
+          ── 오래 밀린 일 ──────────────────────────────────────────
+          두 달 밀린 업무는 **오늘 할 일이 아니라 기한을 다시 정할 일**이다
+          (044 §A). 위 목록과 섞으면 코랄이 거의 모든 행에 붙고, 강조가 전부에
+          걸리면 강조가 아니라 배경이 된다.
+
+          접되 **접혔다는 사실과 건수는 보인다.** 조용히 빼면 합이 안 맞는데
+          아무도 모른다. 행동 버튼은 「완료」가 아니라 「기한 다시 정하기」다 —
+          여기 있는 것들에 필요한 것은 체크가 아니라 새 날짜다.
+        */}
+        {view && view.stale.length > 0 && (
+          <div className="v3-stale">
+            <button type="button" className="v3-stale-h" aria-expanded={openStale}
+                    onClick={() => setOpenStale((v) => !v)}>
+              <span className="v3-stale-cv" aria-hidden="true">{openStale ? "▾" : "▸"}</span>
+              {staleLine(view.stale)}
+            </button>
+            {openStale && view.stale.map((t) => (
+              <div className="v3-row v3-stale-r" key={t.id}>
+                <span className="v3-row-main">
+                  <Link className="v3-row-t" href={taskHref(t.id)}>{t.title}</Link>
+                  {/* 하위가 있을 때만 한 줄. 기한은 오른쪽에 이미 있다 —
+                      한 행에서 같은 말을 두 번 하지 않는다. */}
+                  {childLine(t, tasks ?? []) && (
+                    <span className="v3-row-sub">{childLine(t, tasks ?? [])}</span>
+                  )}
+                </span>
+                <span className="v3-row-r">
+                  <Avatar name={t.assigneeName} />
+                  <span className="v3-due">{shortDue(t.dueDate)}</span>
+                  <Link className="v3-btn v3-btn-s" href={taskHref(t.id)}>기한 다시 정하기</Link>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       <Card title="받은함" sub={inbox ? `${inbox.length}건` : undefined}>
@@ -161,7 +201,7 @@ export default function TodayView({
             return (
               <div className="v3-row done" key={t.id}>
                 <span className="v3-row-main">
-                  <Link className="v3-row-t" href={`${V3_BASE}/tasks/${t.id}`}>{t.title}</Link>
+                  <Link className="v3-row-t" href={taskHref(t.id)}>{t.title}</Link>
                 </span>
                 <span className="v3-row-r">
                   {a && <Tag area={a} />}

@@ -53,6 +53,12 @@ export function countToday(tasks: TodayTask[], today: string): TodayCounts {
   };
 }
 
+/** `2026-09-13` → `9/13`. 앞의 0 을 떼서 짧게 (044 §A). */
+export function shortDate(date: string): string {
+  const [, m, d] = date.split("-");
+  return `${Number(m)}/${Number(d)}`;
+}
+
 /** 이번 주 일요일(KST). 오늘이 일요일이면 오늘이다. */
 export function weekEnd(today: string): string {
   const d = new Date(`${today}T00:00:00Z`);
@@ -61,11 +67,34 @@ export function weekEnd(today: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * 「오래 밀린 일」의 경계. 이보다 더 지난 것은 오늘 할 일이 아니다.
+ *
+ * 지시자 정정(044 §A): 두 달 밀린 업무는 **오늘 할 일이 아니라 기한을 다시
+ * 정할 일**이다. 043 에서는 지난 것을 전부 「오늘 할 일」에 넣었고, 그러면
+ * 12건 중 11건이 코랄이 되어 **강조가 배경이 된다.**
+ */
+export const STALE_DAYS = 7;
+
 export interface TodayLists {
-  /** 기한이 지난 것 + 오늘 마감. **지난 것이 위**다. */
+  /** 오늘 마감 + 지남 7일 이내. **코랄 테두리는 여기에만.** */
   todo: (TodayTask & { late: boolean })[];
+  /** 지남 7일 초과. 접힌 줄 하나로 들어간다 — 회색. */
+  stale: (TodayTask & { late: boolean })[];
   /** 오늘 완료 처리된 것. */
   done: TodayTask[];
+}
+
+/**
+ * `due` 가 `today` 보다 **며칠 지났는가**. 안 지났으면 0 이하.
+ *
+ * 둘 다 `YYYY-MM-DD` 인 날짜값이라 UTC 자정으로 정규화해 빼면 **달력 날짜
+ * 차이**가 그대로 나온다. 밀리초를 나누는 것이 아니라 날짜를 세는 것이다.
+ */
+export function daysLate(due: string, today: string): number {
+  return Math.round(
+    (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${due}T00:00:00Z`)) / 86400000
+  );
 }
 
 /**
@@ -78,16 +107,31 @@ export interface TodayLists {
  * 오늘의 성과가 아니다.
  */
 export function splitToday(tasks: TodayTask[], today: string): TodayLists {
-  const todo = tasks
+  // 기한이 오늘이거나 지난 것 전부 — 여기서 둘로 가른다.
+  const due = tasks
     .filter((t) => OPEN.has(t.status) && t.dueDate !== null && t.dueDate <= today)
     .map((t) => ({ ...t, late: (t.dueDate as string) < today }))
     .sort((a, b) => (a.dueDate as string).localeCompare(b.dueDate as string) || a.id - b.id);
+
+  // **합이 새지 않는다** — `todo` + `stale` 이 곧 `due` 다. 어느 쪽에도 안 드는
+  // 업무가 생기면 그 업무는 어디에서도 안 보인다.
+  const todo = due.filter((t) => daysLate(t.dueDate as string, today) <= STALE_DAYS);
+  const stale = due.filter((t) => daysLate(t.dueDate as string, today) > STALE_DAYS);
 
   const done = tasks
     .filter((t) => t.status === "done" && kstDate(t.completedAt) === today)
     .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? "") || a.id - b.id);
 
-  return { todo, done };
+  return { todo, stale, done };
+}
+
+/** 접힌 줄에 적을 말. 「몇 건인지」와 「얼마나 오래됐는지」를 함께 낸다. */
+export function staleLine(stale: TodayTask[]): string | null {
+  if (stale.length === 0) return null;
+  const oldest = stale.reduce((a, b) =>
+    (a.dueDate as string) <= (b.dueDate as string) ? a : b);
+  const [, m, d] = (oldest.dueDate as string).split("-");
+  return `오래 밀린 일 ${stale.length}건 · 가장 오래된 것 ${Number(m)}월 ${Number(d)}일`;
 }
 
 /**
