@@ -170,8 +170,11 @@ export async function getAreasWithProjects(): Promise<AreaWithProjects[]> {
  *  lead 는 전체, 그 외는 본인(담당/소유) 기준. */
 export async function getInboxCount(viewerId: number, isLead: boolean): Promise<number> {
   const row = await queryOne<{ n: string }>(
-    `SELECT (SELECT count(*) FROM task WHERE is_active = true AND status = 'proposed' AND ($2 OR assignee_id = $1))
-          + (SELECT count(*) FROM drafts WHERE status = 'pending' AND ($2 OR user_id = $1)) AS n`,
+    // 초안(`drafts`)은 더 안 센다 — 승인 인박스의 초안 절반을 철거했다(041 §B ②).
+    // **표는 그대로 두고 세는 것만 뺐다.** 남은 초안은 /admin/agent-usage 에서 본다.
+    // 배지가 「승인 대기 3」인데 화면엔 아무것도 없는 상태를 만들지 않기 위해서다.
+    `SELECT count(*) AS n FROM task
+      WHERE is_active = true AND status = 'proposed' AND ($2 OR assignee_id = $1)`,
     [viewerId, isLead]
   );
   return Number(row?.n ?? 0);

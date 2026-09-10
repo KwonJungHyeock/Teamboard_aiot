@@ -1,28 +1,30 @@
 "use client";
 
-// 승인 인박스 (신규) — 사람/에이전트 공간의 유일한 통로.
-// 에이전트 산출물 두 종류를 한곳에 모은다: (1) 승인 대기 초안(drafts.pending),
-// (2) 에이전트 제안 업무(task.status='proposed'). 승인해야 사람 공간에 들어온다.
+// 승인 대기 — **남은 제안 업무를 정리하는 자리** (MD-P-2026-041 §B 배치 ②).
+//
+// ── 무엇이 없어졌고 무엇이 남았는가 ──────────────────────────────
+//
+// 전에는 두 가지가 모였다: (1) 에이전트가 만든 **승인 대기 초안**(`drafts`),
+// (2) **제안 상태 업무**(`task.status='proposed'`). 에이전트를 철거하면서
+// (1)을 지웠다 — 초안을 만들던 것도, 승인/반려하던 라우트도 없다.
+//
+// (2)는 **남긴다.** 이유는 두 가지다.
+//   · `task.status='proposed'` 는 DB 데이터고, 이번 철거는 데이터를 안 건드린다.
+//     화면만 없애면 그 업무들은 **영영 'proposed' 에 갇힌다** — 업무 목록은
+//     제안 상태를 걸러 내므로 볼 수도, 승인할 수도, 기각할 수도 없게 된다.
+//   · 홈 · 팀 활동 · 활동 인박스 세 곳이 이 화면을 가리킨다. 통째로 지우면
+//     갈 곳 없는 링크가 셋 생긴다.
+//
+// **새 제안은 더 생기지 않는다.** 만들던 쪽이 없어졌기 때문이다. 그래서 이
+// 화면은 늘어나지 않고 줄기만 하는 자리다 — 화면에도 그렇게 적는다.
 import { useCallback, useEffect, useState } from "react";
 import PageShell from "./PageShell";
 import { useRouter } from "next/navigation";
-import { hasLead } from "@/lib/types";
-import type { SessionUser, Draft } from "@/lib/types";
+import type { SessionUser } from "@/lib/types";
 import { toast } from "@/lib/quick";
-import ApproveModal, { type DraftSummary } from "./ApproveModal";
 import EmptyState from "./EmptyState";
 import ErrorNote from "./ErrorNote";
 
-type DraftRow = Draft & { user_name?: string; assistant_name?: string; cost_tokens?: number | null };
-
-const WON_PER_1K = 6;
-function costLabel(tokens: number): string {
-  const won = Math.max(1, Math.round((tokens / 1000) * WON_PER_1K));
-  return `${tokens.toLocaleString()} 토큰 · ₩${won.toLocaleString()}`;
-}
-const DRAFT_TYPE_LABEL: Record<string, string> = {
-  research: "자료조사", organize: "업무정리", monthly_report: "월간보고",
-};
 function relTime(iso: string): string {
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return "";
@@ -45,11 +47,9 @@ interface ProposedTask {
 }
 
 export default function InboxView({ user }: { user: SessionUser }) {
+  void user;                            // 범위는 서버가 정한다 (`/api/tasks` 의 inbox)
   const router = useRouter();
-  const [drafts, setDrafts] = useState<DraftRow[]>([]);
   const [proposed, setProposed] = useState<ProposedTask[]>([]);
-  const [demo, setDemo] = useState(false);
-  const [approving, setApproving] = useState<DraftSummary | null>(null);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggle = (k: string) =>
@@ -61,42 +61,18 @@ export default function InboxView({ user }: { user: SessionUser }) {
 
   const load = useCallback(async () => {
     try {
-      const scope = hasLead(user.role) ? "&scope=all" : "";
-      const [dRes, tRes] = await Promise.all([
-        fetch(`/api/drafts?status=pending${scope}`),
-        fetch("/api/tasks"),
-      ]);
-      const dData = await dRes.json();
-      const tData = await tRes.json();
-      setDrafts(dData.drafts ?? []);
-      setDemo(!!dData.demo);
-      setProposed(tData.inbox ?? []);
+      const res = await fetch("/api/tasks");
+      const data = await res.json();
+      setProposed(data.inbox ?? []);
       setError("");
     } catch {
       setError("인박스를 불러오지 못했습니다.");
     }
-  }, [user.role]);
+  }, []);
 
   useEffect(() => {
     load();
   }, [load]);
-
-  async function rejectDraft(id: number) {
-    const feedback = window.prompt("반려 사유(에이전트 재작성에 전달)");
-    if (feedback === null) return;
-    const res = await fetch(`/api/drafts/${id}/reject`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ feedback }),
-    });
-    if (!res.ok) {
-      setError((await res.json()).error ?? "반려 실패");
-      return;
-    }
-    toast("초안을 반려했어요");
-    load();
-    router.refresh(); // 사이드바 승인 대기 수·FAB 배지 갱신
-  }
 
   async function judgeTask(id: number, approve: boolean) {
     const res = await fetch(`/api/tasks/${id}`, {
@@ -110,93 +86,42 @@ export default function InboxView({ user }: { user: SessionUser }) {
     }
     toast(approve ? "제안 업무를 승인했어요" : "제안 업무를 기각했어요");
     load();
-    router.refresh(); // 사이드바 승인 대기 수·FAB 배지 갱신
+    router.refresh(); // 사이드바 승인 대기 수 갱신
   }
 
-  const total = drafts.length + proposed.length;
   const excerpt = (s: string) => (s || "").replace(/[#*>`]/g, "").replace(/\s+/g, " ").trim().slice(0, 140);
 
   return (
     <PageShell
       crumb={["워크스페이스", "승인 대기"]}
       title="승인 대기"
-      subtitle={<>에이전트는 제안만 합니다. 사람이 여기서 확정해야 홈·업무·논의·결정에 반영됩니다.</>}
+      subtitle={<>제안 상태로 남아 있는 업무입니다. 승인해야 업무 목록에 들어옵니다.</>}
     >
     <div className="hv pg-legacy">
       <div className="wrap">
 
         {error && <ErrorNote message={error} onRetry={load} />}
 
-        {/* 데모 모드 — LLM 키 미연결 시 명시 (비용은 예시값) */}
-        {demo && (
+        {/* 이 화면이 왜 늘지 않는지 적는다. 안 적으면 「고장인가」로 읽힌다. */}
+        {proposed.length > 0 && (
           <div className="inbox-demo" role="note">
-            <b>데모 모드</b> · LLM 키(ANTHROPIC/OPENAI) 미연결 — 초안은 흐름 검증용 샘플이고 비용은 예시값입니다.
+            <b>남은 것만 정리하는 자리입니다</b> · 제안을 만들던 에이전트 기능이 없어져 새 제안은 더 생기지 않습니다.
           </div>
         )}
 
-        {/* 상단 요약 = 미니 스트립 (대기/초안/제안, tabular) */}
-        {total > 0 && (
-          <div className="inbox-strip" aria-label="대기 요약">
-            <div className="is"><span className="v num">{total}</span><span className="l">대기 항목</span></div>
-            <div className="is"><span className="v num">{drafts.length}</span><span className="l">확인 요청 초안</span></div>
-            <div className="is"><span className="v num">{proposed.length}</span><span className="l">제안 업무</span></div>
-          </div>
-        )}
-
-        {total === 0 && !error && (
+        {proposed.length === 0 && !error && (
           <section className="inbox-empty" aria-label="승인 대기 없음">
             <EmptyState
               icon="inbox"
               title="대기 중 제안이 없어요"
-              hint="에이전트가 만든 초안·제안 업무가 여기로 모입니다. 승인해야 홈·업무·논의·결정에 반영됩니다."
+              hint="제안 상태로 남은 업무가 여기 모입니다. 제안을 만들던 에이전트 기능이 없어져 새로 생기지는 않습니다."
             />
           </section>
         )}
 
-        {/* 확인 요청 초안 (에이전트 산출 → 사람 확인) */}
-        {drafts.length > 0 && (
-          <section className="inbox-sec" aria-label="확인 요청 초안">
-            <div className="inbox-sh"><h2>확인 요청 초안</h2><span className="sub num">{drafts.length}건</span></div>
-            <div className="pcards">
-              {drafts.map((d) => (
-                <article className="pcard" key={d.id}>
-                  <div className="pcard-top">
-                    <span className="led s-review" aria-hidden="true" />
-                    <span className="pty pty-review">확인요청</span>
-                    <span className="pcard-src">{[DRAFT_TYPE_LABEL[d.task_type] ?? d.task_type, d.assistant_name, d.user_name && `${d.user_name} 담당`].filter(Boolean).join(" · ")}</span>
-                    <span className="pcard-id num">#{d.id}</span>
-                  </div>
-                  <b className="pcard-title">{d.title || "(제목 없음)"}</b>
-                  {(d.body || "").trim() && (
-                    <>
-                      <p className={`pcard-body${expanded.has(`d${d.id}`) ? " open" : ""}`}>
-                        {expanded.has(`d${d.id}`) ? d.body : excerpt(d.body)}
-                      </p>
-                      <button className="pcard-more" onClick={() => toggle(`d${d.id}`)}>
-                        {expanded.has(`d${d.id}`) ? "접기" : "자세히"}
-                      </button>
-                    </>
-                  )}
-                  <div className="pcard-foot">
-                    {d.created_at && <span className="pcard-time num">{relTime(d.created_at)}</span>}
-                    {typeof d.cost_tokens === "number" && (
-                      <span className="pcard-cost num">{costLabel(d.cost_tokens)}</span>
-                    )}
-                  </div>
-                  <div className="pcard-acts">
-                    <button className="btn-brand" onClick={() => setApproving({ id: d.id, title: d.title, body: d.body, task_type: d.task_type, user_name: d.user_name })}>승인</button>
-                    <button className="btn-outline" onClick={() => rejectDraft(d.id)}>반려</button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* 에이전트 제안 업무 */}
         {proposed.length > 0 && (
-          <section className="inbox-sec" aria-label="에이전트 제안 업무">
-            <div className="inbox-sh"><h2>에이전트 제안 업무</h2><span className="sub num">{proposed.length}건 · 승인 시 업무로 전환</span></div>
+          <section className="inbox-sec" aria-label="제안 업무">
+            <div className="inbox-sh"><h2>제안 업무</h2><span className="sub num">{proposed.length}건 · 승인 시 업무로 전환</span></div>
             <div className="pcards">
               {proposed.map((t) => (
                 <article className="pcard" key={t.id}>
@@ -230,19 +155,6 @@ export default function InboxView({ user }: { user: SessionUser }) {
           </section>
         )}
       </div>
-
-      {approving && (
-        <ApproveModal
-          draft={approving}
-          onClose={() => setApproving(null)}
-          onDone={(message) => {
-            setApproving(null);
-            toast(message);
-            load();
-            router.refresh();
-          }}
-        />
-      )}
     </div>
     </PageShell>
   );
