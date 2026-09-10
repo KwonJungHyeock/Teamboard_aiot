@@ -105,6 +105,20 @@ export async function runMigrations(pool: Pool): Promise<MigrateResult> {
   const files = await listMigrationFiles();
   const client = await pool.connect();
   const applied: string[] = [];
+  /*
+   * ── 마이그레이션이 한 말을 **버리지 않는다** (MD-P-2026-041 §A) ──
+   *
+   * 0035 는 「몇 명을 켰고 지금 관리자가 몇 명인가」를 `RAISE NOTICE` 로 남긴다.
+   * 그런데 node-postgres 는 NOTICE 를 이벤트로만 흘려보내고, 아무도 듣지 않으면
+   * **그냥 사라진다.** 남기라고 적어 놓고 남지 않는 것이 제일 나쁘다 —
+   * 적어 뒀는데 읽을 수 없으면 적은 것이 아니다(§G).
+   *
+   * 던지지 않는 마이그레이션은 **로그가 유일한 증거**다. 그래서 여기서 받는다.
+   */
+  const onNotice = (n: { message?: string }) => {
+    if (n?.message) console.info(`[migrate:sql] ${n.message}`);
+  };
+  client.on("notice", onNotice);
   try {
     // 크로스 인스턴스 직렬화 — 락을 못 잡으면 대기(동시 배포 시 한쪽만 적용).
     await client.query("SELECT pg_advisory_lock($1)", [LOCK_KEY]);
@@ -191,6 +205,9 @@ export async function runMigrations(pool: Pool): Promise<MigrateResult> {
     }
     return { applied, alreadyDone: done.size, missing };
   } finally {
+    // 클라이언트는 풀로 돌아간다. 리스너를 떼지 않으면 다음에 그 연결을 쓰는
+    // 쪽까지 이 로그가 따라붙고, 콜드스타트마다 하나씩 쌓인다.
+    client.off("notice", onNotice);
     await client.query("SELECT pg_advisory_unlock($1)", [LOCK_KEY]).catch(() => {});
     client.release();
   }
