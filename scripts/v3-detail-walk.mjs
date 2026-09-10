@@ -274,14 +274,100 @@ try {
       afterDue.d === newDue && openTxt === expect,
       `due_date ${afterDue.d} · 화면 "${openTxt}" · lib/open-due "${expect}"`);
 
-  // ── ⑧ 기록은 description ───────────────────────────────────────
+  /*
+   * ══ 047 §B 저장이 보이게 ═══════════════════════════════════════
+   *
+   * 칸에서 벗어날 때 저장하는 방식은 그대로 두되, **증거가 화면에 상시로**
+   * 있어야 한다. 잠깐 떴다 사라지는 표시는 못 보면 없는 것과 같다.
+   */
+  const noteOf = (field) => page.locator(`.v3-save[data-field="${field}"]`);
+  const noteTxt = async (field) => (await noteOf(field).innerText()).trim();
+
+  // ── ㉠ 기록을 바꾸고 벗어나면 「마지막 저장」 시각이 뜬다 ────────
+  //
+  // 저장 전에는 **안내**가 서 있어야 한다. 빈 자리였다가 생기면 줄이 뛰고,
+  // 뛰는 줄은 누르려던 것을 빗맞히게 만든다.
+  const noteBefore = await noteTxt("description");
   await page.locator(".v3-note-in").fill(`${MARK} 기록은 description 에 들어간다`);
-  await page.locator(".v3-dtitle").click();   // 칸에서 벗어나면 저장
-  await page.waitForTimeout(1400);
+  await page.locator(".v3-dtitle").click();
+  await noteOf("description").filter({ hasText: "마지막 저장" })
+    .waitFor({ timeout: 9000 }).catch(() => {});
+  const noteAfter = await noteTxt("description");
+  chk("㉠-마지막-저장-시각이-뜬다",
+      noteBefore === "칸에서 벗어나면 저장됩니다." && /^마지막 저장 \d{2}:\d{2}$/.test(noteAfter),
+      `저장 전 "${noteBefore}" → 저장 뒤 "${noteAfter}"`);
+
+  // ── ⑧ 기록은 description ───────────────────────────────────────
   const afterNote = (await sql(`SELECT description FROM task WHERE id = $1`, [subject]))[0];
   chk("⑧-기록은-description-에",
       afterNote.description.includes("description 에 들어간다"),
       `description = "${afterNote.description.slice(0, 46)}" (컬럼 body 는 실재하지 않는다)`);
+
+  /*
+   * ㉠ 짝 — **시각이 서버 것인가.** 브라우저 시계로 찍으면 시계가 틀린 기계에서
+   * 증거로 내놓은 숫자가 거짓말을 한다. 응답의 `Date` 머리글을 쓰므로,
+   * 같은 요청을 직접 보내 그 머리글의 KST 시:분과 화면 글자를 맞춰 본다.
+   */
+  const srv = await page.evaluate(async (id) => {
+    const r = await fetch(`/api/tasks/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    return r.headers.get("date");
+  }, subject);
+  const srvClock = srv ? new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(new Date(Date.parse(srv))) : "";
+  chk("㉠짝-시각이-서버-것이다", noteAfter.includes(srvClock),
+      `화면 "${noteAfter}" · 응답 Date 머리글의 KST "${srvClock}"`);
+
+  // ── ㉡ 새로고침해도 그 값이 남아 있다 ───────────────────────────
+  const savedNote = await page.locator(".v3-note-in").inputValue();
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator(".v3-note-in").waitFor({ timeout: 9000 });
+  const reloaded = await page.locator(".v3-note-in").inputValue();
+  const inDb = (await sql(`SELECT description FROM task WHERE id = $1`, [subject]))[0].description;
+  chk("㉡-새로고침해도-남아-있다",
+      reloaded === savedNote && inDb === savedNote,
+      `화면 ${reloaded === savedNote ? "같음" : "**다름**"} · DB ${inDb === savedNote ? "같음" : "**다름**"}` +
+      ` — "${savedNote.slice(0, 40)}"`);
+
+  // ── ㉢ 제목을 비우고 벗어나면 원래 제목이 돌아오고 이유가 보인다 ──
+  const titleBefore = await page.locator(".v3-dtitle").inputValue();
+  await page.locator(".v3-dtitle").fill("");
+  await page.locator(".v3-note-in").click();
+  await page.waitForTimeout(700);
+  const titleAfter = await page.locator(".v3-dtitle").inputValue();
+  const titleNote = await noteTxt("title");
+  const titleDb = (await sql(`SELECT title FROM task WHERE id = $1`, [subject]))[0].title;
+  chk("㉢-빈-제목은-되돌리고-이유",
+      titleAfter === titleBefore && titleDb === titleBefore && titleNote.includes("제목은 비울 수 없습니다"),
+      `화면 "${titleAfter.slice(0, 24)}" · DB "${titleDb.slice(0, 24)}" · 줄 "${titleNote}"`);
+
+  /*
+   * ── ㉣ 저장이 400 을 받으면 그 자리에 사유가 뜬다 ──────────────
+   *
+   * **조건을 먼저 만든다.** API 는 병합값으로 시작일<=마감일을 본다. 그래서
+   * 시작일을 뒤로 밀어 두면, 그보다 앞선 기한을 고르는 순간 진짜 400 이 난다.
+   * 화면 밖에서 주입한 오류가 아니라 **사람이 할 수 있는 조작**이 받는 오류다.
+   */
+  await sql(`UPDATE task SET start_date = $2::date WHERE id = $1`, [subject, pileDay]);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator(".v3-ichip").filter({ hasText: "기한" }).first().click();
+  const earlier = `${today.slice(0, 7)}-01`;
+  await page.locator("#v3-d-due").fill(earlier);
+  await noteOf("dueDate").filter({ hasText: "저장 안 됨" }).waitFor({ timeout: 9000 }).catch(() => {});
+  const dueNote = await noteTxt("dueDate");
+  const dueDb = (await sql(`SELECT due_date::text d FROM task WHERE id = $1`, [subject]))[0].d;
+  // 다른 칸은 **안 물든다** — 한 번에 하나씩 저장하니 실패도 하나에만 남는다(§G).
+  const titleNoteNow = await noteTxt("title");
+  chk("㉣-400-이면-그-자리에-사유",
+      dueNote.startsWith("저장 안 됨") && dueNote.includes("시작일") && dueDb !== earlier
+      && !titleNoteNow.startsWith("저장 안 됨"),
+      `기한 줄 "${dueNote}" · DB 기한 ${dueDb}(안 바뀜) · 제목 줄 "${titleNoteNow}"`);
+  await sql(`UPDATE task SET start_date = NULL WHERE id = $1`, [subject]);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator(".v3-dtitle").waitFor({ timeout: 9000 });
 
   // ── ⑨ 진척은 읽기 전용 + 이유 한 줄 ────────────────────────────
   const progCard = page.locator(".v3-card").filter({ hasText: "진척" }).first();

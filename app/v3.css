@@ -322,11 +322,24 @@
 .v3-crumb a { color: var(--v3-ink-2); text-decoration: none; font-weight: 600; }
 .v3-crumb a:hover { text-decoration: underline; }
 
-.v3-dtitle { margin-bottom: 8px; }
+.v3-dtitle { margin-bottom: 4px; }
+
+/* ── 047 §B — 저장이 보이게 ───────────────────────────────────────
+   **이 줄은 안 사라진다.** 잠깐 떴다 사라지는 표시는 못 보면 없는 것과 같다.
+   안내 → 저장 중… → 마지막 저장 09:42 가 같은 자리에서 갈아 끼워지고,
+   실패하면 같은 자리에 사유가 선다. 자리가 없어지지 않으니 줄도 안 뛴다.
+   높이를 고정하는 이유가 그것이다. */
+.v3-save { display: block; min-height: 20px; margin: 6px 0 0; font-size: 12px;
+  color: var(--v3-ink-3); font-variant-numeric: tabular-nums; }
+.v3-save.t-busy { color: var(--v3-ink-2); }
+/* 저장됨 — 초록. 체크와 같은 색이다: 「끝났다」를 한 색으로 말한다. */
+.v3-save.t-ok { color: var(--v3-done); font-weight: 600; }
+/* 저장 안 됨 — 코랄 + 굵게. 성공 옆에서 조용하면 저장된 줄 안다. */
+.v3-save.t-err { color: var(--v3-late); font-weight: 700; }
 /* 제목 아래 한 줄 — 카테고리 · 번호 · 하위 요약. 가로로 흐른다. */
 .v3-dmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 13px; }
-/* 저장 거절 사유는 **제목 바로 아래**에 선다. 화면 끝에 두면 못 본다. */
-.v3-dsave { margin: 0 0 var(--v3-gap); }
+/* `.v3-dsave`(화면 하나짜리 저장 오류 줄)는 047 §B 에서 거뒀다. 사유는 이제
+   화면 위가 아니라 **거절당한 그 칸 옆**에 선다 (`.v3-save.t-err`). */
 
 /* 상태 칸 — 네모(체크)와 이름을 같이 세운다. 모양만으로는 배워야 알 수 있다.
    **카테고리 색을 안 빌린다.** 상태와 영역은 다른 신호인데 같은 팔레트를 쓰면
