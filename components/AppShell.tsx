@@ -2,6 +2,10 @@
 import { redirect } from "next/navigation";
 import { getInboxCount } from "@/lib/db";
 import { getLiveSession } from "@/lib/auth";
+import { headers } from "next/headers";
+import { getUiV3 } from "@/lib/v3/switch";
+import { v3Destination } from "@/lib/v3/routes";
+import { PATH_HEADER } from "@/middleware";
 import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import Sidebar from "./Sidebar";
@@ -50,12 +54,32 @@ export default async function AppShell({
   const inboxCount = await getInboxCount(current.id, hasLead(current.role));
   // 파트 Z — Notion 토큰 유무로 관련 UI 자동 분기(미연결 시 숨김)
   const notionConnected = !!process.env.NOTION_TOKEN;
+  /*
+   * v3 스위치 (042 §B) — **꺼져 있으면 이 값 말고는 아무것도 달라지지 않는다.**
+   * 옛 화면을 고치지 않는다는 원칙 때문에, 옛 셸이 새 껍데기로 가는 길 하나만
+   * 안다. 링크·나머지 항목은 §C 에서 화면이 생길 때 `ROUTE_PAIRS` 로 옮긴다.
+   */
+  const uiV3 = await getUiV3();
+  /*
+   * 켜졌으면 **여기 한 곳에서** 새 경로로 보낸다.
+   *
+   * 옛 화면 수십 곳의 `href` 를 고치는 것은 이번 회차의 첫째 원칙(기존 화면을
+   * 고치지 않는다)을 정면으로 어긴다. 그래서 링크는 그대로 두고 **도착한 자리**
+   * 에서 보낸다. 모든 로그인 화면이 이 셸을 지나므로 자리는 하나다.
+   *
+   * `ROUTE_PAIRS` 에 짝이 없으면 안 보낸다 — 아직 v3 에 없는 화면은 옛것으로
+   * 그대로 뜬다. 없는 곳으로 보내는 것보다 옛 화면이 낫다.
+   */
+  if (uiV3) {
+    const to = v3Destination(headers().get(PATH_HEADER) ?? "");
+    if (to) redirect(to);
+  }
   return (
     <>
       <div className="bgfx" aria-hidden="true" />
       <div className="grain" aria-hidden="true" />
       <div className="app">
-        <Sidebar user={current} inboxCount={inboxCount} notionConnected={notionConnected} />
+        <Sidebar user={current} inboxCount={inboxCount} notionConnected={notionConnected} uiV3={uiV3} />
         <main className="main">{children}</main>
       </div>
       <TaskDetailPanel user={current} />

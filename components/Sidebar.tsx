@@ -22,6 +22,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { hasLead, isAdmin, roleLabel, showsAdminGrantBadge } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
+import { V3_BASE } from "@/lib/v3/routes";
 import { viewHref, type SavedView } from "@/lib/saved-views";
 import { SAVED_VIEWS_EVENT } from "@/lib/saved-views-events";
 
@@ -210,10 +211,13 @@ export default function Sidebar({
   user,
   inboxCount,
   notionConnected = true,
+  uiV3 = false,
 }: {
   user: SessionUser;
   inboxCount: number;
   notionConnected?: boolean;
+  /** v3 껍데기가 켜져 있는가 (042 §B). **꺼져 있으면 아무것도 안 그린다.** */
+  uiV3?: boolean;
 }) {
   const pathname = usePathname();
   // "내 목표"와 "목표"는 같은 화면의 다른 탭이다 — 어느 쪽이 켜졌는지 쿼리로 가른다.
@@ -430,6 +434,14 @@ export default function Sidebar({
       {/* 계정 블록 — 이름 · 프로필 · 설정 · 로그아웃 한 덩어리 (B1-a).
           설정은 팀장 전용이 아니다. 「관리」가 기본 접힘이라 거기 있으면 팀원이 못 찾는다.
           개인에 관한 것은 개인 자리에 둔다. */}
+      {/* v3 가 켜졌을 때만 뜨는 한 줄. 꺼져 있으면 사이드바는 지금 그대로다 —
+          이번 회차의 안전선이 「꺼짐에서 아무것도 안 바뀐다」이기 때문이다. */}
+      {uiV3 && (
+        <Link className="side-v3" href={V3_BASE}>
+          새 화면으로 →
+        </Link>
+      )}
+
       <div className="acctblk">
         <Link className="acct" href="/profile" aria-current={cur("/profile") ? "page" : undefined} title="내 프로필">
           <span className="av">{user.name.slice(0, 1)}</span>

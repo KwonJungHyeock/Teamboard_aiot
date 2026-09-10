@@ -173,7 +173,11 @@ try {
 
     const href = await afterRows.nth(0).locator("a").first().getAttribute("href");
     await afterRows.nth(0).locator("a").first().click();
-    await page.waitForTimeout(1500);
+    // **시간이 아니라 상태를 기다린다.** 고정 1.5초로 뒀더니 화면이 늘면서
+    // 「불러오는 중」에 걸려 FAIL 이 났다 — 제품이 아니라 대기가 짧았던 것이다.
+    await page.locator("aside.tdp").first().waitFor({ timeout: 8000 }).catch(() => {});
+    await page.locator("aside.tdp").filter({ hasText: `#${madeTaskId}` })
+      .first().waitFor({ timeout: 8000 }).catch(() => {});
     /*
      * 주소 **문자열**을 통째로 비교했다가 FAIL 이 났고, 제품이 아니라 검사기가
      * 틀린 것이었다 — `/tasks` 가 도착 후 영역 필터를 덧붙여 `&area=1` 이 붙는다.
