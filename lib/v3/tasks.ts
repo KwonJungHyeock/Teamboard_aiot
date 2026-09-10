@@ -101,12 +101,20 @@ export function sortTasks(tasks: TaskRow[], by: SortKey): TaskRow[] {
 
 export interface Group { key: GroupKey; label: string; rows: TaskRow[] }
 
-/** 상태로 묶는다. **빈 묶음은 안 그린다** — 없는 것을 자리로 남기지 않는다. */
+/**
+ * 상태로 묶는다. **빈 묶음은 안 그린다** — 없는 것을 자리로 남기지 않는다.
+ *
+ * 다만 「없어서 안 보이는 것」과 「원래 없는 것」은 다르다. 화면의 「묶기: 상태」
+ * 를 열면 **네 상태가 전부 건수와 함께** 나온다(0건 포함) — 그건 `allGroups`.
+ */
 export function groupTasks(tasks: TaskRow[], by: SortKey): Group[] {
-  return GROUPS
-    .map((g) => ({
-      key: g.key, label: g.label,
-      rows: sortTasks(tasks.filter((t) => (g.statuses as readonly string[]).includes(t.status)), by),
-    }))
-    .filter((g) => g.rows.length > 0);
+  return allGroups(tasks, by).filter((g) => g.rows.length > 0);
+}
+
+/** 넷을 **전부** 낸다 — 0건도 그대로. 「묶기」 안내가 이걸 쓴다 (045 §A). */
+export function allGroups(tasks: TaskRow[], by: SortKey): Group[] {
+  return GROUPS.map((g) => ({
+    key: g.key, label: g.label,
+    rows: sortTasks(tasks.filter((t) => (g.statuses as readonly string[]).includes(t.status)), by),
+  }));
 }

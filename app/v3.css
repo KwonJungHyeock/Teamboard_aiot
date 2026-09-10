@@ -228,3 +228,67 @@
 
 /* 칩 숫자의 합이 전체와 안 맞을 때만 뜬다. 평소엔 없는 줄이다. */
 .v3-leak { margin: -6px 0 var(--v3-gap); font-size: 13px; color: var(--v3-warn); font-weight: 600; }
+
+/* ── 045 §A — 완료 접기 · 묶기 안내 ───────────────────────────────
+   완료는 기본으로 접힌다. **건수는 접혀 있어도 보인다** — 조용히 빼면
+   「완료가 없다」로 읽히고 그건 사실이 아니다. */
+.v3-donebar { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 52px;
+  margin-top: var(--v3-gap); padding: 0 20px; border: 1px dashed var(--v3-line-2);
+  border-radius: var(--v3-radius); background: var(--v3-card); font: inherit;
+  font-size: 13px; font-weight: 600; color: var(--v3-ink-2); cursor: pointer; text-align: left; }
+.v3-donebar:hover { color: var(--v3-ink); border-color: var(--v3-ink-3); }
+
+/* 「묶기: 상태」 — 네 상태를 전부 건수와 함께. 0건은 흐리게 두되 **지우지 않는다.** */
+.v3-groups { display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+  margin: -6px 0 var(--v3-gap); font-size: 13px; color: var(--v3-ink-2); }
+.v3-groups b { font-variant-numeric: tabular-nums; color: var(--v3-ink); }
+.v3-groups .zero, .v3-groups .zero b { color: var(--v3-ink-3); font-weight: 500; }
+.v3-groups em { font-style: normal; color: var(--v3-ink-3); }
+
+/* ── 045 §B — 새 업무 ─────────────────────────────────────────────
+   제목이 이 화면의 본체다. 나머지는 그 아래로 물러난다. */
+.v3-title-in { display: block; width: 100%; margin: 0 0 20px; padding: 0; border: 0;
+  background: none; font: inherit; font-size: 22px; font-weight: 700; line-height: 1.4;
+  letter-spacing: -.01em; color: var(--v3-ink); resize: none; outline: none; }
+.v3-title-in::placeholder { color: var(--v3-ink-3); font-weight: 500; }
+
+.v3-newlab { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--v3-ink-2); }
+.v3-newlab em { margin-left: 6px; font-style: normal; font-weight: 600; color: var(--v3-late); }
+
+/* 카테고리 칸 — 색은 태그와 **같은 팔레트**다. 고른 것만 채워진다. */
+.v3-catpick { margin-bottom: 20px; }
+.v3-catbtn { height: 36px; padding: 0 14px; border-radius: var(--v3-radius-pill);
+  border: 1px solid var(--v3-line-2); background: var(--v3-card); color: var(--v3-ink-2);
+  font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.v3-catbtn:hover { border-color: var(--v3-ink-3); }
+.v3-catbtn.on.platform { color: var(--v3-cat-platform); background: var(--v3-cat-platform-bg); border-color: currentColor; }
+.v3-catbtn.on.rnd      { color: var(--v3-cat-rnd);      background: var(--v3-cat-rnd-bg);      border-color: currentColor; }
+.v3-catbtn.on.edu      { color: var(--v3-cat-edu);      background: var(--v3-cat-edu-bg);      border-color: currentColor; }
+.v3-catbtn.on.design   { color: var(--v3-cat-design);   background: var(--v3-cat-design-bg);   border-color: currentColor; }
+.v3-catbtn.on.lab      { color: var(--v3-cat-lab);      background: var(--v3-cat-lab-bg);      border-color: currentColor; }
+.v3-catbtn.on.field    { color: var(--v3-cat-field);    background: var(--v3-cat-field-bg);    border-color: currentColor; }
+.v3-catbtn.on.etc      { color: var(--v3-cat-etc);      background: var(--v3-cat-etc-bg);      border-color: currentColor; }
+
+.v3-note-in { display: block; width: 100%; margin: 0 0 20px; padding: 12px 14px;
+  border: 1px solid var(--v3-line-2); border-radius: var(--v3-radius-s);
+  background: var(--v3-card); font: inherit; color: var(--v3-ink); resize: vertical; }
+.v3-note-in::placeholder { color: var(--v3-ink-3); }
+.v3-note-in:focus { outline: none; border-color: var(--v3-rail); }
+
+.v3-newrow { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; }
+.v3-newrow label { min-width: 44px; font-size: 13px; font-weight: 700; color: var(--v3-ink-2); }
+.v3-newrow select, .v3-newrow input { height: 36px; padding: 0 10px; border: 1px solid var(--v3-line-2);
+  border-radius: var(--v3-radius-s); background: var(--v3-card); font: inherit; color: var(--v3-ink); }
+.v3-clear { border: 0; background: none; font: inherit; font-size: 13px;
+  color: var(--v3-ink-3); cursor: pointer; }
+.v3-clear:hover { color: var(--v3-ink); }
+
+.v3-newerr { margin: 0 0 12px; }
+.v3-newfoot { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+/* 왜 못 누르는지 — **버튼 옆에** 적는다. */
+.v3-newwhy { font-size: 13px; color: var(--v3-ink-3); }
+
+/* 담당·기한 줄의 입력은 **내용만큼만** 넓다. 늘어나면 옆의 안내 문구가
+   화면 끝에서 접힌다 — 적어 둔 이유를 못 읽게 된다. */
+.v3-newrow select, .v3-newrow input { flex: 0 0 auto; min-width: 160px; max-width: 260px; }
+.v3-newrow .v3-newwhy { flex: 0 1 auto; }

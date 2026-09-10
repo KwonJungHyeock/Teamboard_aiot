@@ -24,7 +24,7 @@ import { Card, Chip, ListRow, Empty, Button } from "./parts";
 import type { CbState } from "./parts";
 import { childLine, shortDue, type TodayTask } from "@/lib/v3/today";
 import {
-  countByArea, areaLeak, filterByArea, groupTasks, dueTone,
+  countByArea, areaLeak, filterByArea, groupTasks, allGroups, dueTone,
   type SortKey,
 } from "@/lib/v3/tasks";
 import { chipRow, type AreaView } from "@/lib/v3/category";
@@ -39,6 +39,8 @@ export default function TasksView({ today, areas }: { today: string; areas: Area
   const [err, setErr] = useState("");
   // 건수 0인 카테고리는 접혀 있다. **접혔다는 사실은 보인다** — `＋n`.
   const [openHidden, setOpenHidden] = useState(false);
+  // 「묶기: 상태」 — 네 상태를 건수와 함께 펼쳐 보이는 안내.
+  const [openGroups, setOpenGroups] = useState(false);
 
   /*
    * 고른 카테고리와 정렬은 **주소에 담긴다** — 그대로 공유된다(지시 §B 정렬).
@@ -49,8 +51,16 @@ export default function TasksView({ today, areas }: { today: string; areas: Area
     return new Set(raw.split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0));
   }, [sp]);
   const sort: SortKey = sp.get("sort") === "recent" ? "recent" : "due";
+  /*
+   * 완료 묶음은 **기본으로 접힌다** (045 §A).
+   *
+   * 「목록은 접지 마십시오」는 **밀린 것**에 대한 말이었다. 완료는 다르다 —
+   * 로컬만 봐도 27건 중 12건이 완료라 스크롤의 절반이 끝난 일이다.
+   * 펼친 상태는 **주소에 담는다.** 접힌 채 공유하면 받은 사람이 다른 것을 본다.
+   */
+  const showDone = sp.get("done") === "1";
 
-  const setQuery = useCallback((next: { cat?: Set<number>; sort?: SortKey }) => {
+  const setQuery = useCallback((next: { cat?: Set<number>; sort?: SortKey; done?: boolean }) => {
     const q = new URLSearchParams(sp.toString());
     if (next.cat !== undefined) {
       if (next.cat.size === 0) q.delete("cat");
@@ -59,6 +69,9 @@ export default function TasksView({ today, areas }: { today: string; areas: Area
     if (next.sort !== undefined) {
       if (next.sort === "due") q.delete("sort");   // 기본값은 주소에 안 적는다
       else q.set("sort", next.sort);
+    }
+    if (next.done !== undefined) {
+      if (next.done) q.set("done", "1"); else q.delete("done");
     }
     router.replace(q.toString() ? `?${q}` : "?", { scroll: false });
   }, [router, sp]);
@@ -73,9 +86,14 @@ export default function TasksView({ today, areas }: { today: string; areas: Area
   const counts = useMemo(() => countByArea(tasks ?? []), [tasks]);
   const { shown, hidden } = useMemo(() => chipRow(areas, counts), [areas, counts]);
   const leak = useMemo(() => areaLeak(tasks ?? [], areas), [tasks, areas]);
+  const filtered = useMemo(() => filterByArea(tasks ?? [], picked), [tasks, picked]);
+  // 완료는 여기서 뺀다 — **칩 건수는 안 건드린다**(칩은 거르기 전 전체로 센다).
   const groups = useMemo(
-    () => groupTasks(filterByArea(tasks ?? [], picked), sort),
-    [tasks, picked, sort]);
+    () => groupTasks(filtered, sort).filter((g) => g.key !== "done" || showDone),
+    [filtered, sort, showDone]);
+  const doneCount = useMemo(
+    () => filtered.filter((t) => t.status === "done").length, [filtered]);
+  const everyGroup = useMemo(() => allGroups(filtered, sort), [filtered, sort]);
 
   const toggle = (id: number) => {
     const next = new Set(picked);
@@ -123,11 +141,29 @@ export default function TasksView({ today, areas }: { today: string; areas: Area
         ))}
 
         <span className="v3-chips-sp" />
+        {/* 「묶기: 상태」 — 네 상태를 **전부** 건수와 함께 보인다(0건 포함).
+            빈 묶음을 목록에 안 그리므로, 「없어서 안 보이는 것」과 「원래 없는 것」을
+            여기서 갈라 준다. */}
+        <Button className="v3-sortbtn" aria-expanded={openGroups}
+                onClick={() => setOpenGroups((v) => !v)}>
+          묶기 · 상태
+        </Button>
         <Button className="v3-sortbtn"
                 onClick={() => setQuery({ sort: sort === "due" ? "recent" : "due" })}>
           정렬 · {SORT_LABEL[sort]}
         </Button>
       </div>
+
+      {openGroups && tasks !== null && (
+        <p className="v3-groups" role="note">
+          {everyGroup.map((g) => (
+            <span key={g.key} className={g.rows.length === 0 ? "zero" : ""}>
+              {g.label} <b>{g.rows.length}</b>
+            </span>
+          ))}
+          <em>0건인 묶음은 목록에 안 그립니다.</em>
+        </p>
+      )}
 
       {/* 칩 숫자의 합이 전체와 맞는가. **맞지 않으면 어딘가 새고 있다.**
           0건이라고 믿지 않고 세어서, 샐 때만 말한다. */}
@@ -150,7 +186,8 @@ export default function TasksView({ today, areas }: { today: string; areas: Area
               action={picked.size ? undefined : { label: "새 업무 만들기", href: "/v3/new" }}
             />
           </Card>
-        ) : groups.map((g) => (
+        ) : (<>
+          {groups.map((g) => (
           <Card key={g.key} title={g.label} sub={`${g.rows.length}건`}>
             {/*
               **행에 네 가지만** — 체크 · 제목 · 담당 · 기한 (지시 §C-2).
@@ -174,7 +211,25 @@ export default function TasksView({ today, areas }: { today: string; areas: Area
               );
             })}
           </Card>
-        ))}
+          ))}
+
+          {/* 완료 — **기본으로 접힌 한 줄.** 건수는 접혀 있어도 보인다.
+              조용히 빼면 「완료가 없다」로 읽히고, 그건 사실이 아니다. */}
+          {doneCount > 0 && !showDone && (
+            <button type="button" className="v3-donebar" aria-expanded="false"
+                    onClick={() => setQuery({ done: true })}>
+              <span className="v3-stale-cv" aria-hidden="true">▸</span>
+              완료 {doneCount}건
+            </button>
+          )}
+          {doneCount > 0 && showDone && (
+            <button type="button" className="v3-donebar" aria-expanded="true"
+                    onClick={() => setQuery({ done: false })}>
+              <span className="v3-stale-cv" aria-hidden="true">▾</span>
+              완료 {doneCount}건 접기
+            </button>
+          )}
+        </>)}
     </>
   );
 }

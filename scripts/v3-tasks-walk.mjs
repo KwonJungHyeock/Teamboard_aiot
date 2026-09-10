@@ -10,7 +10,11 @@
 //   ④ 색 매핑에 없는 area 의 업무가 **회색으로 그려지되 이름이 남는다**
 //   ⑤ 행에 **네 가지만** — 체크 · 제목 · 담당 · 기한. ID·우선순위·진척 막대 없음
 //   ⑥ 지남 7일 이내는 코랄, **7일 초과는 회색** (오늘 화면과 같은 기준)
-//   ⑦ 상태로 묶인다 · 「업무」는 **접지 않는다**
+//   ⑦ 상태로 묶인다 · **밀린 것은 안 접는다** (완료만 접는다)
+//   ⑦-1 완료는 **기본으로 접혀 있다** — 목록에 없고, 접힌 줄에 건수가 있다
+//   ⑦-2 펼치면 나오고 다시 접으면 사라진다 · **주소가 따라 바뀐다**
+//   ⑦-3 「묶기」를 열면 **검토 중이 0건으로** 나온다 (없는 것과 안 보이는 것을 가른다)
+//   ⑦-4 접힌 상태에서도 **칩 건수 합 = 전체** (완료를 빼지 않는다)
 //   ⑧ 정렬이 **주소에 담긴다** — 그대로 열면 같은 순서다
 //   ⑨ 카테고리 칩을 누르면 걸러지고 그것도 주소에 담긴다
 //   ⑩ **상세로 가는 링크가 살아 있다** — `/tasks` 를 짝에 넣어도 안 삼켜진다
@@ -64,6 +68,7 @@ try {
     { stdio: "inherit" });
   const req = createRequire(path.join(TMP, "noop.cjs"));
   const { groupTasks, dueTone, countByArea } = req(path.join(TMP, "v3", "tasks.js"));
+  // ⑦-3 의 조건 — 「검토 중」이 **0건이어야** 뜻을 갖는다. 값으로 먼저 확인한다.
   const { resolveAreas, chipRow, AREA_PALETTE } = req(path.join(TMP, "v3", "category.js"));
 
   const swRow = (await sql(`SELECT value FROM config WHERE key = $1`, [KEY]))[0];
@@ -193,17 +198,55 @@ try {
       dueTone(back(3), today) === "late" && dueTone(back(40), today) === "stale",
       `계산 ${dueTone(back(3), today)} · ${dueTone(back(40), today)}`);
 
-  // ── ⑦ 묶음 · 안 접는다 ─────────────────────────────────────────
+  // ── ⑦ 묶음 · 완료만 접는다 ─────────────────────────────────────
   const want = groupTasks(rows, "due");
+  const wantOpen = want.filter((g) => g.key !== "done");
+  const doneN = rows.filter((t) => t.status === "done").length;
   const cardTitles = [];
   const nCard = await page.locator(".v3-card .v3-card-h h2").count();
   for (let i = 0; i < nCard; i++) cardTitles.push((await page.locator(".v3-card .v3-card-h h2").nth(i).innerText()).trim());
   const shownRows = await page.locator(".v3-row").count();
-  chk("⑦-상태로-묶이고-안-접는다",
-      cardTitles.join(" | ") === want.map((g) => g.label).join(" | ")
-        && shownRows === want.reduce((n, g) => n + g.rows.length, 0)
+  chk("⑦-상태로-묶인다",
+      cardTitles.join(" | ") === wantOpen.map((g) => g.label).join(" | ")
         && await page.locator(".v3-stale-h").count() === 0,
-      `묶음 [${cardTitles.join(" | ")}] · 행 ${shownRows} · 접힌 줄 ${await page.locator(".v3-stale-h").count()}개`);
+      `묶음 [${cardTitles.join(" | ")}] · 밀린 것 접힌 줄 ${await page.locator(".v3-stale-h").count()}개 (0이어야 한다)`);
+
+  // ⑦-1 완료가 기본으로 접혀 있다 — 목록에 없고 접힌 줄에 건수가 있다.
+  const doneBar = page.locator(".v3-donebar");
+  const barTxt = (await doneBar.innerText().catch(() => "")).replace(/\s+/g, " ").trim();
+  chk("⑦-①-완료는-기본으로-접힌다",
+      shownRows === wantOpen.reduce((n, g) => n + g.rows.length, 0)
+        && !cardTitles.includes("완료") && barTxt.includes(`완료 ${doneN}건`),
+      `목록 행 ${shownRows} (완료 뺀 ${wantOpen.reduce((n, g) => n + g.rows.length, 0)}) · 접힌 줄 "${barTxt}"`);
+
+  // ⑦-2 펼치고 다시 접는다. **주소가 따라 바뀐다.**
+  await doneBar.click();
+  await page.waitForTimeout(500);
+  const openUrl = new URL(page.url());
+  const openRows = await page.locator(".v3-card").filter({ hasText: "완료" }).first().locator(".v3-row").count();
+  await page.locator(".v3-donebar").click();
+  await page.waitForTimeout(500);
+  const shutUrl = new URL(page.url());
+  const shutRows = await page.locator(".v3-row").count();
+  chk("⑦-②-펼치고-접는다",
+      openUrl.searchParams.get("done") === "1" && openRows === doneN
+        && shutUrl.searchParams.get("done") === null && shutRows === shownRows,
+      `펼침 ?done=${openUrl.searchParams.get("done")} · ${openRows}행 (완료 ${doneN}) → 접음 ?done=${shutUrl.searchParams.get("done")} · ${shutRows}행`);
+
+  // ⑦-3 「묶기」 — 네 상태가 전부. **검토 중이 0건으로** 나온다.
+  const reviewN = rows.filter((t) => t.status === "review").length;
+  chk("⑦-③-조건", reviewN === 0, `검토 중 ${reviewN}건 (0이라야 「없는 것 vs 안 보이는 것」이 갈린다)`);
+  await page.locator(".v3-sortbtn").filter({ hasText: "묶기" }).click();
+  await page.waitForTimeout(300);
+  const gTxt = (await page.locator(".v3-groups").innerText()).replace(/\s+/g, " ").trim();
+  chk("⑦-③-묶기가-넷을-다-보인다",
+      /진행 중 \d+/.test(gTxt) && /검토 중 0/.test(gTxt) && /아직 시작 안 함 \d+/.test(gTxt) && /완료 \d+/.test(gTxt),
+      `"${gTxt}"`);
+
+  // ⑦-4 접힌 상태에서도 칩 합은 그대로 — **완료를 빼지 않는다.**
+  const allChip2 = ((await page.locator(".v3-chip").first().innerText()).match(/\d+/) ?? [""])[0];
+  chk("⑦-④-접혀도-칩-합은-전체", Number(allChip2) === rows.length,
+      `전체 칩 ${allChip2} · DB ${rows.length} (완료 ${doneN}건이 빠지지 않았다)`);
 
   // 거르기 전 전체 목록도 남긴다 — 걸러진 화면만 있으면 결을 못 본다.
   await page.screenshot({ path: `${OUT}/v3-tasks.png`, fullPage: true });
@@ -211,7 +254,7 @@ try {
   // ── ⑧ 정렬이 주소에 담긴다 ──────────────────────────────────────
   const firstTitle = async () => (await page.locator(".v3-card .v3-row .v3-row-t").first().innerText()).trim();
   const dueFirst = await firstTitle();
-  await page.locator(".v3-sortbtn").click();
+  await page.locator(".v3-sortbtn").filter({ hasText: "정렬" }).click();
   await page.waitForTimeout(500);
   const urlAfter = new URL(page.url());
   const recentFirst = await firstTitle();
