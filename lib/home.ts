@@ -8,7 +8,6 @@ import {
   goalCountedSql,
 } from "./progress";
 import { getDecidedStaleDays, signalVisibilityClause } from "./signals";
-import { creditState } from "./agent";
 import { decisionsThisWeek } from "./decisions";
 import { recentActivity } from "./activity";
 import { rollActivity, isRailActivity, type RolledActivity } from "./activity-roll";
@@ -86,8 +85,6 @@ export interface LaneTask {
 export interface Lane {
   actorId: number;
   name: string;
-  /** 에이전트 상태 — working(작성 중)/pending(보고 대기)/idle */
-  assistantStatus: "working" | "pending" | "idle";
   tasks: LaneTask[];
 }
 
@@ -242,22 +239,16 @@ export interface HomeSummary {
     thisWeek: number;   // 이번 주 마감 (오늘~이번 주 일요일). 지연과 겹치지 않는다
     blocking: number;   // 막고 있는 것 — 028 §B2 역방향 차단을 사람 단위로 센 것
   }[];
-  agent: {
-    status: "working" | "pending" | "idle";
-    spentTokens: number;
-    won: number;
-  };
 }
 
 export interface HomeSignal {
   id: number;
-  kind: "signal" | "draft"; // draft = 에이전트 승인 대기 초안 (에이전트 생성물)
+  kind: "signal";
   type: string;
   title: string;
   meta: string;
   badge: "stale" | "wait" | "priv" | "decided" | "tome" | null;
   badgeLabel: string | null;
-  agent: boolean;
   stalled: boolean;
 }
 
@@ -516,20 +507,9 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
      WHERE ${OPEN_TASK} AND ${TEAM_TASK}
      ORDER BY t.due_date ASC NULLS LAST, t.priority = 'high' DESC, t.id`
   );
-  // 에이전트 상태 (레인 이름 옆 상태 점) — working 우선, 없으면 pending, 없으면 idle
-  const assistantStates = await query<{ user_id: number; status: string }>(
-    `SELECT DISTINCT user_id, status FROM drafts WHERE status IN ('working','pending')`
-  );
-  const assistantStatusOf = (actorId: number): "working" | "pending" | "idle" => {
-    if (assistantStates.some((s) => s.user_id === actorId && s.status === "working")) return "working";
-    if (assistantStates.some((s) => s.user_id === actorId && s.status === "pending")) return "pending";
-    return "idle";
-  };
-
   const lanes: Lane[] = humans.map((h) => ({
     actorId: h.id,
     name: h.display_name,
-    assistantStatus: assistantStatusOf(h.id),
     tasks: laneTasks
       .filter((t) => t.assignee_id === h.id)
       .map((t) => ({
@@ -778,7 +758,6 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
         .join(" · "),
       badge,
       badgeLabel,
-      agent: s.author_type === "agent",
       stalled,
       decidedStale,
       toMe,
@@ -791,7 +770,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
   const rest = signalItems.filter((s) => !priority.includes(s));
   const signals: HomeSignal[] = [...priority, ...rest]
     .slice(0, 10)
-    .map(({ id, kind, type, title, meta, badge, badgeLabel, agent, stalled }) => ({
+    .map(({ id, kind, type, title, meta, badge, badgeLabel, stalled }) => ({
       id,
       kind,
       type,
@@ -799,7 +778,6 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
       meta,
       badge,
       badgeLabel,
-      agent,
       stalled,
     }));
 
@@ -1014,11 +992,6 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     myFocus.push({ key: `t${t.id}`, kind: "task", summary: `${over ? "지연" : "오늘 마감"} · ${t.title}`, time: null, href: `/tasks?task=${t.id}`, unread: over });
   }
 
-  // 에이전트 상태 + 실사용량 (나의 초점 하단 칩)
-  const credit = await creditState(viewerId);
-  const myAgentStatus = assistantStatusOf(viewerId);
-  const agentWon = Math.max(0, Math.round((credit.spent / 1000) * 6));
-
   // 인사말 보조 문구 — 데이터에서 도출
   const oldestStalledDecision = signalItems.find((s) => s.type === "decision" && s.stalled);
   const greetingSub = oldestStalledDecision
@@ -1119,6 +1092,5 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
     myFocus,
     teamStatus,
     decisionsThisWeek: await decisionsThisWeek(weekStart),
-    agent: { status: myAgentStatus, spentTokens: credit.spent, won: agentWon },
   };
 }

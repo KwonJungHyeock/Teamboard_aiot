@@ -80,7 +80,7 @@ interface Bar {
   id: string; taskId: number | null; title: string; status: string; late: boolean;
   progress: number; startIdx: number; span: number; range: string; assignee: string;
 }
-interface GLane { key: string; name: string; isCommon: boolean; grad?: string; assistantStatus: Lane["assistantStatus"]; bars: Bar[] }
+interface GLane { key: string; name: string; isCommon: boolean; grad?: string; bars: Bar[] }
 
 export default function TeamTimeline({
   lanes, initialEvents, today, view, anchor, onViewChange, onAnchorChange,
@@ -140,14 +140,14 @@ export default function TeamTimeline({
 
   const gridLanes: GLane[] = [
     {
-      key: "common", name: "팀 공통", isCommon: true, assistantStatus: "idle",
+      key: "common", name: "팀 공통", isCommon: true,
       bars: teamEvents
         .map((e) => toBar(`e${e.id}`, null, e.title, "event", false, 0, e.startAt.slice(0, 10), e.endAt.slice(0, 10), "팀 공통"))
         .filter((b): b is Bar => !!b),
     },
     ...lanes.map((l, i) => ({
       key: `m${l.actorId}`, name: l.name, isCommon: false,
-      grad: AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length], assistantStatus: l.assistantStatus,
+      grad: AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length],
       bars: l.tasks
         .map((t) => toBar(`t${t.id}`, t.id, t.title, t.status, t.late, t.progress, t.startDate, t.dueDate, l.name))
         .filter((b): b is Bar => !!b),
@@ -204,9 +204,9 @@ export default function TeamTimeline({
                   <span className="av" style={{ background: lane.grad }}>{lane.name.slice(0, 1)}</span>
                 )}
                 <span className="gt-lane-n">{lane.name}</span>
-                {!lane.isCommon && lane.assistantStatus !== "idle" && (
-                  <Link href="/assistant" className={`agdot ${lane.assistantStatus}`} title={lane.assistantStatus === "working" ? "에이전트 작동중" : "에이전트 보고 대기"} aria-label="에이전트 상태" />
-                )}
+                {/* 레인 이름 옆 에이전트 상태 점을 **지웠다** (038 §B-2).
+                    누르면 부사수 화면으로 갔는데 그 화면이 없다. 빈 자리는
+                    아바타와 이름이 이미 채우고 있어 따로 채울 것이 없다. */}
               </div>
               <div className="gt-track">
                 {/* 배경: 주말 음영 · 오늘 선 */}

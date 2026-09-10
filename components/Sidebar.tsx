@@ -5,8 +5,8 @@
 //   내 공간 : 내 업무 · 내 목표 · 메모 · 내 캘린더 · 저장됨  (+ 저장된 뷰 핀)
 //   팀     : 홈 · 목표 · 프로젝트 · 업무 · 캘린더 · 타임라인 · 논의·결정 ·
 //            허들룸 · 활동 · 승인 대기 · 월간 보고
-//   관리   : 구성원 · 에이전트 흔적 (관리자) · 업무 현황 (팀장) ·
-//            인수인계 · 내 에이전트                          ← 기본 접힘
+//   관리   : 구성원 · 에이전트 흔적 (관리자) · 업무 현황 · 가오픈 기한 (팀장) ·
+//            인수인계                                      ← 기본 접힘
 //   하단   : 계정 · 프로필 · 설정 · 로그아웃
 //
 // 설정은 「관리」에 두지 않는다 (§B 회신 B1-a). 팀장 전용이 아닌데
@@ -421,8 +421,8 @@ export default function Sidebar({
           </>
         )}
         {isLead && <NavLink href="/status" icon={IC.status} label="업무 현황" current={cur("/status")} />}
+        {isLead && <NavLink href="/open-due" icon={IC.calendar} label="가오픈 기한" current={cur("/open-due")} />}
         <NavLink href="/handover" icon={IC.handover} label="인수인계" current={cur("/handover")} />
-        <NavLink href="/assistant" icon={IC.bot} label="내 에이전트" current={cur("/assistant")} />
       </details>
 
       <div className="sp" />

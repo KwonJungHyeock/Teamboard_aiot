@@ -1,24 +1,23 @@
-// 업무 현황 (관리 전용) — 완료 추이 + 담당자별 현황. lead 실시간 게이트(강등 즉시 반영).
-// 홈의 「팀 현황」 탭을 여기로 흡수했다 (§C 회신 1).
+// 가오픈 기준 기한 — **팀장까지 · 읽기 전용** (MD-P-2026-041 §C).
+//
+// 관리자 전용이 아니다. 기한을 조정하는 것은 팀장의 일이다.
 import { redirect } from "next/navigation";
 import { getLiveSession } from "@/lib/auth";
-import { buildHomeSummary } from "@/lib/home";
 import AppShell from "@/components/AppShell";
-import StatusView from "@/components/StatusView";
+import OpenDueView from "@/components/OpenDueView";
 import { hasLead } from "@/lib/types";
 import { DENIED_HREF } from "@/lib/denied";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
+  // 실시간 role 게이트 — 강등 즉시 반영 (토큰 role 이 아니라 DB 기준).
   const live = await getLiveSession();
   if (!live) redirect("/api/auth/logout?reason=inactive");
   if (!hasLead(live.user.role)) redirect(DENIED_HREF);
-  // 기존 홈 집계 재사용 — 팀 전체 관점(isLead=true)
-  const summary = await buildHomeSummary(live.user.id, true);
   return (
     <AppShell user={live.user}>
-      <StatusView weeklyDone={summary.weeklyDone} teamStatus={summary.teamStatus} />
+      <OpenDueView />
     </AppShell>
   );
 }

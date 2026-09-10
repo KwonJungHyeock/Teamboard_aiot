@@ -104,7 +104,6 @@ export function toPanelItem(s: ApiSignal, user?: SessionUser): SignalPanelItem {
       .join(" · "),
     badge,
     badgeLabel,
-    agent: s.agent,
     stalled: s.stalled,
   };
 }

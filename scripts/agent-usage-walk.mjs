@@ -9,9 +9,9 @@
 //
 //   ① 팀장은 화면에 못 들어간다 (관리자 ⊋ 팀장 — 등급이 포함 관계라도 여긴 관리자뿐)
 //   ② 팀장은 API 에서 403
-//   ③ 관리자는 표를 본다 — 6줄
-//   ④ 화면 숫자 = DB 숫자 (여섯 줄 모두 대조)
-//   ⑤ 숫자 옆 「무엇인가」가 여섯 줄 다 비어 있지 않다
+//   ③ 관리자는 표를 본다 — 7줄 (041 에서 drafts 를 에이전트 초안 / 월간 보고로 갈랐다)
+//   ④ 화면 숫자 = DB 숫자 (일곱 줄 **모두** 대조)
+//   ⑤ 숫자 옆 「무엇인가」가 일곱 줄 다 비어 있지 않다
 //   ⑥ **지우는 자리가 없다** — 버튼·form·삭제 문구 0개
 //   ⑦ 목록 행 수 = 건수 (에이전트 업무 · 초안)
 //   ⑧ 라우트 소스에 DELETE·UPDATE·INSERT 가 없다
@@ -114,27 +114,31 @@ try {
 
   const head = page.locator(".au-t").first();
   const rows = head.locator("tbody tr");
-  chk("③-여섯줄", await rows.count() === 6, `집계 표 ${await rows.count()}줄`);
+  // 줄 수는 화면이 내는 항목 수다. 041 에서 `drafts` 를 「에이전트 초안」과
+  // 「그중 월간 보고」로 갈랐다 — 같은 표에 든 다른 물건이라 한 줄로 세면
+  // 지워도 되는 것과 아닌 것이 섞인다.
+  chk("③-일곱줄", await rows.count() === 7, `집계 표 ${await rows.count()}줄`);
 
   // ④ 화면 ↔ DB. 한 값만 맞춰 보면 「셌다」와 「세다가 빠뜨렸다」가 안 갈린다(§G) —
-  //   여섯 줄을 **다** 대조한다.
+  //   일곱 줄을 **다** 대조한다.
   const [db] = await sql(
     `SELECT (SELECT count(*)::int FROM actor WHERE type='agent')        AS a,
             (SELECT count(*)::int FROM agent_config)                    AS b,
             (SELECT count(*)::int FROM agent_job)                       AS c,
-            (SELECT count(*)::int FROM drafts)                          AS d,
+            (SELECT count(*)::int FROM drafts WHERE task_type <> 'monthly_report') AS d,
+            (SELECT count(*)::int FROM drafts WHERE task_type =  'monthly_report') AS d2,
             (SELECT count(*)::int FROM task WHERE origin='agent')       AS e,
             (SELECT count(*)::int FROM task WHERE status='proposed')    AS f`);
-  const want = [db.a, db.b, db.c, db.d, db.e, db.f];
+  const want = [db.a, db.b, db.c, db.d, db.d2, db.e, db.f];
   const seen = [], whats = [];
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 7; i++) {
     const tds = rows.nth(i).locator("td");
     seen.push(Number((await tds.nth(1).innerText()).trim()));
     whats.push((await tds.nth(2).innerText()).trim());
   }
   chk("④-화면=DB", seen.join(",") === want.join(","), `화면 [${seen}] · DB [${want}]`);
   chk("⑤-무엇인가", whats.every((w) => w.length > 3 && w !== "—"),
-      `여섯 줄 모두 설명이 있다 — 예: "${whats[4]}"`);
+      `일곱 줄 모두 설명이 있다 — 예: "${whats[5]}"`);
 
   // ⑥ 지우는 자리가 없다 — **조작 요소 0개 + 오간 요청이 전부 GET**.
   //
@@ -153,7 +157,7 @@ try {
   const taskRows = db.e === 0 ? 0 : await tabs.nth(1).locator("tbody tr").count();
   const draftRows = db.d === 0 ? 0 : await tabs.nth(nTab - 1).locator("tbody tr").count();
   chk("⑦-목록=건수", taskRows === db.e && draftRows === db.d,
-      `에이전트 업무 ${taskRows}/${db.e} · 초안 ${draftRows}/${db.d}`);
+      `에이전트 업무 ${taskRows}/${db.e} · 초안 ${draftRows}/${db.d} (월간 보고 ${db.d2}건은 목록에서 뺀다)`);
 
   await page.screenshot({ path: `${OUT}/agent-usage.png`, fullPage: true });
 

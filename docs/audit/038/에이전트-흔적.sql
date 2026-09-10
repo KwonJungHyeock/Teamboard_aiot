@@ -15,7 +15,8 @@
 SELECT '에이전트 actor'        AS 항목, count(*)::text AS 건수 FROM actor  WHERE type = 'agent'
 UNION ALL SELECT 'agent_config',        count(*)::text FROM agent_config
 UNION ALL SELECT 'agent_job',           count(*)::text FROM agent_job
-UNION ALL SELECT '승인 대기 초안(drafts)', count(*)::text FROM drafts
+UNION ALL SELECT '에이전트 초안(drafts)',  count(*)::text FROM drafts WHERE task_type <> 'monthly_report'
+UNION ALL SELECT '└ 그중 월간 보고',        count(*)::text FROM drafts WHERE task_type =  'monthly_report'
 UNION ALL SELECT '에이전트가 만든 업무',   count(*)::text FROM task WHERE origin = 'agent'
 UNION ALL SELECT '제안 상태 업무',        count(*)::text FROM task WHERE status = 'proposed';
 
@@ -24,7 +25,8 @@ UNION ALL SELECT '제안 상태 업무',        count(*)::text FROM task WHERE s
 \echo '  에이전트 actor        계정 발급 시 자동 생성. 캘린더 레인이 여기서 늘어난다'
 \echo '  agent_config          에이전트별 설정(보고 형식·담당 영역·자동 범위·추가 지시문)'
 \echo '  agent_job             에이전트가 돌린 작업 기록. 0이면 한 번도 안 돌았다'
-\echo '  drafts                부사수가 만든 승인 대기 초안. 사람이 아직 판단 안 한 것이 있을 수 있다'
+\echo '  drafts                부사수가 만든 초안. 승인·반려 화면이 없어져 여기가 유일하게 보이는 곳이다'
+\echo '  월간 보고             같은 표에 들어 있지만 월간 보고다 — 철거 대상이 아니다'
 \echo '  origin=agent 업무     에이전트가 만든 업무. 사람이 이어받아 진행 중일 수 있다 — 아래 목록을 볼 것'
 \echo '  proposed 업무         승인 인박스에 뜨는 제안 상태'
 
@@ -38,12 +40,13 @@ SELECT t.id, t.title AS 업무, COALESCE(ac.display_name, '—') AS 담당,
  ORDER BY t.created_at DESC, t.id;
 
 \echo ''
-\echo '=== 승인 대기 초안 — 전량 목록 ==='
+\echo '=== 에이전트 초안 — 전량 목록 (월간 보고 제외) ==='
 SELECT d.id, COALESCE(d.title, '(제목 없음)') AS 제목,
        COALESCE(ac.display_name, '—') AS 만든사람,
        d.created_at::date AS 만든날, d.status AS 상태
   FROM drafts d
   LEFT JOIN actor ac ON ac.id = d.user_id
+ WHERE d.task_type <> 'monthly_report'
  ORDER BY d.created_at DESC, d.id;
 
 \echo ''

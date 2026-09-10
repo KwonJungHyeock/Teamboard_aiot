@@ -138,7 +138,7 @@ export default function HomeView({ summary, user, initialSpan, open }: {
                       빈 카드가 됐다 — **빈 카드는 신뢰를 깎는다.** 영구 삭제가 아니라
                       개념이 서기 전까지 비워 두는 것이다. 회의는 MD-P-2026-032 허들룸
                       재설계에서 「회의 1건 = 세션 1개」로 다시 정의된 뒤에 넣는다. */}
-                  <FocusBlock items={summary.myFocus} agent={summary.agent} />
+                  <FocusBlock items={summary.myFocus} />
                 </div>
               </div>
             </div>
@@ -292,23 +292,21 @@ function FocusRow({ f }: { f: HomeSummary["myFocus"][number] }) {
   );
 }
 
-function FocusBlock({ items, agent }: { items: HomeSummary["myFocus"]; agent: HomeSummary["agent"] }) {
-  const AS: Record<string, { label: string; cls: string }> = {
-    working: { label: "작업 중", cls: "working" },
-    pending: { label: "보고 대기", cls: "pending" },
-    idle: { label: "대기", cls: "idle" },
-  };
-  const a = AS[agent.status];
+/*
+ * 「나의 초점」 — 발치의 에이전트 줄을 **지웠다** (MD-P-2026-038 §B-2).
+ *
+ * 거기에는 에이전트 상태와 그날 쓴 토큰·원화가 있었고, 누르면 부사수 화면으로
+ * 갔다. 그 화면이 없어졌으므로 줄도 없앤다.
+ *
+ * **빈 자리를 무엇으로 채웠는가 — 아무것도 안 채웠다.** 이 블록은 제목 · 안읽음
+ * 배지 · 목록 · 「전체 관리 →」를 이미 갖고 있고, 발치 줄은 그 위에 얹혀 있던
+ * 별개 정보(에이전트 소비)였다. 대신 넣을 것을 지어내면 없던 뜻이 생긴다.
+ * 없앤 지표(토큰·비용)의 대체 지표는 만들지 않는다 — 에이전트가 없으면 셀 것도 없다.
+ */
+function FocusBlock({ items }: { items: HomeSummary["myFocus"] }) {
   const unread = items.filter((i) => i.unread).length;
   return (
-    <Block title="나의 초점" count={unread} more="전체 관리 →" moreHref="/inbox"
-      foot={
-        <Link className={`hm-agent s-${a.cls}`} href="/assistant">
-          <i className={`hm-led ${a.cls}`} aria-hidden="true" />
-          에이전트 {a.label}
-          <span className="hm-agent-n num">{agent.spentTokens.toLocaleString()} tok · ₩{agent.won.toLocaleString()}</span>
-        </Link>
-      }>
+    <Block title="나의 초점" count={unread} more="전체 관리 →" moreHref="/inbox">
       {items.length === 0
         ? <BlockEmpty text="지금 처리할 것이 없어요" />
         : items.slice(0, 5).map((f) => <FocusRow key={f.key} f={f} />)}
