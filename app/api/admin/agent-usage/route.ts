@@ -27,7 +27,8 @@ const WHAT: Record<string, string> = {
   agentActors: "계정을 발급할 때 자동으로 만들어지는 에이전트 actor. 캘린더 레인이 여기서 늘어난다.",
   agentConfig: "에이전트별 설정(보고 형식 · 담당 영역 · 자동 범위 · 추가 지시문).",
   agentJob: "에이전트가 돌린 작업 기록. 0이면 한 번도 안 돌았다는 뜻이다.",
-  drafts: "부사수가 만든 승인 대기 초안. 사람이 아직 판단하지 않은 것이 남아 있을 수 있다.",
+  drafts: "부사수가 만든 초안. 승인·반려하던 화면이 없어졌으므로 여기가 유일하게 보이는 곳이다.",
+  monthlyDrafts: "같은 drafts 표에 들어 있지만 월간 보고다. 월간 보고 기능이 지금도 쓰는 자리라 철거 대상이 아니다.",
   originAgent: "에이전트가 만든 업무. 사람이 이어받아 진행 중일 수 있으니 목록을 보고 정한다.",
   proposed: "에이전트 제안 상태의 업무. 승인 인박스에 뜨는 것들이다.",
 };
@@ -41,13 +42,14 @@ export async function GET() {
 
     const [counts] = await query<{
       agent_actors: number; agent_config: number; agent_job: number;
-      drafts: number; origin_agent: number; proposed: number;
+      drafts: number; monthly_drafts: number; origin_agent: number; proposed: number;
     }>(
       `SELECT
          (SELECT count(*)::int FROM actor WHERE type = 'agent')            AS agent_actors,
          (SELECT count(*)::int FROM agent_config)                          AS agent_config,
          (SELECT count(*)::int FROM agent_job)                             AS agent_job,
-         (SELECT count(*)::int FROM drafts)                                AS drafts,
+         (SELECT count(*)::int FROM drafts WHERE task_type <> 'monthly_report') AS drafts,
+         (SELECT count(*)::int FROM drafts WHERE task_type =  'monthly_report') AS monthly_drafts,
          (SELECT count(*)::int FROM task WHERE origin = 'agent')           AS origin_agent,
          (SELECT count(*)::int FROM task WHERE status = 'proposed')        AS proposed`
     );
@@ -70,6 +72,7 @@ export async function GET() {
     }>(
       `SELECT d.id, d.title, ac.display_name AS owner, d.created_at::text, d.status
          FROM drafts d LEFT JOIN actor ac ON ac.id = d.user_id
+        WHERE d.task_type <> 'monthly_report'
         ORDER BY d.created_at DESC, d.id`
     );
 
@@ -80,6 +83,7 @@ export async function GET() {
         agentConfig: counts.agent_config,
         agentJob: counts.agent_job,
         drafts: counts.drafts,
+        monthlyDrafts: counts.monthly_drafts,
         originAgent: counts.origin_agent,
         proposed: counts.proposed,
       },

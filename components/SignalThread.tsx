@@ -201,7 +201,7 @@ export default function SignalThread({
   const rationaleDraft = draftRationale(comments.map((c) => ({ authorName: c.authorName, body: c.body })));
 
   return (
-    <section className={`card sthread ${signal.agent ? "agline" : ""}`} aria-label="논의 스레드">
+    <section className="card sthread" aria-label="논의 스레드">
       <div className="ch">
         <span className={`dt ${signal.type}`} />
         <h2>{signal.title}</h2>
@@ -210,7 +210,6 @@ export default function SignalThread({
         {onClose && <button className="lk mu" onClick={onClose}>닫기</button>}
       </div>
       <div className="smeta">
-        {signal.agent && <span className="atag"><span className="mo" />에이전트</span>}
         <span className="gtag">{TYPE_LABEL[signal.type] ?? signal.type}</span>
         <span className="gtag">{SCOPE_LABEL[signal.scope] ?? signal.scope}</span>
         {signal.huddledAt && <span className="gtag">허들 공유됨</span>}
@@ -286,7 +285,7 @@ export default function SignalThread({
         <div className="thread-list">
           {comments.length === 0 && <SectionEmpty text="첫 메시지를 남겨 논의를 시작하세요 — @이름으로 멘션할 수 있어요" />}
           {comments.map((c) => (
-            <div key={c.id} tabIndex={0} className={`msg ha-host ${c.agent ? "ag" : ""} ${c.authorId === user.id ? "mine" : ""}`}>
+            <div key={c.id} tabIndex={0} className={`msg ha-host ${c.authorId === user.id ? "mine" : ""}`}>
               <HoverActions
                 reactionTarget={{ type: "reply", id: c.id }}
                 threadLabel="답글"
@@ -299,7 +298,6 @@ export default function SignalThread({
               <div className="msg-b">
                 <div className="msg-top">
                   <b>{c.authorName}</b>
-                  {c.agent && <span className="atag sm"><span className="mo" />에이전트</span>}
                   <span className="msg-t num">{relTime(c.createdAt)}</span>
                 </div>
                 <div className="msg-body">{renderRich(c.body, names)}</div>

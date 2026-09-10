@@ -197,26 +197,36 @@ export async function syncDeadlineNotifications(userId: number): Promise<void> {
 }
 
 /**
- * 승인 대기 동기화 (§A 필터 레일 "승인 요청") — 내 앞으로 온 에이전트 초안.
- * 기존 approval 타입을 그대로 쓰고, 초안 1건당 알림 1건으로 고정한다.
+ * 승인 대기 동기화 (§A 필터 레일 "승인 요청") — **제안 상태 업무**.
+ *
+ * ── 무엇이 바뀌었는가 (MD-P-2026-041 §B 배치 ③) ──────────────────
+ *
+ * 전에는 `drafts` 를 읽어 「승인 대기 초안」 알림을 만들었다. 그 초안을 열고
+ * 승인·반려하던 화면이 없어졌으므로 **알림도 없앤다** — 눌러도 갈 데가 없는
+ * 알림은 알림이 아니라 막다른 길이다.
+ *
+ * 대신 승인 인박스에 실제로 남아 있는 것, 즉 `task.status='proposed'` 를 센다.
+ * 알림이 가리키는 `/inbox` 가 지금 보여 주는 것과 **같은 것**이라야 한다 —
+ * 배지와 화면이 다른 것을 세면 그 차이만큼 사람이 헤맨다.
+ *
+ * `drafts` 표는 그대로 둔다(범위 밖). 남은 초안은 /admin/agent-usage 에서 본다.
  */
 export async function syncApprovalNotifications(userId: number): Promise<void> {
-  const drafts = await query<{ id: number; title: string; agent_name: string | null }>(
-    `SELECT d.id, d.title, ag.display_name AS agent_name
-       FROM drafts d LEFT JOIN actor ag ON ag.id = d.assistant_id
-      WHERE d.status = 'pending' AND d.user_id = $1
-      ORDER BY d.created_at DESC LIMIT 20`,
+  const proposed = await query<{ id: number; title: string }>(
+    `SELECT t.id, t.title FROM task t
+      WHERE t.is_active = true AND t.status = 'proposed' AND t.assignee_id = $1
+      ORDER BY t.created_at DESC LIMIT 20`,
     [userId]
   );
-  for (const d of drafts) {
+  for (const t of proposed) {
     await createNotification({
       userId,
       type: "approval",
-      refType: "draft",
-      refId: d.id,
-      snippet: `승인 대기 · ${d.title || "제목 없는 초안"}${d.agent_name ? ` (${d.agent_name})` : ""}`,
+      refType: "task",
+      refId: t.id,
+      snippet: `승인 대기 · ${t.title || "제목 없는 업무"}`,
       actorId: null,
-      dedupeKey: `approval:draft:${d.id}`,
+      dedupeKey: `approval:task:${t.id}`,
     });
   }
 }

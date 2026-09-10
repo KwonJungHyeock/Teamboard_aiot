@@ -261,14 +261,13 @@ export default function HuddleFeed({ user }: { user: SessionUser }) {
                   return (
                     <article
                       key={signal.id}
-                      className={`hud-card clickable${selectedId === signal.id ? " selected" : ""}${signal.agent ? " ag" : ""}`}
+                      className={`hud-card clickable${selectedId === signal.id ? " selected" : ""}`}
                       onClick={() => setSelectedId((prev) => (prev === signal.id ? null : signal.id))}
                       role="button"
                     >
                       <div className="hud-card-top">
                         <span className={`led ${fs.led}`} aria-hidden="true" />
                         <span className={`hud-st ${fs.cls}`}>{fs.label}</span>
-                        {signal.agent && <span className="atag"><span className="mo" />에이전트</span>}
                         <span className="hud-src">{signal.authorName}</span>
                         <span className="hud-id num">#{signal.id}</span>
                       </div>

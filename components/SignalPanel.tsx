@@ -17,7 +17,6 @@ export interface SignalPanelItem {
   meta: string;
   badge: "stale" | "wait" | "priv" | "decided" | "tome" | null;
   badgeLabel: string | null;
-  agent: boolean;
   stalled: boolean;
   /** 정체·리스크 → 코랄 강조 (좌측 액센트) */
   emphasis?: boolean;
@@ -137,7 +136,6 @@ export default function SignalPanel({
                   <span className={`sig-ty ${s.type}`}>{TYPE_LABEL[s.type] ?? s.type}</span>
                 </span>
                 <span className="dl-c">
-                  {s.agent && <span className="atag"><span className="mo" />에이전트</span>}
                   {s.title}
                 </span>
                 <span className="dl-c sig-meta" style={{ flex: "0 0 190px" }}>{s.meta}</span>

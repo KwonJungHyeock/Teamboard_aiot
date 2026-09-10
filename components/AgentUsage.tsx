@@ -13,7 +13,7 @@ interface Payload {
   what: Record<string, string>;
   counts: {
     agentActors: number; agentConfig: number; agentJob: number;
-    drafts: number; originAgent: number; proposed: number;
+    drafts: number; monthlyDrafts: number; originAgent: number; proposed: number;
   };
   agentTasks: { id: number; title: string; assignee: string | null; createdAt: string; status: string; isActive: boolean }[];
   drafts: { id: number; title: string | null; owner: string | null; createdAt: string; status: string }[];
@@ -23,7 +23,8 @@ const ROWS: { key: keyof Payload["counts"]; label: string }[] = [
   { key: "agentActors", label: "에이전트 actor" },
   { key: "agentConfig", label: "agent_config" },
   { key: "agentJob", label: "agent_job" },
-  { key: "drafts", label: "승인 대기 초안 (drafts)" },
+  { key: "drafts", label: "에이전트 초안 (drafts)" },
+  { key: "monthlyDrafts", label: "└ 그중 월간 보고" },
   { key: "originAgent", label: "에이전트가 만든 업무" },
   { key: "proposed", label: "제안 상태 업무" },
 ];
@@ -84,7 +85,7 @@ export default function AgentUsage() {
           </table>
         )}
 
-      <h3 className="au-h">승인 대기 초안 {d.drafts.length}건</h3>
+      <h3 className="au-h">에이전트 초안 {d.drafts.length}건 <em className="au-off">(월간 보고 제외)</em></h3>
       {d.drafts.length === 0
         ? <p className="prop-none">없습니다.</p>
         : (

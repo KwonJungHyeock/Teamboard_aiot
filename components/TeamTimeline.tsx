@@ -80,7 +80,7 @@ interface Bar {
   id: string; taskId: number | null; title: string; status: string; late: boolean;
   progress: number; startIdx: number; span: number; range: string; assignee: string;
 }
-interface GLane { key: string; name: string; isCommon: boolean; grad?: string; assistantStatus: Lane["assistantStatus"]; bars: Bar[] }
+interface GLane { key: string; name: string; isCommon: boolean; grad?: string; bars: Bar[] }
 
 export default function TeamTimeline({
   lanes, initialEvents, today, view, anchor, onViewChange, onAnchorChange,
@@ -140,14 +140,14 @@ export default function TeamTimeline({
 
   const gridLanes: GLane[] = [
     {
-      key: "common", name: "팀 공통", isCommon: true, assistantStatus: "idle",
+      key: "common", name: "팀 공통", isCommon: true,
       bars: teamEvents
         .map((e) => toBar(`e${e.id}`, null, e.title, "event", false, 0, e.startAt.slice(0, 10), e.endAt.slice(0, 10), "팀 공통"))
         .filter((b): b is Bar => !!b),
     },
     ...lanes.map((l, i) => ({
       key: `m${l.actorId}`, name: l.name, isCommon: false,
-      grad: AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length], assistantStatus: l.assistantStatus,
+      grad: AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length],
       bars: l.tasks
         .map((t) => toBar(`t${t.id}`, t.id, t.title, t.status, t.late, t.progress, t.startDate, t.dueDate, l.name))
         .filter((b): b is Bar => !!b),
