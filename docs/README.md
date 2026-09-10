@@ -20,6 +20,7 @@ Mission Deck(팀보드) 산출물의 보관 규칙과 문서번호 체계를 정
 ```
 docs/
 ├ README.md          이 문서. 폴더 규칙·문서번호 체계
+├ G-원칙.md          지시서에서 「§G 승격」으로 확정된 판단 모음
 ├ SPEC.md            제품 명세
 ├ RUNBOOK.md         운영·배포·롤백·장애 대응
 ├ ONBOARDING.md      팀원용 사용 안내
