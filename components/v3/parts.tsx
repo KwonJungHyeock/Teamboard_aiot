@@ -11,6 +11,7 @@
 // 늘어나면 그때 쪼갠다.
 import Link from "next/link";
 import type { AreaView } from "@/lib/v3/category";
+import type { DueTone } from "@/lib/v3/tasks";
 
 /* ── Tag ─────────────────────────────────────────────────────────
    색이 허용된 두 자리 중 하나. 카테고리와 상태만 색을 갖는다.
@@ -121,7 +122,7 @@ export function Checkbox({
    ID · 우선순위 · 진척 막대는 목록에 넣지 않는다(지시 §C-2) — 상세에 있다.
    하위가 있을 때만 제목 아래 한 줄이 붙는다. */
 export function ListRow({
-  href, title, sub, state, assignee, due, late, onToggle,
+  href, title, sub, state, assignee, due, late, dueTone, onToggle,
 }: {
   href: string;
   title: string;
@@ -131,7 +132,10 @@ export function ListRow({
   assignee: string | null;
   /** 이미 만들어진 표시 문자열. 없으면 회색 이탤릭 「기한 없음」. */
   due: string | null;
+  /** 왼쪽 코랄 테두리. **7일 이내로 지난 것에만** 붙는다 (044 §A·§B). */
   late?: boolean;
+  /** 기한 글자의 결. 안 주면 `late` 만 보고 정한다. */
+  dueTone?: DueTone;
   onToggle?: () => void;
 }) {
   return (
@@ -143,16 +147,24 @@ export function ListRow({
       </span>
       <span className="v3-row-r">
         <Avatar name={assignee} />
-        <DueText due={due} late={late} />
+        <DueText due={due} late={late} tone={dueTone} />
       </span>
     </div>
   );
 }
 
-/** 기한 없음은 **회색 이탤릭**이다 — 빈칸으로 두면 줄이 무너져 보인다. */
-export function DueText({ due, late }: { due: string | null; late?: boolean }) {
+/**
+ * 기한 글자.
+ *
+ * · 없음 → **회색 이탤릭** 「기한 없음」. 빈칸으로 두면 줄이 무너져 보인다
+ * · 지남 7일 이내 → 코랄
+ * · 지남 7일 초과 → **회색으로 눕힌다.** 여기까지 코랄로 칠하면 목록 절반이
+ *   빨개지고, 그러면 정작 급한 것이 안 보인다 (044 §B — 오늘 화면과 같은 기준)
+ */
+export function DueText({ due, late, tone }: { due: string | null; late?: boolean; tone?: DueTone }) {
   if (!due) return <em className="v3-due none">기한 없음</em>;
-  return <span className={`v3-due${late ? " late" : ""}`}>{due}</span>;
+  const cls = tone ?? (late ? "late" : "plain");
+  return <span className={`v3-due t-${cls}`}>{due}</span>;
 }
 
 /* ── EmptyState ──────────────────────────────────────────────────

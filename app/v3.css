@@ -213,3 +213,18 @@
 .v3-stale-r .v3-row-t:hover { color: var(--v3-ink); }
 .v3-stale-r .v3-due { color: var(--v3-ink-3); }
 .v3-btn-s { height: 30px; padding: 0 12px; font-size: 12px; text-decoration: none; }
+
+/* ── 044 §B — 기한 글자의 결 ───────────────────────────────────────
+   오늘 화면과 **같은 기준**이다. 7일 이내 지남만 코랄, 7일 초과는 회색으로
+   눕힌다 — 여기까지 코랄이면 목록 절반이 빨개져 급한 것이 안 보인다. */
+.v3-due.t-late  { color: var(--v3-late); font-weight: 700; }
+.v3-due.t-stale { color: var(--v3-ink-3); font-weight: 500; }
+.v3-due.t-soon  { color: var(--v3-warn); font-weight: 700; }
+.v3-due.t-plain { color: var(--v3-ink-2); }
+
+/* 칩 줄 오른쪽 끝에 정렬 버튼을 밀어 붙인다. */
+.v3-chips-sp { flex: 1; }
+.v3-sortbtn { height: 34px; padding: 0 14px; font-size: 13px; }
+
+/* 칩 숫자의 합이 전체와 안 맞을 때만 뜬다. 평소엔 없는 줄이다. */
+.v3-leak { margin: -6px 0 var(--v3-gap); font-size: 13px; color: var(--v3-warn); font-weight: 600; }

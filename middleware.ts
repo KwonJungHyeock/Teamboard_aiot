@@ -34,7 +34,9 @@ export function middleware(request: NextRequest) {
    * 전까지 안 보인다(§G — 막는 것은 뿌리에서 한 번).
    */
   const h = new Headers(request.headers);
-  h.set(PATH_HEADER, pathname);
+  // **쿼리까지** 넘긴다. 짝표가 `?panel=task:12` 같은 것을 알아야 하기 때문이다
+  // (`lib/v3/routes.ts` 참고) — 경로만 보면 상세로 가던 링크를 목록이 삼킨다.
+  h.set(PATH_HEADER, pathname + request.nextUrl.search);
   return NextResponse.next({ request: { headers: h } });
 }
 

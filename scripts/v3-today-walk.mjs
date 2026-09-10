@@ -60,7 +60,7 @@ try {
   mkdirSync(TMP, { recursive: true });
   execFileSync(path.join(REPO, "node_modules", ".bin", "tsc"),
     [path.join(REPO, "lib", "v3", "today.ts"), path.join(REPO, "lib", "countdown.ts"),
-     "--outDir", TMP, "--module", "commonjs", "--moduleResolution", "node",
+     "--outDir", TMP, "--rootDir", path.join(REPO, "lib"), "--module", "commonjs", "--moduleResolution", "node",
      "--target", "es2022", "--skipLibCheck", "--esModuleInterop"], { stdio: "inherit" });
   const req = createRequire(path.join(TMP, "noop.cjs"));
   const { countToday, splitToday, daysLate, STALE_DAYS } = req(path.join(TMP, "v3", "today.js"));

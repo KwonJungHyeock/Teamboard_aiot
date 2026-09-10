@@ -35,6 +35,7 @@ export const ROUTE_PAIRS: RoutePair[] = [
   // 화면이 생길 때마다 한 줄씩 는다. **짝이 되는 옛 경로가 실재하는지**
   // 검사기가 확인한다 — 없는 경로를 적으면 아무도 안 지나가는 규칙이 된다.
   { old: "/", v3: `${V3_BASE}`, what: "오늘 (옛 홈)" },
+  { old: "/tasks", v3: `${V3_BASE}/tasks`, what: "업무 (옛 업무 목록)" },
 ];
 
 /**
@@ -51,7 +52,28 @@ export function taskHref(id: number): string {
   return `/tasks?panel=task:${id}`;
 }
 
-/** 옛 경로가 v3 에서 어디로 가는가. 짝이 없으면 `null` — **보내지 않는다.** */
-export function v3Destination(oldPath: string): string | null {
-  return ROUTE_PAIRS.find((p) => p.old === oldPath)?.v3 ?? null;
+/**
+ * 옛 주소가 v3 에서 어디로 가는가. 짝이 없으면 `null` — **보내지 않는다.**
+ *
+ * `full` 은 **쿼리까지 붙은 주소**다(`/tasks?panel=task:12`). 경로만 보면
+ * 아래 예외를 못 가른다.
+ *
+ * ── 예외 하나: 상세를 여는 주소는 안 보낸다 ─────────────────────
+ *
+ * `/tasks` 를 짝에 넣는 순간 `taskHref()` 도 같이 삼켜졌다 — 상세 패널로 가던
+ * 링크가 v3 목록으로 갔다. v3 에는 아직 상세 화면이 없다(C-4).
+ *
+ * 그러니 **상세를 여는 주소는 옛 화면에 남긴다.** 목록만 옮긴다.
+ * C-4 가 생기면 `taskHref()` 가 v3 를 가리키게 되고 이 예외는 쓸 일이 없어진다.
+ * 그때 지운다 — 남겨 두면 「왜 이게 여기 있지」가 된다.
+ */
+const DETAIL_PARAMS = ["panel", "task", "goal"];
+
+export function v3Destination(full: string): string | null {
+  const [path, search = ""] = full.split("?");
+  const pair = ROUTE_PAIRS.find((p) => p.old === path);
+  if (!pair) return null;
+  const q = new URLSearchParams(search);
+  if (DETAIL_PARAMS.some((k) => q.has(k))) return null;
+  return pair.v3;
 }
