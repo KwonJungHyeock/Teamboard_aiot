@@ -6,13 +6,14 @@ import { buildHomeSummary } from "@/lib/home";
 import AppShell from "@/components/AppShell";
 import StatusView from "@/components/StatusView";
 import { hasLead } from "@/lib/types";
+import { DENIED_HREF } from "@/lib/denied";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const live = await getLiveSession();
   if (!live) redirect("/api/auth/logout?reason=inactive");
-  if (!hasLead(live.user.role)) redirect("/assistant");
+  if (!hasLead(live.user.role)) redirect(DENIED_HREF);
   // 기존 홈 집계 재사용 — 팀 전체 관점(isLead=true)
   const summary = await buildHomeSummary(live.user.id, true);
   return (

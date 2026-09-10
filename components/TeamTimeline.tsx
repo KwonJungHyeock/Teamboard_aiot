@@ -204,9 +204,9 @@ export default function TeamTimeline({
                   <span className="av" style={{ background: lane.grad }}>{lane.name.slice(0, 1)}</span>
                 )}
                 <span className="gt-lane-n">{lane.name}</span>
-                {!lane.isCommon && lane.assistantStatus !== "idle" && (
-                  <Link href="/assistant" className={`agdot ${lane.assistantStatus}`} title={lane.assistantStatus === "working" ? "에이전트 작동중" : "에이전트 보고 대기"} aria-label="에이전트 상태" />
-                )}
+                {/* 레인 이름 옆 에이전트 상태 점을 **지웠다** (038 §B-2).
+                    누르면 부사수 화면으로 갔는데 그 화면이 없다. 빈 자리는
+                    아바타와 이름이 이미 채우고 있어 따로 채울 것이 없다. */}
               </div>
               <div className="gt-track">
                 {/* 배경: 주말 음영 · 오늘 선 */}

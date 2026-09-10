@@ -13,7 +13,6 @@ import GoalDetailPanel from "./GoalDetailPanel";
 import SidePanel from "./SidePanel";
 import Shortcuts from "./Shortcuts";
 import FirstRun from "./FirstRun";
-import AgentFab from "./AgentFab";
 import QuickCreate from "./QuickCreate";
 import Toaster from "./Toaster";
 import TaskSync from "./TaskSync";
@@ -66,7 +65,6 @@ export default async function AppShell({
       <GoalDetailPanel user={current} />
       <Shortcuts />
       <CommandPalette role={current.role} notionConnected={notionConnected} />
-      <AgentFab user={current} />
       <QuickCreate />
       <FirstRun />
       <Toaster />
