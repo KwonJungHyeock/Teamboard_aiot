@@ -10,13 +10,17 @@
 // 파일을 열 개로 쪼개면 무엇이 있는지 보려고 매번 폴더를 훑어야 한다.
 // 늘어나면 그때 쪼갠다.
 import Link from "next/link";
-import type { CategoryKey } from "@/lib/v3/category";
-import { categoryLabel } from "@/lib/v3/category";
+import type { AreaView } from "@/lib/v3/category";
 
 /* ── Tag ─────────────────────────────────────────────────────────
-   색이 허용된 두 자리 중 하나. 카테고리와 상태만 색을 갖는다. */
-export function Tag({ cat }: { cat: CategoryKey }) {
-  return <span className={`v3-tag ${cat}`}>{categoryLabel(cat)}</span>;
+   색이 허용된 두 자리 중 하나. 카테고리와 상태만 색을 갖는다.
+
+   **이름을 보고 색을 정하지 않는다.** 색은 서버가 이미 풀어서 `tone` 으로
+   넘겨 준 값이다(`lib/v3/category.ts`). 팔레트에 없는 영역은 `etc` 색으로
+   오지만 **이름은 그대로 그린다** — 색이 없다고 이름까지 지우면 그 업무가
+   어디 것인지 사라진다. */
+export function Tag({ area }: { area: AreaView }) {
+  return <span className={`v3-tag ${area.tone}`}>{area.name}</span>;
 }
 export function StateTag({ tone, children }: { tone: "warn" | "late"; children: React.ReactNode }) {
   return <span className={`v3-tag ${tone}`}>{children}</span>;

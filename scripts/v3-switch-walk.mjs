@@ -8,7 +8,7 @@
 //   ② 꺼짐에서 `/v3` 로 직접 가면 못 들어간다 — 갈 곳은 `DENIED_HREF`
 //   ③ **꺼짐에서 기존 화면 전량이 지금과 똑같이 돈다** ← 안전선
 //   ④ 켜면 `/v3` 가 열리고 옛 사이드바에 가는 길이 생긴다
-//   ⑤ **켜도 기존 화면이 그대로 돈다** (아직 옮긴 경로가 없으므로)
+//   ⑤ 켜면 **`ROUTE_PAIRS` 에 든 경로만** 바뀐다 — 나머지는 글자 그대로 같다
 //   ⑥ 스위치는 **관리자만** 바꾼다 — 팀장은 403
 //   ⑦ 껐다 켰다 하면 ③의 지문이 **글자 그대로** 돌아온다
 //   ⑧ v3 토큰이 옛 화면으로 **새지 않는다** — `.v3` 밖에 `--v3-*` 가 없다
@@ -25,7 +25,10 @@
 // ⚠ | head 로 파이프하지 말 것. SIGPIPE 로 finally 정리가 죽는다.
 import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
-import { readFileSync, mkdirSync } from "node:fs";
+import { readFileSync, mkdirSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
+import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 
@@ -55,8 +58,26 @@ const OLD = [
   ["설정", "/settings"], ["인수인계", "/handover"], ["메모", "/notes"],
 ];
 
+const TMP = path.join(process.cwd(), ".v3s-out");
 let browser, before = null;
 try {
+  // 짝표는 **제품에서 읽어 온다.** 사본을 적으면 화면이 늘 때 검사기만 뒤처진다.
+  rmSync(TMP, { recursive: true, force: true });
+  mkdirSync(TMP, { recursive: true });
+  execFileSync(path.join(process.cwd(), "node_modules", ".bin", "tsc"),
+    [path.join(process.cwd(), "lib", "v3", "routes.ts"), "--outDir", TMP,
+     "--module", "commonjs", "--moduleResolution", "node", "--target", "es2022",
+     "--skipLibCheck", "--esModuleInterop"], { stdio: "inherit" });
+  const { ROUTE_PAIRS } = createRequire(path.join(TMP, "noop.cjs"))(path.join(TMP, "routes.js"));
+  const paired = new Set(ROUTE_PAIRS.map((r) => r.old));
+  console.log(`   (짝표) ${ROUTE_PAIRS.length}개 — ${ROUTE_PAIRS.map((r) => `${r.old}→${r.v3}`).join(" · ") || "없음"}`);
+
+  // 짝표에 적힌 옛 경로가 **실재하는지** 먼저 본다(지시 §2).
+  // 없는 경로를 적으면 아무도 안 지나가는 규칙이 되고, 그건 안 보인다.
+  const known = new Set(OLD.map(([, href]) => href));
+  const ghosts = [...paired].filter((o) => !known.has(o));
+  chk("0-짝표의-옛-경로가-실재한다", ghosts.length === 0,
+      ghosts.length ? `**모르는 경로 ${ghosts.join(", ")}**` : `${paired.size}개 전부 기존 화면 목록에 있다`);
   // ── 시작 전 스위치 값. **절대값을 기대하지 않는다** — 켜져 있을 수도 있다.
   const row = (await sql(`SELECT value FROM config WHERE key = $1`, [KEY]))[0];
   before = row === undefined ? null : row.value;
@@ -146,23 +167,12 @@ try {
     await page.screenshot({ path: `${OUT}/v3-parts.png`, fullPage: true });
 
     /*
-     * 부품이 **그려졌는지**가 아니라 **약속대로 보이는지** 본다.
-     * 「완료는 취소선 + 회색」은 CSS 에 적어 두었을 뿐이고, 적은 것과 보이는 것은
-     * 다르다(§G). 계산된 스타일을 읽는다.
+     * 겉모습(취소선 · 행 높이) 확인은 **여기 있지 않다.**
+     * 042 에서는 `/v3` 가 부품 견본이라 여기서 쟀는데, 043 §C-1 이 그 자리를
+     * 진짜 「오늘」 화면으로 바꿨다. 데이터에 따라 완료 행이 없을 수 있어
+     * 이 검사기가 **스위치와 무관한 이유로** 죽었다.
+     * 이 파일은 스위치만 본다. 겉모습은 `scripts/v3-today-walk.mjs` 가 잰다.
      */
-    const doneRow = page.locator(".v3-row.done .v3-row-t").first();
-    const deco = await doneRow.evaluate((el) => {
-      const cs = getComputedStyle(el);
-      return { line: cs.textDecorationLine, color: cs.color };
-    });
-    const grey = await page.locator(".v3").evaluate((el) =>
-      getComputedStyle(el).getPropertyValue("--v3-ink-3").trim());
-    chk("④-완료는-취소선-회색", deco.line.includes("line-through"),
-        `text-decoration ${deco.line} · 색 ${deco.color} (--v3-ink-3 = ${grey})`);
-
-    // 행 높이는 토큰이 정한다 — 값을 컴포넌트에 직접 쓰지 않았다는 자취.
-    const h = await page.locator(".v3-row").first().evaluate((el) => Math.round(el.getBoundingClientRect().height));
-    chk("④-행-높이가-토큰-값", h >= 64, `첫 행 ${h}px (--v3-row-h = 64px 이상)`);
 
     // 설정 화면 — 스위치가 어떻게 보이는지도 남긴다.
     await page.goto(`${BASE}/settings`, { waitUntil: "networkidle" });
@@ -170,19 +180,53 @@ try {
     await page.screenshot({ path: `${OUT}/v3-switch.png`, fullPage: true });
   }
   {
-    await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+    // **짝이 없는** 옛 화면에서 본다. `/` 는 이제 v3 로 가므로 옛 사이드바가 없다 —
+    // 거기서 「새 화면으로」를 찾으면 화면이 아니라 검사기가 틀린 것이다.
+    const stillOld = OLD.find(([, href]) => !paired.has(href));
+    await page.goto(`${BASE}${stillOld[1]}`, { waitUntil: "networkidle" });
     await page.waitForTimeout(300);
     const navOn = await page.locator(".side .side-v3").count();
-    chk("④-켜면-가는-길이-생긴다", navOn === 1, `사이드바 「새 화면으로」 ${navOn}개`);
+    chk("④-켜면-가는-길이-생긴다", navOn === 1,
+        `${stillOld[0]}(${stillOld[1]}) 에서 사이드바 「새 화면으로」 ${navOn}개`);
   }
   const fpOn = await fingerprint(page);
-  // 켜도 기존 화면은 그대로다 — **아직 옮긴 경로가 없기 때문**이다.
-  // 사이드바에 한 줄이 늘어 `nav` 수가 달라질 수 있으므로 그 칸만 빼고 견준다.
-  const strip = (s) => s.split(" | ").map((x) => x.split(":").slice(0, 4).join(":")).join(" | ");
-  chk("⑤-켜도-기존-화면은-그대로", strip(fpOn) === strip(fpOff),
-      strip(fpOn) === strip(fpOff)
-        ? `${OLD.length}개 화면 지문 동일 (옮긴 경로 0개)`
-        : `\n     꺼짐 ${strip(fpOff)}\n     켜짐 ${strip(fpOn)}`);
+  /*
+   * ── ⑤ 안전선 — **바뀌어야 할 것만 바뀐다** ─────────────────────
+   *
+   * 042 에서는 「켜도 전부 그대로」였다. 짝표가 비어 있었기 때문이다. 043 §C-1 이
+   * `/` 를 v3 로 보내면서 그 단언이 죽었다 — 화면이 아니라 검사기가 낡은 것이다.
+   *
+   * 지금 물어야 할 것은 **짝표에 든 경로만 바뀌었는가**다. 이 형태는 화면이
+   * 늘어도 그대로 산다: 짝표가 자라면 기대도 같이 자란다.
+   *
+   * 사이드바에 한 줄이 늘어 `nav` 수가 달라질 수 있으므로 그 칸은 빼고 견준다.
+   */
+  const strip = (line) => line.split(":").slice(0, 4).join(":");
+  const offRows = fpOff.split(" | ").map(strip);
+  const onRows = fpOn.split(" | ").map(strip);
+  const moved = [], stayed = [], wrong = [];
+  OLD.forEach(([name, href], i) => {
+    const changed = offRows[i] !== onRows[i];
+    /*
+     * **요청한 경로가 아니라 도착한 경로**로 기대를 세운다.
+     *
+     * 처음엔 `href` 가 짝표에 있는지로 갈랐다가 `/timeline` 에서 FAIL 이 났고,
+     * 조사해 보니 제품이 옳았다 — `/timeline` 은 예전부터 `/` 로 보내고 있었고,
+     * 그 `/` 가 이제 v3 로 간다. 짝이 없어도 **도착지가 짝을 타면 같이 옮겨진다.**
+     * 그게 맞는 동작이다. 그러니 도착지로 물어야 한다.
+     */
+    const landedOff = offRows[i].split(":")[2];
+    const shouldMove = paired.has(href) || paired.has(landedOff);
+    if (shouldMove) {
+      (changed ? moved : wrong).push(`${name}${changed ? "" : " (안 바뀜)"}`);
+    } else if (changed) {
+      wrong.push(`${name} **바뀜** ${offRows[i]} → ${onRows[i]}`);
+    } else stayed.push(name);
+  });
+  chk("⑤-짝표에-든-것만-바뀐다", wrong.length === 0,
+      wrong.length === 0
+        ? `옮겨진 ${moved.length}개 [${moved.join(", ")}] · 그대로인 ${stayed.length}개`
+        : `\n     ${wrong.join("\n     ")}`);
 
   // ── ⑥ 스위치는 관리자만 ─────────────────────────────────────────
   {
@@ -231,6 +275,7 @@ try {
   console.error("검사 중 예외:", String(e && e.stack ? e.stack : e));
   process.exitCode = 1;
 } finally {
+  rmSync(TMP, { recursive: true, force: true });
   // 스위치를 **시작 전 값 그대로** 되돌린다. 「꺼 두면 되겠지」가 아니다 —
   // 시작할 때 켜져 있었으면 켠 채로 돌려놔야 한다(§G).
   if (before !== null || true) {
