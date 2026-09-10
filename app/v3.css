@@ -1,0 +1,179 @@
+/* ══════════════════════════════════════════════════════════════════
+   미션덱 v3 — 디자인 토큰 (MD-P-2026-042 §A)
+
+   ── 왜 `.v3` 아래에 갇혀 있는가 ─────────────────────────────────
+   이번 회차의 첫째 원칙은 **기존 화면을 고치지 않는다**다. 토큰을 `:root` 에
+   풀면 이름이 겹치는 순간 옛 화면이 조용히 달라진다 — 고친 적도 없는데.
+   그래서 전부 `.v3` 안에서만 산다. 스위치를 꺼도 이 파일은 아무 데도 안 닿는다.
+
+   ── 이름은 값이 아니라 **역할**이다 ─────────────────────────────
+   `--v3-blue` 가 아니라 `--v3-rail` 이다. 다크를 이번에 안 만들지만, 역할로
+   잡아 두면 나중에 값만 갈아 끼우면 된다. 값 이름으로 잡으면 다크에서
+   `--v3-white: #1a1a1a` 같은 거짓말을 쓰게 된다.
+
+   ── 값의 정본 ───────────────────────────────────────────────────
+   지시서 MD-P-2026-042 §A 의 토큰 표. (목업 파일
+   `미션덱-v3-화면구성컨셉-목업.html` 은 리포에 없어 지시서 값을 옮겼다.)
+
+   ── 색은 태그와 상태에만 ────────────────────────────────────────
+   글자와 선은 회색 세 단계뿐이다. 아래 `--v3-ink*` 와 `--v3-line*` 밖에서
+   글자색을 정하지 말 것.
+   ══════════════════════════════════════════════════════════════════ */
+
+.v3 {
+  /* 바탕 */
+  --v3-bg: #F4F7FB;
+  --v3-card: #FFFFFF;
+  --v3-rail: #2F5FE8;
+
+  /* 선 — 두 단계. 옅은 쪽이 기본, 진한 쪽은 구분이 꼭 필요할 때만 */
+  --v3-line: #EAEEF5;
+  --v3-line-2: #DDE4EF;
+
+  /* 글자 — **세 단계뿐이다** */
+  --v3-ink: #16203A;      /* 본문 · 제목 */
+  --v3-ink-2: #69748C;    /* 보조 설명 */
+  --v3-ink-3: #9AA4B8;    /* 비활성 · 자리표시 */
+
+  --v3-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 10px 26px -14px rgba(16, 24, 40, .18);
+
+  /* 카테고리 넷 — 글자색 / 바탕색 짝 */
+  --v3-cat-platform: #2F6FED;      --v3-cat-platform-bg: #E9F1FE;
+  --v3-cat-bt: #0EA394;            --v3-cat-bt-bg: #E2F6F3;
+  --v3-cat-rnd: #7C5CE0;           --v3-cat-rnd-bg: #EFEBFD;
+  --v3-cat-etc: #69748C;           --v3-cat-etc-bg: #F1F4F9;
+
+  /* 상태 둘 — 주의(기한 임박) · 지남(기한 경과) */
+  --v3-warn: #E39A1E;              --v3-warn-bg: #FDF2E0;
+  --v3-late: #E0524F;              --v3-late-bg: #FDEDEC;
+
+  /* 치수 */
+  --v3-text: 15px;
+  --v3-row-h: 64px;
+  --v3-radius: 16px;
+  --v3-gap: 14px;       /* 카드 사이 */
+  --v3-pad: 32px;       /* 화면 여백 */
+
+  /* 파생 — 표에는 없지만 위 값에서 나온다. 새 값을 만든 것이 아니다. */
+  --v3-radius-s: 10px;
+  --v3-radius-pill: 999px;
+
+  background: var(--v3-bg);
+  color: var(--v3-ink);
+  font-size: var(--v3-text);
+  line-height: 1.55;
+}
+
+/* ── Rail — 왼쪽 세로 막대 ─────────────────────────────────────── */
+.v3-rail { background: var(--v3-rail); color: #fff; display: flex; flex-direction: column;
+  gap: 2px; padding: 18px 12px; width: 232px; flex: 0 0 232px; min-height: 100vh; }
+.v3-rail-brand { display: block; padding: 4px 10px 18px; font-weight: 700; letter-spacing: -.01em; }
+.v3-rail-brand small { display: block; font-weight: 500; font-size: 11px; letter-spacing: .16em;
+  color: rgba(255, 255, 255, .68); margin-top: 3px; }
+.v3-rail a { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 10px;
+  border-radius: var(--v3-radius-s); color: rgba(255, 255, 255, .80); text-decoration: none;
+  font-weight: 600; }
+.v3-rail a:hover { background: rgba(255, 255, 255, .10); color: #fff; }
+.v3-rail a[aria-current="page"] { background: rgba(255, 255, 255, .18); color: #fff; }
+.v3-rail-foot { margin-top: auto; padding-top: 14px; color: rgba(255, 255, 255, .68); font-size: 13px; }
+
+/* ── Card ──────────────────────────────────────────────────────── */
+.v3-card { background: var(--v3-card); border: 1px solid var(--v3-line);
+  border-radius: var(--v3-radius); box-shadow: var(--v3-shadow); padding: 18px 20px; }
+.v3-card + .v3-card { margin-top: var(--v3-gap); }
+.v3-card-h { display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px; }
+.v3-card-h h2 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+.v3-card-h .v3-sub { color: var(--v3-ink-2); font-size: 13px; }
+
+/* ── ListRow — 행 64px. **네 가지만** 들어간다 ────────────────── */
+.v3-row { display: flex; align-items: center; gap: 12px; min-height: var(--v3-row-h);
+  padding: 0 4px; border-bottom: 1px solid var(--v3-line); }
+.v3-row:last-child { border-bottom: 0; }
+.v3-row-main { flex: 1; min-width: 0; }
+.v3-row-t { display: block; color: var(--v3-ink); text-decoration: none; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-row-t:hover { text-decoration: underline; }
+.v3-row-sub { display: block; margin-top: 3px; font-size: 13px; color: var(--v3-ink-2); }
+.v3-row-r { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
+/* 기한 경과는 테두리로 말한다 — 글자색 네 번째 단계를 만들지 않는다 */
+.v3-row.late { border-left: 3px solid var(--v3-late); padding-left: 10px; }
+.v3-row.done .v3-row-t { text-decoration: line-through; color: var(--v3-ink-3); font-weight: 500; }
+
+/* ── Tag — 카테고리. **색이 허용된 두 자리 중 하나** ───────────── */
+.v3-tag { display: inline-flex; align-items: center; height: 24px; padding: 0 10px;
+  border-radius: var(--v3-radius-pill); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.v3-tag.platform { color: var(--v3-cat-platform); background: var(--v3-cat-platform-bg); }
+.v3-tag.bt { color: var(--v3-cat-bt); background: var(--v3-cat-bt-bg); }
+.v3-tag.rnd { color: var(--v3-cat-rnd); background: var(--v3-cat-rnd-bg); }
+.v3-tag.etc { color: var(--v3-cat-etc); background: var(--v3-cat-etc-bg); }
+/* 상태 — 색이 허용된 나머지 한 자리 */
+.v3-tag.warn { color: var(--v3-warn); background: var(--v3-warn-bg); }
+.v3-tag.late { color: var(--v3-late); background: var(--v3-late-bg); }
+
+/* ── Avatar ────────────────────────────────────────────────────── */
+.v3-av { width: 28px; height: 28px; border-radius: 50%; flex: 0 0 28px; display: grid;
+  place-items: center; font-size: 12px; font-weight: 700; color: #fff;
+  background: var(--v3-rail); }
+/* 담당 없음 — 회색 ＋. 「비어 있다」를 빈칸이 아니라 자리로 그린다 */
+.v3-av.none { color: var(--v3-ink-3); background: transparent;
+  border: 1px dashed var(--v3-line-2); font-weight: 500; }
+
+/* ── Button ────────────────────────────────────────────────────── */
+.v3-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 40px; padding: 0 18px; border-radius: var(--v3-radius-s); border: 1px solid var(--v3-line-2);
+  background: var(--v3-card); color: var(--v3-ink); font: inherit; font-weight: 600; cursor: pointer; }
+.v3-btn:hover { border-color: var(--v3-ink-3); }
+.v3-btn.primary { background: var(--v3-rail); border-color: var(--v3-rail); color: #fff; }
+.v3-btn.primary:hover { filter: brightness(1.06); }
+.v3-btn:disabled { opacity: .5; cursor: default; }
+
+/* ── Chip — 카테고리 거르개. 줄로 놓는다 (사이드바 아님) ───────── */
+.v3-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 var(--v3-gap); }
+.v3-chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px;
+  border-radius: var(--v3-radius-pill); border: 1px solid var(--v3-line-2);
+  background: var(--v3-card); color: var(--v3-ink-2); font: inherit; font-size: 13px;
+  font-weight: 600; cursor: pointer; }
+.v3-chip:hover { border-color: var(--v3-ink-3); }
+.v3-chip[aria-pressed="true"] { background: var(--v3-ink); border-color: var(--v3-ink); color: #fff; }
+.v3-chip .v3-chip-n { font-variant-numeric: tabular-nums; opacity: .7; }
+/* 점선 칩 — 「접어 둔 것」. 새 업무의 담당·기한·하위·파일이 이 모양이다 */
+.v3-chip.dashed { border-style: dashed; }
+
+/* ── StatTile — 큰 숫자 ────────────────────────────────────────── */
+.v3-stats { display: flex; gap: var(--v3-gap); }
+.v3-stat { flex: 1; background: var(--v3-card); border: 1px solid var(--v3-line);
+  border-radius: var(--v3-radius); box-shadow: var(--v3-shadow); padding: 16px 20px; }
+.v3-stat .v3-stat-n { display: block; font-size: 34px; font-weight: 700; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums; line-height: 1.15; }
+.v3-stat .v3-stat-l { display: block; margin-top: 2px; font-size: 13px; color: var(--v3-ink-2); }
+/* 「기한 없음」만 호박색 — 아무 날에도 안 걸려서 마지막까지 안 보이는 것들이다 */
+.v3-stat.warn .v3-stat-n { color: var(--v3-warn); }
+
+/* ── Checkbox — 상태 네 가지 ───────────────────────────────────── */
+.v3-cb { width: 22px; height: 22px; flex: 0 0 22px; border-radius: 7px; padding: 0;
+  border: 1.5px solid var(--v3-line-2); background: var(--v3-card); cursor: pointer;
+  display: grid; place-items: center; color: transparent; }
+.v3-cb:hover { border-color: var(--v3-ink-3); }
+.v3-cb.doing { border-color: var(--v3-rail); box-shadow: inset 0 0 0 3px var(--v3-cat-platform-bg); }
+.v3-cb.review { border-color: var(--v3-warn); box-shadow: inset 0 0 0 3px var(--v3-warn-bg); }
+.v3-cb.done { border-color: var(--v3-rail); background: var(--v3-rail); color: #fff; }
+.v3-cb svg { width: 13px; height: 13px; }
+.v3-cb:disabled { cursor: default; opacity: .6; }
+
+/* ── EmptyState — **이유와 다음 행동**을 적는다 (SYSTEMFLOW 8-4) ── */
+.v3-empty { padding: 26px 4px; text-align: left; }
+.v3-empty b { display: block; font-size: 15px; font-weight: 700; }
+.v3-empty p { margin: 5px 0 0; color: var(--v3-ink-2); font-size: 13px; }
+.v3-empty .v3-btn { margin-top: 12px; }
+
+/* ── 화면 뼈대 ─────────────────────────────────────────────────── */
+.v3-app { display: flex; min-height: 100vh; }
+.v3-main { flex: 1; min-width: 0; padding: var(--v3-pad); }
+.v3-h1 { margin: 0 0 4px; font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+.v3-lede { margin: 0 0 22px; color: var(--v3-ink-2); }
+
+/* ── DueText ───────────────────────────────────────────────────── */
+.v3-due { font-size: 13px; color: var(--v3-ink-2); font-variant-numeric: tabular-nums;
+  white-space: nowrap; min-width: 72px; text-align: right; display: inline-block; }
+.v3-due.none { font-style: italic; color: var(--v3-ink-3); }
+.v3-due.late { color: var(--v3-late); font-weight: 700; }

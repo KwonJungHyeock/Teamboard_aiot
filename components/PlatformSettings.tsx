@@ -15,6 +15,8 @@ interface Editor { id: number; name: string; isActive: boolean }
 interface Payload {
   open: { openAt: string; source: "config" | "default" };
   editor: Editor | null;
+  /** v3 껍데기 스위치 — **서비스 전체**에 걸린다 (042 §B). */
+  uiV3: boolean;
   people: { id: number; name: string }[];
 }
 
@@ -29,7 +31,7 @@ function toLocalInput(iso: string): string {
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
-export default function PlatformSettings() {
+export default function PlatformSettings({ isAdmin }: { isAdmin: boolean }) {
   const [d, setD] = useState<Payload | null>(null);
   const [at, setAt] = useState("");
   const [editorId, setEditorId] = useState<string>("");
@@ -105,6 +107,34 @@ export default function PlatformSettings() {
         업무 진척을 손으로 바꿀 수 있는 사람 <b>한 명</b>입니다. 팀장 역할과 무관합니다 —
         관리자가 여럿이어도 진척은 여기 지정된 한 명만 바꿉니다.
         하위 업무가 있는 업무는 하위 완료 개수로 계산되므로 누구도 손으로 바꾸지 못합니다.
+      </p>
+
+      {/* ── v3 껍데기 스위치 — **관리자만** (042 §B) ──────────────────
+          되돌리기가 이 버튼 하나다. 배포도 롤백도 필요 없다.
+          팀장에게는 **칸을 안 그리고 지금 상태와 이유를 적는다** — 빈칸만
+          두면 왜 못 만지는지 볼 데가 없다(039 에서 세운 모양 그대로). */}
+      <div className="ps-row">
+        <span className="ps-l">새 화면(v3)</span>
+        <div className="ps-v">
+          {isAdmin ? (
+            <>
+              <button className="btn-ghost" disabled={busy}
+                onClick={() => save({ uiV3: !d.uiV3 })}>
+                {d.uiV3 ? "끄기" : "켜기"}
+              </button>
+              <span className="ps-note">지금 {d.uiV3 ? "켜짐" : "꺼짐"}</span>
+            </>
+          ) : (
+            <span className="ps-note">
+              지금 {d.uiV3 ? "켜짐" : "꺼짐"} · 관리자만 바꿀 수 있습니다
+            </span>
+          )}
+        </div>
+      </div>
+      <p className="ps-help">
+        <b>모두에게 한꺼번에</b> 적용됩니다 — 켠 사람만 바뀌는 것이 아닙니다.
+        두 화면이 동시에 돌면 서로 보낸 링크가 엇갈리기 때문입니다.
+        되돌리려면 여기서 끄면 됩니다. 배포도 롤백도 필요 없습니다.
       </p>
 
       {msg && <p className="ps-ok">{msg}</p>}

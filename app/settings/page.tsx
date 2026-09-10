@@ -1,17 +1,20 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
+import { getLiveSession } from "@/lib/auth";
 import AppShell from "@/components/AppShell";
 import NotionScopeSettings from "@/components/NotionScopeSettings";
 import PlatformSettings from "@/components/PlatformSettings";
 import NotionConnection from "@/components/NotionConnection";
-import { hasLead } from "@/lib/types";
+import { hasLead, isAdmin } from "@/lib/types";
 import { DENIED_HREF } from "@/lib/denied";
 
 export const dynamic = "force-dynamic";
 
-export default function SettingsPage() {
-  const user = getSession();
-  if (!user) redirect("/login");
+export default async function SettingsPage() {
+  // v3 스위치가 여기 있고 그건 **관리자만** 바꾼다. 관리자인지는 토큰이 아니라
+  // DB 의 지금 값으로 봐야 권한 회수가 즉시 먹는다(039).
+  const live = await getLiveSession();
+  if (!live) redirect("/login");
+  const user = live.user;
   if (!hasLead(user.role)) redirect(DENIED_HREF);
   const notionConnected = !!process.env.NOTION_TOKEN;
   return (
@@ -25,7 +28,7 @@ export default function SettingsPage() {
       </div>
       {/* 플랫폼 설정을 **위에** 둔다 — 가오픈까지 자주 만지는 값이고,
           Notion 연결은 한 번 하고 마는 값이다. */}
-      <PlatformSettings />
+      <PlatformSettings isAdmin={isAdmin(user)} />
       <NotionScopeSettings notionConnected={notionConnected} />
     </AppShell>
   );

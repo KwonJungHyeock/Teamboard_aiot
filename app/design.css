@@ -2208,3 +2208,11 @@ a.areatag:hover { border-color: var(--ink2); color: var(--ink); }
 .od-t td { padding: 8px 10px; border-bottom: 1px solid var(--hair); vertical-align: top; }
 .od-t tr:last-child td { border-bottom: 0; }
 .od-t .od-n { text-align: right; }
+
+/* ── 042 §B — v3 로 가는 한 줄. 스위치가 켜졌을 때만 그려진다 ─────
+   옛 사이드바 항목처럼 보이면 안 된다. 「지금 화면」이 아니라 「다른 껍데기」로
+   가는 길이라 따로 선다. */
+.side .side-v3 { display: block; margin: 10px 4px 0; padding: 9px 10px; border-radius: var(--r-s);
+  border: 1px dashed var(--sb-line); color: var(--sb-muted); font-size: var(--f6);
+  font-weight: 600; text-align: center; text-decoration: none; }
+.side .side-v3:hover { color: var(--sb-ink); border-color: rgba(255,255,255,.24); background: rgba(255,255,255,.05); }

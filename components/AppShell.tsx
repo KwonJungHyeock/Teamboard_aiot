@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { getInboxCount } from "@/lib/db";
 import { getLiveSession } from "@/lib/auth";
+import { getUiV3 } from "@/lib/v3/switch";
 import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import Sidebar from "./Sidebar";
@@ -50,12 +51,18 @@ export default async function AppShell({
   const inboxCount = await getInboxCount(current.id, hasLead(current.role));
   // 파트 Z — Notion 토큰 유무로 관련 UI 자동 분기(미연결 시 숨김)
   const notionConnected = !!process.env.NOTION_TOKEN;
+  /*
+   * v3 스위치 (042 §B) — **꺼져 있으면 이 값 말고는 아무것도 달라지지 않는다.**
+   * 옛 화면을 고치지 않는다는 원칙 때문에, 옛 셸이 새 껍데기로 가는 길 하나만
+   * 안다. 링크·나머지 항목은 §C 에서 화면이 생길 때 `ROUTE_PAIRS` 로 옮긴다.
+   */
+  const uiV3 = await getUiV3();
   return (
     <>
       <div className="bgfx" aria-hidden="true" />
       <div className="grain" aria-hidden="true" />
       <div className="app">
-        <Sidebar user={current} inboxCount={inboxCount} notionConnected={notionConnected} />
+        <Sidebar user={current} inboxCount={inboxCount} notionConnected={notionConnected} uiV3={uiV3} />
         <main className="main">{children}</main>
       </div>
       <TaskDetailPanel user={current} />
