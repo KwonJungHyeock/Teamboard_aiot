@@ -141,6 +141,76 @@ export function changed(before: string | number | null, after: string | number |
   return (before ?? "") !== (after ?? "");
 }
 
+/* ══ 저장이 보이게 (MD-P-2026-047 §B) ═══════════════════════════════
+ *
+ * 칸에서 벗어날 때 저장하는 방식은 그대로 둔다 — 버튼을 만들면 안 누르고 나가서
+ * 잃는다. 대신 **저장된 증거가 화면에 상시로 있어야 한다.**
+ *
+ * 잠깐 떴다 사라지는 표시는 못 보면 없는 것과 같다. 그래서 이 자리는
+ * **안 사라진다**: 저장 전에는 안내, 저장 중에는 「저장 중…」, 저장 뒤에는
+ * 「마지막 저장 09:42」가 그대로 남는다. 실패하면 사유가 **그 칸 옆에** 선다.
+ *
+ * 상태가 칸마다 따로인 이유는 §G 다 — **한 번에 하나씩 저장한다.** 하나로
+ * 묶으면 다섯 칸 중 어느 것이 거부됐는지 알 수 없다.
+ */
+export type SaveTone = "hint" | "busy" | "ok" | "err";
+
+export interface SaveState {
+  busy: boolean;
+  /** 서버가 저장을 확인한 시각(ms). 아직 없으면 null. */
+  savedAt: number | null;
+  /** 서버가 준 거절 사유. **그대로** 담는다 — 고쳐 적으면 다른 말이 된다. */
+  err: string;
+}
+
+export const IDLE: SaveState = { busy: false, savedAt: null, err: "" };
+
+/**
+ * 시각을 **KST 시:분**으로. 날짜를 자르는 것이 아니라 순간을 찍는 것이지만,
+ * 시간대는 여기서도 정하고 본다 — 「09:42」가 기계마다 다르면 증거가 아니다.
+ */
+export function clockKst(ms: number): string {
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(new Date(ms));
+}
+
+/** 그 칸 옆에 적을 한 줄. **빈 문자열을 내지 않는다** — 자리가 없어지면 줄이 뛴다. */
+export function saveNote(s: SaveState, hint: string): { tone: SaveTone; text: string } {
+  if (s.busy) return { tone: "busy", text: "저장 중…" };
+  // 실패가 성공보다 먼저다. 「마지막 저장 09:42」 옆에서 조용히 실패하면
+  // 사람은 저장된 줄 안다.
+  if (s.err) return { tone: "err", text: `저장 안 됨 · ${s.err}` };
+  if (s.savedAt !== null) return { tone: "ok", text: `마지막 저장 ${clockKst(s.savedAt)}` };
+  return { tone: "hint", text: hint };
+}
+
+/**
+ * 서버가 저장을 확인한 시각. **응답의 `Date` 머리글**을 쓴다.
+ *
+ * 브라우저 시계로 찍으면 시계가 틀린 기계에서 「마지막 저장 03:12」가 뜬다 —
+ * 증거로 내놓은 숫자가 거짓말을 하는 셈이다. `Date` 는 HTTP 가 늘 붙이는
+ * 머리글이라 **API 를 안 고치고** 서버 시각을 받을 수 있다.
+ * 없거나 못 읽으면 브라우저 시계로 내려간다 — 시각이 아예 없는 것보다 낫다.
+ */
+export function stampFrom(dateHeader: string | null): number {
+  const ms = dateHeader ? Date.parse(dateHeader) : NaN;
+  return Number.isFinite(ms) ? ms : Date.now();
+}
+
+/**
+ * 빈 제목은 API 가 **조용히 무시한다**(§B-1 조사표). 화면만 비면
+ * 「화면은 비었는데 저장은 안 됨」이 되고, 새로고침하면 옛 제목이 돌아온다.
+ *
+ * 그래서 보내기 전에 화면이 **서버 규칙을 그대로 비춘다** — 되돌리고 이유를 적는다.
+ * API 는 안 고친다 (047 §B-1).
+ */
+export const EMPTY_TITLE_WHY = "제목은 비울 수 없습니다";
+
+export function titleReject(next: string): string | null {
+  return next.trim() === "" ? EMPTY_TITLE_WHY : null;
+}
+
 /** 하위 진행 요약. 하위가 없으면 `null` — 없는 줄을 그리지 않는다. */
 export function childSummary(t: Pick<DetailTask, "children">): string | null {
   if (t.children.length === 0) return null;

@@ -14,11 +14,18 @@
 // 못 바꾸는 것(진척)은 칸 대신 **이유 한 줄**을 단다 — 칸이 있는데 안 먹히는
 // 것보다, 칸이 없고 왜 없는지 적혀 있는 편이 낫다.
 //
-// ── 저장은 한 칸씩 ──────────────────────────────────────────────
+// ── 저장은 한 칸씩 (§G) ─────────────────────────────────────────
 //
 // 「저장」 버튼 하나로 묶지 않는다. 다섯 칸이 각자 다른 이유로 거절당할 수
 // 있는데(400·403), 묶어 보내면 어느 칸 때문인지 알 수가 없다. 한 칸씩 보내면
 // 서버가 준 이유가 **그 칸 옆에** 선다.
+//
+// ── 저장이 보이게 (047 §B) ──────────────────────────────────────
+//
+// 칸에서 벗어날 때 저장하는 방식은 그대로 둔다 — 버튼을 만들면 안 누르고
+// 나가서 잃는다. 대신 **증거를 상시로 둔다.** 칸마다 한 줄이 붙어 있고
+// 그 줄은 안 사라진다: 안내 → 저장 중… → 마지막 저장 09:42.
+// 실패하면 같은 자리에 「저장 안 됨 · 사유」가 선다.
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,7 +33,8 @@ import { Card, InputChip, Button, Tag, Checkbox, Empty } from "./parts";
 import type { CbState } from "./parts";
 import {
   STATUS_CHOICES, statusEditable, progressWhy, dueOpenNote, patchBody, changed,
-  childSummary, type DetailTask, type ActivityRow, type EditField,
+  childSummary, saveNote, stampFrom, titleReject, IDLE,
+  type DetailTask, type ActivityRow, type EditField, type SaveState,
 } from "@/lib/v3/detail";
 import { dueTone } from "@/lib/v3/tasks";
 import { areaOf, type AreaView } from "@/lib/v3/category";
@@ -61,8 +69,12 @@ export default function TaskDetailView({
   const [task, setTask] = useState<DetailTask | null>(null);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [err, setErr] = useState("");        // 못 불러온 이유
-  const [saveErr, setSaveErr] = useState(""); // 서버가 거절한 이유 — **그대로** 낸다
-  const [busy, setBusy] = useState<EditField | null>(null);
+  /** 칸마다 따로 (§G — 한 번에 하나씩 저장한다). 하나로 묶으면 어느 칸이 거부됐는지 모른다. */
+  const [save, setSave] = useState<Record<EditField, SaveState>>({
+    title: IDLE, description: IDLE, status: IDLE, assigneeId: IDLE, dueDate: IDLE,
+  });
+  const put = (f: EditField, patch: Partial<SaveState>) =>
+    setSave((prev) => ({ ...prev, [f]: { ...prev[f], ...patch } }));
   const [open, setOpen] = useState<Set<string>>(new Set());
   // 편집 중인 글자. 저장 전까지는 화면 것이 이긴다.
   const [title, setTitle] = useState("");
@@ -84,21 +96,23 @@ export default function TaskDetailView({
    * 한 칸을 보낸다. **안 바뀐 값은 안 보낸다** — 보내면 활동 로그가 더러워지고,
    * 「고친 적 없는데 고쳤다고 적혀 있다」가 된다.
    */
-  const save = useCallback(async (field: EditField, value: string | number | null) => {
-    setSaveErr("");
-    setBusy(field);
+  const send = useCallback(async (field: EditField, value: string | number | null) => {
+    put(field, { busy: true, err: "" });
     const res = await fetch(`/api/tasks/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patchBody(field, value)),
     });
     const data = await res.json().catch(() => ({}));
-    setBusy(null);
     if (!res.ok) {
       // **서버가 준 이유를 그대로 낸다.** 삼키면 사람은 같은 저장을 반복한다.
-      setSaveErr(data.error ?? `저장하지 못했습니다 (${res.status})`);
+      // 「마지막 저장」 시각은 **안 건드린다** — 이번 것은 저장 안 됐으니까.
+      put(field, { busy: false, err: data.error ?? `저장하지 못했습니다 (${res.status})` });
       return false;
     }
+    // 시각은 **서버 것**을 쓴다(응답의 `Date` 머리글). 브라우저 시계로 찍으면
+    // 시계가 틀린 기계에서 증거로 내놓은 숫자가 거짓말을 한다.
+    put(field, { busy: false, err: "", savedAt: stampFrom(res.headers.get("date")) });
     await load();
     // 목록·오늘 화면이 옛 값을 들고 있을 수 있다. 되돌아갈 때 새로 읽게 한다.
     router.refresh();
@@ -107,6 +121,17 @@ export default function TaskDetailView({
 
   const toggle = (k: string) =>
     setOpen((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+
+  /**
+   * 그 칸의 저장 증거 한 줄. **안 사라진다** — 잠깐 떴다 사라지는 표시는
+   * 못 보면 없는 것과 같다(047 §B). `aria-live` 로 소리로도 알린다.
+   */
+  const Note = ({ field, hint }: { field: EditField; hint: string }) => {
+    const n = saveNote(save[field], hint);
+    return (
+      <p className={`v3-save t-${n.tone}`} aria-live="polite" data-field={field}>{n.text}</p>
+    );
+  };
 
   if (err) {
     return (
@@ -144,21 +169,26 @@ export default function TaskDetailView({
         aria-label="제목"
         onChange={(e) => setTitle(e.target.value)}
         onBlur={() => {
-          const next = title.trim();
-          // 빈 제목은 API 가 **조용히 무시한다**(§B-1). 조용히 무시되느니
-          // 되돌려 놓고 이유를 적는다 — 지웠는데 남아 있으면 고장으로 읽힌다.
-          if (next === "") { setTitle(task.title); setSaveErr("제목은 비울 수 없습니다."); return; }
-          if (changed(task.title, next)) void save("title", next);
+          /*
+           * 빈 제목은 API 가 **조용히 무시한다**(§B-1 조사표). 화면만 비워 두면
+           * 「화면은 비었는데 저장은 안 됨」이 되고, 새로고침하면 옛 제목이
+           * 돌아온다 — 사람은 그걸 고장으로 읽는다.
+           *
+           * 그래서 보내기 전에 화면이 **서버 규칙을 그대로 비춘다**: 되돌리고
+           * 이유를 적는다. API 는 안 고친다 (047 §B-1).
+           */
+          const why = titleReject(title);
+          if (why) { setTitle(task.title); put("title", { busy: false, err: why }); return; }
+          if (changed(task.title, title.trim())) void send("title", title.trim());
         }}
       />
+      <Note field="title" hint="칸에서 벗어나면 저장됩니다." />
 
       <p className="v3-lede v3-dmeta">
         {area && <Tag area={area} />}
         <span>#{task.id}</span>
         {kids && <span>{kids}</span>}
       </p>
-
-      {saveErr && <p className="v3-err v3-dsave">{saveErr}</p>}
 
       {/*
         지금 상태를 **글자로도** 적는다(`sub`). 네 칸 중 하나만 테두리가 진한
@@ -175,14 +205,15 @@ export default function TaskDetailView({
                 type="button"
                 className={`v3-stbtn${task.status === s.value ? " on" : ""}`}
                 aria-pressed={task.status === s.value}
-                disabled={busy === "status"}
-                onClick={() => { if (task.status !== s.value) void save("status", s.value); }}
+                disabled={save.status.busy}
+                onClick={() => { if (task.status !== s.value) void send("status", s.value); }}
               >
                 <Checkbox state={stateOf(s.value)} />
                 {s.label}
               </button>
             ))}
           </div>
+          <Note field="status" hint="누르면 바로 저장됩니다." />
           {/* 완료 되돌리기는 **여기에만** 있다 (지시 §B-2). 목록의 체크는 안 만든다 —
               스치듯 눌러서 되돌아가는 자리가 아니다. */}
           {task.status === "done" && (
@@ -216,8 +247,8 @@ export default function TaskDetailView({
         {open.has("assignee") && (
           <div className="v3-newrow">
             <label htmlFor="v3-d-as">담당</label>
-            <select id="v3-d-as" value={task.assigneeId ?? ""} disabled={busy === "assigneeId"}
-                    onChange={(e) => void save("assigneeId", Number(e.target.value))}>
+            <select id="v3-d-as" value={task.assigneeId ?? ""} disabled={save.assigneeId.busy}
+                    onChange={(e) => void send("assigneeId", Number(e.target.value))}>
               {task.assigneeId === null && <option value="">— 담당 없음</option>}
               {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
@@ -226,13 +257,14 @@ export default function TaskDetailView({
             <span className="v3-newwhy">담당을 비우는 자리는 두지 않았습니다</span>
           </div>
         )}
+        {open.has("assignee") && <Note field="assigneeId" hint="고르면 바로 저장됩니다." />}
         {open.has("due") && (
           <div className="v3-newrow">
             <label htmlFor="v3-d-due">기한</label>
-            <input id="v3-d-due" type="date" value={task.dueDate ?? ""} disabled={busy === "dueDate"}
-                   onChange={(e) => void save("dueDate", e.target.value)} />
+            <input id="v3-d-due" type="date" value={task.dueDate ?? ""} disabled={save.dueDate.busy}
+                   onChange={(e) => void send("dueDate", e.target.value)} />
             {task.dueDate && (
-              <button type="button" className="v3-clear" onClick={() => void save("dueDate", "")}>
+              <button type="button" className="v3-clear" onClick={() => void send("dueDate", "")}>
                 지우기
               </button>
             )}
@@ -240,6 +272,7 @@ export default function TaskDetailView({
             <span className="v3-newwhy">기한 없는 업무는 아무 날에도 안 걸립니다</span>
           </div>
         )}
+        {open.has("due") && <Note field="dueDate" hint="고르면 바로 저장됩니다." />}
       </Card>
 
       <Card title="진척" sub={`${task.effectiveProgress}%`}>
@@ -259,10 +292,10 @@ export default function TaskDetailView({
           placeholder="무엇을 왜 하는지, 알아 둘 것이 있으면 적어 두세요."
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          onBlur={() => { if (changed(task.description, note)) void save("description", note); }}
+          onBlur={() => { if (changed(task.description, note)) void send("description", note); }}
         />
         {/* 문구에 백틱·별표를 쓰지 않는다 — 여기는 마크다운이 아니라서 글자 그대로 찍힌다. */}
-        <p className="v3-why">칸에서 벗어나면 저장됩니다.</p>
+        <Note field="description" hint="칸에서 벗어나면 저장됩니다." />
       </Card>
 
       {task.children.length > 0 && (
@@ -293,7 +326,6 @@ export default function TaskDetailView({
 
       <div className="v3-newfoot">
         <Button onClick={() => router.push("/v3/tasks")}>업무 목록으로</Button>
-        {busy && <span className="v3-newwhy">저장 중…</span>}
       </div>
     </>
   );
