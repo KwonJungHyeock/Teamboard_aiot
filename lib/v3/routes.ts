@@ -91,13 +91,29 @@ export function taskIdFromLegacy(search: string): number | null {
   return null;
 }
 
+/**
+ * 옮겨 갈 때 **함께 가는 것**.
+ *
+ * 밀려난 이유(`denied`)가 그렇다. 팀원이 `/v3/stats` 에서 막히면 `/?denied=stats`
+ * 로 가는데, 스위치가 켜져 있으면 옛 셸이 다시 `/v3` 로 보낸다. 그때 이유를
+ * 떨어뜨리면 **아무 설명 없이 새 홈에 서 있게** 된다 — 고치려던 그 자리다.
+ */
+const CARRY = ["denied"];
+
+function withCarried(to: string, search: string): string {
+  const from = new URLSearchParams(search);
+  const keep = new URLSearchParams();
+  for (const k of CARRY) { const v = from.get(k); if (v !== null) keep.set(k, v); }
+  return keep.toString() ? `${to}?${keep}` : to;
+}
+
 export function v3Destination(full: string): string | null {
   const [path, search = ""] = full.split("?");
   const pair = ROUTE_PAIRS.find((p) => p.old === path);
   if (!pair) return null;
   if (path === "/tasks") {
     const id = taskIdFromLegacy(search);
-    if (id !== null) return taskHref(id);
+    if (id !== null) return withCarried(taskHref(id), search);
   }
-  return pair.v3;
+  return withCarried(pair.v3, search);
 }

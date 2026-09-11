@@ -4,10 +4,10 @@
       "id": "members-issue",
       "path": "/members",
       "what": "계정 발급 폼",
-      "lead": false,
+      "lead": true,
       "member": false,
-      "ok": false,
-      "why": "팀장에게도 안 보임 — **단언이 죽어 있다**"
+      "ok": true,
+      "why": ""
     },
     {
       "id": "settings-demo",
@@ -58,10 +58,10 @@
       "id": "combo-new-project",
       "path": "/tasks?panel=task:new",
       "what": "프로젝트 콤보박스의 '새 프로젝트로 만들기'",
-      "lead": false,
+      "lead": true,
       "member": false,
-      "ok": false,
-      "why": "팀장에게도 안 보임 — **단언이 죽어 있다**"
+      "ok": true,
+      "why": ""
     },
     {
       "id": "huddle-review",

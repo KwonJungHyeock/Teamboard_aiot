@@ -67,10 +67,27 @@ const CASES = [
   // MD-P-2026-027 §D1 — 프로젝트 콤보박스의 "새 프로젝트로 만들기".
   // POST /api/projects 는 팀장 전용이므로, 팀원에게 이 줄을 보여 주면
   // 눌러도 403 이 나는 버튼을 보여 주는 셈이다. 아예 그리지 않는다.
+  /*
+   * MD-P-2026-027 §D1 — 프로젝트 콤보박스의 "새 프로젝트로 만들기".
+   * POST /api/projects 는 팀장 전용이므로, 팀원에게 이 줄을 보여 주면
+   * 눌러도 403 이 나는 버튼을 보여 주는 셈이다. 아예 그리지 않는다.
+   *
+   * ── 053 에서 고친 것 ──────────────────────────────────────────
+   *
+   * 선택자가 `.ntm-side`(고급 패널) 안을 보고 있었다. 그런데 027 §B 에서
+   *   ① 고급은 **언제나 닫힌 채로 시작**하게 됐고,
+   *   ② 프로젝트 고르개는 고급에서 **본문으로 옮겨졌다**(`ProjectPicker`).
+   * 그래서 팀장에게도 안 보였고 — 단언이 죽어 있었다.
+   *
+   * 그리고 「새 프로젝트로 만들기」는 프로젝트가 여덟을 넘어 **콤보가 될 때만**
+   * 나타난다(`VISIBLE_PROJECT_BUTTON_LIMIT`). 그 아래면 버튼 줄이라 아무에게도
+   * 안 보인다 — 그래서 **조건을 먼저 만든다**(setup 에서 프로젝트를 채운다).
+   */
   { id: "combo-new-project", path: "/tasks?panel=task:new", what: "프로젝트 콤보박스의 '새 프로젝트로 만들기'",
     check: async (p) => {
       await p.waitForTimeout(1200);
-      const row = p.locator('.ntm-side .prop-row:has(.prop-l:text-is("프로젝트")) .pcb-v');
+      // 본문의 프로젝트 줄. 고급을 열 필요가 없다 — 거기 있던 시절의 선택자였다.
+      const row = p.locator('.ntm-main .ntm-f:has(.ntm-fl:text-is("프로젝트")) .pcb-v');
       if (await row.count() === 0) return false;
       await row.click();
       await p.waitForTimeout(300);
@@ -93,6 +110,40 @@ const API = [
 ];
 
 fs.mkdirSync(OUT, { recursive: true });
+
+/*
+ * ── 조건을 먼저 만든다 (053 §B-30) ───────────────────────────────
+ *
+ * 「새 프로젝트로 만들기」는 프로젝트가 여덟을 넘어 **콤보가 될 때만** 나타난다
+ * (`VISIBLE_PROJECT_BUTTON_LIMIT = 8`). 그 아래면 버튼 줄이라 팀장에게도 안
+ * 보이고, 그러면 「팀원에게 안 보인다」는 단언이 죽는다 — 아무것도 안 재게 된다.
+ *
+ * 그래서 문턱을 넘을 만큼 채운다. 뒷정리에서 **이 표시가 붙은 것만** 지운다.
+ */
+const PMARK = "[경계검사]";
+const BUTTON_LIMIT = 8;
+const seeded = [];
+{
+  /*
+   * **버튼 수는 행 수가 아니다** (`lib/project-buttons.ts`).
+   *   버튼 = goal 프로젝트 전부 + 내 소속 영역마다 상시 하나.
+   * 처음엔 활성 행 수로 셌더니 9건인데도 버튼은 5개라 콤보가 안 됐다 —
+   * 문턱을 넘기려면 **goal 프로젝트**를 채워야 한다.
+   */
+  const goals = (await sql(
+    `SELECT count(*)::int n FROM project WHERE is_active AND type = 'goal'`))[0].n;
+  const need = Math.max(0, BUTTON_LIMIT + 1 - goals);
+  for (let i = 1; i <= need; i += 1) {
+    const r = await sql(
+      `INSERT INTO project (name, type, area_id, color_key, is_active)
+       VALUES ($1, 'goal', (SELECT id FROM area WHERE is_active ORDER BY sort_order, id LIMIT 1), 'team', true)
+       RETURNING id`, [`${PMARK} ${i}`]);
+    seeded.push(r[0].id);
+  }
+  console.log(`(조건) goal 프로젝트 ${goals}건 + ${need}건 = ${goals + need}건` +
+              ` — 버튼이 ${BUTTON_LIMIT}개를 넘어야 콤보가 되고, 콤보라야 「새 프로젝트로 만들기」가 있다`);
+}
+
 const browser = await chromium.launch({
   executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
   args: ["--no-proxy-server", "--no-sandbox"],
@@ -167,6 +218,17 @@ for (const a of API) {
 }
 await ctx.close();
 await browser.close();
+
+// 만든 프로젝트를 되돌린다. **이 표시가 붙은 것만** 지운다 — 실데이터는 안 건드린다.
+if (seeded.length) {
+  await sql(`DELETE FROM project WHERE id = ANY($1::int[])`, [seeded]).catch((e) => {
+    console.error("프로젝트 정리 실패 —", e.message);
+    process.exitCode = 1;
+  });
+  const left = (await sql(`SELECT count(*)::int n FROM project WHERE name LIKE $1`, [`${PMARK}%`]))[0].n;
+  console.log(`정리 — 만든 프로젝트 ${seeded.length}건 지움 · ${PMARK} 남은 것 ${left}건 (0이어야 한다)`);
+  if (left !== 0) process.exitCode = 1;
+}
 
 // 부작용이 없었는지 확인 — 차단은 "막았다"이지 "만들고 숨겼다"가 아니다
 const leaked = await sql(`SELECT count(*)::int n FROM project WHERE name = '무단 프로젝트'`);

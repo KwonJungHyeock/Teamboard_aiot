@@ -11,7 +11,7 @@
 import { redirect } from "next/navigation";
 import { getLiveSession } from "@/lib/auth";
 import { getUiV3 } from "@/lib/v3/switch";
-import { DENIED_HREF } from "@/lib/denied";
+import { deniedHref } from "@/lib/denied";
 import V3Shell from "@/components/v3/Shell";
 import "../v3.css";
 
@@ -22,6 +22,7 @@ export const dynamic = "force-dynamic";
 export default async function V3Layout({ children }: { children: React.ReactNode }) {
   const live = await getLiveSession();
   if (!live) redirect("/api/auth/logout?reason=inactive");
-  if (!(await getUiV3())) redirect(DENIED_HREF);
+  // 등급이 아니라 **스위치**가 막은 것이다 — 이유 문구도 그렇게 말한다.
+  if (!(await getUiV3())) redirect(deniedHref("v3-off"));
   return <V3Shell user={live.user}>{children}</V3Shell>;
 }

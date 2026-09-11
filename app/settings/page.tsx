@@ -5,7 +5,7 @@ import NotionScopeSettings from "@/components/NotionScopeSettings";
 import PlatformSettings from "@/components/PlatformSettings";
 import NotionConnection from "@/components/NotionConnection";
 import { hasLead, isAdmin } from "@/lib/types";
-import { DENIED_HREF } from "@/lib/denied";
+import { deniedHref } from "@/lib/denied";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export default async function SettingsPage() {
   const live = await getLiveSession();
   if (!live) redirect("/login");
   const user = live.user;
-  if (!hasLead(user.role)) redirect(DENIED_HREF);
+  if (!hasLead(user.role)) redirect(deniedHref("settings"));
   const notionConnected = !!process.env.NOTION_TOKEN;
   return (
     <AppShell user={user}>
