@@ -646,3 +646,55 @@
 @media (max-width: 900px) {
   .v3-cal { grid-template-columns: repeat(7, minmax(96px, 1fr)); overflow-x: auto; }
 }
+
+/* ── 056 §B 원그래프 ──────────────────────────────────────────────
+   고리 셋은 **같은 파랑**이다. 값에 따라 색을 안 바꾼다 — 「몇 %부터 좋음」의
+   기준선이 config 에도 goal 에도 없고, 없는 기준으로 칠한 색은 읽는 사람에게
+   없는 판단을 준다. */
+.v3-charts { margin: 0 0 12px; }
+.v3-rings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--v3-gap); margin: 0 0 18px; }
+/* 호버 영역이 **조각보다 크다** — 고리 바깥 여백에 올려도 잡힌다 (§B-5). */
+.v3-ring { margin: 0; padding: 10px 6px; border-radius: var(--v3-radius); text-align: center; }
+.v3-ring:hover { background: var(--v3-bg); }
+.v3-ring svg { width: 100%; max-width: 150px; height: auto; }
+.v3-ring-p { font-size: 30px; font-weight: 700; fill: var(--v3-ink);
+  font-variant-numeric: tabular-nums; }
+.v3-ring-n { font-size: 13px; fill: var(--v3-ink-2); font-variant-numeric: tabular-nums; }
+.v3-ring figcaption { margin-top: 6px; }
+.v3-ring figcaption b { display: block; font-size: 14px; font-weight: 700; }
+.v3-ring figcaption span { display: block; margin-top: 2px; font-size: 12px; color: var(--v3-ink-2); }
+
+/* 상태 분포 — **조각마다 숫자를 직접 적고** 사이를 2px 띄운다.
+   색만으로 구분하지 않는다 (색각 경계에 걸린 쌍이 있다). */
+.v3-bar2 { display: flex; gap: 2px; height: 34px; border-radius: var(--v3-radius-s);
+  overflow: hidden; background: #E7ECF4; }
+.v3-bar2-s { display: grid; place-items: center; min-width: 0; color: #fff;
+  font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.v3-bar2-s b { padding: 0 4px; overflow: hidden; }
+.v3-legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0 0; padding: 0;
+  list-style: none; font-size: 12px; color: var(--v3-ink-2); }
+.v3-legend li { display: flex; align-items: center; gap: 6px; }
+.v3-legend i { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 10px; }
+.v3-legend b { color: var(--v3-ink); font-variant-numeric: tabular-nums; }
+
+/* 표로 보기 — 색을 못 읽는 경우를 위한 자리 (§B-4). */
+.v3-chartbtn { margin-top: 2px; }
+.v3-tbl-2 { margin-top: var(--v3-gap); }
+
+@media (max-width: 760px) {
+  /* 좁으면 고리를 세로로. **접거나 숨기지 않는다** — 셋 다 봐야 뜻이 있다. */
+  .v3-rings { grid-template-columns: 1fr; }
+}
+
+/* 조각의 **호버 영역을 조각보다 크게** (056 §B-5).
+   폭은 정확히 제 비율이다 — 비율을 늘리면 그림이 거짓말을 한다. 대신 위아래로
+   8px 씩 넓혀서 얇은 조각도 마우스가 잡힌다. */
+.v3-bar2-s { position: relative; }
+.v3-bar2-s::after { content: ""; position: absolute; left: 0; right: 0;
+  top: -8px; bottom: -8px; }
+.v3-bar2 { overflow: visible; }
+/* 겉모양은 그대로 둔다 — 넘침을 허용했으니 모서리는 조각이 각자 맡는다. */
+.v3-bar2-s:first-child { border-radius: var(--v3-radius-s) 0 0 var(--v3-radius-s); }
+.v3-bar2-s:last-child { border-radius: 0 var(--v3-radius-s) var(--v3-radius-s) 0; }
+.v3-bar2-s:only-child { border-radius: var(--v3-radius-s); }
