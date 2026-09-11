@@ -314,6 +314,32 @@
 /* 칩 숫자의 합이 전체와 안 맞을 때만 뜬다. 평소엔 없는 줄이다. */
 .v3-leak { margin: -6px 0 var(--v3-gap); font-size: 13px; color: var(--v3-warn); font-weight: 600; }
 
+/* ── 051 §B 거르개 — 축 넷 + 검색 ────────────────────────────────
+   축을 줄로 눕히고 각 줄에 이름표를 단다. 이름표가 없으면 칩이 스물몇 개
+   나란히 서서 **무엇을 고르는 자리인지** 안 보인다. */
+.v3-filters { display: flex; flex-direction: column; gap: 8px;
+  margin: 0 0 var(--v3-gap); padding: 14px 16px; background: var(--v3-card);
+  border: 1px solid var(--v3-line); border-radius: var(--v3-radius); }
+.v3-fx { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.v3-fx-l { flex: 0 0 44px; font-size: 12px; font-weight: 700; color: var(--v3-ink-2); }
+.v3-search { width: 100%; height: 38px; padding: 0 12px; border: 1px solid var(--v3-line-2);
+  border-radius: var(--v3-radius-s); background: var(--v3-card); font: inherit;
+  color: var(--v3-ink); }
+.v3-search::placeholder { color: var(--v3-ink-3); }
+.v3-search:focus { outline: none; border-color: var(--v3-rail); }
+
+/* 걸린 조건 — **× 가 붙은 칩**으로 나열한다. 조건이 어디 숨어 있으면
+   빈 목록이 고장으로 읽힌다. */
+.v3-active { display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin: -6px 0 var(--v3-gap); }
+.v3-acx { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px;
+  border: 1px solid var(--v3-ink-3); border-radius: var(--v3-radius-pill);
+  background: var(--v3-ichip-bg); color: var(--v3-ink); font: inherit; font-size: 12px;
+  font-weight: 600; cursor: pointer; }
+.v3-acx:hover { border-color: var(--v3-late); color: var(--v3-late); }
+.v3-acx span { font-size: 14px; line-height: 1; color: var(--v3-ink-3); }
+.v3-acx:hover span { color: var(--v3-late); }
+
 /* ── 045 §A — 완료 접기 · 묶기 안내 ───────────────────────────────
    완료는 기본으로 접힌다. **건수는 접혀 있어도 보인다** — 조용히 빼면
    「완료가 없다」로 읽히고 그건 사실이 아니다. */

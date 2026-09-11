@@ -23,6 +23,10 @@ export interface TodayTask {
   areaId: number | null;
   completedAt: string | null;
   parentTaskId: number | null;
+  /** 담당자 거르개가 쓴다 (051 §B). 이름이 아니라 **번호로** 거른다 — 동명이인. */
+  assigneeId: number | null;
+  /** 링크 미리보기가 여기서 URL 을 뽑는다 (051 §C). **본문은 안 고친다.** */
+  description: string;
 }
 
 /** 진행 중으로 세는 상태 — `/api/tasks` 기본 목록과 같은 뜻. */
