@@ -30,6 +30,8 @@ import {
 } from "@/lib/v3/tasks";
 import { chipRow, type AreaView } from "@/lib/v3/category";
 import { taskHref } from "@/lib/v3/routes";
+// 목록에는 **썸네일이 아니라 개수만** (051 §C-3).
+import { countLinks } from "@/lib/v3/links";
 
 const SORT_LABEL: Record<SortKey, string> = { due: "기한순", recent: "최신순" };
 
@@ -385,6 +387,7 @@ export default function TasksView({
                   due={shortDue(t.dueDate)}
                   late={tone === "late"}
                   dueTone={tone}
+                  clip={countLinks(t.description)}
                 />
               );
             })}

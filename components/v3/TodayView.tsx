@@ -27,6 +27,8 @@ import { areaOf, type AreaView } from "@/lib/v3/category";
 import { V3_BASE, taskHref } from "@/lib/v3/routes";
 // 가오픈 카드가 쓰는 것 — **계산은 저기 한 곳에 있다** (051 §A-3).
 import { weeksAndDays, longDateKst } from "@/lib/countdown";
+// 오늘 화면에도 **썸네일이 아니라 개수만** (051 §C-3).
+import { countLinks } from "@/lib/v3/links";
 
 /** 알림이 가리키는 곳. 종류마다 갈 데가 다르다. */
 function inboxHref(i: InboxItem): string {
@@ -152,6 +154,7 @@ export default function TodayView({
               assignee={t.assigneeName}
               due={shortDue(t.dueDate)}
               late={t.late}
+              clip={countLinks(t.description)}
             />
           ))}
 
