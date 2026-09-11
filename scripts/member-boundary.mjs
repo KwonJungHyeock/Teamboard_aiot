@@ -125,6 +125,19 @@ const BUTTON_LIMIT = 8;
 const seeded = [];
 {
   /*
+   * ── 시작할 때 먼저 쓸어낸다 (054) ────────────────────────────
+   *
+   * 뒷정리는 **이번에 만든 id** 만 지운다. 그런데 Postgres 가 검사 도중 죽으면
+   * 뒷정리가 DB 에 닿지 못해 행이 남고, 남은 채로 다음 회차를 돌면 「몇 개가
+   * 있는가」를 오염된 바탕에서 세게 된다. 실제로 6건이 남았다.
+   *
+   * 그래서 시작에서도 **이 표시가 붙은 것**을 지운다. 뒷정리가 못 돈 날에도
+   * 다음 회차가 깨끗한 바탕에서 시작한다.
+   */
+  const stale = await sql(`DELETE FROM project WHERE name LIKE $1 RETURNING id`, [`${PMARK}%`]);
+  if (stale.length) console.log(`(정리) 지난 회차가 남긴 ${PMARK} ${stale.length}건을 먼저 지웠다`);
+
+  /*
    * **버튼 수는 행 수가 아니다** (`lib/project-buttons.ts`).
    *   버튼 = goal 프로젝트 전부 + 내 소속 영역마다 상시 하나.
    * 처음엔 활성 행 수로 셌더니 9건인데도 버튼은 5개라 콤보가 안 됐다 —
