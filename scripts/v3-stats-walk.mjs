@@ -147,10 +147,16 @@ try {
       ` · 카테고리표 ${catTotal} · 담당자표 ${whoTotal} · 화면 "${recon.slice(0, 110)}"`);
 
   // ── ⑥ 프로젝트별 표가 없다 ────────────────────────────────────
+  // 개수로 단언하지 않는다 (§G 052) — 카드가 하나 늘면(056 「완료율」) 개수가
+  // 틀리지만 「프로젝트별이 없다」는 그대로 참이다. 이름으로 묻는다.
+  // 다만 `없다`만 물으면 카드가 0개여도 통과한다 (§G 054) — 있어야 할
+  // 둘이 있는지도 같이 센다.
   const heads = (await page.locator(".v3-card-h h2").allInnerTexts()).map((t) => t.trim());
+  const must = ["카테고리 × 상태", "담당자 × 상태"];
   chk("⑥-프로젝트별-표가-없다",
-      !heads.some((h) => h.includes("프로젝트")) && heads.length === 3,
-      `표·카드 [${heads.join(" · ")}] — 프로젝트별은 이번에 안 만든다`);
+      !heads.some((h) => h.includes("프로젝트")) && must.every((m) => heads.includes(m)),
+      `표·카드 [${heads.join(" · ")}] — 프로젝트별은 이번에 안 만든다` +
+      ` · 있어야 할 둘 [${must.join(" · ")}] ${must.every((m) => heads.includes(m)) ? "다 있음" : "빠짐"}`);
 
   // ── ③ 기한 세 갈래가 API 와 같다 ──────────────────────────────
   const strip = (await page.locator(".v3-odstrip .v3-stat-n").allInnerTexts()).map(Number);

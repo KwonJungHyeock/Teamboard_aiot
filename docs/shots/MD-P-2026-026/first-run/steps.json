@@ -1,6 +1,6 @@
 {
-  "email": "firstrun.1787798300190@local.test",
-  "actorId": 18,
+  "email": "firstrun.1789112269004@local.test",
+  "actorId": 69,
   "steps": [
     {
       "id": "01-login",
@@ -29,7 +29,7 @@
     },
     {
       "id": "04-zero_",
-      "note": "/ · 전체빈 0 · 섹션빈 3 · 오류 0 · 로딩 0",
+      "note": "/ · 전체빈 0 · 섹션빈 4 · 오류 0 · 로딩 0",
       "shot": "docs/shots/MD-P-2026-026/first-run/04-zero_.png"
     },
     {
@@ -79,7 +79,7 @@
     },
     {
       "id": "04-zero_huddle",
-      "note": "/huddle · 전체빈 1 · 섹션빈 1 · 오류 0 · 로딩 0",
+      "note": "/huddle · 전체빈 0 · 섹션빈 1 · 오류 0 · 로딩 0",
       "shot": "docs/shots/MD-P-2026-026/first-run/04-zero_huddle.png"
     },
     {
@@ -89,7 +89,7 @@
     },
     {
       "id": "04-zero_reports",
-      "note": "/reports · 전체빈 0 · 섹션빈 1 · 오류 0 · 로딩 0",
+      "note": "/reports · 전체빈 0 · 섹션빈 2 · 오류 0 · 로딩 0",
       "shot": "docs/shots/MD-P-2026-026/first-run/04-zero_reports.png"
     },
     {
@@ -104,14 +104,14 @@
     },
     {
       "id": "07-after-first-task",
-      "note": "첫 업무 생성 결과 — DB 1건 #91 team",
+      "note": "첫 업무 생성 결과 — DB 1건 #639 team",
       "shot": "docs/shots/MD-P-2026-026/first-run/07-after-first-task.png"
     }
   ],
   "jsErrors": [],
   "created": [
     {
-      "id": 91,
+      "id": 639,
       "title": "첫 업무 — 개발 환경 세팅",
       "visibility": "team"
     }

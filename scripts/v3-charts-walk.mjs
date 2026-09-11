@@ -218,7 +218,9 @@ try {
       ` · 범례 [${legend.join(" | ")}]`);
 
   // ── ⑦ 막대 합을 화면이 스스로 말한다 ─────────────────────────
-  const recon = (await page.locator(".v3-recon").last().innerText()).replace(/\s+/g, " ");
+  // `.last()` 로 집지 않는다 — 표 합 줄과 막대 합 줄은 **이름이 다르다.**
+  // 순서로 집으면 줄이 하나 더 늘 때 조용히 엉뚱한 줄을 읽는다.
+  const recon = (await page.locator(".v3-recon-bar").innerText()).replace(/\s+/g, " ");
   chk("⑦-막대-합을-화면이-말한다",
       recon.startsWith("막대 합이 맞습니다") && recon.includes(String(monthDist.total)),
       `"${recon.slice(0, 100)}"`);

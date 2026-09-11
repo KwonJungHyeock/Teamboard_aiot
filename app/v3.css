@@ -630,10 +630,16 @@
   border-bottom: 0; font-weight: 700; }
 
 /* 합이 맞는지 **화면에서** 보인다. 어긋나면 코랄로 눕지 않고 선다. */
-.v3-recon { margin: -4px 0 var(--v3-gap); font-size: 13px; color: var(--v3-ink-2); }
-.v3-recon b { font-variant-numeric: tabular-nums; color: var(--v3-ink); }
-.v3-recon.bad { color: var(--v3-late); font-weight: 700; }
-.v3-recon.bad b { color: var(--v3-late); }
+/* 056 의 막대 합 줄은 **이름이 다르다**(`.v3-recon-bar`) — 다른 말을 하는 줄이라서.
+   모양은 같으므로 규칙만 나눠 쓴다. */
+.v3-recon,
+.v3-recon-bar { margin: -4px 0 var(--v3-gap); font-size: 13px; color: var(--v3-ink-2); }
+.v3-recon b,
+.v3-recon-bar b { font-variant-numeric: tabular-nums; color: var(--v3-ink); }
+.v3-recon.bad,
+.v3-recon-bar.bad { color: var(--v3-late); font-weight: 700; }
+.v3-recon.bad b,
+.v3-recon-bar.bad b { color: var(--v3-late); }
 
 /* 목록 행의 클립 — **개수만.** 썸네일은 목록에 없다. */
 .v3-clip { display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto;

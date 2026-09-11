@@ -217,7 +217,10 @@ export default function StatsView({
       {tasks !== null && (
         <Card title="완료율" sub={`${monthLabel(ym)} 기준 · 기간 셋`}>
           <ChartToggle rings={rings} segments={dist.segments} total={dist.total} />
-          <p className={`v3-recon${barOk.ok ? "" : " bad"}`}>
+          {/* 클래스가 `.v3-recon` 이 아니다. 위의 표 합 줄과 **다른 말을 하는 줄**이라
+              이름을 나눈다 — 한 이름이 두 문장을 가리키면 가리키는 쪽이 어느 것을
+              말하는지 알 수 없다(§G 047). 실제로 052 검사기가 여기서 걸렸다. */}
+          <p className={`v3-recon-bar${barOk.ok ? "" : " bad"}`}>
             {barOk.ok ? "막대 합이 맞습니다 — " : "막대 합이 안 맞습니다 — "}
             네 상태 <b>{barOk.sum}</b>건
             {out.n > 0 && <> · 네 상태 밖 {out.n}건 뺌({out.statuses.join(", ")})</>}
