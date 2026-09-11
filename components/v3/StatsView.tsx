@@ -19,8 +19,11 @@ import { Card, Button, Empty } from "./parts";
 import { type TodayTask } from "@/lib/v3/today";
 import {
   STAT_COLUMNS, crossTab, outside, reconcile, inMonth, monthLabel, shiftMonth,
-  cellHref, type StatTable,
+  cellHref, rangesFor, ringOf, distribution, distTally, type StatTable,
 } from "@/lib/v3/stats";
+import { ChartToggle } from "./StatsCharts";
+// 「마지막 갱신」 시각은 **서버가 준 것**을 쓴다 (§G 048) — 047 과 같은 방식.
+import { stampFrom, clockKst } from "@/lib/v3/detail";
 import { type AreaView } from "@/lib/v3/category";
 
 interface Person { id: number; name: string }
@@ -98,6 +101,14 @@ export default function StatsView({
   const [tally, setTally] = useState<Tally | null>(null);
   const [openAt, setOpenAt] = useState<string>("");
   const [tallyWhy, setTallyWhy] = useState("");
+  /**
+   * 언제 가져온 숫자인가 (§B-3).
+   *
+   * **브라우저 시계로 안 찍는다** — 증거로 내놓는 값은 그 값을 만든 쪽에서
+   * 가져온다(§G 048). 응답의 `Date` 머리글이라 API 를 안 고치고 받을 수 있다.
+   * **자동 새로고침은 없다.** 스스로 도는 화면은 언제 돈 건지 더 헷갈린다.
+   */
+  const [fetchedAt, setFetchedAt] = useState<number | null>(null);
 
   // 보고 있는 달은 **주소에 담긴다**. 기본은 이번 달 — 기본값은 주소에 안 적는다.
   const raw = sp.get("m");
@@ -111,7 +122,11 @@ export default function StatsView({
 
   useEffect(() => {
     fetch("/api/tasks")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("업무를 불러오지 못했습니다."))))
+      .then((r) => {
+        if (!r.ok) throw new Error("업무를 불러오지 못했습니다.");
+        setFetchedAt(stampFrom(r.headers.get("date")));
+        return r.json();
+      })
       .then((d) => setTasks(d.tasks ?? []))
       .catch((e) => setErr(String(e.message ?? e)));
     fetch("/api/tasks/open-due")
@@ -135,6 +150,13 @@ export default function StatsView({
     () => crossTab(period, people.map((p) => ({ id: p.id, label: p.name })),
                    (t) => t.assigneeId, "담당 없음"),
     [period, people]);
+
+  // 고리 셋 — **같은 함수를 세 번**. 기간만 다르다.
+  const rings = useMemo(
+    () => rangesFor(ym).map((r) => ringOf(all, r, today)), [all, ym, today]);
+  const monthRange = useMemo(() => rangesFor(ym)[2], [ym]);
+  const dist = useMemo(() => distribution(all, monthRange), [all, monthRange]);
+  const barOk = distTally(dist.segments, period.length, out.n);
 
   const recArea = reconcile(byArea, period.length, out.n);
   const recWho = reconcile(byWho, period.length, out.n);
@@ -182,6 +204,36 @@ export default function StatsView({
           담당자표 행 합 <b>{recWho.rowSum}</b> · 열 합 <b>{recWho.colSum}</b>
           {!bothOk && " — 세다가 빠뜨린 것이 있습니다."}
         </p>
+      )}
+
+      {/*
+        ── 원그래프 (056 §B) ────────────────────────────────────────
+        연간 · 분기 · 이번 달. **셋이 같은 함수에서** 나온다(`ringOf`) —
+        각자 세면 합이 안 맞는다. 달을 옮기면 셋이 다 따라간다.
+
+        기한 없는 업무는 **어느 기간에도 안 든다**(037). 그 건수는 위 안내줄에
+        이미 적혀 있다 — 안 세는 것이 보여야 한다(지시 §B-1).
+      */}
+      {tasks !== null && (
+        <Card title="완료율" sub={`${monthLabel(ym)} 기준 · 기간 셋`}>
+          <ChartToggle rings={rings} segments={dist.segments} total={dist.total} />
+          {/* 클래스가 `.v3-recon` 이 아니다. 위의 표 합 줄과 **다른 말을 하는 줄**이라
+              이름을 나눈다 — 한 이름이 두 문장을 가리키면 가리키는 쪽이 어느 것을
+              말하는지 알 수 없다(§G 047). 실제로 052 검사기가 여기서 걸렸다. */}
+          <p className={`v3-recon-bar${barOk.ok ? "" : " bad"}`}>
+            {barOk.ok ? "막대 합이 맞습니다 — " : "막대 합이 안 맞습니다 — "}
+            네 상태 <b>{barOk.sum}</b>건
+            {out.n > 0 && <> · 네 상태 밖 {out.n}건 뺌({out.statuses.join(", ")})</>}
+            {" / 기한이 "}{monthLabel(ym)}{"인 "}<b>{period.length}</b>건
+            {!barOk.ok && " — 세다가 빠뜨린 것이 있습니다."}
+          </p>
+          <p className="v3-why">
+            {/* 색을 값에 따라 안 바꾸는 이유를 적는다 — 안 적으면 「왜 다 파랑이지」가 된다. */}
+            고리 색은 셋 다 같습니다. 「몇 %부터 좋음」의 기준이 아직 없어서
+            색으로 말하지 않습니다.
+            {fetchedAt !== null && <> · 마지막 갱신 {clockKst(fetchedAt)}</>}
+          </p>
+        </Card>
       )}
 
       {tasks !== null && period.length === 0 ? (

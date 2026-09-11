@@ -10,11 +10,14 @@
 // 「집계」는 **팀장부터** 보인다 — 그 화면과 같은 함수(`hasLead`)로 가린다.
 // (상세는 업무에서 들어가는 자리라 레일에 없다.)
 //
-// ── 「＋ 새 업무」가 여기 있는 이유 (051 §A-1) ────────────────────
+// ── 「＋ 새 업무」는 **하나다** (056 §A) ─────────────────────────
 //
-// 두 자리 모두 **껍데기에서 한 번** 그린다. 화면마다 붙이면 하나 빠뜨렸을 때
-// 그 화면에서만 없는데 **눌러 보기 전엔 모른다** — 「막는 것은 뿌리에서 한 번
-// 한다」(§G 043)와 같은 이유다.
+// 051 §A-1 은 「레일 맨 위 + 헤더 오른쪽, 두 자리 모두」였다. 지시자 정정:
+// **헤더도 껍데기에서 그리므로 이미 모든 화면에 있었다.** 두 자리는 같은 곳으로
+// 가는 버튼이 한 화면에 둘이라는 뜻이었고, 그러면 「둘이 다른가」를 한 번 묻게 된다.
+//
+// 그래서 레일의 흰 버튼을 뺐다. **뺀 자리는 그냥 비운다** — 다른 것으로 채우면
+// 줄인 의미가 없다. 단축키 `C` 는 그대로다.
 import Link from "next/link";
 import { useCallback, useEffect, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -93,12 +96,6 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
             <small>MISSION DECK</small>
           </span>
 
-          {/* 「＋ 새 업무」 — **메뉴보다 위**. 흰 바탕에 파란 글씨라 메뉴와 안 섞인다. */}
-          <Link className="v3-railnew" href={newHref}>
-            ＋ 새 업무
-            <kbd>C</kbd>
-          </Link>
-
           {/* 메뉴 항목에는 제 이름표가 있다. 레일에 「＋ 새 업무」와 계정 링크가
               함께 서면서 「레일의 모든 `a`」가 더는 메뉴를 뜻하지 않게 됐다 —
               세는 쪽이 무엇을 세는지 이름으로 말하게 한다. */}
@@ -146,12 +143,16 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
         </nav>
 
         <main className="v3-main">
-          {/* 헤더 오른쪽의 「＋ 새 업무」 — 파란 채움. 레일의 것과 **같은 곳**으로 간다. */}
           {/* 밀려난 이유 — 옛 셸과 **같은 표**에서 나온다 (053 §B-31).
               스위치가 켜져 있으면 옛 홈이 여기로 다시 보내므로 이 자리도 필요하다. */}
           <Suspense fallback={null}><DeniedNote /></Suspense>
+          {/* 「＋ 새 업무」 — **이 화면의 유일한 자리**다 (056 §A).
+              단축키 `C` 도 같은 곳으로 가므로 버튼에 적어 둔다. */}
           <div className="v3-top">
-            <Link className="v3-btn primary v3-topnew" href={newHref}>＋ 새 업무</Link>
+            <Link className="v3-btn primary v3-topnew" href={newHref}>
+              ＋ 새 업무
+              <kbd className="v3-topkbd">C</kbd>
+            </Link>
           </div>
           {children}
         </main>
