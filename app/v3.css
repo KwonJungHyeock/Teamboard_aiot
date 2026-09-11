@@ -93,20 +93,15 @@
 /* `.v3-rail-foot`(이름·역할 한 줄)은 051 §A-2 에서 `.v3-acct` 로 바뀌었다 —
    프로필·설정·로그아웃이 v3 에는 아예 없었다(조사 결과). */
 
-/* ── 051 §A-1 「＋ 새 업무」 두 자리 ──────────────────────────────
-   레일 것은 **흰 바탕에 파란 글씨** — 메뉴와 안 섞이라고 색을 뒤집는다. */
-.v3-railnew { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px;
-  min-height: 42px; padding: 0 12px; border-radius: var(--v3-radius-s);
-  background: #fff; color: var(--v3-rail) !important; font-weight: 700;
-  text-decoration: none; }
-.v3-railnew:hover { background: #fff; filter: brightness(.96); }
-.v3-railnew kbd { margin-left: auto; padding: 1px 6px; border-radius: 5px;
-  background: var(--v3-cat-platform-bg); color: var(--v3-rail); font: inherit;
-  font-size: 11px; font-weight: 700; }
-
-/* 헤더 오른쪽 것은 **파란 채움**. 자리를 늘 차지해서 화면마다 제목 높이가 안 흔들린다. */
+/* ── 056 §A 「＋ 새 업무」는 **하나다** ────────────────────────────
+   051 은 레일과 헤더 두 자리였다. 헤더도 껍데기에서 그리므로 이미 모든 화면에
+   있었고, 같은 곳으로 가는 버튼이 한 화면에 둘이면 「둘이 다른가」를 묻게 된다.
+   레일의 `.v3-railnew` 는 거뒀다. **뺀 자리는 그냥 비운다.** */
 .v3-top { display: flex; justify-content: flex-end; margin: 0 0 14px; }
 .v3-topnew { text-decoration: none; }
+/* 단축키를 버튼에 적는다 — 레일에 있던 표시가 갈 곳이 없어졌다. */
+.v3-topkbd { padding: 1px 6px; border-radius: 5px; background: rgba(255, 255, 255, .22);
+  color: #fff; font: inherit; font-size: 11px; font-weight: 700; }
 
 /* ── 051 §A-2 계정 · 설정 붙박이 ─────────────────────────────────
    두 줄 — ① 이름 + 역할 배지 ② 설정 · 로그아웃.

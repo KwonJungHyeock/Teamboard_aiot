@@ -89,21 +89,36 @@ try {
   const page = await ctx.newPage();
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
 
-  // ── ①② 두 자리가 모든 화면에 · 같은 곳으로 ─────────────────────
+  /* ── ①② 「새 업무」 버튼은 **정확히 하나** (056 §A) ──────────────
+   *
+   * 051 은 레일과 헤더 두 자리였다. 지시자 정정 — 헤더도 껍데기에서 그리므로
+   * 이미 모든 화면에 있었고, 같은 곳으로 가는 버튼이 한 화면에 둘이었다.
+   *
+   * 그래서 묻는 것이 바뀐다: 「둘 다 있는가」가 아니라 **「하나인가」**.
+   * 클래스로 세지 않고 **화면에 보이는 것**으로 센다 — 클래스로 세면 레일 것을
+   * 다른 이름으로 되살려도 통과한다.
+   */
   const seen = [];
   for (const p of V3_PAGES) {
     await page.goto(`${BASE}${p}`, { waitUntil: "networkidle" });
-    const railHref = await page.locator(".v3-railnew").getAttribute("href").catch(() => null);
-    const topHref = await page.locator(".v3-topnew").getAttribute("href").catch(() => null);
-    seen.push({ p, railHref, topHref });
+    await page.locator(".v3-main").waitFor({ timeout: 9000 });
+    const btns = page.locator(".v3 a, .v3 button").filter({ hasText: /새 업무/ });
+    const n = await btns.count();
+    const hrefs = await btns.evaluateAll((els) => els.map((e) => e.getAttribute("href")));
+    // 레일의 메뉴 항목 「새 업무」는 버튼이 아니라 **메뉴**다 — 세는 데서 뺀다.
+    const nav = await page.locator(".v3-navlink").filter({ hasText: /새 업무/ }).count();
+    seen.push({ p, n: n - nav, hrefs: hrefs.filter((h) => h !== null) });
   }
-  chk("①-두-자리가-모든-화면에",
-      seen.every((s) => s.railHref !== null && s.topHref !== null),
-      seen.map((s) => `${s.p} ${s.railHref && s.topHref ? "둘 다" : "**빠짐**"}`).join(" · "));
-  chk("②-두-자리가-같은-곳으로",
-      seen.every((s) => s.railHref === "/v3/new" && s.topHref === "/v3/new"),
-      `레일 [${Array.from(new Set(seen.map((s) => s.railHref))).join(", ")}]` +
-      ` · 헤더 [${Array.from(new Set(seen.map((s) => s.topHref))).join(", ")}]`);
+  chk("①-「새-업무」-버튼이-정확히-하나",
+      seen.every((s) => s.n === 1),
+      seen.map((s) => `${s.p} ${s.n}개`).join(" · ") + " (레일 메뉴 항목은 뺀 수)");
+  chk("②-그-하나가-같은-곳으로",
+      seen.every((s) => s.hrefs.every((h) => h === "/v3/new")),
+      `가리키는 곳 [${Array.from(new Set(seen.flatMap((s) => s.hrefs))).join(", ")}]`);
+  // 레일의 흰 버튼이 **실제로 없어졌는지** 값으로 본다. 없어진 것을 세는 자리다.
+  chk("②짝-레일의-흰-버튼은-없다",
+      (await page.locator(".v3-railnew").count()) === 0,
+      `.v3-railnew ${await page.locator(".v3-railnew").count()}개 — 056 §A 에서 거뒀다`);
 
   // ── ③ 단축키 C — **도착 화면을 본다** ──────────────────────────
   await page.goto(`${BASE}/v3/tasks`, { waitUntil: "networkidle" });
