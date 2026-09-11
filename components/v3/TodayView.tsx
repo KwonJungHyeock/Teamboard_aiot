@@ -25,6 +25,10 @@ import {
 } from "@/lib/v3/today";
 import { areaOf, type AreaView } from "@/lib/v3/category";
 import { V3_BASE, taskHref } from "@/lib/v3/routes";
+// 가오픈 카드가 쓰는 것 — **계산은 저기 한 곳에 있다** (051 §A-3).
+import { weeksAndDays, longDateKst } from "@/lib/countdown";
+// 오늘 화면에도 **썸네일이 아니라 개수만** (051 §C-3).
+import { countLinks } from "@/lib/v3/links";
 
 /** 알림이 가리키는 곳. 종류마다 갈 데가 다르다. */
 function inboxHref(i: InboxItem): string {
@@ -81,6 +85,9 @@ export default function TodayView({
   const stateOf = (s: string): CbState =>
     s === "done" ? "done" : s === "doing" ? "doing" : s === "review" ? "review" : "todo";
 
+  // 「7주 3일 남음」 — **`dday` 하나에서 파생**시킨다. 따로 세지 않는다.
+  const left = weeksAndDays(dday);
+
   const greeting = `${name}님, 안녕하세요`;
   const dateLine = new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul", month: "long", day: "numeric", weekday: "long",
@@ -101,6 +108,25 @@ export default function TodayView({
       {err && <Card><p className="v3-err">{err}</p></Card>}
 
       <div className="v3-stats">
+        {/*
+          ── 가오픈 카드 (051 §A-3) ──────────────────────────────────
+          통계 타일과 **같은 줄, 맨 왼쪽**. 파란 채움.
+
+          **진행 막대는 없다.** 지시자의 목업에 있었지만 `config` 에 시작일이
+          없다 — 시작이 없으면 「얼마나 왔는가」는 근거 없는 비율이다.
+          없는 근거로 그린 막대는 있는 것보다 나쁘다.
+
+          D 와 날짜와 「n주 n일」은 **전부 `lib/countdown.ts` 에서** 온다.
+          여기서 다시 세면 같은 카드 안에서 D-52 와 「7주 4일」이 같이 뜬다.
+        */}
+        <div className="v3-open">
+          <span className="v3-open-l">플랫폼 가오픈</span>
+          <span className="v3-open-d">
+            {dday > 0 ? `D-${dday}` : dday === 0 ? "당일" : `+${-dday}일`}
+          </span>
+          <span className="v3-open-when">{longDateKst(openAtMs)}</span>
+          {left && <span className="v3-open-left">{left.text}</span>}
+        </div>
         <StatTile n={view?.counts.doing ?? 0} label="진행 중" />
         <StatTile n={view?.counts.thisWeek ?? 0} label={`이번 주 마감 (~${shortDate(weekEnd(today))})`} />
         <StatTile n={view?.counts.noDue ?? 0} label="기한 없음" warn />
@@ -128,6 +154,7 @@ export default function TodayView({
               assignee={t.assigneeName}
               due={shortDue(t.dueDate)}
               late={t.late}
+              clip={countLinks(t.description)}
             />
           ))}
 

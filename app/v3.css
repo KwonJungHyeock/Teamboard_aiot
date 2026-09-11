@@ -76,9 +76,12 @@
   line-height: 1.55;
 }
 
-/* ── Rail — 왼쪽 세로 막대 ─────────────────────────────────────── */
+/* ── Rail — 왼쪽 세로 막대 ───────────────────────────────────────
+   **바닥 붙박이를 위해 sticky 다** (051 §A-2). 본문이 길어져도 레일은 화면에
+   머물고, 계정 블록이 같이 밀려 올라가지 않는다. */
 .v3-rail { background: var(--v3-rail); color: #fff; display: flex; flex-direction: column;
-  gap: 2px; padding: 18px 12px; width: 232px; flex: 0 0 232px; min-height: 100vh; }
+  gap: 2px; padding: 18px 12px; width: 232px; flex: 0 0 232px;
+  position: sticky; top: 0; height: 100vh; align-self: flex-start; }
 .v3-rail-brand { display: block; padding: 4px 10px 18px; font-weight: 700; letter-spacing: -.01em; }
 .v3-rail-brand small { display: block; font-weight: 500; font-size: 11px; letter-spacing: .16em;
   color: rgba(255, 255, 255, .68); margin-top: 3px; }
@@ -87,7 +90,51 @@
   font-weight: 600; }
 .v3-rail a:hover { background: rgba(255, 255, 255, .10); color: #fff; }
 .v3-rail a[aria-current="page"] { background: rgba(255, 255, 255, .18); color: #fff; }
-.v3-rail-foot { margin-top: auto; padding-top: 14px; color: rgba(255, 255, 255, .68); font-size: 13px; }
+/* `.v3-rail-foot`(이름·역할 한 줄)은 051 §A-2 에서 `.v3-acct` 로 바뀌었다 —
+   프로필·설정·로그아웃이 v3 에는 아예 없었다(조사 결과). */
+
+/* ── 051 §A-1 「＋ 새 업무」 두 자리 ──────────────────────────────
+   레일 것은 **흰 바탕에 파란 글씨** — 메뉴와 안 섞이라고 색을 뒤집는다. */
+.v3-railnew { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px;
+  min-height: 42px; padding: 0 12px; border-radius: var(--v3-radius-s);
+  background: #fff; color: var(--v3-rail) !important; font-weight: 700;
+  text-decoration: none; }
+.v3-railnew:hover { background: #fff; filter: brightness(.96); }
+.v3-railnew kbd { margin-left: auto; padding: 1px 6px; border-radius: 5px;
+  background: var(--v3-cat-platform-bg); color: var(--v3-rail); font: inherit;
+  font-size: 11px; font-weight: 700; }
+
+/* 헤더 오른쪽 것은 **파란 채움**. 자리를 늘 차지해서 화면마다 제목 높이가 안 흔들린다. */
+.v3-top { display: flex; justify-content: flex-end; margin: 0 0 14px; }
+.v3-topnew { text-decoration: none; }
+
+/* ── 051 §A-2 계정 · 설정 붙박이 ─────────────────────────────────
+   두 줄 — ① 이름 + 역할 배지 ② 설정 · 로그아웃.
+   배지는 039 에서 정한 그대로다: 「팀장」이면서 「관리자 권한」이면 배지가 둘이다. */
+.v3-acct { margin-top: auto; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, .16); }
+.v3-acct-me { display: flex !important; align-items: center; gap: 10px; padding: 6px 8px !important;
+  border-radius: var(--v3-radius-s); text-decoration: none; }
+.v3-acct-av { width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center;
+  border-radius: 50%; background: rgba(255, 255, 255, .22); color: #fff;
+  font-size: 13px; font-weight: 700; }
+.v3-acct-nm { min-width: 0; }
+.v3-acct-nm b { display: block; color: #fff; font-size: 13px; font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-acct-bg { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.v3-acct-bg em { padding: 1px 7px; border-radius: var(--v3-radius-pill);
+  background: rgba(255, 255, 255, .18); color: rgba(255, 255, 255, .92);
+  font-style: normal; font-size: 11px; font-weight: 700; }
+/* 관리자 권한은 **정체가 아니라 권한**이라 따로 선다 (039). 색도 다르다. */
+.v3-acct-bg em.grant { background: #fff; color: var(--v3-rail); }
+.v3-acct-a { display: flex; gap: 4px; margin-top: 4px; }
+.v3-acct-l { flex: 1; min-height: 32px; display: inline-flex; align-items: center;
+  justify-content: center; padding: 0 8px; border: 0; border-radius: var(--v3-radius-s);
+  background: none; color: rgba(255, 255, 255, .80) !important; font: inherit;
+  font-size: 12px; font-weight: 600; text-decoration: none; cursor: pointer; }
+.v3-acct-l:hover { background: rgba(255, 255, 255, .12); color: #fff !important; }
+/* 못 가는 자리는 **지우지 않고 흐리게** 둔다 — 없으면 왜 없는지가 안 보인다. */
+.v3-acct-l.off { color: rgba(255, 255, 255, .40) !important; cursor: default; }
+.v3-acct-l.off:hover { background: none; color: rgba(255, 255, 255, .40) !important; }
 
 /* ── Card ──────────────────────────────────────────────────────── */
 .v3-card { background: var(--v3-card); border: 1px solid var(--v3-line);
@@ -180,6 +227,23 @@
 /* 「기한 없음」만 호박색 — 아무 날에도 안 걸려서 마지막까지 안 보이는 것들이다 */
 .v3-stat.warn .v3-stat-n { color: var(--v3-warn); }
 
+/* ── 051 §A-3 가오픈 카드 ────────────────────────────────────────
+   통계 타일과 같은 줄 맨 왼쪽. **파란 채움** — 이 줄에서 유일하게 색이 찬 칸이라
+   눈이 먼저 여기 닿는다.
+
+   **진행 막대는 없다.** 시작일이 `config` 에 없어서 「얼마나 왔는가」의 근거가
+   없다. 없는 근거로 그린 막대는 안 그린 것보다 나쁘다. */
+.v3-open { flex: 1; display: flex; flex-direction: column; gap: 2px;
+  background: var(--v3-rail); border: 1px solid var(--v3-rail);
+  border-radius: var(--v3-radius); box-shadow: var(--v3-shadow); padding: 16px 20px;
+  color: #fff; }
+.v3-open-l { font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, .76);
+  letter-spacing: .02em; }
+.v3-open-d { font-size: 34px; font-weight: 700; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums; line-height: 1.15; }
+.v3-open-when { font-size: 13px; color: rgba(255, 255, 255, .88); }
+.v3-open-left { font-size: 12px; color: rgba(255, 255, 255, .70); }
+
 /* ── Checkbox — 상태 네 가지 ───────────────────────────────────── */
 .v3-cb { width: 22px; height: 22px; flex: 0 0 22px; border-radius: 7px; padding: 0;
   border: 1.5px solid var(--v3-line-2); background: var(--v3-card); cursor: pointer;
@@ -249,6 +313,32 @@
 
 /* 칩 숫자의 합이 전체와 안 맞을 때만 뜬다. 평소엔 없는 줄이다. */
 .v3-leak { margin: -6px 0 var(--v3-gap); font-size: 13px; color: var(--v3-warn); font-weight: 600; }
+
+/* ── 051 §B 거르개 — 축 넷 + 검색 ────────────────────────────────
+   축을 줄로 눕히고 각 줄에 이름표를 단다. 이름표가 없으면 칩이 스물몇 개
+   나란히 서서 **무엇을 고르는 자리인지** 안 보인다. */
+.v3-filters { display: flex; flex-direction: column; gap: 8px;
+  margin: 0 0 var(--v3-gap); padding: 14px 16px; background: var(--v3-card);
+  border: 1px solid var(--v3-line); border-radius: var(--v3-radius); }
+.v3-fx { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.v3-fx-l { flex: 0 0 44px; font-size: 12px; font-weight: 700; color: var(--v3-ink-2); }
+.v3-search { width: 100%; height: 38px; padding: 0 12px; border: 1px solid var(--v3-line-2);
+  border-radius: var(--v3-radius-s); background: var(--v3-card); font: inherit;
+  color: var(--v3-ink); }
+.v3-search::placeholder { color: var(--v3-ink-3); }
+.v3-search:focus { outline: none; border-color: var(--v3-rail); }
+
+/* 걸린 조건 — **× 가 붙은 칩**으로 나열한다. 조건이 어디 숨어 있으면
+   빈 목록이 고장으로 읽힌다. */
+.v3-active { display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin: -6px 0 var(--v3-gap); }
+.v3-acx { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px;
+  border: 1px solid var(--v3-ink-3); border-radius: var(--v3-radius-pill);
+  background: var(--v3-ichip-bg); color: var(--v3-ink); font: inherit; font-size: 12px;
+  font-weight: 600; cursor: pointer; }
+.v3-acx:hover { border-color: var(--v3-late); color: var(--v3-late); }
+.v3-acx span { font-size: 14px; line-height: 1; color: var(--v3-ink-3); }
+.v3-acx:hover span { color: var(--v3-late); }
 
 /* ── 045 §A — 완료 접기 · 묶기 안내 ───────────────────────────────
    완료는 기본으로 접힌다. **건수는 접혀 있어도 보인다** — 조용히 빼면
@@ -431,6 +521,58 @@
 .v3-pill.more:hover { color: var(--v3-ink); border-color: var(--v3-ink-3); }
 
 .v3-callegend { margin-top: var(--v3-gap); }
+
+/* ── 051 §C 첨부 — 기록에 적힌 링크를 아래에 다시 보인다 ──────────
+   올리는 것도 저장하는 것도 없다. **본문은 그대로 남는다.** */
+.v3-atts { display: flex; flex-wrap: wrap; gap: 10px; }
+.v3-att { display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--v3-line-2); border-radius: var(--v3-radius-s);
+  background: var(--v3-card); text-decoration: none; color: var(--v3-ink); }
+.v3-att-u { display: block; font-size: 11px; color: var(--v3-ink-3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; }
+
+/* 이미지 — 썸네일. 원본은 새 탭에서 연다. */
+.v3-att-img { flex-direction: column; align-items: flex-start; gap: 6px; padding: 8px; }
+.v3-att-img img { display: block; width: 200px; height: 128px; object-fit: cover;
+  border-radius: 8px; background: var(--v3-bg); }
+.v3-att-img:hover { border-color: var(--v3-rail); }
+
+/* **그림이 안 뜨면 빈칸을 안 둔다** — 이유와 「열기」가 그 자리에 선다.
+   빈 네모는 고장으로 읽힌다. 잠긴 드라이브가 대부분 여기로 온다. */
+.v3-att-bad { flex-direction: column; align-items: flex-start; gap: 4px;
+  width: 216px; border-style: dashed; border-color: var(--v3-warn); }
+.v3-att-bad b { font-size: 13px; color: var(--v3-warn); }
+.v3-att-bad span { font-size: 12px; color: var(--v3-ink-2); }
+.v3-att-bad .v3-btn { margin-top: 4px; }
+
+.v3-att-file { min-width: 240px; }
+.v3-att-nm { min-width: 0; flex: 1; }
+.v3-att-nm b { display: block; font-size: 13px; }
+.v3-att-k { flex: 0 0 auto; display: grid; place-items: center; min-width: 36px; height: 28px;
+  padding: 0 6px; border-radius: 7px; font-size: 11px; font-weight: 700;
+  background: var(--v3-cat-etc-bg); color: var(--v3-cat-etc); }
+.v3-att-k.k-pdf    { background: var(--v3-late-bg);         color: var(--v3-late); }
+.v3-att-k.k-drive  { background: var(--v3-cat-edu-bg);      color: var(--v3-cat-edu); }
+.v3-att-k.k-notion { background: var(--v3-cat-etc-bg);      color: var(--v3-ink); }
+.v3-att-k.k-figma  { background: var(--v3-cat-design-bg);   color: var(--v3-cat-design); }
+
+/* 링크 칩 — 미리보기를 안 만드는 것들. http 는 **왜 칩뿐인지** 적는다. */
+.v3-att-chips { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.v3-att-chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px;
+  border: 1px solid var(--v3-line-2); border-radius: var(--v3-radius-pill);
+  background: var(--v3-card); color: var(--v3-ink-2); font-size: 12px; font-weight: 600;
+  text-decoration: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.v3-att-chip:hover { border-color: var(--v3-ink-3); color: var(--v3-ink); }
+.v3-att-chip em { font-style: normal; font-size: 10px; font-weight: 700; color: var(--v3-warn); }
+.v3-att-chip.insecure { border-style: dashed; }
+.v3-att-more { align-self: center; }
+
+/* 목록 행의 클립 — **개수만.** 썸네일은 목록에 없다. */
+.v3-clip { display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto;
+  font-size: 12px; font-weight: 600; color: var(--v3-ink-3);
+  font-variant-numeric: tabular-nums; }
+.v3-clip svg { width: 13px; height: 13px; }
 
 /* 좁은 화면에서는 격자가 가로로 넘친다. 칸을 줄이지 않고 **가로로 민다** —
    칸이 좁아지면 알약 글자가 두 자만 남아 무엇인지 못 읽는다. */

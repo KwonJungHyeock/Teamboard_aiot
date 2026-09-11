@@ -18,21 +18,36 @@
 // 「오늘」은 오래 밀린 것을 접는다. 여기는 **전부 보는 자리**라 안 접는다.
 // 대신 기한 표시를 오늘 화면과 **같은 기준**으로 눕힌다 —
 // 7일 이내 지남은 코랄, 7일 초과는 회색.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Card, Chip, ListRow, Empty, Button } from "./parts";
+import { Card, Chip, InputChip, ListRow, Empty, Button } from "./parts";
 import type { CbState } from "./parts";
 import { childLine, shortDue, type TodayTask } from "@/lib/v3/today";
 import {
-  countByArea, areaLeak, filterByArea, groupTasks, allGroups, dueTone,
-  type SortKey,
+  countByArea, areaLeak, groupTasks, allGroups, dueTone,
+  applyFilters, activeChips, isEmptyQuery, isDueKey, DUE_FILTERS, GROUPS,
+  type SortKey, type Query, type DueKey, type ChipView,
 } from "@/lib/v3/tasks";
 import { chipRow, type AreaView } from "@/lib/v3/category";
 import { taskHref } from "@/lib/v3/routes";
+// 목록에는 **썸네일이 아니라 개수만** (051 §C-3).
+import { countLinks } from "@/lib/v3/links";
 
 const SORT_LABEL: Record<SortKey, string> = { due: "기한순", recent: "최신순" };
 
-export default function TasksView({ today, areas }: { today: string; areas: AreaView[] }) {
+interface Person { id: number; name: string }
+
+/** 주소의 `1,2,3` 을 번호 집합으로. 이상한 값은 조용히 버린다 — 주소는 손으로 고친다. */
+function nums(raw: string | null): Set<number> {
+  return new Set((raw ?? "").split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0));
+}
+function strs(raw: string | null, allowed: readonly string[]): Set<string> {
+  return new Set((raw ?? "").split(",").filter((s) => allowed.includes(s)));
+}
+
+export default function TasksView({
+  today, areas, people,
+}: { today: string; areas: AreaView[]; people: Person[] }) {
   const router = useRouter();
   const sp = useSearchParams();
   const [tasks, setTasks] = useState<TodayTask[] | null>(null);
@@ -46,10 +61,21 @@ export default function TasksView({ today, areas }: { today: string; areas: Area
    * 고른 카테고리와 정렬은 **주소에 담긴다** — 그대로 공유된다(지시 §B 정렬).
    * 상태를 컴포넌트에만 두면 링크를 보낸 사람과 받은 사람이 다른 것을 본다.
    */
-  const picked = useMemo(() => {
-    const raw = sp.get("cat") ?? "";
-    return new Set(raw.split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0));
-  }, [sp]);
+  const STATUS_VALUES = useMemo(() => GROUPS.map((g) => g.statuses[0] as string), []);
+  /**
+   * 걸린 조건 한 벌 — **전부 주소에서 읽는다** (051 §B).
+   *
+   * 상태를 컴포넌트에만 두면 링크를 보낸 사람과 받은 사람이 다른 것을 본다.
+   * 축은 다섯이고 **더 늘리지 않는다**: 카테고리 · 담당 · 상태 · 기한 · 검색.
+   */
+  const query: Query = useMemo(() => ({
+    cat: nums(sp.get("cat")),
+    who: nums(sp.get("who")),
+    status: strs(sp.get("st"), STATUS_VALUES),
+    due: isDueKey(sp.get("due")) ? (sp.get("due") as DueKey) : "all",
+    q: sp.get("q") ?? "",
+  }), [sp, STATUS_VALUES]);
+  const picked = query.cat;
   const sort: SortKey = sp.get("sort") === "recent" ? "recent" : "due";
   /*
    * 완료 묶음은 **기본으로 접힌다** (045 §A).
@@ -60,21 +86,61 @@ export default function TasksView({ today, areas }: { today: string; areas: Area
    */
   const showDone = sp.get("done") === "1";
 
-  const setQuery = useCallback((next: { cat?: Set<number>; sort?: SortKey; done?: boolean }) => {
-    const q = new URLSearchParams(sp.toString());
-    if (next.cat !== undefined) {
-      if (next.cat.size === 0) q.delete("cat");
-      else q.set("cat", Array.from(next.cat).sort((a, b) => a - b).join(","));
+  /*
+   * ── 연달아 누르면 앞의 조건이 지워지던 자리 ──────────────────────
+   *
+   * 주소가 정본이다. 그런데 `useSearchParams` 는 `router.replace` 가 **끝나야**
+   * 새 값을 들고, 그 사이에 다음 클릭이 오면 **옛 주소 위에** 쌓아서 앞의 조건을
+   * 덮어쓴다. 검사기 ① 이 그렇게 잡았다 — 넷을 걸었는데 주소엔 `?due=late` 만 남았다.
+   *
+   * 그래서 **마지막으로 쓴 주소를 손에 들고** 거기에 쌓는다. 그 주소가 실제로
+   * 반영되면(`sp` 가 같아지면) 손을 놓고 다시 `sp` 를 따른다. 뒤로가기로 주소가
+   * 바뀔 때도 손을 놓는다 — 안 놓으면 뒤로 간 자리가 다음 클릭에 되살아난다.
+   */
+  const spStr = sp.toString();
+  const wrote = useRef<string | null>(null);
+  useEffect(() => { if (wrote.current !== null && spStr === wrote.current) wrote.current = null; }, [spStr]);
+  useEffect(() => {
+    const drop = () => { wrote.current = null; };
+    window.addEventListener("popstate", drop);
+    return () => window.removeEventListener("popstate", drop);
+  }, []);
+
+  const setQuery = useCallback((next: {
+    cat?: Set<number>; who?: Set<number>; status?: Set<string>; due?: DueKey; q?: string;
+    sort?: SortKey; done?: boolean;
+  }) => {
+    const p = new URLSearchParams(wrote.current ?? spStr);
+    /** 빈 값은 주소에서 **뺀다.** 기본값을 적으면 「돌아온 자리」가 둘이 된다. */
+    const put = (k: string, v: string) => { if (v === "") p.delete(k); else p.set(k, v); };
+    const list = (s: Set<number>) => Array.from(s).sort((a, b) => a - b).join(",");
+    if (next.cat !== undefined) put("cat", list(next.cat));
+    if (next.who !== undefined) put("who", list(next.who));
+    if (next.status !== undefined) {
+      // 화면 순서(GROUPS)대로 적는다 — 고른 차례대로 적으면 같은 조건이 다른 주소가 된다.
+      put("st", STATUS_VALUES.filter((v) => next.status!.has(v)).join(","));
     }
-    if (next.sort !== undefined) {
-      if (next.sort === "due") q.delete("sort");   // 기본값은 주소에 안 적는다
-      else q.set("sort", next.sort);
-    }
-    if (next.done !== undefined) {
-      if (next.done) q.set("done", "1"); else q.delete("done");
-    }
-    router.replace(q.toString() ? `?${q}` : "?", { scroll: false });
-  }, [router, sp]);
+    if (next.due !== undefined) put("due", next.due === "all" ? "" : next.due);
+    if (next.q !== undefined) put("q", next.q.trim());
+    if (next.sort !== undefined) put("sort", next.sort === "due" ? "" : next.sort);
+    if (next.done !== undefined) { if (next.done) p.set("done", "1"); else p.delete("done"); }
+    wrote.current = p.toString();
+    router.replace(p.toString() ? `?${p}` : "?", { scroll: false });
+  }, [router, spStr, STATUS_VALUES]);
+
+  /** 조건 하나만 푼다 (칩의 ×). **그것만** 풀린다 — 나머지는 그대로 남는다. */
+  const clearOne = useCallback((c: ChipView) => {
+    if (c.axis === "cat") { const n = new Set(query.cat); n.delete(c.value as number); setQuery({ cat: n }); }
+    else if (c.axis === "who") { const n = new Set(query.who); n.delete(c.value as number); setQuery({ who: n }); }
+    else if (c.axis === "status") { const n = new Set(query.status); n.delete(c.value as string); setQuery({ status: n }); }
+    else if (c.axis === "due") setQuery({ due: "all" });
+    else setQuery({ q: "" });
+  }, [query, setQuery]);
+
+  /** 다섯을 한 번에 푼다. 정렬·완료 펼침은 **조건이 아니라 보기 방식**이라 안 건드린다. */
+  const clearAll = useCallback(() => {
+    setQuery({ cat: new Set(), who: new Set(), status: new Set(), due: "all", q: "" });
+  }, [setQuery]);
 
   useEffect(() => {
     fetch("/api/tasks")
@@ -83,14 +149,37 @@ export default function TasksView({ today, areas }: { today: string; areas: Area
       .catch((e) => setErr(String(e.message ?? e)));
   }, []);
 
+  /*
+   * 검색은 **치는 즉시** 걸린다. 다만 주소는 한 박자 늦게 바꾼다(디바운스) —
+   * 글자마다 `router.replace` 를 하면 뒤로가기 기록이 한 글자씩 쌓인다.
+   *
+   * 그래서 칸의 값은 화면이 들고(`text`), 주소는 300ms 뒤에 따라간다.
+   * 주소가 밖에서 바뀌면(× 로 지우기 · 뒤로가기) 칸도 따라간다.
+   */
+  const [text, setText] = useState(query.q);
+  useEffect(() => { setText(query.q); }, [query.q]);
+  useEffect(() => {
+    if (text === query.q) return;
+    const id = setTimeout(() => setQuery({ q: text }), 300);
+    return () => clearTimeout(id);
+  }, [text, query.q, setQuery]);
+
   const counts = useMemo(() => countByArea(tasks ?? []), [tasks]);
   const { shown, hidden } = useMemo(() => chipRow(areas, counts), [areas, counts]);
   const leak = useMemo(() => areaLeak(tasks ?? [], areas), [tasks, areas]);
-  const filtered = useMemo(() => filterByArea(tasks ?? [], picked), [tasks, picked]);
-  // 완료는 여기서 뺀다 — **칩 건수는 안 건드린다**(칩은 거르기 전 전체로 센다).
+  const filtered = useMemo(
+    () => applyFilters(tasks ?? [], query, today), [tasks, query, today]);
+  const chips = useMemo(() => activeChips(query, areas, people), [query, areas, people]);
+  const nothing = isEmptyQuery(query);
+  /*
+   * 완료 묶음은 기본으로 접히지만, **상태를 완료로 골랐으면 펼친다.**
+   * 안 그러면 「상태 · 완료」가 걸려 있는데 결과가 0건으로 보이고,
+   * 그건 거른 것이 아니라 접은 것이다 — 화면이 거짓말을 한다.
+   */
+  const doneWanted = showDone || query.status.has("done");
   const groups = useMemo(
-    () => groupTasks(filtered, sort).filter((g) => g.key !== "done" || showDone),
-    [filtered, sort, showDone]);
+    () => groupTasks(filtered, sort).filter((g) => g.key !== "done" || doneWanted),
+    [filtered, sort, doneWanted]);
   const doneCount = useMemo(
     () => filtered.filter((t) => t.status === "done").length, [filtered]);
   const everyGroup = useMemo(() => allGroups(filtered, sort), [filtered, sort]);
@@ -110,7 +199,8 @@ export default function TasksView({ today, areas }: { today: string; areas: Area
     <>
       <h1 className="v3-h1">업무</h1>
       <p className="v3-lede">
-        {tasks === null ? "불러오는 중…" : `${total}건${picked.size ? ` · 카테고리 ${picked.size}개로 거름` : ""}`}
+        {tasks === null ? "불러오는 중…"
+          : `${total}건${nothing ? "" : ` · 조건 ${chips.length}개로 거름 (전체 ${leak.total}건)`}`}
       </p>
 
       {err && <Card><p className="v3-err">{err}</p></Card>}
@@ -154,6 +244,84 @@ export default function TasksView({ today, areas }: { today: string; areas: Area
         </Button>
       </div>
 
+      {/*
+        ── 거르개 축 셋 + 검색 (051 §B) ─────────────────────────────
+        카테고리는 위 칩 줄이 이미 한다. 여기는 담당 · 상태 · 기한 · 검색.
+        **축을 더 만들지 않는다** — 우선순위·프로젝트·생성일 필터는 없다.
+      */}
+      <div className="v3-filters" role="group" aria-label="거르개">
+        <input
+          className="v3-search"
+          type="search"
+          value={text}
+          placeholder="제목에서 찾기"
+          aria-label="제목에서 찾기"
+          onChange={(e) => setText(e.target.value)}
+        />
+
+        <div className="v3-fx">
+          <span className="v3-fx-l">담당</span>
+          {people.map((p) => (
+            <InputChip key={p.id} filled={query.who.has(p.id)}
+                       aria-pressed={query.who.has(p.id)}
+                       onClick={() => {
+                         const n = new Set(query.who);
+                         if (n.has(p.id)) n.delete(p.id); else n.add(p.id);
+                         setQuery({ who: n });
+                       }}>
+              {p.name}
+            </InputChip>
+          ))}
+        </div>
+
+        <div className="v3-fx">
+          <span className="v3-fx-l">상태</span>
+          {GROUPS.map((g) => (
+            <InputChip key={g.key} filled={query.status.has(g.statuses[0])}
+                       aria-pressed={query.status.has(g.statuses[0])}
+                       onClick={() => {
+                         const n = new Set(query.status);
+                         const v = g.statuses[0] as string;
+                         if (n.has(v)) n.delete(v); else n.add(v);
+                         setQuery({ status: n });
+                       }}>
+              {g.label}
+            </InputChip>
+          ))}
+        </div>
+
+        <div className="v3-fx">
+          <span className="v3-fx-l">기한</span>
+          {/* 기한은 **하나만** 고른다 — 「지남」이면서 「기한 없음」인 업무는 없다.
+              「전체」도 골라진 것으로 그린다. 넷이 똑같이 비어 보이면 지금 무엇이
+              걸려 있는지 알 수가 없다 — 다만 조건은 아니라서 위 칩 줄에는 안 선다. */}
+          {DUE_FILTERS.map((d) => (
+            <InputChip key={d.key} filled={query.due === d.key}
+                       aria-pressed={query.due === d.key}
+                       onClick={() => setQuery({ due: d.key })}>
+              {d.label}
+            </InputChip>
+          ))}
+        </div>
+      </div>
+
+      {/*
+        걸린 조건을 **그대로 나열한다.** 각 칩에 × 가 있어 그것만 풀 수 있다.
+        조건이 어디 숨어 있으면 빈 목록이 고장으로 읽힌다.
+      */}
+      {!nothing && (
+        <div className="v3-active" role="status">
+          <span className="v3-fx-l">걸린 조건</span>
+          {chips.map((c) => (
+            <button key={`${c.axis}:${String(c.value)}`} type="button" className="v3-acx"
+                    onClick={() => clearOne(c)} aria-label={`${c.label} 조건 지우기`}>
+              {c.label}<span aria-hidden="true">×</span>
+            </button>
+          ))}
+          <Button className="v3-sortbtn" onClick={clearAll}>조건 지우기</Button>
+        </div>
+      )}
+
       {openGroups && tasks !== null && (
         <p className="v3-groups" role="note">
           {everyGroup.map((g) => (
@@ -178,13 +346,25 @@ export default function TasksView({ today, areas }: { today: string; areas: Area
       {tasks === null ? <Card><p className="v3-loading">불러오는 중…</p></Card>
         : groups.length === 0 ? (
           <Card>
+            {/*
+              **0건이면 걸린 조건을 그대로 나열한다** (지시 §B).
+              빈 목록이 이유 없이 비어 있으면 고장으로 읽힌다. 조건은 위에도
+              칩으로 서 있지만, 여기서 한 번 더 적는다 — 결과가 없다는 말과
+              그 이유가 같은 자리에 있어야 한다.
+            */}
             <Empty
-              title={picked.size ? "고른 카테고리에 업무가 없어요" : "업무가 없어요"}
-              why={picked.size
-                ? "다른 카테고리를 고르거나 「전체」로 돌아가면 나머지가 보입니다."
-                : "아직 등록된 업무가 없습니다. 「새 업무」에서 만들 수 있습니다."}
-              action={picked.size ? undefined : { label: "새 업무 만들기", href: "/v3/new" }}
+              title={nothing ? "업무가 없어요" : "조건에 맞는 업무가 없어요"}
+              why={nothing
+                ? "아직 등록된 업무가 없습니다. 「새 업무」에서 만들 수 있습니다."
+                : `걸린 조건 — ${chips.map((c) => c.label).join(" · ")}. 전체 ${leak.total}건 중 0건입니다.`}
+              action={nothing ? { label: "새 업무 만들기", href: "/v3/new" } : undefined}
             />
+            {!nothing && (
+              <div className="v3-newfoot">
+                <Button primary onClick={clearAll}>조건 지우기</Button>
+                <span className="v3-newwhy">조건을 하나씩 풀려면 위 칩의 × 를 누르세요</span>
+              </div>
+            )}
           </Card>
         ) : (<>
           {groups.map((g) => (
@@ -207,6 +387,7 @@ export default function TasksView({ today, areas }: { today: string; areas: Area
                   due={shortDue(t.dueDate)}
                   late={tone === "late"}
                   dueTone={tone}
+                  clip={countLinks(t.description)}
                 />
               );
             })}

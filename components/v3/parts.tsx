@@ -152,15 +152,33 @@ export function Checkbox({
   );
 }
 
+/* ── Clip — 첨부가 있다는 표시 (051 §C-3) ────────────────────────
+   **목록에 썸네일을 안 그린다.** 그림이 행마다 붙으면 화면이 무거워지고,
+   목록에서 그림을 보고 할 수 있는 판단도 없다. 있다는 사실과 개수만 낸다. */
+export function Clip({ n }: { n: number }) {
+  if (n <= 0) return null;
+  return (
+    <span className="v3-clip" title={`첨부 ${n}개`} aria-label={`첨부 ${n}개`}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+           strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M21.4 11.05 12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l9.2-9.19a3.67 3.67 0 1 1 5.18 5.18l-9.2 9.2a1.83 1.83 0 1 1-2.59-2.6l8.5-8.49" />
+      </svg>
+      {n}
+    </span>
+  );
+}
+
 /* ── ListRow ─────────────────────────────────────────────────────
    **행에 네 가지만.** 체크 · 제목 · 담당 · 기한.
    ID · 우선순위 · 진척 막대는 목록에 넣지 않는다(지시 §C-2) — 상세에 있다.
    하위가 있을 때만 제목 아래 한 줄이 붙는다. */
 export function ListRow({
-  href, title, sub, state, assignee, due, late, dueTone, onToggle,
+  href, title, sub, state, assignee, due, late, dueTone, clip, onToggle,
 }: {
   href: string;
   title: string;
+  /** 첨부 개수. 0이면 아무것도 안 그린다 — 썸네일은 목록에 없다 (051 §C-3). */
+  clip?: number;
   /** 하위가 있을 때만. 예: 「하위 2개 중 1개 완료」 */
   sub?: string | null;
   state: CbState;
@@ -181,6 +199,7 @@ export function ListRow({
         {sub && <span className="v3-row-sub">{sub}</span>}
       </span>
       <span className="v3-row-r">
+        <Clip n={clip ?? 0} />
         <Avatar name={assignee} />
         <DueText due={due} late={late} tone={dueTone} />
       </span>

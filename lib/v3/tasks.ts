@@ -2,7 +2,7 @@
 //
 // 화면 안에 두지 않는 이유는 「오늘」과 같다: 검사기가 같은 함수를 못 부르면
 // 「화면이 자기가 그린 것을 그렸다」밖에 확인 못 한다.
-import { daysLate, STALE_DAYS, type TodayTask } from "./today";
+import { daysLate, weekEnd, STALE_DAYS, type TodayTask } from "./today";
 import type { AreaView } from "./category";
 
 /** 목록이 쓰는 칸. `/api/tasks` 가 주는 것 중 이만큼만. */
@@ -117,4 +117,121 @@ export function allGroups(tasks: TaskRow[], by: SortKey): Group[] {
     key: g.key, label: g.label,
     rows: sortTasks(tasks.filter((t) => (g.statuses as readonly string[]).includes(t.status)), by),
   }));
+}
+
+/* ══ 거르개 — 축 넷 + 검색 (MD-P-2026-051 §B) ═══════════════════════
+ *
+ * **축을 더 만들지 않는다.** 우선순위·프로젝트·생성일은 없다. 거르개가 늘면
+ * 「무엇이 걸려 있는지」를 사람이 못 세고, 못 세면 빈 목록이 고장으로 읽힌다.
+ *
+ * ── 축끼리 섞지 않는다 ──────────────────────────────────────────
+ *
+ * 기한 축은 **날짜만** 본다. 「지남」에서 완료를 빼고 싶은 마음이 들지만,
+ * 그러면 상태 축과 기한 축이 얽혀서 「상태=완료 · 기한=지남」이 영원히 0건이
+ * 되고 왜 그런지가 화면 어디에도 안 보인다. 축은 각자 제 것만 보고,
+ * 합치는 방식은 **교집합** 하나다.
+ */
+export type DueKey = "all" | "late" | "soon" | "none";
+
+export const DUE_FILTERS = [
+  { key: "all", label: "전체" },
+  { key: "late", label: "지남" },
+  { key: "soon", label: "오늘·이번 주" },
+  { key: "none", label: "기한 없음" },
+] as const;
+
+export const DUE_LABEL: Record<DueKey, string> =
+  Object.fromEntries(DUE_FILTERS.map((d) => [d.key, d.label])) as Record<DueKey, string>;
+
+export function isDueKey(v: string | null | undefined): v is DueKey {
+  return v === "all" || v === "late" || v === "soon" || v === "none";
+}
+
+/** 걸린 조건 한 벌. **전부 주소에 담긴다** — 새로 열어도 같은 화면이어야 한다. */
+export interface Query {
+  /** 카테고리 `area.id` */
+  cat: Set<number>;
+  /** 담당자 `actor.id` */
+  who: Set<number>;
+  /** 상태 — `GROUPS` 의 대표 상태값 */
+  status: Set<string>;
+  due: DueKey;
+  /** 제목에서 찾는 말 */
+  q: string;
+}
+
+export const EMPTY_QUERY: Query = {
+  cat: new Set(), who: new Set(), status: new Set(), due: "all", q: "",
+};
+
+/** 아무것도 안 걸렸는가. 「조건 지우기」를 낼지 말지가 여기서 갈린다. */
+export function isEmptyQuery(q: Query): boolean {
+  return q.cat.size === 0 && q.who.size === 0 && q.status.size === 0
+    && q.due === "all" && q.q.trim() === "";
+}
+
+/** 제목에서 찾는다. 대소문자를 안 가린다 — 찾는 사람이 맞춰 칠 이유가 없다. */
+export function matchesText(t: TaskRow, q: string): boolean {
+  const needle = q.trim().toLowerCase();
+  return needle === "" || t.title.toLowerCase().includes(needle);
+}
+
+export function matchesDue(t: TaskRow, due: DueKey, today: string): boolean {
+  if (due === "all") return true;
+  if (due === "none") return t.dueDate === null;
+  if (t.dueDate === null) return false;
+  if (due === "late") return t.dueDate < today;
+  return t.dueDate >= today && t.dueDate <= weekEnd(today);   // soon
+}
+
+/**
+ * 다섯을 **교집합**으로 건다. 합집합이 아니다 —
+ * 「담당 A」와 「상태 완료」를 함께 걸면 A 의 완료만 남는다.
+ */
+export function applyFilters(tasks: TaskRow[], q: Query, today: string): TaskRow[] {
+  return tasks.filter((t) =>
+    (q.cat.size === 0 || (t.areaId !== null && q.cat.has(t.areaId)))
+    && (q.who.size === 0 || (t.assigneeId !== null && q.who.has(t.assigneeId)))
+    && (q.status.size === 0 || q.status.has(t.status))
+    && matchesDue(t, q.due, today)
+    && matchesText(t, q.q));
+}
+
+/** 화면 위에 나열할 조건 칩 하나. `axis` 와 `value` 로 **그것만** 풀 수 있다. */
+export interface ChipView {
+  axis: "cat" | "who" | "status" | "due" | "q";
+  /** 축 안에서 지울 값. 축 전체를 지우는 칩(기한·검색)은 `null`. */
+  value: number | string | null;
+  label: string;
+}
+
+/**
+ * 걸린 조건을 **사람이 읽는 말로** 나열한다.
+ *
+ * 이름을 여기서 푸는 이유: 화면이 id 를 그리면 「담당 7」이 뜬다. 모르는
+ * id 는 조용히 빼지 않고 **번호 그대로** 적는다 — 지운 구성원으로 걸린
+ * 조건이 안 보이면 결과가 왜 비었는지 알 수가 없다.
+ */
+export function activeChips(
+  q: Query,
+  areas: { id: number; name: string }[],
+  people: { id: number; name: string }[],
+): ChipView[] {
+  const out: ChipView[] = [];
+  const nameOf = (list: { id: number; name: string }[], id: number) =>
+    list.find((x) => x.id === id)?.name ?? `#${id}`;
+  for (const id of Array.from(q.cat).sort((a, b) => a - b)) {
+    out.push({ axis: "cat", value: id, label: `카테고리 · ${nameOf(areas, id)}` });
+  }
+  for (const id of Array.from(q.who).sort((a, b) => a - b)) {
+    out.push({ axis: "who", value: id, label: `담당 · ${nameOf(people, id)}` });
+  }
+  for (const g of GROUPS) {
+    if (q.status.has(g.statuses[0])) {
+      out.push({ axis: "status", value: g.statuses[0], label: `상태 · ${g.label}` });
+    }
+  }
+  if (q.due !== "all") out.push({ axis: "due", value: null, label: `기한 · ${DUE_LABEL[q.due]}` });
+  if (q.q.trim() !== "") out.push({ axis: "q", value: null, label: `검색 · ${q.q.trim()}` });
+  return out;
 }

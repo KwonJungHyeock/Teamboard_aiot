@@ -57,3 +57,29 @@ export function dDay(targetMs: number, nowMs: number, timeZone = "Asia/Seoul"): 
 
 /** 두 자리 고정. `9` 가 아니라 `09` — 자릿수가 흔들리면 숫자가 춤춘다. */
 export const pad2 = (n: number) => String(Math.max(0, n)).padStart(2, "0");
+
+/**
+ * 「7주 3일 남음」 (MD-P-2026-051 §A-3).
+ *
+ * **따로 세지 않는다.** `dDay` 가 낸 날짜 차이 하나에서 파생시킨다 — 두 곳에서
+ * 세면 언젠가 갈라지고, 갈라지면 같은 카드 안에서 D-52 와 「7주 4일」이 같이 뜬다.
+ *
+ * 지났으면 `null`. 「-1주 0일 남음」 같은 말은 만들지 않는다 — 지난 것은
+ * 남은 것이 아니다. 그때는 D 표기가 「가오픈 +n일」로 이미 말하고 있다.
+ */
+export function weeksAndDays(days: number): { weeks: number; days: number; text: string } | null {
+  if (days <= 0) return null;
+  const weeks = Math.floor(days / 7);
+  const rest = days % 7;
+  const text = weeks === 0 ? `${rest}일 남음`
+    : rest === 0 ? `${weeks}주 남음`
+    : `${weeks}주 ${rest}일 남음`;
+  return { weeks, days: rest, text };
+}
+
+/** 「2026년 11월 2일 월요일」. 시간대를 정하고 본다 — 자정 근처에서 하루가 어긋난다. */
+export function longDateKst(ms: number, timeZone = "Asia/Seoul"): string {
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone, year: "numeric", month: "long", day: "numeric", weekday: "long",
+  }).format(new Date(ms));
+}

@@ -39,6 +39,8 @@ import {
 import { dueTone } from "@/lib/v3/tasks";
 import { areaOf, type AreaView } from "@/lib/v3/category";
 import { taskHref } from "@/lib/v3/routes";
+import { extractLinks } from "@/lib/v3/links";
+import Attachments from "./Attachments";
 
 interface Person { id: number; name: string }
 
@@ -148,6 +150,8 @@ export default function TaskDetailView({
   const tone = dueTone(task.dueDate, today);
   const openNote = dueOpenNote(task.dueDate, openAtMs);
   const kids = childSummary(task);
+  // **저장된** 기록에서 뽑는다 — 치는 도중의 반쪽짜리 주소로 카드가 깜빡이지 않게.
+  const attach = extractLinks(task.description);
 
   return (
     <>
@@ -297,6 +301,27 @@ export default function TaskDetailView({
         {/* 문구에 백틱·별표를 쓰지 않는다 — 여기는 마크다운이 아니라서 글자 그대로 찍힌다. */}
         <Note field="description" hint="칸에서 벗어나면 저장됩니다." />
       </Card>
+
+      {/*
+        ── 첨부 (051 §C) ────────────────────────────────────────────
+        기록에 적힌 URL 을 **아래에 다시 보인다.** 올리는 것도 저장하는 것도
+        없다 — DB·API 를 안 건드린다.
+
+        **본문은 그대로 남는다.** 뽑아서 지우면 사용자가 적은 것이 바뀐다.
+        위 칸의 글자와 여기 카드는 같은 것을 두 번 보이는 것뿐이다.
+
+        `note`(편집 중인 글자)가 아니라 **저장된 `task.description`** 에서 뽑는다.
+        치는 도중의 반쪽짜리 주소로 카드가 깜빡이면 읽을 수가 없다.
+      */}
+      {attach.length > 0 && (
+        <Card title="첨부" sub={`${attach.length}개 · 기록에 적힌 링크`}>
+          <Attachments links={attach} />
+          <p className="v3-why">
+            기록에 적은 링크를 그대로 보입니다. 파일을 올리거나 저장하지 않습니다 —
+            원본 링크가 살아 있어야 보입니다.
+          </p>
+        </Card>
+      )}
 
       {task.children.length > 0 && (
         <Card title="하위 업무" sub={kids ?? undefined}>

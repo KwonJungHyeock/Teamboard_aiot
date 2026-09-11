@@ -75,11 +75,20 @@ try {
   await page.locator(".gadd-open", { hasText: "＋ 새 목표" }).first().click();
   await page.waitForTimeout(400);
   await page.locator(".gadd select[aria-label='월']").selectOption("2");
-  await page.waitForTimeout(1200);
+  /*
+   * **시간이 아니라 상태를 기다린다** (051 에서 고침).
+   *
+   * 1200ms 고정이었다. 후보를 불러오는 동안에는 셀렉트도 없고 이유 줄도 없는데,
+   * 「셀렉트 0개」는 그 상태에서도 **통과한다** — 아무것도 안 그려졌으니까.
+   * 서버가 느린 날 이유 줄만 떨어져서 무엇이 잘못됐는지 헷갈렸다.
+   * 묻는 화면이 실제로 설 때까지 기다리고, 그것이 섰다는 사실도 함께 센다.
+   */
+  await page.locator(".gadd-mkparent").waitFor({ timeout: 15000 }).catch(() => {});
+  const zAsked = await page.locator(".gadd-mkparent").count();
   const zSel = await page.locator(".gadd select[aria-label='상위 목표']").count();
   const zWhy = (await page.locator(".gadd-why").allInnerTexts()).join(" ").replace(/\n+/g, " ");
-  chk("A0-후보0-셀렉트없음", zeroWant === 0 && zSel === 0,
-    `Q1 팀 목표 ${zeroWant}건 · 상위 셀렉트 ${zSel}개`);
+  chk("A0-후보0-셀렉트없음", zeroWant === 0 && zSel === 0 && zAsked === 1,
+    `Q1 팀 목표 ${zeroWant}건 · 상위 셀렉트 ${zSel}개 · 묻는 화면 ${zAsked}개(안 그려졌으면 0)`);
   // 「없습니다」만으로는 왜 없는지를 또 찾아야 한다. **값이 들어갔는지**를 본다.
   chk("A0-후보0-이유가값을담는다",
     zWhy.includes(`${UI_YEAR}-01-01`) && /분기 목표만 찾습니다/.test(zWhy),

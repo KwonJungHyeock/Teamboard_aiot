@@ -161,7 +161,9 @@ try {
     const res = await page.goto(`${BASE}/v3`, { waitUntil: "networkidle" });
     await page.waitForTimeout(400);
     const landed = new URL(page.url()).pathname;
-    const rail = await page.locator(".v3 .v3-rail a").count();
+    // 051 §A-1 에서 레일에 「＋ 새 업무」와 계정 링크가 붙었다. 세는 것은 그대로
+    // **메뉴 항목 넷**이므로, 「모든 a」가 아니라 메뉴 이름표를 센다.
+    const rail = await page.locator(".v3 .v3-rail .v3-navlink").count();
     chk("④-켜면-v3-가-열린다", landed === "/v3" && res?.status() === 200 && rail === 4,
         `→ ${landed} (${res?.status()}) · 레일 항목 ${rail}개`);
     await page.screenshot({ path: `${OUT}/v3-parts.png`, fullPage: true });

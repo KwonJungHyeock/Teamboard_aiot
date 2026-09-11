@@ -131,7 +131,8 @@ try {
   const res = await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
   await page.waitForTimeout(600);
   // **주소가 아니라 화면을 본다**(§G). 레일이 있고 인사말이 떠야 도착한 것이다.
-  const railN = await page.locator(".v3 .v3-rail a").count();
+  // 051 §A-1 이후 레일에는 메뉴 말고도 링크가 있다. 메뉴 항목만 센다.
+  const railN = await page.locator(".v3 .v3-rail .v3-navlink").count();
   const h1 = (await page.locator(".v3-h1").innerText().catch(() => "")).trim();
   chk("②-켜면-오늘에-도착한다",
       new URL(page.url()).pathname === "/v3" && railN === 4 && /안녕하세요/.test(h1),
