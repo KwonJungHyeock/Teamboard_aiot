@@ -33,7 +33,10 @@ function sign(payload: string): string {
  * `scripts/repro-0034.mjs` 가 이 문자열을 **여기서 읽어다** 컬럼 없는 상태에
  * 대고 돌린다 — 검사기가 사본을 들면 사본만 맞고 제품은 틀릴 수 있다.
  */
-const ADMIN_GRANT_SQL = `(to_jsonb(ac) ->> 'admin_grant')::boolean AS admin_grant`;
+// 052 §A 에서 「팀 현황」도 이 칸을 읽는다. 사본을 뜨면 한쪽만 고쳐져서
+// 0034 안 된 환경에서 그 화면만 500 이 난다 — 그래서 내보낸다.
+// 별칭은 `ac` = account 다(여기 쿼리들과 같게 맞춰 쓸 것).
+export const ADMIN_GRANT_SQL = `(to_jsonb(ac) ->> 'admin_grant')::boolean AS admin_grant`;
 
 export function createSessionToken(user: SessionUser): string {
   const payload = Buffer.from(

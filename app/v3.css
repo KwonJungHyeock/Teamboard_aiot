@@ -568,6 +568,78 @@
 .v3-att-chip.insecure { border-style: dashed; }
 .v3-att-more { align-self: center; }
 
+/* ── 052 §A 팀 현황 — 담당자 열 ───────────────────────────────────
+   열 수는 화면이 아니라 **계정 수**가 정한다. 다섯이 넘으면 가로로 밀되
+   **접거나 숨기지 않는다** — 안 보이는 사람의 일은 없는 일이 된다. */
+/* `align-items` 를 안 준다 = stretch. **열 높이를 맞춘다** — 한 건짜리 열만
+   짧으면 아래가 들쭉날쭉해서 줄이 안 읽힌다. 다섯 건 상한이 그 높이를 묶는다. */
+.v3-team { display: grid; gap: var(--v3-gap); }
+.v3-team.scroll { overflow-x: auto; padding-bottom: 8px; }
+.v3-col { display: flex; flex-direction: column; background: var(--v3-card);
+  border: 1px solid var(--v3-line); border-radius: var(--v3-radius);
+  box-shadow: var(--v3-shadow); padding: 14px 14px 12px; }
+/* 「＋n건 더 보기」는 **바닥에** — 열마다 다른 높이에 뜨면 눈이 쫓아다녀야 한다. */
+.v3-col-more { margin-top: auto; }
+.v3-col-h { display: flex; align-items: center; gap: 9px; }
+.v3-col-av { width: 32px; height: 32px; flex: 0 0 32px; background: var(--v3-rail); }
+/* 「담당 없음」은 사람이 아니다 — 색을 안 쓴다. */
+.v3-col-av.none { background: var(--v3-line-2); color: var(--v3-ink-2); }
+.v3-col-nm { min-width: 0; flex: 1; }
+.v3-col-nm b { display: block; font-size: 14px; font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-col-bg { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.v3-col-bg em { padding: 0 6px; border-radius: var(--v3-radius-pill);
+  background: var(--v3-cat-etc-bg); color: var(--v3-cat-etc);
+  font-style: normal; font-size: 10px; font-weight: 700; }
+.v3-col-bg em.grant { background: var(--v3-cat-platform-bg); color: var(--v3-cat-platform); }
+.v3-col-n { flex: 0 0 auto; font-size: 20px; font-weight: 700;
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.v3-col-sub { margin: 8px 0 4px; font-size: 12px; color: var(--v3-ink-3); }
+/* 지남이 있는 열만 코랄 — 전부 칠하면 강조가 배경이 된다 (044 의 판단 그대로) */
+.v3-col-sub.late { color: var(--v3-late); font-weight: 700; }
+.v3-col-sub.warn { color: var(--v3-warn); font-weight: 700; }
+.v3-col-empty { margin: 10px 0 2px; font-size: 13px; color: var(--v3-ink-3); }
+.v3-col-more { width: 100%; min-height: 34px; border: 1px dashed var(--v3-line-2);
+  border-radius: var(--v3-radius-s); background: none; font: inherit; font-size: 12px;
+  font-weight: 600; color: var(--v3-ink-2); cursor: pointer; }
+.v3-col-more:hover { color: var(--v3-ink); border-color: var(--v3-ink-3); }
+
+/* 열 안의 한 건 — 목록 행(64px)보다 낮다. 열이 좁아서 오른쪽에 못 붙인다. */
+.v3-cardrow { display: flex; align-items: flex-start; gap: 9px; padding: 9px 2px;
+  border-top: 1px solid var(--v3-line); }
+.v3-cardrow.late { border-left: 3px solid var(--v3-late); padding-left: 8px; }
+.v3-cardrow-m { min-width: 0; flex: 1; }
+.v3-cardrow-m .v3-row-t { font-size: 13px; white-space: normal; }
+.v3-cardrow-b { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+.v3-cardrow-b .v3-due { min-width: 0; text-align: left; }
+
+/* ── 052 §B 집계 — 표 두 장 ───────────────────────────────────────
+   두 표가 **같은 모양**이라야 읽는 사람이 두 번 배우지 않는다.
+   좁은 화면에서는 칸을 줄이지 않고 **가로로 민다** — 숫자가 줄바꿈되면
+   어느 열의 값인지 알 수가 없다. */
+.v3-tw { overflow-x: auto; }
+.v3-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.v3-tbl th, .v3-tbl td { padding: 9px 10px; border-bottom: 1px solid var(--v3-line);
+  text-align: left; white-space: nowrap; }
+.v3-tbl thead th { font-size: 12px; font-weight: 700; color: var(--v3-ink-2);
+  border-bottom: 1px solid var(--v3-line-2); }
+.v3-tbl tbody th { font-weight: 600; }
+.v3-tbl .n { text-align: right; font-variant-numeric: tabular-nums; }
+.v3-tbl .sum { font-weight: 700; border-left: 1px solid var(--v3-line); }
+.v3-tbl a { color: var(--v3-ink); text-decoration: none; font-weight: 600; }
+.v3-tbl a:hover { color: var(--v3-rail); text-decoration: underline; }
+/* 0은 **안 누르게** 둔다 — 눌러서 빈 목록이 나오면 고장으로 읽힌다. */
+.v3-tbl .z { color: var(--v3-ink-3); }
+.v3-tbl tbody tr.zero th { color: var(--v3-ink-3); font-weight: 500; }
+.v3-tbl tfoot th, .v3-tbl tfoot td { border-top: 1px solid var(--v3-line-2);
+  border-bottom: 0; font-weight: 700; }
+
+/* 합이 맞는지 **화면에서** 보인다. 어긋나면 코랄로 눕지 않고 선다. */
+.v3-recon { margin: -4px 0 var(--v3-gap); font-size: 13px; color: var(--v3-ink-2); }
+.v3-recon b { font-variant-numeric: tabular-nums; color: var(--v3-ink); }
+.v3-recon.bad { color: var(--v3-late); font-weight: 700; }
+.v3-recon.bad b { color: var(--v3-late); }
+
 /* 목록 행의 클립 — **개수만.** 썸네일은 목록에 없다. */
 .v3-clip { display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto;
   font-size: 12px; font-weight: 600; color: var(--v3-ink-3);

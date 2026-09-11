@@ -6,7 +6,8 @@
 // 첫째 원칙이라, 상속하거나 감싸지 않고 따로 짓는다. 스위치를 끄면 이 파일은
 // 아무 데도 안 닿는다.
 //
-// 레일 항목은 목업의 탭 순서 그대로다: 오늘 · 업무 · 새 업무 · 캘린더.
+// 레일 항목은 목업의 탭 순서 그대로다: 오늘 · 업무 · 팀 현황 · 새 업무 · 캘린더.
+// 「집계」는 **팀장부터** 보인다 — 그 화면과 같은 함수(`hasLead`)로 가린다.
 // (상세는 업무에서 들어가는 자리라 레일에 없다.)
 //
 // ── 「＋ 새 업무」가 여기 있는 이유 (051 §A-1) ────────────────────
@@ -24,8 +25,18 @@ import type { SessionUser } from "@/lib/types";
 const NAV = [
   { href: `${V3_BASE}`, label: "오늘" },
   { href: `${V3_BASE}/tasks`, label: "업무" },
+  { href: `${V3_BASE}/team`, label: "팀 현황" },
   { href: `${V3_BASE}/new`, label: "새 업무" },
   { href: `${V3_BASE}/calendar`, label: "캘린더" },
+];
+
+/**
+ * 팀장부터 보이는 항목. **그 화면과 같은 함수로 가린다** (§G 038) —
+ * `app/v3/stats/page.tsx` 도 `hasLead` 로 막는다. 두 벌이 되는 순간
+ * 「보이는데 눌러도 튕기는」 자리가 생긴다.
+ */
+const LEAD_NAV = [
+  { href: `${V3_BASE}/stats`, label: "집계" },
 ];
 
 /**
@@ -61,11 +72,11 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
   }, [openNew]);
 
   /*
-   * 설정은 **팀장까지**다(`app/settings/page.tsx` 가 `hasLead` 로 막는다).
+   * 설정과 집계는 **팀장까지**다(각 화면이 `hasLead` 로 막는다).
    * 링크를 모두에게 내면 팀원이 눌렀다가 아무 설명 없이 튕겨 나온다 —
    * 「링크의 조건과 화면의 조건은 같은 함수에서 온다」(§G 038). 같은 함수를 쓴다.
    */
-  const canSettings = hasLead(user.role);
+  const lead = hasLead(user.role);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
@@ -96,6 +107,12 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
               {n.label}
             </Link>
           ))}
+          {lead && LEAD_NAV.map((n) => (
+            <Link key={n.href} className="v3-navlink" href={n.href}
+                  aria-current={on(n.href) ? "page" : undefined}>
+              {n.label}
+            </Link>
+          ))}
 
           {/*
             계정 · 설정 — **바닥 붙박이** (051 §A-2).
@@ -118,7 +135,7 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
               </span>
             </Link>
             <div className="v3-acct-a">
-              {canSettings
+              {lead
                 ? <Link className="v3-acct-l" href="/settings">설정</Link>
                 // 없는 것을 조용히 빼지 않는다 — **왜 없는지**가 보여야 한다.
                 : <span className="v3-acct-l off" title="설정은 팀장부터 볼 수 있습니다">설정</span>}
