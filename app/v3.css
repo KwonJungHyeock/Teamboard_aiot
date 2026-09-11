@@ -76,9 +76,12 @@
   line-height: 1.55;
 }
 
-/* ── Rail — 왼쪽 세로 막대 ─────────────────────────────────────── */
+/* ── Rail — 왼쪽 세로 막대 ───────────────────────────────────────
+   **바닥 붙박이를 위해 sticky 다** (051 §A-2). 본문이 길어져도 레일은 화면에
+   머물고, 계정 블록이 같이 밀려 올라가지 않는다. */
 .v3-rail { background: var(--v3-rail); color: #fff; display: flex; flex-direction: column;
-  gap: 2px; padding: 18px 12px; width: 232px; flex: 0 0 232px; min-height: 100vh; }
+  gap: 2px; padding: 18px 12px; width: 232px; flex: 0 0 232px;
+  position: sticky; top: 0; height: 100vh; align-self: flex-start; }
 .v3-rail-brand { display: block; padding: 4px 10px 18px; font-weight: 700; letter-spacing: -.01em; }
 .v3-rail-brand small { display: block; font-weight: 500; font-size: 11px; letter-spacing: .16em;
   color: rgba(255, 255, 255, .68); margin-top: 3px; }
@@ -87,7 +90,51 @@
   font-weight: 600; }
 .v3-rail a:hover { background: rgba(255, 255, 255, .10); color: #fff; }
 .v3-rail a[aria-current="page"] { background: rgba(255, 255, 255, .18); color: #fff; }
-.v3-rail-foot { margin-top: auto; padding-top: 14px; color: rgba(255, 255, 255, .68); font-size: 13px; }
+/* `.v3-rail-foot`(이름·역할 한 줄)은 051 §A-2 에서 `.v3-acct` 로 바뀌었다 —
+   프로필·설정·로그아웃이 v3 에는 아예 없었다(조사 결과). */
+
+/* ── 051 §A-1 「＋ 새 업무」 두 자리 ──────────────────────────────
+   레일 것은 **흰 바탕에 파란 글씨** — 메뉴와 안 섞이라고 색을 뒤집는다. */
+.v3-railnew { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px;
+  min-height: 42px; padding: 0 12px; border-radius: var(--v3-radius-s);
+  background: #fff; color: var(--v3-rail) !important; font-weight: 700;
+  text-decoration: none; }
+.v3-railnew:hover { background: #fff; filter: brightness(.96); }
+.v3-railnew kbd { margin-left: auto; padding: 1px 6px; border-radius: 5px;
+  background: var(--v3-cat-platform-bg); color: var(--v3-rail); font: inherit;
+  font-size: 11px; font-weight: 700; }
+
+/* 헤더 오른쪽 것은 **파란 채움**. 자리를 늘 차지해서 화면마다 제목 높이가 안 흔들린다. */
+.v3-top { display: flex; justify-content: flex-end; margin: 0 0 14px; }
+.v3-topnew { text-decoration: none; }
+
+/* ── 051 §A-2 계정 · 설정 붙박이 ─────────────────────────────────
+   두 줄 — ① 이름 + 역할 배지 ② 설정 · 로그아웃.
+   배지는 039 에서 정한 그대로다: 「팀장」이면서 「관리자 권한」이면 배지가 둘이다. */
+.v3-acct { margin-top: auto; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, .16); }
+.v3-acct-me { display: flex !important; align-items: center; gap: 10px; padding: 6px 8px !important;
+  border-radius: var(--v3-radius-s); text-decoration: none; }
+.v3-acct-av { width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center;
+  border-radius: 50%; background: rgba(255, 255, 255, .22); color: #fff;
+  font-size: 13px; font-weight: 700; }
+.v3-acct-nm { min-width: 0; }
+.v3-acct-nm b { display: block; color: #fff; font-size: 13px; font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-acct-bg { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.v3-acct-bg em { padding: 1px 7px; border-radius: var(--v3-radius-pill);
+  background: rgba(255, 255, 255, .18); color: rgba(255, 255, 255, .92);
+  font-style: normal; font-size: 11px; font-weight: 700; }
+/* 관리자 권한은 **정체가 아니라 권한**이라 따로 선다 (039). 색도 다르다. */
+.v3-acct-bg em.grant { background: #fff; color: var(--v3-rail); }
+.v3-acct-a { display: flex; gap: 4px; margin-top: 4px; }
+.v3-acct-l { flex: 1; min-height: 32px; display: inline-flex; align-items: center;
+  justify-content: center; padding: 0 8px; border: 0; border-radius: var(--v3-radius-s);
+  background: none; color: rgba(255, 255, 255, .80) !important; font: inherit;
+  font-size: 12px; font-weight: 600; text-decoration: none; cursor: pointer; }
+.v3-acct-l:hover { background: rgba(255, 255, 255, .12); color: #fff !important; }
+/* 못 가는 자리는 **지우지 않고 흐리게** 둔다 — 없으면 왜 없는지가 안 보인다. */
+.v3-acct-l.off { color: rgba(255, 255, 255, .40) !important; cursor: default; }
+.v3-acct-l.off:hover { background: none; color: rgba(255, 255, 255, .40) !important; }
 
 /* ── Card ──────────────────────────────────────────────────────── */
 .v3-card { background: var(--v3-card); border: 1px solid var(--v3-line);
@@ -179,6 +226,23 @@
 .v3-stat .v3-stat-l { display: block; margin-top: 2px; font-size: 13px; color: var(--v3-ink-2); }
 /* 「기한 없음」만 호박색 — 아무 날에도 안 걸려서 마지막까지 안 보이는 것들이다 */
 .v3-stat.warn .v3-stat-n { color: var(--v3-warn); }
+
+/* ── 051 §A-3 가오픈 카드 ────────────────────────────────────────
+   통계 타일과 같은 줄 맨 왼쪽. **파란 채움** — 이 줄에서 유일하게 색이 찬 칸이라
+   눈이 먼저 여기 닿는다.
+
+   **진행 막대는 없다.** 시작일이 `config` 에 없어서 「얼마나 왔는가」의 근거가
+   없다. 없는 근거로 그린 막대는 안 그린 것보다 나쁘다. */
+.v3-open { flex: 1; display: flex; flex-direction: column; gap: 2px;
+  background: var(--v3-rail); border: 1px solid var(--v3-rail);
+  border-radius: var(--v3-radius); box-shadow: var(--v3-shadow); padding: 16px 20px;
+  color: #fff; }
+.v3-open-l { font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, .76);
+  letter-spacing: .02em; }
+.v3-open-d { font-size: 34px; font-weight: 700; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums; line-height: 1.15; }
+.v3-open-when { font-size: 13px; color: rgba(255, 255, 255, .88); }
+.v3-open-left { font-size: 12px; color: rgba(255, 255, 255, .70); }
 
 /* ── Checkbox — 상태 네 가지 ───────────────────────────────────── */
 .v3-cb { width: 22px; height: 22px; flex: 0 0 22px; border-radius: 7px; padding: 0;
