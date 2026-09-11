@@ -161,11 +161,20 @@ try {
     const res = await page.goto(`${BASE}/v3`, { waitUntil: "networkidle" });
     await page.waitForTimeout(400);
     const landed = new URL(page.url()).pathname;
-    // 051 §A-1 에서 레일에 「＋ 새 업무」와 계정 링크가 붙었다. 세는 것은 그대로
-    // **메뉴 항목 넷**이므로, 「모든 a」가 아니라 메뉴 이름표를 센다.
-    const rail = await page.locator(".v3 .v3-rail .v3-navlink").count();
-    chk("④-켜면-v3-가-열린다", landed === "/v3" && res?.status() === 200 && rail === 4,
-        `→ ${landed} (${res?.status()}) · 레일 항목 ${rail}개`);
+    /*
+     * 레일에 무엇이 있는지를 **이름으로** 본다.
+     *
+     * 처음엔 「메뉴 항목 넷」이라는 수였다. 052 에서 「팀 현황」·「집계」가 늘자
+     * 제품은 멀쩡한데 이 줄이 떨어졌다 — 세던 수가 뜻을 잃은 것이다.
+     * 여기서 묻는 것은 「v3 껍데기에 도착했는가」이므로, **처음부터 있던 넷이
+     * 그대로 있는지**를 본다. 항목이 늘어도 이 물음은 안 흔들린다.
+     */
+    const railNames = (await page.locator(".v3 .v3-rail .v3-navlink").allInnerTexts())
+      .map((t) => t.trim());
+    const WANT = ["오늘", "업무", "새 업무", "캘린더"];
+    chk("④-켜면-v3-가-열린다",
+        landed === "/v3" && res?.status() === 200 && WANT.every((w) => railNames.includes(w)),
+        `→ ${landed} (${res?.status()}) · 레일 [${railNames.join(" · ")}]`);
     await page.screenshot({ path: `${OUT}/v3-parts.png`, fullPage: true });
 
     /*

@@ -25,8 +25,9 @@ import type { CbState } from "./parts";
 import { childLine, shortDue, type TodayTask } from "@/lib/v3/today";
 import {
   countByArea, areaLeak, groupTasks, allGroups, dueTone,
-  applyFilters, activeChips, isEmptyQuery, isDueKey, DUE_FILTERS, GROUPS,
-  type SortKey, type Query, type DueKey, type ChipView,
+  applyFilters, activeChips, isEmptyQuery, isDueSel, dueMonth, dueSelLabel,
+  DUE_FILTERS, GROUPS,
+  type SortKey, type Query, type DueSel, type ChipView,
 } from "@/lib/v3/tasks";
 import { chipRow, type AreaView } from "@/lib/v3/category";
 import { taskHref } from "@/lib/v3/routes";
@@ -72,7 +73,8 @@ export default function TasksView({
     cat: nums(sp.get("cat")),
     who: nums(sp.get("who")),
     status: strs(sp.get("st"), STATUS_VALUES),
-    due: isDueKey(sp.get("due")) ? (sp.get("due") as DueKey) : "all",
+    // 네 갈래 + 달 하나(`m:2026-09`). 집계 화면의 칸이 이 값으로 온다 (052 §B).
+    due: isDueSel(sp.get("due")) ? (sp.get("due") as DueSel) : "all",
     q: sp.get("q") ?? "",
   }), [sp, STATUS_VALUES]);
   const picked = query.cat;
@@ -107,7 +109,7 @@ export default function TasksView({
   }, []);
 
   const setQuery = useCallback((next: {
-    cat?: Set<number>; who?: Set<number>; status?: Set<string>; due?: DueKey; q?: string;
+    cat?: Set<number>; who?: Set<number>; status?: Set<string>; due?: DueSel; q?: string;
     sort?: SortKey; done?: boolean;
   }) => {
     const p = new URLSearchParams(wrote.current ?? spStr);
@@ -302,6 +304,13 @@ export default function TasksView({
               {d.label}
             </InputChip>
           ))}
+          {/* 달로 온 경우(집계 화면의 칸) — **그 달을 칸으로 보인다.**
+              안 보이면 넷이 다 비어 있어서 아무 조건도 안 걸린 것처럼 읽힌다. */}
+          {dueMonth(query.due) !== null && (
+            <InputChip filled aria-pressed="true" onClick={() => setQuery({ due: "all" })}>
+              {dueSelLabel(query.due)}
+            </InputChip>
+          )}
         </div>
       </div>
 

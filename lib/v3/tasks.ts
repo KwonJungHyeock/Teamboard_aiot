@@ -147,6 +147,41 @@ export function isDueKey(v: string | null | undefined): v is DueKey {
   return v === "all" || v === "late" || v === "soon" || v === "none";
 }
 
+/**
+ * 기한 축의 값. 네 갈래에 **달 하나**가 더 있다 — `m:2026-09` (052 §B).
+ *
+ * ── 왜 축을 안 늘리고 값을 늘렸나 ──────────────────────────────
+ *
+ * 집계 화면의 칸을 누르면 그 조건의 목록으로 가야 하는데, 집계는 「이 달」로
+ * 세고 목록에는 달을 담을 자리가 없었다. 그대로 두면 **칸의 숫자와 열린 목록이
+ * 서로 다른 것을 센다** — 조용히 어긋나는 자리다.
+ *
+ * 그래서 **같은 축(기한)에 값 하나를 더했다.** 축을 더 만들지 않는다(051 §B).
+ * 「이 달에 기한인 것」은 기한에 대한 조건이지 새 축이 아니다.
+ */
+export type DueSel = DueKey | string;   // `m:YYYY-MM`
+
+const DUE_MONTH = /^m:(\d{4})-(0[1-9]|1[0-2])$/;
+
+export function isDueSel(v: string | null | undefined): boolean {
+  return isDueKey(v) || (typeof v === "string" && DUE_MONTH.test(v));
+}
+
+/** `m:2026-09` → `2026-09`. 달이 아니면 `null`. */
+export function dueMonth(sel: DueSel): string | null {
+  const m = typeof sel === "string" ? DUE_MONTH.exec(sel) : null;
+  return m ? `${m[1]}-${m[2]}` : null;
+}
+
+export function dueSelLabel(sel: DueSel): string {
+  const ym = dueMonth(sel);
+  if (ym) {
+    const [y, mm] = ym.split("-");
+    return `${Number(y)}년 ${Number(mm)}월`;
+  }
+  return DUE_LABEL[sel as DueKey] ?? String(sel);
+}
+
 /** 걸린 조건 한 벌. **전부 주소에 담긴다** — 새로 열어도 같은 화면이어야 한다. */
 export interface Query {
   /** 카테고리 `area.id` */
@@ -155,7 +190,7 @@ export interface Query {
   who: Set<number>;
   /** 상태 — `GROUPS` 의 대표 상태값 */
   status: Set<string>;
-  due: DueKey;
+  due: DueSel;
   /** 제목에서 찾는 말 */
   q: string;
 }
@@ -176,7 +211,10 @@ export function matchesText(t: TaskRow, q: string): boolean {
   return needle === "" || t.title.toLowerCase().includes(needle);
 }
 
-export function matchesDue(t: TaskRow, due: DueKey, today: string): boolean {
+export function matchesDue(t: TaskRow, due: DueSel, today: string): boolean {
+  const ym = dueMonth(due);
+  // 달로 고른 경우 — **기한이 그 달인 것.** 기한 없음은 어느 달에도 안 든다(037).
+  if (ym !== null) return t.dueDate !== null && t.dueDate.slice(0, 7) === ym;
   if (due === "all") return true;
   if (due === "none") return t.dueDate === null;
   if (t.dueDate === null) return false;
@@ -231,7 +269,7 @@ export function activeChips(
       out.push({ axis: "status", value: g.statuses[0], label: `상태 · ${g.label}` });
     }
   }
-  if (q.due !== "all") out.push({ axis: "due", value: null, label: `기한 · ${DUE_LABEL[q.due]}` });
+  if (q.due !== "all") out.push({ axis: "due", value: null, label: `기한 · ${dueSelLabel(q.due)}` });
   if (q.q.trim() !== "") out.push({ axis: "q", value: null, label: `검색 · ${q.q.trim()}` });
   return out;
 }
