@@ -2107,3 +2107,19 @@ body.gpanel-open .agf-fab { display: none; }
 .lens-done { display: inline-flex; align-items: center; gap: 6px; font-size: var(--f4); color: var(--ink-soft); cursor: pointer; white-space: nowrap; }
 .lens-sort { display: inline-flex; align-items: center; gap: 6px; }
 .lens-sort select { height: var(--btn-h-sm); font-size: var(--f4); width: auto; }
+
+/* ── 053 §B-31 권한이 없어 밀려났을 때 ──────────────────────────────
+   **사라지지 않는다.** 잠깐 떴다 지는 알림은 못 보면 없는 것과 같고,
+   밀려난 사람은 화면이 바뀐 것부터 보느라 몇 초를 그냥 흘려보낸다.
+   닫기 전까지 서 있고, 닫으면 주소에서도 빠진다.
+   (이름은 `.dnote` — `.dn` 은 이미 다른 뜻으로 쓰이는 자리가 있다.) */
+.dnote { display: flex; align-items: center; gap: 10px; margin: 0 0 16px;
+  padding: 12px 14px; border: 1px solid var(--coral, #E0524F);
+  border-radius: 12px; background: rgba(224, 82, 79, .07); }
+.dnote-i { flex: 0 0 22px; width: 22px; height: 22px; display: grid; place-items: center;
+  border-radius: 50%; background: var(--coral, #E0524F); color: #fff;
+  font-size: 13px; font-weight: 800; }
+.dnote-t { flex: 1; margin: 0; font-size: 14px; font-weight: 600; }
+.dnote-x { flex: 0 0 auto; width: 28px; height: 28px; border: 0; border-radius: 8px;
+  background: none; color: inherit; font-size: 18px; line-height: 1; cursor: pointer; opacity: .6; }
+.dnote-x:hover { opacity: 1; background: rgba(0, 0, 0, .06); }

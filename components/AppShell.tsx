@@ -20,6 +20,8 @@ import FirstRun from "./FirstRun";
 import QuickCreate from "./QuickCreate";
 import Toaster from "./Toaster";
 import TaskSync from "./TaskSync";
+import DeniedNote from "./DeniedNote";
+import { Suspense } from "react";
 
 export default async function AppShell({
   user,
@@ -80,7 +82,13 @@ export default async function AppShell({
       <div className="grain" aria-hidden="true" />
       <div className="app">
         <Sidebar user={current} inboxCount={inboxCount} notionConnected={notionConnected} uiV3={uiV3} />
-        <main className="main">{children}</main>
+        <main className="main">
+          {/* 밀려난 이유 — **도착한 화면 위에** 선다 (053 §B-31).
+              `DENIED_HREF` 가 어디로 바뀌든 모든 로그인 화면이 이 셸을 지나므로
+              자리는 하나다. `useSearchParams` 는 Suspense 경계를 요구한다. */}
+          <Suspense fallback={null}><DeniedNote /></Suspense>
+          {children}
+        </main>
       </div>
       <TaskDetailPanel user={current} />
       {/* 만드는 자리(모달)와 고치는 자리(패널)를 나눈다 — MD-P-2026-027 §C */}

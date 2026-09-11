@@ -14,7 +14,7 @@ import { Suspense } from "react";
 import { query } from "@/lib/db";
 import { kstToday } from "@/lib/home";
 import { hasLead } from "@/lib/types";
-import { DENIED_HREF } from "@/lib/denied";
+import { deniedHref } from "@/lib/denied";
 import { resolveAreas } from "@/lib/v3/category";
 import StatsView from "@/components/v3/StatsView";
 
@@ -25,7 +25,7 @@ export default async function V3Stats() {
   const live = await getLiveSession();
   if (!live) redirect("/api/auth/logout?reason=inactive");
   // 등급은 여기서 막는다. 「막은 사람이 가는 곳도 한 곳에서 낸다」(§G) — DENIED_HREF.
-  if (!hasLead(live.user.role)) redirect(DENIED_HREF);
+  if (!hasLead(live.user.role)) redirect(deniedHref("stats"));
 
   const [areaRows, people] = await Promise.all([
     query<{ id: number; name: string }>(

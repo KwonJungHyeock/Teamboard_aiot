@@ -16,11 +16,12 @@
 // 그 화면에서만 없는데 **눌러 보기 전엔 모른다** — 「막는 것은 뿌리에서 한 번
 // 한다」(§G 043)와 같은 이유다.
 import Link from "next/link";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { V3_BASE } from "@/lib/v3/routes";
 import { roleLabel, showsAdminGrantBadge, hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
+import DeniedNote from "../DeniedNote";
 
 const NAV = [
   { href: `${V3_BASE}`, label: "오늘" },
@@ -146,6 +147,9 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
 
         <main className="v3-main">
           {/* 헤더 오른쪽의 「＋ 새 업무」 — 파란 채움. 레일의 것과 **같은 곳**으로 간다. */}
+          {/* 밀려난 이유 — 옛 셸과 **같은 표**에서 나온다 (053 §B-31).
+              스위치가 켜져 있으면 옛 홈이 여기로 다시 보내므로 이 자리도 필요하다. */}
+          <Suspense fallback={null}><DeniedNote /></Suspense>
           <div className="v3-top">
             <Link className="v3-btn primary v3-topnew" href={newHref}>＋ 새 업무</Link>
           </div>

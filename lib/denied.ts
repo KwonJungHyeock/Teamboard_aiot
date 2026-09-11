@@ -15,7 +15,56 @@
 // 로그인한 사람이면 누구나 볼 수 있는 화면이라야 한다. 다시 튕기면 고리가 된다.
 // `/`(팀 홈)는 역할 게이트가 없다 — 그래서 여기다.
 //
-// ⚠ 이 이동은 **이유를 말하지 않는다.** 누른 사람은 왜 홈에 왔는지 모른다.
-//   `/assistant` 로 보내던 때도 마찬가지였으므로 이번에 나빠진 것은 아니지만,
-//   고쳐진 것도 아니다. 남은 거친 자리로 적어 둔다(백로그 B-31).
+// ── 이유도 여기서 낸다 (MD-P-2026-053 §B-31) ────────────────────
+//
+// 041 에서는 이 이동이 **이유를 말하지 않았다.** 누른 사람은 왜 홈에 왔는지
+// 몰랐고, 그래서 「고장인가」와 「내 등급으로는 못 보는가」가 구별이 안 됐다.
+//
+// **이유 문구는 막은 쪽이 낸다.** 도착한 화면이 주소를 보고 추측해서 쓰면,
+// 같은 상황을 두 화면이 다르게 설명하게 되고 그때부터 어느 쪽이 맞는지 모른다.
+// 그래서 막는 자리가 **어느 문을 닫았는지**(`DeniedKey`)를 실어 보내고,
+// 문장은 이 표 하나에서 나온다.
 export const DENIED_HREF = "/";
+
+/** 주소에 실리는 이름. 무엇을 막았는지를 가리킨다. */
+export type DeniedKey =
+  | "members" | "agent-usage" | "settings" | "status" | "open-due" | "stats" | "v3-off";
+
+/**
+ * 왜 못 보는지. **한 문장이다.**
+ *
+ * 등급 이름을 그대로 쓴다(관리자 · 팀장) — 「권한이 없습니다」는 무엇이 있으면
+ * 되는지를 안 알려 줘서, 읽은 사람이 누구에게 무엇을 청해야 할지 모른다.
+ */
+export const DENIED_REASON: Record<DeniedKey, string> = {
+  "members": "구성원 관리는 관리자만 볼 수 있습니다.",
+  "agent-usage": "에이전트 흔적은 관리자만 볼 수 있습니다.",
+  "settings": "설정은 팀장부터 볼 수 있습니다.",
+  "status": "업무 현황은 팀장부터 볼 수 있습니다.",
+  "open-due": "가오픈 기한은 팀장부터 볼 수 있습니다.",
+  "stats": "집계는 팀장부터 볼 수 있습니다.",
+  // 등급 문제가 아니다 — 그래서 등급 이야기를 안 한다.
+  "v3-off": "새 화면은 아직 꺼져 있습니다. 관리자가 설정에서 켤 수 있습니다.",
+};
+
+/** 주소에 이유를 싣는 이름. 한 낱말로 고정해서 양쪽이 같은 것을 본다. */
+export const DENIED_PARAM = "denied";
+
+/** 막는 자리가 부르는 함수. **어느 문을 닫았는지**를 함께 보낸다. */
+export function deniedHref(key: DeniedKey): string {
+  return `${DENIED_HREF}?${DENIED_PARAM}=${key}`;
+}
+
+/**
+ * 도착한 화면이 부르는 함수. 주소에서 문장을 꺼낸다.
+ *
+ * 모르는 이름이면 `null` — **아무 말도 안 만든다.** 주소는 손으로 고칠 수 있고,
+ * 거기 적힌 것을 그대로 화면에 옮기면 남이 써 준 문장을 우리 목소리로 읽게 된다.
+ */
+export function deniedReason(search: string | null | undefined): string | null {
+  if (!search) return null;
+  const raw = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search)
+    .get(DENIED_PARAM);
+  if (raw === null) return null;
+  return (DENIED_REASON as Record<string, string>)[raw] ?? null;
+}

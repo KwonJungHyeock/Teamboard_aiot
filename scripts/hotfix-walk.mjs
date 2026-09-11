@@ -62,6 +62,36 @@ const readDue = (sel) => page.evaluate((s) => {
   return out;
 }, sel);
 
+/** 보는 사람. 쿠키와 **같은 사람**이라야 「내 담당」 기본 거르개 안에 조건을 만들 수 있다. */
+const VIEWER = 1;
+
+/**
+ * 담당 거르개를 「전체」로 돌린다.
+ *
+ * 예전에는 `selectOption(..., "")` 였다. 그 값이 `"all"` 로 바뀌면서 선택이
+ * **30초 타임아웃**이 났는데, `.catch(() => {})` 가 그걸 삼켜서 「안 눌렸다」가
+ * 「안 걸렸다」로 넘어갔다 (§G 051 · 실패를 삼키지 않는다).
+ *
+ * 그래서 값을 박지 않고 **「전체」라고 적힌 선택지를 찾아** 고르고,
+ * 못 고르면 **소리 내어 적는다.**
+ */
+async function clearAssignee(page) {
+  const sel = page.locator('select[aria-label="담당"]');
+  if (!(await sel.count())) { console.error("   ! 담당 거르개가 없다 — 화면이 바뀌었는가"); return false; }
+  const all = await sel.locator("option").evaluateAll((els) => {
+    const m = els.find((o) => /전체/.test(o.textContent ?? ""));
+    return m ? m.value : null;
+  });
+  if (all === null) { console.error("   ! 담당 거르개에 「전체」 선택지가 없다"); return false; }
+  try {
+    await sel.selectOption(all, { timeout: 5000 });
+    return true;
+  } catch (e) {
+    console.error("   ! 담당을 「전체」로 못 돌렸다 —", String(e.message).slice(0, 60));
+    return false;
+  }
+}
+
 const touched = [];
 try {
   // ── H-1 구성원 이름 ───────────────────────────────────────────────
@@ -97,25 +127,44 @@ try {
   chk("H-3 미연결 줄은 남음", !!goals.banner && /연결하면 진척에 집계/.test(goals.banner) && !/없어졌습니다/.test(goals.banner),
     `"${goals.banner ?? "(없음)"}"`);
 
-  // ── H-2 기한 표시 ────────────────────────────────────────────────
-  // 지금 데이터에 없는 등급은 만들어서 잰다. 끝나면 되돌린다.
+  /* ── H-2 기한 표시 ──────────────────────────────────────────────
+   *
+   * 지금 데이터에 없는 등급은 만들어서 잰다. 끝나면 되돌린다.
+   *
+   * ── 053 에서 고친 것 두 가지 ──────────────────────────────────
+   *
+   * ① **보는 사람의 업무로 만든다.** 예전에는 `ORDER BY id LIMIT 2` 로 아무
+   *    업무나 집었는데, 그 둘이 남의 담당이면 「내 담당」이 기본인 목록과
+   *    홈 「다가오는 일정」에 아예 안 뜬다. 색이 틀린 것이 아니라 **대상을 못 본
+   *    것**인데, 실패 문구는 「임박 건이 화면에 없다」로 같아서 구별이 안 됐다.
+   * ② **「보통」도 만든다.** D-8 이상은 데이터에 있으려니 하고 안 만들었다.
+   *    실데이터의 기한이 전부 지나면서 그 등급이 사라졌다 (§G 035).
+   */
   const rows = (await pool.query(
     `SELECT id, due_date FROM task
       WHERE is_active AND parent_task_id IS NULL AND status <> 'done'
-      ORDER BY id LIMIT 2`
+        AND assignee_id = $1
+      ORDER BY id LIMIT 3`, [VIEWER]
   )).rows;
-  if (rows.length < 2) { console.error("업무가 2건 미만이다 — 검사할 수 없다."); process.exit(1); }
+  if (rows.length < 3) {
+    console.error(`보는 사람(actor ${VIEWER}) 담당 업무가 ${rows.length}건이다 — 3건이 있어야 세 등급을 만든다.`);
+    process.exit(1);
+  }
   touched.push(...rows);
-  await pool.query(`UPDATE task SET due_date = CURRENT_DATE + 3 WHERE id = $1`, [rows[0].id]);
-  await pool.query(`UPDATE task SET due_date = CURRENT_DATE - 5 WHERE id = $1`, [rows[1].id]);
+  await pool.query(`UPDATE task SET due_date = CURRENT_DATE + 3 WHERE id = $1`, [rows[0].id]);   // 임박
+  await pool.query(`UPDATE task SET due_date = CURRENT_DATE - 5 WHERE id = $1`, [rows[1].id]);   // 지연
+  await pool.query(`UPDATE task SET due_date = CURRENT_DATE + 30 WHERE id = $1`, [rows[2].id]);  // 보통
+  console.log(`   (조건) 임박 #${rows[0].id} · 지연 #${rows[1].id} · 보통 #${rows[2].id}` +
+              ` — 전부 actor ${VIEWER} 담당이라 기본 거르개 안에 있다`);
 
   // **필터를 먼저 연다.** /tasks 는 기본이 "내 영역 + 내 담당"이라, 우리가 손댄 업무가
   // 그 필터 밖이면 등급이 화면에 아예 안 나타난다. 그러면 "임박이 없다"가 되는데
   // 그건 색이 틀린 것이 아니라 **검사가 대상을 못 본 것**이다. 둘을 구별해야 한다.
   await page.goto(`${BASE}/tasks`, { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
-  await page.getByRole("button", { name: "전체 영역" }).click().catch(() => {});
-  await page.selectOption('select[aria-label="담당"], select >> nth=0', "").catch(() => {});
+  await page.getByRole("button", { name: "전체 영역" }).click()
+    .catch((e) => console.error("   ! 「전체 영역」을 못 눌렀다 —", String(e.message).slice(0, 60)));
+  await clearAssignee(page);
   await page.waitForTimeout(1400);
   const sheet = await readDue(".due .tt-dday");
   const late = Object.entries(sheet).find(([t]) => /^D\+\d+$/.test(t));
@@ -139,16 +188,20 @@ try {
   chk("H-2 보드 · 임박", !!bSoon && bSoon[1].color === AMBER && bSoon[1].weight === "700",
     bSoon ? `${bSoon[0]} → ${bSoon[1].color} / ${bSoon[1].weight}` : "임박 건이 보드에 없다");
 
-  // 홈 「다가오는 일정」 — 미래만 담는 목록이라 지연은 올 수 없다. 임박만 확인한다.
-  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
-  await page.waitForTimeout(1200);
-  const home = await readDue(".hm-dd");
-  const hSoon = Object.entries(home).find(([, v]) => v.cls.includes("over"));
-  const hLate = Object.entries(home).find(([t]) => /^D\+\d+$/.test(t));
-  chk("H-2 홈 · 임박", !!hSoon && hSoon[1].color === AMBER,
-    hSoon ? `${hSoon[0]} → ${hSoon[1].color}` : "임박 건이 홈에 없다");
-  chk("H-2 홈 · 지연은 안 온다", !hLate,
-    hLate ? `${hLate[0]} 이 떴다 — 미래만 담는 목록이라는 전제가 깨졌다` : "미래만 담는 목록이 맞다");
+  /* ── 홈 「다가오는 일정」 검사는 **지웠다** (053 §B-30) ──────────
+   *
+   * 그 블록은 MD-P-2026-032 §D4 에서 화면에서 내려갔다. 소스가 개인 캘린더
+   * 하나뿐이라 대부분 빈 카드가 됐기 때문이다. `components/HomeView.tsx` 의
+   * §D4 주석이 「코드·CSS·검사 세 곳에서 동시에 지웠다」고 적고 있는데,
+   * **여기 둘이 안 지워져 있었다.**
+   *
+   * 그래서 「홈 · 임박」은 없는 블록을 찾다 떨어졌고, 짝인 「홈 · 지연은 안 온다」는
+   * 블록이 통째로 없으니 **늘 통과하는 죽은 단언**이었다. 하나는 거짓 실패,
+   * 하나는 거짓 성공 — 둘 다 아무것도 안 재고 있었다.
+   *
+   * 「다가오는 일정」은 032 의 허들룸 재설계에서 개념이 선 뒤에 다시 만든다.
+   * 그때 이 검사도 함께 세운다 — 지금 남겨 두면 그때 이 낡은 모양에 맞추게 된다.
+   */
 
   chk("JS 오류 없음", jsErrors.length === 0, `${jsErrors.length}건${jsErrors[0] ? " — " + jsErrors[0].slice(0, 80) : ""}`);
 } finally {
