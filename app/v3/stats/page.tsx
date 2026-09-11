@@ -24,7 +24,7 @@ export default async function V3Stats() {
   // 스위치는 `app/v3/layout.tsx` 가 뿌리에서 한 번 막는다 (§G).
   const live = await getLiveSession();
   if (!live) redirect("/api/auth/logout?reason=inactive");
-  // 등급은 여기서 막는다. 「막은 사람이 가는 곳도 한 곳에서 낸다」(§G) — DENIED_HREF.
+  // 등급은 여기서 막는다. 가는 곳도 이유도 한 곳에서 낸다 (§G) — `deniedHref`.
   if (!hasLead(live.user.role)) redirect(deniedHref("stats"));
 
   const [areaRows, people] = await Promise.all([
