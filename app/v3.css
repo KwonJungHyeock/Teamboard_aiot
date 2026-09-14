@@ -709,3 +709,50 @@
 .v3-bar2-s:first-child { border-radius: var(--v3-radius-s) 0 0 var(--v3-radius-s); }
 .v3-bar2-s:last-child { border-radius: 0 var(--v3-radius-s) var(--v3-radius-s) 0; }
 .v3-bar2-s:only-child { border-radius: var(--v3-radius-s); }
+
+/* ══ 057 §B — 여러 건 한 번에 ═══════════════════════════════════════
+
+   ── 고르기 상자는 상태 네모와 **다르게 생겼다** ────────────────────
+   `.v3-cb` 는 「이 업무가 어떤 상태인가」, `.v3-pick` 은 「내가 이것을
+   골랐는가」다. 한 모양이 둘을 말하면 안 된다(§G 047). 그래서 브라우저
+   기본 체크상자를 그대로 쓴다 — 사람들이 이미 아는 모양이다. */
+.v3-pick { width: 16px; height: 16px; flex: 0 0 16px; margin: 0 2px 0 0;
+  accent-color: var(--v3-rail); cursor: pointer; }
+/* 고른 행은 **바탕으로** 말한다. 글자색을 바꾸면 기한의 코랄·회색과 섞인다. */
+.v3-row.picked { background: #EDF3FE; }
+
+.v3-selall { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px;
+  font-size: 13px; font-weight: 600; color: var(--v3-ink-2); cursor: pointer; }
+.v3-selall input { width: 15px; height: 15px; accent-color: var(--v3-rail); cursor: pointer; }
+
+/* ── 작업 줄 ───────────────────────────────────────────────────────
+   목록 **아래에 붙박이**다. 위에 두면 긴 목록에서 스크롤해 내려간 순간
+   방금 고른 것을 어디서 바꾸는지가 화면 밖으로 나간다. */
+.v3-bulk { position: sticky; bottom: 0; z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  margin-top: var(--v3-gap); padding: 12px 16px;
+  background: var(--v3-card); border: 1px solid var(--v3-line-2);
+  border-radius: var(--v3-radius); box-shadow: 0 -6px 20px -12px rgba(16, 24, 40, .28); }
+.v3-bulk-n { font-size: 14px; font-weight: 700; color: var(--v3-ink); }
+.v3-bulk-f { display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--v3-ink-2); }
+.v3-bulk-f select, .v3-bulk-f input[type="date"] {
+  min-height: 32px; padding: 0 8px; border: 1px solid var(--v3-line-2);
+  border-radius: var(--v3-radius-s); background: #fff; color: var(--v3-ink);
+  font: inherit; font-size: 13px; }
+.v3-bulk-f select:disabled, .v3-bulk-f input:disabled { opacity: .5; }
+.v3-bulk-p { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--v3-ink-2);
+  font-variant-numeric: tabular-nums; }
+.v3-bulk-x { margin-left: auto; }
+
+/* ── 결과 줄 ───────────────────────────────────────────────────────
+   **안 사라진다.** 닫기를 눌러야 없어진다(047 §B). 그래서 자리를 차지해도
+   되도록 목록과 작업 줄 사이에 선다. */
+.v3-bulkr { display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  margin-top: var(--v3-gap); padding: 10px 14px;
+  background: #EEF7F1; border: 1px solid #CFE7D8; border-radius: var(--v3-radius-s); }
+.v3-bulkr.bad { background: var(--v3-late-bg); border-color: #F3C9C7; }
+.v3-bulkr-t { font-size: 13.5px; font-weight: 700; color: var(--v3-ink); }
+/* 실패 사유는 **한 줄씩 통째로** 선다 — 옆에 붙이면 긴 문장이 잘린다. */
+.v3-bulkr-why { flex: 1 0 100%; font-size: 13px; color: var(--v3-late); font-weight: 600; }
+.v3-bulkr-x { margin-left: auto; }

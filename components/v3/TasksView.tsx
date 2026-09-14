@@ -33,6 +33,12 @@ import { chipRow, type AreaView } from "@/lib/v3/category";
 import { taskHref } from "@/lib/v3/routes";
 // 목록에는 **썸네일이 아니라 개수만** (051 §C-3).
 import { countLinks } from "@/lib/v3/links";
+// 여러 건 한 번에 (057 §B) — 규칙은 lib 에, 화면은 부르기만.
+import { BulkBar, BulkResultBar } from "./BulkBar";
+import {
+  beforeOf, patchFor, undoPatch, needsChange, whyFrom, emptyResult, pruneSelection,
+  type BulkChange, type BulkField, type BulkResult, type BulkTask,
+} from "@/lib/v3/bulk";
 
 const SORT_LABEL: Record<SortKey, string> = { due: "기한순", recent: "최신순" };
 
@@ -192,6 +198,102 @@ export default function TasksView({
     setQuery({ cat: next });
   };
 
+  /*
+   * ══ 여러 건 한 번에 (057 §B) ═══════════════════════════════════
+   *
+   * **새 API 는 없다.** 기존 `PATCH /api/tasks/{id}` 를 건마다 한 번씩,
+   * **차례로** 부른다. 한꺼번에 몰아치면 어느 것이 왜 실패했는지 섞이고,
+   * 열아홉 건이면 서버에 열아홉 개가 동시에 꽂힌다.
+   */
+  const [sel, setSel] = useState<Set<number>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(0);
+  const [outTotal, setOutTotal] = useState(0);
+  const [result, setResult] = useState<BulkResult | null>(null);
+
+  const rows: BulkTask[] = useMemo(
+    () => (tasks ?? []).filter((t) => filtered.some((f) => f.id === t.id))
+      .map((t) => ({ id: t.id, title: t.title, status: t.status,
+                     assigneeId: t.assigneeId ?? null, dueDate: t.dueDate ?? null })),
+    [tasks, filtered]);
+
+  /* 거르개를 바꾸면 화면에서 사라진 행은 **선택에서도 빠진다.** 안 보이는 것을
+     바꾸면 무엇이 바뀌었는지 사람이 못 본다. */
+  const visibleKey = rows.map((r) => r.id).join(",");
+  useEffect(() => {
+    setSel((prev) => (prev.size === 0 ? prev : pruneSelection(prev, rows)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleKey]);
+
+  const pick = useCallback((id: number) => {
+    setSel((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }, []);
+
+  /** 한 건 보내고 결과를 그대로 돌려준다. 실패를 삼키지 않는다 (§G 051). */
+  const sendOne = useCallback(async (id: number, patch: Record<string, unknown>) => {
+    const r = await fetch(`/api/tasks/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (r.ok) return { ok: true, why: "" };
+    let body: unknown = null;
+    try { body = await r.json(); } catch { body = null; }
+    return { ok: false, why: whyFrom(r.status, body) };
+  }, []);
+
+  /** 목록을 다시 읽는다 — 화면이 서버와 갈리면 되돌리기가 엉뚱한 값을 쓴다. */
+  const reload = useCallback(async () => {
+    const r = await fetch("/api/tasks");
+    if (r.ok) setTasks((await r.json()).tasks ?? []);
+  }, []);
+
+  const runBulk = useCallback(async (c: BulkChange) => {
+    const targets = rows.filter((t) => sel.has(t.id));
+    const todo = targets.filter((t) => needsChange(t, c));
+    const field: BulkField = c.field;
+    const out = emptyResult(field);
+    out.skipped = targets.length - todo.length;
+    setBusy(true); setSent(0); setOutTotal(todo.length); setResult(null);
+    try {
+      for (const t of todo) {
+        // **직전 값을 먼저 손에 든다.** 보내고 나면 그 값은 어디에도 없다.
+        const before = beforeOf(t);
+        const r = await sendOne(t.id, patchFor(c));
+        if (r.ok) out.done.push(before);
+        // 한 건이 거부돼도 **멈추지 않는다.** 전부 되돌리면 나머지를 사람이 다시 한다.
+        else out.failed.push({ id: t.id, title: t.title, ok: false, why: r.why });
+        setSent((n) => n + 1);
+      }
+      await reload();
+    } finally {
+      setBusy(false);
+      setResult(out);
+    }
+  }, [rows, sel, sendOne, reload]);
+
+  /** 되돌리기 — **성공한 건만**, 각자 제 직전 값으로. 「전부 todo 로」가 아니다. */
+  const runUndo = useCallback(async () => {
+    if (result === null) return;
+    const back = result.done;
+    const out = emptyResult(result.field);
+    setBusy(true); setSent(0); setOutTotal(back.length);
+    try {
+      for (const b of back) {
+        const r = await sendOne(b.id, undoPatch(b, result.field));
+        if (r.ok) out.done.push(b);
+        else out.failed.push({ id: b.id, title: b.title, ok: false, why: r.why });
+        setSent((n) => n + 1);
+      }
+      await reload();
+    } finally {
+      setBusy(false);
+      // 되돌린 결과도 남긴다 — 되돌리다 실패한 건이 있으면 그것도 보여야 한다.
+      setResult({ ...out, field: result.field });
+    }
+  }, [result, sendOne, reload]);
+
+  const allPicked = rows.length > 0 && rows.every((t) => sel.has(t.id));
+
   const stateOf = (s: string): CbState =>
     s === "done" ? "done" : s === "doing" ? "doing" : s === "review" ? "review" : "todo";
 
@@ -244,6 +346,15 @@ export default function TasksView({
                 onClick={() => setQuery({ sort: sort === "due" ? "recent" : "due" })}>
           정렬 · {SORT_LABEL[sort]}
         </Button>
+        {/* 「전체 선택」 — **지금 보이는 것**만 고른다. 거르개 뒤에 숨은 것까지
+            고르면 사람이 못 본 것을 바꾸게 된다. */}
+        {tasks !== null && rows.length > 0 && (
+          <label className="v3-selall">
+            <input type="checkbox" checked={allPicked}
+                   onChange={() => setSel(allPicked ? new Set() : new Set(rows.map((t) => t.id)))} />
+            전체 선택
+          </label>
+        )}
       </div>
 
       {/*
@@ -397,6 +508,8 @@ export default function TasksView({
                   late={tone === "late"}
                   dueTone={tone}
                   clip={countLinks(t.description)}
+                  selected={sel.has(t.id)}
+                  onSelect={() => pick(t.id)}
                 />
               );
             })}
@@ -420,6 +533,17 @@ export default function TasksView({
             </button>
           )}
         </>)}
+
+      {/*
+        ── 작업 줄과 결과 줄 (057 §B) ───────────────────────────────
+        작업 줄은 **하나라도 골랐을 때만** 선다. 결과 줄은 닫기를 눌러야 없어진다 —
+        시간이 지나 사라지면 되돌릴 길도 같이 사라진다.
+      */}
+      {result !== null && (
+        <BulkResultBar r={result} busy={busy} onUndo={runUndo} onClose={() => setResult(null)} />
+      )}
+      <BulkBar n={sel.size} people={people} busy={busy} sent={sent} total={outTotal}
+               onChange={runBulk} onClear={() => setSel(new Set())} />
     </>
   );
 }
