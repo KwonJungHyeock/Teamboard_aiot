@@ -1,0 +1,847 @@
+[
+  {
+    "width": 390,
+    "screen": "오늘",
+    "url": "/v3",
+    "scrollW": 627,
+    "clientW": 390,
+    "overflow": true,
+    "culprits": [
+      {
+        "el": "div.v3-stat",
+        "right": 448,
+        "over": 58
+      },
+      {
+        "el": "div.v3-stat",
+        "right": 549,
+        "over": 159
+      },
+      {
+        "el": "div.v3-stat.warn",
+        "right": 627,
+        "over": 237
+      }
+    ],
+    "clipped": [],
+    "overlaps": [],
+    "dead": [],
+    "table": null,
+    "cols": null,
+    "cal": null,
+    "deadSkipped": 3
+  },
+  {
+    "width": 390,
+    "screen": "업무",
+    "url": "/v3/tasks",
+    "scrollW": 477,
+    "clientW": 390,
+    "overflow": true,
+    "culprits": [
+      {
+        "el": "span.v3-row-r",
+        "right": 477,
+        "over": 87
+      },
+      {
+        "el": "span.v3-row-r",
+        "right": 477,
+        "over": 87
+      },
+      {
+        "el": "span.v3-row-r",
+        "right": 477,
+        "over": 87
+      },
+      {
+        "el": "span.v3-row-r",
+        "right": 477,
+        "over": 87
+      },
+      {
+        "el": "span.v3-row-r",
+        "right": 477,
+        "over": 87
+      },
+      {
+        "el": "span.v3-row-r",
+        "right": 477,
+        "over": 87
+      },
+      {
+        "el": "span.v3-row-r",
+        "right": 477,
+        "over": 87
+      },
+      {
+        "el": "span.v3-row-r",
+        "right": 477,
+        "over": 87
+      },
+      {
+        "el": "span.v3-row-r",
+        "right": 477,
+        "over": 87
+      },
+      {
+        "el": "span.v3-row-r",
+        "right": 477,
+        "over": 87
+      },
+      {
+        "el": "span.v3-row-r",
+        "right": 477,
+        "over": 87
+      },
+      {
+        "el": "span.v3-row-r",
+        "right": 477,
+        "over": 87
+      }
+    ],
+    "clipped": [],
+    "overlaps": [],
+    "dead": [
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      }
+    ],
+    "table": null,
+    "cols": null,
+    "cal": null,
+    "deadSkipped": 34
+  },
+  {
+    "width": 390,
+    "screen": "상세",
+    "url": "/v3/tasks/21",
+    "scrollW": 420,
+    "clientW": 390,
+    "overflow": true,
+    "culprits": [],
+    "clipped": [
+      {
+        "el": "span.v3-due.t-stale",
+        "text": "가오픈 D-101",
+        "short": 24,
+        "ell": false
+      }
+    ],
+    "overlaps": [],
+    "dead": [],
+    "table": null,
+    "cols": null,
+    "cal": null,
+    "deadSkipped": 3
+  },
+  {
+    "width": 390,
+    "screen": "새업무",
+    "url": "/v3/new",
+    "scrollW": 390,
+    "clientW": 390,
+    "overflow": false,
+    "culprits": [],
+    "clipped": [],
+    "overlaps": [],
+    "dead": [],
+    "table": null,
+    "cols": null,
+    "cal": null,
+    "deadSkipped": 3
+  },
+  {
+    "width": 390,
+    "screen": "캘린더",
+    "url": "/v3/calendar",
+    "scrollW": 604,
+    "clientW": 390,
+    "overflow": true,
+    "culprits": [
+      {
+        "el": "div.v3-stat",
+        "right": 427,
+        "over": 37
+      },
+      {
+        "el": "a.v3-stat.warn",
+        "right": 504,
+        "over": 114
+      },
+      {
+        "el": "div.v3-stat",
+        "right": 604,
+        "over": 214
+      },
+      {
+        "el": "span.v3-sub",
+        "right": 405,
+        "over": 15
+      },
+      {
+        "el": "button.v3-btn.v3-sortbtn",
+        "right": 471,
+        "over": 81
+      },
+      {
+        "el": "div.v3-cal-w",
+        "right": 478,
+        "over": 88
+      },
+      {
+        "el": "div.v3-cal-w",
+        "right": 574,
+        "over": 184
+      },
+      {
+        "el": "div.v3-cal-w",
+        "right": 670,
+        "over": 280
+      },
+      {
+        "el": "div.v3-cal-w",
+        "right": 766,
+        "over": 376
+      },
+      {
+        "el": "div.v3-cal-w",
+        "right": 862,
+        "over": 472
+      },
+      {
+        "el": "div.v3-cal-w",
+        "right": 958,
+        "over": 568
+      },
+      {
+        "el": "div.v3-cal-d.out",
+        "right": 478,
+        "over": 88
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 574,
+        "over": 184
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 670,
+        "over": 280
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 766,
+        "over": 376
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 862,
+        "over": 472
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 958,
+        "over": 568
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 478,
+        "over": 88
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 574,
+        "over": 184
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 670,
+        "over": 280
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 766,
+        "over": 376
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 862,
+        "over": 472
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 958,
+        "over": 568
+      },
+      {
+        "el": "div.v3-cal-d.today",
+        "right": 478,
+        "over": 88
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 574,
+        "over": 184
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 670,
+        "over": 280
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 766,
+        "over": 376
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 862,
+        "over": 472
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 958,
+        "over": 568
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 478,
+        "over": 88
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 574,
+        "over": 184
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 670,
+        "over": 280
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 766,
+        "over": 376
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 862,
+        "over": 472
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 958,
+        "over": 568
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 478,
+        "over": 88
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 574,
+        "over": 184
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 670,
+        "over": 280
+      },
+      {
+        "el": "div.v3-cal-d.out",
+        "right": 766,
+        "over": 376
+      },
+      {
+        "el": "div.v3-cal-d.out",
+        "right": 862,
+        "over": 472
+      },
+      {
+        "el": "div.v3-cal-d.out",
+        "right": 958,
+        "over": 568
+      },
+      {
+        "el": "div.v3-cal-d.out",
+        "right": 478,
+        "over": 88
+      },
+      {
+        "el": "div.v3-cal-d.out",
+        "right": 574,
+        "over": 184
+      },
+      {
+        "el": "div.v3-cal-d.out",
+        "right": 670,
+        "over": 280
+      },
+      {
+        "el": "div.v3-cal-d.out",
+        "right": 766,
+        "over": 376
+      },
+      {
+        "el": "div.v3-cal-d.out",
+        "right": 862,
+        "over": 472
+      },
+      {
+        "el": "div.v3-cal-d.out",
+        "right": 958,
+        "over": 568
+      }
+    ],
+    "clipped": [],
+    "overlaps": [],
+    "dead": [
+      {
+        "el": "a.v3-stat.warn",
+        "why": "가로로 화면 밖"
+      },
+      {
+        "el": "button.v3-btn.v3-sortbtn",
+        "why": "가로로 화면 밖"
+      }
+    ],
+    "table": null,
+    "cols": null,
+    "cal": {
+      "cells": 42,
+      "cellW": 96,
+      "tmpl": "96px 96px 96px 96px 96px 96px 96px",
+      "scrolls": true
+    },
+    "deadSkipped": 1
+  },
+  {
+    "width": 390,
+    "screen": "팀현황",
+    "url": "/v3/team",
+    "scrollW": 423,
+    "clientW": 390,
+    "overflow": true,
+    "culprits": [
+      {
+        "el": "em",
+        "right": 395,
+        "over": 5
+      },
+      {
+        "el": "span.v3-col-n",
+        "right": 396,
+        "over": 6
+      },
+      {
+        "el": "span.v3-acct-av.v3-col-av",
+        "right": 392,
+        "over": 2
+      },
+      {
+        "el": "span.v3-col-n",
+        "right": 423,
+        "over": 33
+      }
+    ],
+    "clipped": [],
+    "overlaps": [],
+    "dead": [
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      },
+      {
+        "el": "a.v3-row-t",
+        "why": "크기 0"
+      }
+    ],
+    "table": null,
+    "cols": {
+      "n": 4,
+      "rows": 1,
+      "tmpl": "13px 13px 13px 13px",
+      "scrolls": true
+    },
+    "cal": null,
+    "deadSkipped": 11
+  },
+  {
+    "width": 390,
+    "screen": "집계",
+    "url": "/v3/stats",
+    "scrollW": 625,
+    "clientW": 390,
+    "overflow": true,
+    "culprits": [
+      {
+        "el": "button.v3-btn.v3-sortbtn",
+        "right": 413,
+        "over": 23
+      },
+      {
+        "el": "div.v3-stat",
+        "right": 448,
+        "over": 58
+      },
+      {
+        "el": "a.v3-stat.warn",
+        "right": 525,
+        "over": 135
+      },
+      {
+        "el": "div.v3-stat",
+        "right": 625,
+        "over": 235
+      }
+    ],
+    "clipped": [],
+    "overlaps": [],
+    "dead": [
+      {
+        "el": "button.v3-btn.v3-sortbtn",
+        "why": "가로로 화면 밖"
+      },
+      {
+        "el": "a.v3-stat.warn",
+        "why": "가로로 화면 밖"
+      }
+    ],
+    "table": null,
+    "cols": {
+      "n": 3,
+      "rows": 3,
+      "tmpl": "52px",
+      "scrolls": false
+    },
+    "cal": null,
+    "deadSkipped": 2
+  },
+  {
+    "width": 768,
+    "screen": "오늘",
+    "url": "/v3",
+    "scrollW": 768,
+    "clientW": 768,
+    "overflow": false,
+    "culprits": [],
+    "clipped": [],
+    "overlaps": [],
+    "dead": [],
+    "table": null,
+    "cols": null,
+    "cal": null,
+    "deadSkipped": 0
+  },
+  {
+    "width": 768,
+    "screen": "업무",
+    "url": "/v3/tasks",
+    "scrollW": 768,
+    "clientW": 768,
+    "overflow": false,
+    "culprits": [],
+    "clipped": [
+      {
+        "el": "a.v3-row-t",
+        "text": "[플랫폼] AI 학습추론모델 Git 이관(→",
+        "short": 36,
+        "ell": true
+      },
+      {
+        "el": "a.v3-row-t",
+        "text": "[기타] 에듀이노 팀 통합업무관리프로그램 제",
+        "short": 38,
+        "ell": true
+      },
+      {
+        "el": "a.v3-row-t",
+        "text": "[플랫폼] Playino 신제품 구성품리스트",
+        "short": 23,
+        "ell": true
+      },
+      {
+        "el": "a.v3-row-t",
+        "text": "[R&D] 연구개발 1차 구매 부품리스트 작",
+        "short": 13,
+        "ell": true
+      },
+      {
+        "el": "a.v3-row-t",
+        "text": "[R&D] 특허 관련 연구개발 요약서 및 사",
+        "short": 78,
+        "ell": true
+      },
+      {
+        "el": "a.v3-row-t",
+        "text": "[플랫폼] Playino 미니게임천국 피드백",
+        "short": 119,
+        "ell": true
+      }
+    ],
+    "overlaps": [],
+    "dead": [],
+    "table": null,
+    "cols": null,
+    "cal": null,
+    "deadSkipped": 19
+  },
+  {
+    "width": 768,
+    "screen": "상세",
+    "url": "/v3/tasks/21",
+    "scrollW": 768,
+    "clientW": 768,
+    "overflow": false,
+    "culprits": [],
+    "clipped": [],
+    "overlaps": [],
+    "dead": [],
+    "table": null,
+    "cols": null,
+    "cal": null,
+    "deadSkipped": 1
+  },
+  {
+    "width": 768,
+    "screen": "새업무",
+    "url": "/v3/new",
+    "scrollW": 768,
+    "clientW": 768,
+    "overflow": false,
+    "culprits": [],
+    "clipped": [],
+    "overlaps": [],
+    "dead": [],
+    "table": null,
+    "cols": null,
+    "cal": null,
+    "deadSkipped": 0
+  },
+  {
+    "width": 768,
+    "screen": "캘린더",
+    "url": "/v3/calendar",
+    "scrollW": 768,
+    "clientW": 768,
+    "overflow": false,
+    "culprits": [
+      {
+        "el": "div.v3-cal-w",
+        "right": 862,
+        "over": 94
+      },
+      {
+        "el": "div.v3-cal-w",
+        "right": 958,
+        "over": 190
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 862,
+        "over": 94
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 958,
+        "over": 190
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 862,
+        "over": 94
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 958,
+        "over": 190
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 862,
+        "over": 94
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 958,
+        "over": 190
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 862,
+        "over": 94
+      },
+      {
+        "el": "div.v3-cal-d",
+        "right": 958,
+        "over": 190
+      },
+      {
+        "el": "div.v3-cal-d.out",
+        "right": 862,
+        "over": 94
+      },
+      {
+        "el": "div.v3-cal-d.out",
+        "right": 958,
+        "over": 190
+      },
+      {
+        "el": "div.v3-cal-d.out",
+        "right": 862,
+        "over": 94
+      },
+      {
+        "el": "div.v3-cal-d.out",
+        "right": 958,
+        "over": 190
+      }
+    ],
+    "clipped": [],
+    "overlaps": [],
+    "dead": [],
+    "table": null,
+    "cols": null,
+    "cal": {
+      "cells": 42,
+      "cellW": 96,
+      "tmpl": "96px 96px 96px 96px 96px 96px 96px",
+      "scrolls": true
+    },
+    "deadSkipped": 1
+  },
+  {
+    "width": 768,
+    "screen": "팀현황",
+    "url": "/v3/team",
+    "scrollW": 768,
+    "clientW": 768,
+    "overflow": false,
+    "culprits": [],
+    "clipped": [
+      {
+        "el": "b",
+        "text": "권정혁",
+        "short": 34,
+        "ell": true
+      },
+      {
+        "el": "b",
+        "text": "박주희",
+        "short": 21,
+        "ell": true
+      },
+      {
+        "el": "b",
+        "text": "조서연",
+        "short": 21,
+        "ell": true
+      },
+      {
+        "el": "b",
+        "text": "ROBODYNE 관리자",
+        "short": 101,
+        "ell": true
+      }
+    ],
+    "overlaps": [],
+    "dead": [],
+    "table": null,
+    "cols": {
+      "n": 4,
+      "rows": 1,
+      "tmpl": "107.5px 107.5px 107.5px 107.5px",
+      "scrolls": false
+    },
+    "cal": null,
+    "deadSkipped": 7
+  },
+  {
+    "width": 768,
+    "screen": "집계",
+    "url": "/v3/stats",
+    "scrollW": 768,
+    "clientW": 768,
+    "overflow": false,
+    "culprits": [],
+    "clipped": [],
+    "overlaps": [],
+    "dead": [],
+    "table": null,
+    "cols": {
+      "n": 3,
+      "rows": 1,
+      "tmpl": "134px 134px 134px",
+      "scrolls": false
+    },
+    "cal": null,
+    "deadSkipped": 1
+  }
+]
