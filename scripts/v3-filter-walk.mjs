@@ -23,6 +23,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("v3-filter-walk.mjs");
 
@@ -206,7 +207,7 @@ try {
       && why.includes("담당") && why.includes("상태") && why.includes("검색"),
       `${rows0}행 · 「조건 지우기」 ${clearBtn}개 · 위 칩 [${zeroChips.join(" · ")}]` +
       ` · 이유 "${why.slice(0, 80)}"`);
-  await page.screenshot({ path: `${OUT}/B-필터-0건.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/B-필터-0건.png`, fullPage: true });
 
   // 눌러서 실제로 풀리는지도 본다 — 버튼이 있는 것과 듣는 것은 다르다.
   await page.locator(".v3-card .v3-btn").filter({ hasText: "조건 지우기" }).first().click();

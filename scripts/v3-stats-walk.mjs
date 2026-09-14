@@ -23,6 +23,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("v3-stats-walk.mjs");
 
@@ -198,7 +199,7 @@ try {
       ` · 화면 "${shownMonth}"`);
   await page.goto(`${BASE}/v3/stats`, { waitUntil: "networkidle" });
   await page.locator(".v3-tbl").first().waitFor({ timeout: 9000 });
-  await page.screenshot({ path: `${OUT}/B-집계.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/B-집계.png`, fullPage: true });
 
   // ── ⑦ 합이 어긋나면 화면이 말한다 ─────────────────────────────
   //

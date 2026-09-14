@@ -20,6 +20,7 @@ import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("subtask-walk.mjs");
 
@@ -153,7 +154,7 @@ try {
   const yProp = (await page.locator(".tdp .prop-b, .tdp .prop-row").first().boundingBox())?.y ?? -1;
   const yStx = (await page.locator(".tdp .stx").boundingBox())?.y ?? -1;
   const yDoc = (await page.locator(".tdp .tdp-doc").boundingBox())?.y ?? -1;
-  await page.screenshot({ path: `${OUT}/A1-하위업무섹션.png` });
+  await shot(page, { path: `${OUT}/A1-하위업무섹션.png` });
   chk("A1-위치와규격",
     yProp > 0 && yProp < yStx && yStx < yDoc && rowsN === 2 && Math.round(rowH?.height ?? 0) === ROW_H && iti === 1,
     `제목 줄 "${secH.replace(/\n/g, " ")}" · 행 ${rowsN}개 · 행 높이 ${Math.round(rowH?.height ?? 0)}px(--row-h ${ROW_H} 이어야) · ` +
@@ -169,7 +170,7 @@ try {
   await page.waitForTimeout(1400);
   const kidStx = await page.locator(".tdp .stx").count();
   const kidTitle = await page.locator(".tdp .tdp-title").inputValue().catch(() => "");
-  await page.screenshot({ path: `${OUT}/A2-하위상세.png` });
+  await shot(page, { path: `${OUT}/A2-하위상세.png` });
   chk("A2-하위엔섹션없음", kidStx === 0 && kidTitle.includes(MARK),
     `하위 업무 "${kidTitle}" 상세의 하위 업무 섹션 ${kidStx}개(0이어야 한다 — 눌러도 안 되는 것은 안 보인다)`);
 
@@ -216,7 +217,7 @@ try {
     .evaluate((el) => getComputedStyle(el).paddingLeft).catch(() => "?");
   const plainIndent = await page.locator("tbody tr:not(.sub-row) td.sub-cell").first()
     .evaluate((el) => getComputedStyle(el).paddingLeft).catch(() => "(상위엔 .sub-cell 없음)");
-  await page.screenshot({ path: `${OUT}/A3-목록펼침.png` });
+  await shot(page, { path: `${OUT}/A3-목록펼침.png` });
   chk("A3-캐럿과들여쓰기",
     cvCount === 1 && cvTotal === 1 && subBefore === 0 && subAfter === 2 && indent === "22px",
     `이 행의 캐럿 ${cvCount}개 · 표 전체 캐럿 ${cvTotal}개(하위를 가진 상위 1건뿐이므로 1) · ` +

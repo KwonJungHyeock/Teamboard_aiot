@@ -12,6 +12,7 @@ import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("task-create-walk.mjs");
 
@@ -43,7 +44,7 @@ try {
   const page = await ctx.newPage();
   const errs = [];
   page.on("pageerror", (e) => errs.push(e.message));
-  const shot = (id) => page.screenshot({ path: `${OUT}/${id}.png` });
+  const shot = (id) => shot(page, { path: `${OUT}/${id}.png` });
   const box = (sel) => page.locator(sel).first().boundingBox();
 
   const areaId = (await sql(`SELECT id FROM area WHERE is_active ORDER BY sort_order LIMIT 1`))[0].id;

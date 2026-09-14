@@ -9,6 +9,7 @@ import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("goal-screen-walk.mjs");
 
@@ -81,7 +82,7 @@ try {
   const ycD = await page.locator(".ycard-d").first().innerText().catch(() => "");
   const ycM = await page.locator(".ycard-m").first().innerText().catch(() => "");
   const inTree = await page.locator(".qsec .ycard, .qsec-b .ycard").count();
-  await page.screenshot({ path: `${OUT}/B1-연간카드.png` });
+  await shot(page, { path: `${OUT}/B1-연간카드.png` });
   const f2 = await token("--f2");
   chk("B1-연간카드", yc > 0 && ycTitleFs === f2 && ycBarH && Math.round(ycBarH.height) === 6 && inTree === 0,
     `연간 카드 ${yc}개 · 제목 ${ycTitleFs} · 진척 바 ${ycBarH ? Math.round(ycBarH.height) : "?"}px · 남은 기간 "${ycD}" · 진척 "${ycM.replace(/\n+/g, " ")}" · 트리 안에 남은 연간 ${inTree}개(0이어야 한다)`);
@@ -96,7 +97,7 @@ try {
   const shutProg = await page.locator(".qsec:not(.open) .gpv").count();
   const shutTotal = await page.locator(".qsec:not(.open)").count();
   const addPerSec = await page.locator(".qsec.open .qsec-b .gadd").count();
-  await page.screenshot({ path: `${OUT}/B2-분기섹션.png` });
+  await shot(page, { path: `${OUT}/B2-분기섹션.png` });
   chk("B2-분기섹션", qs > 0 && qBar === "3px",
     `분기 섹션 ${qs}개 · 펼친 것 ${qOpen}개(현재 분기만) · 헤더 제목 ${qHfs} · 좌측 색 바 ${qBar}`);
   chk("B2-접혀도진척", shutTotal === 0 || shutProg === shutTotal,
@@ -111,7 +112,7 @@ try {
   const chipsBefore = await page.locator(".qsec-b .gtasks").count();
   const nBtn = page.locator(".qsec-b .grow-n").first();
   const nTxt = await nBtn.innerText().catch(() => "(없음)");
-  await page.screenshot({ path: `${OUT}/B3-월행.png` });
+  await shot(page, { path: `${OUT}/B3-월행.png` });
   const f4 = await token("--f4");
   chk("B3-월행", rowBox && Math.round(rowBox.height) === 38 && rowFs === f4 && rowPad === "22px",
     `월 행 높이 ${rowBox ? Math.round(rowBox.height) : "?"}px · 글자 ${rowFs} · 들여쓰기 ${rowPad}`);
@@ -121,7 +122,7 @@ try {
     await nBtn.click();
     await page.waitForTimeout(400);
     const chipsAfter = await page.locator(".qsec-b .gtasks").count();
-    await page.screenshot({ path: `${OUT}/B3-칩펼침.png` });
+    await shot(page, { path: `${OUT}/B3-칩펼침.png` });
     chk("B3-누르면펼침", chipsAfter > 0, `"${nTxt}" 클릭 → 칩 묶음 ${chipsAfter}개 (짝이 되는 존재 단언)`);
   } else {
     bad("B3-누르면펼침", "연결 업무가 있는 월 행이 없어 검사 불가");
@@ -136,7 +137,7 @@ try {
   await page.goto(`${BASE}/goals?panel=goal:${g.id}`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1500);
   const pBox = await box(".gdp");
-  await page.screenshot({ path: `${OUT}/C1-패널560.png` });
+  await shot(page, { path: `${OUT}/C1-패널560.png` });
   chk("C1-패널폭", pBox && Math.round(pBox.width) === 560,
     `패널 폭 ${pBox ? Math.round(pBox.width) : "?"}px (560 이어야 한다)`);
 
@@ -163,7 +164,7 @@ try {
   }
   const afterVal = await sl.inputValue().catch(() => "?");
   const dbVal = (await sql(`SELECT progress FROM task WHERE id=$1`, [t.id]))[0].progress;
-  await page.screenshot({ path: `${OUT}/C1-슬라이더.png` });
+  await shot(page, { path: `${OUT}/C1-슬라이더.png` });
   chk("C1-슬라이더", !!slBox && afterVal !== beforeVal && Number(dbVal) === Number(afterVal),
     `업무 패널 폭 ${tdpBox ? Math.round(tdpBox.width) : "?"}px · 슬라이더 트랙 ${slBox ? Math.round(slBox.width) : "없음"}px · ` +
     `마우스로 끌어 ${beforeVal}% → ${afterVal}% · DB ${dbVal}% (화면과 DB 가 같아야 한다)`);
@@ -181,7 +182,7 @@ try {
   await page.locator(".gdp .tdp-title").first().fill(`${before} [편집실측]`);
   await page.waitForTimeout(300);
   const icons = await page.locator(".gdp-ic button").allTextContents();
-  await page.screenshot({ path: `${OUT}/D3-인라인확정.png` });
+  await shot(page, { path: `${OUT}/D3-인라인확정.png` });
   chk("D3-확정수단", icons.length === 2,
     `편집 중 노출된 버튼 [${icons.join(", ")}] (확정·취소 둘)`);
 
@@ -189,7 +190,7 @@ try {
   await page.waitForTimeout(1500);
   const savedTxt = await page.locator(".gdp .tdp-save").innerText().catch(() => "");
   const afterTitle = (await sql(`SELECT title FROM goal WHERE id=$1`, [g.id]))[0].title;
-  await page.screenshot({ path: `${OUT}/D2-저장성공.png` });
+  await shot(page, { path: `${OUT}/D2-저장성공.png` });
   chk("D2-저장성공", /저장됨/.test(savedTxt) && afterTitle.endsWith("[편집실측]"),
     `✓ 클릭 → 헤더 "${savedTxt.replace(/\n+/g, " ")}" · DB 제목 "${afterTitle}"`);
 
@@ -203,7 +204,7 @@ try {
   await page.waitForTimeout(1200);
   const failTxt = await page.locator(".gdp .tdp-save").innerText().catch(() => "");
   const retry = await page.locator(".gdp-retry").count();
-  await page.screenshot({ path: `${OUT}/D2-저장실패.png` });
+  await shot(page, { path: `${OUT}/D2-저장실패.png` });
   chk("D2-저장실패", /저장 실패/.test(failTxt) && retry === 1,
     `PUT 500 → 헤더 "${failTxt.replace(/\n+/g, " ")}" · "다시 시도" ${retry}개 (조용히 넘어가지 않는다)`);
   await page.unroute("**/api/goals/*");
@@ -217,7 +218,7 @@ try {
   const mBox = await box(".gdp-full");
   const afterCount = await page.locator(".gdp").count();
   const url = new URL(page.url());
-  await page.screenshot({ path: `${OUT}/C2-확대모달.png` });
+  await shot(page, { path: `${OUT}/C2-확대모달.png` });
   chk("C2-모달폭", mBox && Math.round(mBox.width) === 880,
     `확대 모달 ${mBox ? `${Math.round(mBox.width)}×${Math.round(mBox.height)}` : "없음"}px (폭 880)`);
   chk("C2-컴포넌트하나", beforeCount === 1 && afterCount === 1,
@@ -242,7 +243,7 @@ try {
   await page.waitForTimeout(700);
   const advNote = await page.locator(".gdp-adv-n").innerText().catch(() => "(없음)");
   const advSel = await page.locator(".gdp-adv select").count();
-  await page.screenshot({ path: `${OUT}/A5-고급.png` });
+  await shot(page, { path: `${OUT}/A5-고급.png` });
   chk("A5-고급접힘", advOpen === 0 && advSum === "고급",
     `기본 상태에서 열린 「고급」 ${advOpen}개(0이어야 한다) · 요약 "${advSum}"`);
   chk("A5-고급내용", advSel === 1,

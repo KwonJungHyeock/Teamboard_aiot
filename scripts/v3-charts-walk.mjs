@@ -26,6 +26,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("v3-charts-walk.mjs");
 
@@ -244,7 +245,7 @@ try {
       hit.top === "-8px" && hit.bottom === "-8px",
       `조각 높이 ${hit.h}px · 잡히는 영역이 위아래로 ${hit.top}/${hit.bottom} 만큼 넓다` +
       ` — 폭은 안 늘린다(비율이 거짓말하면 안 된다)`);
-  await page.screenshot({ path: `${OUT}/B-원그래프.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/B-원그래프.png`, fullPage: true });
 
   // ── ⑨ 표로 보기 — 같은 숫자 ──────────────────────────────────
   await page.locator(".v3-chartbtn").click();
@@ -258,7 +259,7 @@ try {
       tblPct.join("|") === wantCells.join("|")
       && tbl2.slice(0, 4).join("|") === monthDist.segments.map((s) => String(s.n)).join("|"),
       `기간 표 [${tblPct.join(", ")}] · 상태 표 [${tbl2.join(", ")}]`);
-  await page.screenshot({ path: `${OUT}/B-표로보기.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/B-표로보기.png`, fullPage: true });
   await page.locator(".v3-chartbtn").click();
 
   // ── ⑪ 달을 옮기면 셋이 다 따라간다 ────────────────────────────

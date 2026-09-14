@@ -26,6 +26,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("v3-links-walk.mjs");
 
@@ -206,7 +207,7 @@ try {
       `http 칩 ${nInsecure}개 · http 로 뜨는 img ${insecureImg}개` +
       ` · 칩 글 "${(await insecureChip.innerText().catch(() => "")).replace(/\s+/g, " ")}"`);
 
-  await page.screenshot({ path: `${OUT}/C-첨부.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/C-첨부.png`, fullPage: true });
 
   // ── ⑥ 쓰기 요청은 우리가 한 저장 하나뿐 ────────────────────────
   const notOurs = writes.filter((w) => !w.endsWith(`/api/tasks/${madeId}`));

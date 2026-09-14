@@ -28,6 +28,7 @@ import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("agent-usage-walk.mjs");
 
@@ -159,7 +160,7 @@ try {
   chk("⑦-목록=건수", taskRows === db.e && draftRows === db.d,
       `에이전트 업무 ${taskRows}/${db.e} · 초안 ${draftRows}/${db.d} (월간 보고 ${db.d2}건은 목록에서 뺀다)`);
 
-  await page.screenshot({ path: `${OUT}/agent-usage.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/agent-usage.png`, fullPage: true });
 
   // ⑧ 소스에 쓰기 경로가 없다 — 화면에 버튼이 없어도 API 가 쓰면 소용없다.
   const src = fs.readFileSync("app/api/admin/agent-usage/route.ts", "utf8")
@@ -178,7 +179,7 @@ try {
       `눌렀더니 → ${new URL(page.url()).pathname}`);
 
   await page.waitForTimeout(400);
-  await page.screenshot({ path: `${OUT}/agent-usage-nav.png`, clip: { x: 0, y: 0, width: 720, height: 1100 } });
+  await shot(page, { path: `${OUT}/agent-usage-nav.png`, clip: { x: 0, y: 0, width: 720, height: 1100 } });
 
   chk("⑩-콘솔오류", errs.length === 0, `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}`);
   await ctx.close();

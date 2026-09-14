@@ -31,6 +31,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("v3-switch-walk.mjs");
 
@@ -175,7 +176,7 @@ try {
     chk("④-켜면-v3-가-열린다",
         landed === "/v3" && res?.status() === 200 && WANT.every((w) => railNames.includes(w)),
         `→ ${landed} (${res?.status()}) · 레일 [${railNames.join(" · ")}]`);
-    await page.screenshot({ path: `${OUT}/v3-parts.png`, fullPage: true });
+    await shot(page, { path: `${OUT}/v3-parts.png`, fullPage: true });
 
     /*
      * 겉모습(취소선 · 행 높이) 확인은 **여기 있지 않다.**
@@ -188,7 +189,7 @@ try {
     // 설정 화면 — 스위치가 어떻게 보이는지도 남긴다.
     await page.goto(`${BASE}/settings`, { waitUntil: "networkidle" });
     await page.waitForTimeout(700);
-    await page.screenshot({ path: `${OUT}/v3-switch.png`, fullPage: true });
+    await shot(page, { path: `${OUT}/v3-switch.png`, fullPage: true });
   }
   {
     // **짝이 없는** 옛 화면에서 본다. `/` 는 이제 v3 로 가므로 옛 사이드바가 없다 —

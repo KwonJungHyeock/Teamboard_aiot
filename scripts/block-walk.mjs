@@ -15,6 +15,7 @@ import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("block-walk.mjs");
 
@@ -74,7 +75,7 @@ try {
   await page.locator(".tdp .tcb .pcb-o", { hasText: `${MARK} A` }).first().click();
   await page.waitForTimeout(1400);
   const bRow = await one(`SELECT blocked, blocked_by FROM task WHERE id = $1`, [B]);
-  await page.screenshot({ path: `${OUT}/B1-지정.png` });
+  await shot(page, { path: `${OUT}/B1-지정.png` });
   chk("B1-콤보로지정",
     comboSeen === 1 && noneFirst.includes("차단 없음") && bRow.blocked === true && bRow.blocked_by === A,
     `콤보 ${comboSeen}개 · 첫 줄 "${noneFirst.replace(/\n/g, " ")}" · ` +
@@ -100,7 +101,7 @@ try {
   await page.waitForTimeout(1200);
   const cycText = await page.locator(".tdp .pcb-err").innerText().catch(() => "(문구 없음)");
   const aRow = await one(`SELECT blocked, blocked_by FROM task WHERE id = $1`, [A]);
-  await page.screenshot({ path: `${OUT}/B1-순환거부.png` });
+  await shot(page, { path: `${OUT}/B1-순환거부.png` });
   chk("B1-순환은화면에서막힌다",
     aRow.blocked_by === null && cycText.includes("순환"),
     `저장 안 됨(blocked_by=${aRow.blocked_by}) · **화면 문구**:\n        "${cycText}"`);
@@ -120,7 +121,7 @@ try {
   await page.waitForTimeout(1500);
   const aRowsText = await page.locator(".tdp .prop-row").allInnerTexts();
   const aHas = aRowsText.some((x) => x.includes("이 업무가 막는 업무"));
-  await page.screenshot({ path: `${OUT}/B2-역방향.png` });
+  await shot(page, { path: `${OUT}/B2-역방향.png` });
   await page.goto(`${BASE}/tasks?panel=task:${B}`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1500);
   const bRowsText = await page.locator(".tdp .prop-row").allInnerTexts();
@@ -146,7 +147,7 @@ try {
     const p = document.createElement("span"); p.style.color = "var(--coral)";
     document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c;
   });
-  await page.screenshot({ path: `${OUT}/B3-목록칩.png` });
+  await shot(page, { path: `${OUT}/B3-목록칩.png` });
   chk("B3-칩은앰버이고코랄아님",
     chipText.trim() === "차단됨" && chipCss.tag === "BUTTON" && chipCss.bg !== coral,
     `칩 "${chipText.trim()}" · ${chipCss.tag}(원인이 있으면 누를 수 있어야 한다) · ` +
@@ -178,7 +179,7 @@ try {
   await page.goto(`${BASE}/tasks?panel=task:${B}`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1600);
   const noteText = await page.locator(".tdp .blkdone").innerText().catch(() => "(없음)");
-  await page.screenshot({ path: `${OUT}/B4-원인완료안내.png` });
+  await shot(page, { path: `${OUT}/B4-원인완료안내.png` });
   await page.locator(".tdp .blkdone .lk").click();
   await page.waitForTimeout(1600);
   const bFreed = await one(`SELECT blocked, blocked_by FROM task WHERE id = $1`, [B]);

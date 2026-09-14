@@ -14,6 +14,7 @@ import { scryptSync, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("member-boundary.mjs");
 
@@ -188,7 +189,7 @@ async function look(user, tag) {
     await page.waitForTimeout(700);
     if (await dismissFirstRun(page)) sawFirstRun = true;
     out[c.id] = await c.check(page).catch(() => false);
-    if (tag === "member") await page.screenshot({ path: `${OUT}/${tag}-${c.id}.png` });
+    if (tag === "member") await shot(page, { path: `${OUT}/${tag}-${c.id}.png` });
   }
   await ctx.close();
   out.__firstRun = sawFirstRun;

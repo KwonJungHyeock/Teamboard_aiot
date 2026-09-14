@@ -16,6 +16,7 @@ import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-031/C";
@@ -135,7 +136,7 @@ try {
   const t1 = await tiles();
   chk("C1-내가 막는 것 (만들어서 잼)", t1["내가 막는 것"].n === before + 1 && !t1["내가 막는 것"].zero,
     `전 ${before} → 후 ${t1["내가 막는 것"].n} · 사유 "${t1["내가 막는 것"].why}"`);
-  await page.screenshot({ path: `${OUT}/C1-타일.png`, clip: { x: 180, y: 120, width: 1250, height: 300 } });
+  await shot(page, { path: `${OUT}/C1-타일.png`, clip: { x: 180, y: 120, width: 1250, height: 300 } });
 
   // 타일을 눌러 그 조건이 걸린 목록으로 가고, **주소에 남는가**
   await page.goto(`${BASE}${t1["내가 막는 것"].href}`, { waitUntil: "networkidle" });

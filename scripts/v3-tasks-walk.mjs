@@ -34,6 +34,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("v3-tasks-walk.mjs");
 
@@ -249,7 +250,7 @@ try {
       `전체 칩 ${allChip2} · DB ${rows.length} (완료 ${doneN}건이 빠지지 않았다)`);
 
   // 거르기 전 전체 목록도 남긴다 — 걸러진 화면만 있으면 결을 못 본다.
-  await page.screenshot({ path: `${OUT}/v3-tasks.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/v3-tasks.png`, fullPage: true });
 
   // ── ⑧ 정렬이 주소에 담긴다 ──────────────────────────────────────
   const firstTitle = async () => (await page.locator(".v3-card .v3-row .v3-row-t").first().innerText()).trim();
@@ -278,7 +279,7 @@ try {
   chk("⑨-거르기가-주소에-담긴다",
       u9.searchParams.get("cat") === String(ghostArea) && n9 === madeTasks.length,
       `?cat=${u9.searchParams.get("cat")} · 행 ${n9} (만든 ${madeTasks.length}건)`);
-  await page.screenshot({ path: `${OUT}/v3-tasks-filtered.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/v3-tasks-filtered.png`, fullPage: true });
 
   /*
    * ── ⑩ 상세로 가는 링크가 안 삼켜진다 ──────────────────────────

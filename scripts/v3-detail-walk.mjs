@@ -45,6 +45,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("v3-detail-walk.mjs");
 
@@ -216,7 +217,7 @@ try {
   const filledOpenBg = await bg(filledChip);
   chk("③짝-값-든-칩도-펼치면-흰-바탕", filledOpenBg === openBg && filledOpenBg !== filledBg,
       `담당 칩: 값 있음 ${filledBg} → 펼침 ${filledOpenBg} (빈 칩 펼침 ${openBg} 과 같다)`);
-  await page.screenshot({ path: `${OUT}/v3-chips.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/v3-chips.png`, fullPage: true });
 
   // ══ §0 담당 없음 ＋ 아바타가 사라졌다 ═══════════════════════════
   await page.goto(`${BASE}/v3/tasks`, { waitUntil: "networkidle" });
@@ -390,7 +391,7 @@ try {
   chk("⑩-거부-이유가-서버-그대로",
       rej.status >= 400 && typeof rej.body?.error === "string",
       `PATCH ${rej.status} · "${rej.body?.error}" — 화면은 이 문구를 그대로 낸다`);
-  await page.screenshot({ path: `${OUT}/v3-detail.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/v3-detail.png`, fullPage: true });
 
   // ══ §B-3 링크가 전부 새 상세로 ═════════════════════════════════
   //
@@ -523,7 +524,7 @@ try {
       reconciled && split.open === api.none,
       `달력 재료 기한없음 ${split.total}건(안 끝난 것 ${split.open}건) · 네 숫자의 기한 없음 ${api.none}` +
       ` · 안내줄 "${lede.slice(0, 90)}"`);
-  await page.screenshot({ path: `${OUT}/v3-calendar.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/v3-calendar.png`, fullPage: true });
 
   chk("⑲-콘솔오류", errs.length === 0, `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}`);
   await ctx.close();

@@ -23,6 +23,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("v3-team-walk.mjs");
 
@@ -192,7 +193,7 @@ try {
   chk("⑤-다섯까지-+-더-보기",
       shownN === COL_MAX && /^＋\d+건 더 보기$/.test(moreTxt) && afterN === 6,
       `여섯 건 몰아줌 → ${shownN}건 + "${moreTxt}" → 펼치면 ${afterN}건`);
-  await page.screenshot({ path: `${OUT}/A-팀현황.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/A-팀현황.png`, fullPage: true });
 
   // ── ③ 칩을 눌러도 열이 그대로 있고 건수만 준다 ─────────────────
   const before3 = await colNames();
@@ -205,7 +206,7 @@ try {
       before3.join("|") === after3.join("|") && sumAfter < sumBefore,
       `열 ${before3.length}개 → ${after3.length}개(같아야 한다) · 합 ${sumBefore} → ${sumAfter}(줄어야 한다)` +
       ` · 주소 ${new URL(page.url()).search}`);
-  await page.screenshot({ path: `${OUT}/A-팀현황-거름.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/A-팀현황-거름.png`, fullPage: true });
 
   chk("⑨-콘솔오류", errs.length === 0, `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}`);
   await ctx.close();

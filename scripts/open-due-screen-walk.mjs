@@ -33,6 +33,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("open-due-screen-walk.mjs");
 
@@ -210,7 +211,7 @@ try {
   const link = page.locator('.grp a[href="/open-due"]');
   chk("⑧-팀장이-찾아간다", await link.count() === 1, `사이드바 「관리」에 링크 ${await link.count()}개`);
 
-  await page.screenshot({ path: `${OUT}/open-due.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/open-due.png`, fullPage: true });
   chk("⑨-콘솔오류", errs.length === 0, `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}`);
   await ctx.close();
 
