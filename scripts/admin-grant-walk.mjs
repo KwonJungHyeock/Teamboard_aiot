@@ -150,7 +150,7 @@ try {
   const forced = await g1.page.put(M1.id, { adminGrant: false });
   chk("④짝-API도-막힌다", forced.status === 400, `PUT ${forced.status} · ${forced.body?.error ?? "—"}`);
 
-  await g1.shot(page, { path: `${OUT}/members-grant.png`, fullPage: true });
+  await shot(g1.page, { path: `${OUT}/members-grant.png`, fullPage: true });
 
   // ══ ⑥ role='admin' 계정으로 팀장 자리 (hasLead 를 안 건드렸다는 확인) ══
   const teamWork = async (page, who) => {

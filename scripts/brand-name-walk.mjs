@@ -271,6 +271,14 @@ try {
     const c = await signed(390, 844);
     const p = await open(c);
     await p.goto(`${BASE}/v3`, { waitUntil: "networkidle" });
+    /*
+     * 059 §B ① 뒤로는 **레일이 서랍이다.** 닫혀 있을 때는 `visibility: hidden`
+     * 이라 `innerText` 가 빈 글자로 온다 — 처음엔 그걸 「이름이 사라졌다」로 읽고
+     * 실패했다. 화면이 옳고 검사기가 옛 화면을 묻고 있었다.
+     * 사람이 하는 대로 ☰ 를 눌러 열고 나서 잰다.
+     */
+    await p.locator(".v3-burger").click();
+    await p.waitForTimeout(320);                 // 서랍이 미끄러져 나올 때까지
     const el = p.locator(".v3-rail-brand small");
     const narrow = { text: (await el.innerText()).trim(), clipped: await el.evaluate(CLIPPED),
                      lines: await el.evaluate((n) => n.getClientRects().length) };
