@@ -147,6 +147,24 @@ try {
                  adminGrant: me.admin_grant, email: "x@x" }) }]);
   const page = await ctx.newPage();
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
+  /*
+   * ── 059 §B ⑥ **경고까지** 센다 ─────────────────────────────────
+   * 하이드레이션 문제는 `error` 가 아니라 `warning` 으로 나온다. 오류만 세던
+   * ⑲ 는 상세를 열 때마다 뜨던 「버튼 안 버튼」을 046 부터 한 번도 못 봤다.
+   */
+  const warns = [], rejected = [];
+  page.on("console", (m) => {
+    const t = m.text();
+    if (m.type() === "warning") { warns.push(t.slice(0, 140)); return; }
+    if (m.type() !== "error") return;
+    /*
+     * 이 검사기는 **일부러** 400·403 을 만든다(빈 제목 · 못 가는 전이 …).
+     * 그때 브라우저가 콘솔에 적는 「Failed to load resource … 400」은 고장이
+     * 아니라 우리가 만든 조건이다. 전부 눈감지 않고 그 문장만 따로 센다.
+     */
+    if (/Failed to load resource.*(400|403)/.test(t)) { rejected.push(t.slice(0, 90)); return; }
+    errs.push(t.slice(0, 140));
+  });
   const bg = (l) => l.evaluate((el) => getComputedStyle(el).backgroundColor);
 
   /*
@@ -526,7 +544,38 @@ try {
       ` · 안내줄 "${lede.slice(0, 90)}"`);
   await shot(page, { path: `${OUT}/v3-calendar.png`, fullPage: true });
 
-  chk("⑲-콘솔오류", errs.length === 0, `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}`);
+  /*
+   * ── ⑳ 버튼 안 버튼이 없다 (059 §B ⑥) ──────────────────────────
+   *
+   * HTML 에서 `<button>` 안의 `<button>` 은 금지다. 브라우저가 마크업을 제 맘대로
+   * 고쳐서 서버가 그린 것과 달라지고, React 가 하이드레이션 경고를 낸다.
+   * 상세의 상태 고르개가 그랬다 — 046 §B 부터.
+   *
+   * 짝조건으로 **일부러 하나 만들어** 이 단언이 실제로 잡는지 본다. 안 그러면
+   * 「0개다」가 늘 참인지 재는 게 없는지 구별이 안 된다(§G 054).
+   */
+  await page.goto(`${BASE}${taskHref(subject)}`, { waitUntil: "networkidle" });
+  await page.locator(".v3-stbtn").first().waitFor({ timeout: 9000 });
+  const nested = await page.evaluate(() => document.querySelectorAll("button button").length);
+  const hydra = warns.filter((w) => /cannot be a descendant|hydration/i.test(w));
+  chk("⑳-버튼-안-버튼이-없다", nested === 0 && hydra.length === 0,
+      `button 안 button ${nested}개 · 하이드레이션 경고 ${hydra.length}건` +
+      `${hydra.length ? ` — ${hydra[0].slice(0, 70)}` : ""}`);
+  const forced = await page.evaluate(() => {
+    const b = document.querySelector(".v3-stbtn");
+    if (!b) return -1;
+    const inner = document.createElement("button");
+    b.appendChild(inner);
+    const n = document.querySelectorAll("button button").length;
+    inner.remove();
+    return n;
+  });
+  chk("⑳짝-버튼-안-버튼을-잡을-수-있다", forced >= 1,
+      `일부러 하나 넣어 보니 ${forced}개로 잡혔다 (되돌림) — 0이면 ⑳ 은 아무것도 안 잰다`);
+
+  chk("⑲-콘솔오류", errs.length === 0,
+      `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}` +
+      ` (이 검사기가 일부러 만든 400·403 ${rejected.length}건은 따로 셌다)`);
   await ctx.close();
 
   console.log(`\n${pass}/${pass + fail} 통과`);

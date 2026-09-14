@@ -148,3 +148,48 @@ export function openDay(openAtMs: number, timeZone = "Asia/Seoul"): string {
     timeZone, year: "numeric", month: "2-digit", day: "2-digit",
   }).format(new Date(openAtMs));
 }
+
+/* ══ 059 §B ⑤ — 폰에서는 목록으로 ═══════════════════════════════════
+
+   7칸 × 96px = 672px 는 390px 안에 안 들어간다. 칸을 더 줄이면 알약에 글자가
+   한 자도 안 들어가고, 가로 스크롤로 두면 이번 주와 다음 주를 **같이 못 본다**.
+   달력의 쓸모가 그 비교라서, 폰에서는 아예 **날짜별 목록**으로 바꾼다. */
+
+/** 목록 한 줄 — 하루와 그날 업무. */
+export interface DayEntry {
+  date: string;
+  /** 「9월 14일 (월)」 */
+  label: string;
+  rows: TaskRow[];
+  isToday: boolean;
+  isOpen: boolean;
+}
+
+/**
+ * 그 달에서 **업무가 있는 날만** 차례로.
+ *
+ * 빈 날까지 서른 줄을 늘어놓으면 스크롤만 길어지고 읽을 것이 없다. 격자는
+ * 빈 칸도 그려야 주(週)의 모양이 보이지만, 목록에는 모양이 없다.
+ *
+ * 앞뒤 달에서 딸려 온 날은 뺀다 — 격자에서는 주가 끊겨 보이지 않게 하려고
+ * 그렸지만, 목록에서는 그냥 남의 달이다.
+ */
+export function dayList(days: Map<string, TaskRow[]>, ym: string,
+                        today: string, open: string): DayEntry[] {
+  const out: DayEntry[] = [];
+  // `Array.from` 으로 편다 — tsc 목표가 낮아 Map 을 바로 못 돈다(051 에서 같은 자리).
+  for (const [date, rows] of Array.from(days.entries())) {
+    if (!inMonth(date, ym) || rows.length === 0) continue;
+    out.push({ date, label: dayLabel(date), rows,
+               isToday: date === today, isOpen: date === open });
+  }
+  out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  return out;
+}
+
+/** 「9월 14일 (월)」 — 요일까지 적는다. 숫자만 있으면 주말인지 모른다. */
+export function dayLabel(date: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const w = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${m}월 ${d}일 (${w})`;
+}

@@ -254,6 +254,9 @@
 .v3-cb.done { border-color: var(--v3-done); background: var(--v3-done); color: #fff; }
 .v3-cb svg { width: 13px; height: 13px; }
 .v3-cb:disabled { cursor: default; opacity: .6; }
+/* 059 §B ⑥ — 누를 수 없는 네모는 `<span>` 이다(버튼 안 버튼을 안 만들려고).
+   모양은 같아야 하므로 버튼에서 오던 것만 되돌려 준다. */
+.v3-cb.mark { cursor: inherit; opacity: .6; box-sizing: border-box; }
 
 /* ── EmptyState — **이유와 다음 행동**을 적는다 (SYSTEMFLOW 8-4) ── */
 .v3-empty { padding: 26px 4px; text-align: left; }
@@ -268,8 +271,13 @@
 .v3-lede { margin: 0 0 22px; color: var(--v3-ink-2); }
 
 /* ── DueText ───────────────────────────────────────────────────── */
+/* 059 §B ⑥ — 좁아지면 **… 로 자른다.** 전에는 `nowrap` 만 있어서 자리가 모자라면
+   조용히 잘렸고, 잘린 줄도 몰랐다(390px 상세에서 「가오픈 D-101」이 24px 모자랐다).
+   ①~④ 로 자리가 넉넉해졌지만 규칙 자체를 고쳐 둔다 — 넉넉한 것은 데이터가 바뀌면
+   다시 모자라진다. */
 .v3-due { font-size: 13px; color: var(--v3-ink-2); font-variant-numeric: tabular-nums;
-  white-space: nowrap; min-width: 72px; text-align: right; display: inline-block; }
+  white-space: nowrap; min-width: 72px; text-align: right; display: inline-block;
+  overflow: hidden; text-overflow: ellipsis; }
 .v3-due.none { font-style: italic; color: var(--v3-ink-3); }
 .v3-due.late { color: var(--v3-late); font-weight: 700; }
 
@@ -652,10 +660,17 @@
   font-variant-numeric: tabular-nums; }
 .v3-clip svg { width: 13px; height: 13px; }
 
-/* 좁은 화면에서는 격자가 가로로 넘친다. 칸을 줄이지 않고 **가로로 민다** —
-   칸이 좁아지면 알약 글자가 두 자만 남아 무엇인지 못 읽는다. */
+/* 059 §B ⑤ — **안쪽 가로 스크롤을 없앤다.**
+   전에는 칸을 96px 아래로 안 줄이고 가로로 밀었다. 그러면 이번 주와 다음 주를
+   같이 못 보는데, 달력의 쓸모가 바로 그 비교다. 이제 남는 폭을 일곱이 나눠 갖고,
+   그래도 좁은 폭(767.98px 미만)에서는 격자를 버리고 **목록으로** 간다.
+   그 판단은 화면이 한다(`dayList`) — CSS 로 감추면 안 보이는 링크가 탭에 남는다. */
 @media (max-width: 900px) {
-  .v3-cal { grid-template-columns: repeat(7, minmax(96px, 1fr)); overflow-x: auto; }
+  .v3-cal { grid-template-columns: repeat(7, minmax(0, 1fr)); overflow-x: visible; }
+  /* 칸이 좁아지면 알약 글자가 두 자만 남는다. 그래서 높이를 조금 키워 두 줄까지
+     받고, 그 아래로는 목록이 받는다. */
+  .v3-cal-d { min-height: 96px; padding: 6px; }
+  .v3-pill { white-space: normal; }
 }
 
 /* ── 056 §B 원그래프 ──────────────────────────────────────────────
@@ -809,4 +824,78 @@
 
   /* 본문은 폭을 다 쓴다. 여백은 줄이되 없애지 않는다 — 0 이면 글자가 모서리에 붙는다. */
   .v3 .v3-main { padding: 16px 14px 28px; }
+
+  /* ══ 059 §B ② — 숫자 칸은 2 × 2 ═════════════════════════════════
+
+     `.v3-stats` 는 `flex: 1` 네 칸이라 폭이 좁아지면 **넘치는 대신 쪼그라든다.**
+     ① 뒤에도 칸마다 80px 이라 「기한 없음」이 한 글자씩 세로로 내려갔다.
+     넘침이 없다고 성한 것이 아니다.
+
+     **가로 스크롤로 도망가지 않는다.** 넷을 한 줄에 두고 옆으로 밀면 넷째 숫자를
+     보려고 스크롤해야 하고, 그러면 네 숫자를 **한눈에 견주는** 일이 안 된다.
+     그 비교가 이 줄의 전부다. 그래서 2 × 2 로 접는다. */
+  .v3 .v3-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v3 .v3-stat { min-width: 0; padding: 14px 16px; }
+  /* 숫자는 그대로 크게 둔다 — 34px 이 「한눈에」의 값이다. 라벨만 한 단계 줄인다. */
+  .v3 .v3-stat .v3-stat-l { font-size: 12.5px; word-break: keep-all; }
+
+  /* ══ 059 §B ③ — 업무 행은 두 줄 ══════════════════════════════════
+
+     한 줄에 [고르기][상태][제목][클립·담당·기한]을 다 넣으면, 오른쪽 묶음이
+     제 폭을 먼저 가져가고 제목이 남는 것을 받는다. ① 전에는 그 남는 것이
+     **0px** 이었다 — 제목이 사라지고 누를 수도 없었다.
+
+     그래서 오른쪽 묶음을 아랫줄로 내린다. 위는 고르기·상태·제목, 아래는
+     담당·기한. **제목이 폭을 먼저 가져간다** — 행에서 가장 먼저 읽는 것이다.
+     넘치면 … 로 자른다. 잘린 제목은 읽히지만 없는 제목은 안 읽힌다.
+
+     아랫줄은 제목 왼쪽 끝에 맞춰 들여쓴다(16+2 +12 +22 +12 = 64px). 안 맞추면
+     두 줄이 서로 다른 행처럼 보인다. */
+  .v3 .v3-row { flex-wrap: wrap; align-items: center;
+    padding: 10px 4px; min-height: 0; row-gap: 4px; }
+  /* `flex-basis: 0` 이라야 한다. `auto` 면 제 내용 폭을 기준으로 삼아서, 긴 제목은
+     **줄어들지 않고 아랫줄로 내려간다** — 행마다 제목이 옆에 붙었다 밑에 붙었다 한다. */
+  .v3 .v3-row-main { flex: 1 1 0; }
+  .v3 .v3-row-r { flex: 1 0 100%; justify-content: flex-start;
+    padding-left: 64px; gap: 10px; }
+  /* 두 줄 행에서도 고르기 상자는 그대로 눌린다 — 크기를 안 줄인다. */
+  .v3 .v3-row .v3-pick { width: 18px; height: 18px; flex: 0 0 18px; }
+
+  /* ══ 059 §B ④ — 팀 현황은 한 열씩 세로로 ═════════════════════════
+
+     넷을 390px 에 욱여넣으면 열마다 80px 이라 「권정혁」이 한 글자씩 세로로
+     내려간다. 사람 머리 → 그 사람 업무 → 다음 사람 순으로 쌓는다.
+
+     **접거나 숨기지 않는다**(052 §A 그대로). 스크롤이 길어지는 것은 괜찮다 —
+     안 보이는 사람이 생기는 것과는 다르다.
+
+     `!important` 를 쓴다. 열 수는 `columnLayout()` 이 세어서 **인라인 style 로**
+     들어오는데(사람 수에 따라 4열이거나 가로 스크롤), 인라인은 CSS 가 못 이긴다.
+     화면을 고쳐 폭을 알게 하는 방법도 있지만 그러면 서버가 못 그리는 값이
+     생긴다. 여기서는 좁은 화면이 넓은 화면의 셈을 **덮는 것이 맞다.** */
+  .v3 .v3-team { grid-template-columns: minmax(0, 1fr) !important; }
+  /* 한 열이면 옆으로 밀 것이 없다 — 가로 스크롤 통을 거둔다. */
+  .v3 .v3-team.scroll { overflow-x: visible; padding-bottom: 0; }
+
+  /* ══ 059 §B ⑤ — 캘린더는 날짜별 목록 ═════════════════════════════
+     하루가 한 덩이. 머리에 날짜와 건수, 아래에 그날 업무. */
+  .v3 .v3-daylist { display: flex; flex-direction: column; gap: 2px; }
+  .v3 .v3-day { padding: 10px 0; border-bottom: 1px solid var(--v3-line); }
+  .v3 .v3-day:last-child { border-bottom: 0; }
+  .v3 .v3-day-h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .v3 .v3-day-h b { font-size: 13.5px; font-weight: 700; }
+  /* 오늘은 격자와 **같은 파랑**으로 말한다. 화면이 바뀌었다고 신호가 바뀌면
+     같은 것을 두 번 배워야 한다. */
+  .v3 .v3-day-h.today b { color: var(--v3-rail); }
+  .v3 .v3-day-tag { padding: 1px 7px; border-radius: var(--v3-radius-pill);
+    background: var(--v3-rail); color: #fff; font-style: normal; font-size: 11px; font-weight: 700; }
+  .v3 .v3-day-n { margin-left: auto; font-size: 12px; color: var(--v3-ink-2);
+    font-variant-numeric: tabular-nums; }
+  /* 목록의 알약은 한 줄을 다 쓴다 — 격자처럼 칸에 갇혀 있지 않다. */
+  .v3 .v3-daylist .v3-pill { display: block; white-space: normal; margin-bottom: 4px; }
+  .v3 .v3-calnote { margin: 0 0 10px; }
+  /* 달 이동 줄 — 버튼 글자가 낱자로 갈라졌다(「◂지 / 난달」). 버튼 안에서는 안 자르고,
+     줄이 모자라면 **바 전체가** 다음 줄로 넘어간다. */
+  .v3 .v3-calbar { flex-wrap: wrap; row-gap: 8px; }
+  .v3 .v3-calbar .v3-btn, .v3 .v3-calbar .v3-calm, .v3 .v3-calbar .v3-sub { white-space: nowrap; }
 }
