@@ -24,6 +24,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("denied-walk.mjs");
 
@@ -112,7 +113,7 @@ try {
       landed.pathname === "/" && txt.includes(DENIED_REASON.members),
       `/members → ${landed.pathname}${landed.search} · 화면 "${txt}"` +
       ` · lib/denied 의 말 "${DENIED_REASON.members}"`);
-  await page.screenshot({ path: `${OUT}/B31-밀려난-이유.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/B31-밀려난-이유.png`, fullPage: true });
 
   // ── ③ 막는 자리마다 제 문장 ───────────────────────────────────
   const seen = [];
@@ -164,7 +165,7 @@ try {
   chk("⑦짝-스위치-켜도-이유가-산다",
       v3Url.pathname === "/v3" && v3Txt.includes(DENIED_REASON.members),
       `/members → ${v3Url.pathname}${v3Url.search} · 화면 "${v3Txt}"`);
-  await page.screenshot({ path: `${OUT}/B31-v3에서도.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/B31-v3에서도.png`, fullPage: true });
   await setSwitch(null);
 
   chk("⑧-콘솔오류", errs.length === 0, `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}`);

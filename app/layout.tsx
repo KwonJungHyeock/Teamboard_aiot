@@ -4,6 +4,7 @@ import "@/lib/theme.css";
 import "./globals.css";
 import "./home.css";
 import "./design.css";   // MD-P-2026-019 공통 규격 (마지막에 실려 우선한다)
+import { APP_NAME, ORG_NAME } from "@/lib/brand";
 
 // Pretendard Variable — self-host woff2 (CDN 런타임 의존 제거, 오프라인·CLS 0).
 // next/font/local 이 @font-face + preload 자동 생성. 폰트 점프 없음.
@@ -29,7 +30,7 @@ const jetbrainsMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Eduino AI · Mission Deck",
+  title: `${APP_NAME} · ${ORG_NAME}`,
   description: "AI 에이전트와 함께하는 팀 업무 관리 (AIoT 교육플랫폼 사업팀)",
   icons: {
     icon: [{ url: "/brand/favicon-48.png", type: "image/png", sizes: "48x48" }],

@@ -15,6 +15,7 @@ import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("reorder-walk.mjs");
 
@@ -82,7 +83,7 @@ try {
   await page.waitForTimeout(1400);
   const gripOn = await page.locator("tbody .dgrip").count();
   const hintGone = await page.locator(".dragoff").count();
-  await page.screenshot({ path: `${OUT}/C1-핸들.png` });
+  await shot(page, { path: `${OUT}/C1-핸들.png` });
   chk("C1-핸들은수동일때만",
     gripOff === 0 && hint.includes("직접 정한 순서") && gripOn > 0 && hintGone === 0,
     `기한순일 때 핸들 ${gripOff}개(0이어야) · 안내 "${hint}" · ` +
@@ -145,7 +146,7 @@ try {
   const iK1 = order.findIndex((x) => x.includes(`${MARK} 가-1`));
   const iK2 = order.findIndex((x) => x.includes(`${MARK} 가-2`));
   const iOther = order.findIndex((x) => x.includes(`${MARK} 나`) || x.includes(`${MARK} 다`));
-  await page.screenshot({ path: `${OUT}/Cb-계층유지.png` });
+  await shot(page, { path: `${OUT}/Cb-계층유지.png` });
   chk("C-b 하위는상위를따라온다",
     iParent >= 0 && iK1 > iParent && iK2 > iParent
       && Math.abs(iK1 - iK2) === 1

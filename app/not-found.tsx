@@ -1,8 +1,9 @@
 // 404 — 없는 주소 (MD-P-2026-015 §D).
 // 브랜드 톤 유지 + 돌아갈 곳을 반드시 준다. 서버 컴포넌트라 세션 여부와 무관하게 뜬다.
 import Link from "next/link";
+import { APP_NAME } from "@/lib/brand";
 
-export const metadata = { title: "찾을 수 없는 화면 · Mission Deck" };
+export const metadata = { title: `찾을 수 없는 화면 · ${APP_NAME}` };
 
 export default function NotFound() {
   return (

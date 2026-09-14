@@ -7,6 +7,7 @@ import { requireSession } from "@/lib/auth";
 import { visibleTaskSql } from "@/lib/visibility";
 import { queryOne } from "@/lib/db";
 import { jsonError } from "@/lib/api";
+import { APP_NAME } from "@/lib/brand";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -111,7 +112,7 @@ async function loadInternal(ref: { kind: InternalKind; id: number }, viewerId: n
   if (!card) return null;
   const KIND_LABEL: Record<InternalKind, string> = { task: "업무", decision: "결정", project: "프로젝트" };
   return {
-    meta: { title: card.title, domain: "Mission Deck", provider: KIND_LABEL[card.kind], thumbnail: "" },
+    meta: { title: card.title, domain: APP_NAME, provider: KIND_LABEL[card.kind], thumbnail: "" },
     card,
   };
 }

@@ -12,6 +12,7 @@
 import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import fs from "node:fs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const S = process.env.AUTH_SECRET;
@@ -222,7 +223,7 @@ try {
     });
 
     if (SHOT.has(route)) {
-      await page.screenshot({ path: `${OUT}/${route.replace(/[^a-z0-9]+/gi, "_") || "home"}.png` });
+      await shot(page, { path: `${OUT}/${route.replace(/[^a-z0-9]+/gi, "_") || "home"}.png` });
     }
     seen += found.seen;
     for (const b of found.bad) bad.push({ route, ...b });

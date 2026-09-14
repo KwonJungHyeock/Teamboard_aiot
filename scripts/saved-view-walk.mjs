@@ -9,6 +9,7 @@ import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("saved-view-walk.mjs");
 
@@ -33,7 +34,7 @@ try {
   const page = await ctx.newPage();
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
 
-  const step = async (id, note) => { await page.screenshot({ path: `${OUT}/${id}.png` }); rows.push({ id, note }); console.log(`  ▸ ${id.padEnd(18)} ${note}`); };
+  const step = async (id, note) => { await shot(page, { path: `${OUT}/${id}.png` }); rows.push({ id, note }); console.log(`  ▸ ${id.padEnd(18)} ${note}`); };
 
   // ① 조건을 만들고 저장
   await page.goto(`${BASE}/tasks?area=1,2&done=1`, { waitUntil: "networkidle" });

@@ -31,6 +31,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("v3-today-walk.mjs");
 
@@ -266,7 +267,7 @@ try {
       `첫 행 ${rowH}px (--v3-row-h = ${tokenH})`);
 
   chk("⑧-콘솔오류", errs.length === 0, `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}`);
-  await page.screenshot({ path: `${OUT}/v3-today.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/v3-today.png`, fullPage: true });
 
   // ── ⑨ 끄면 옛 홈이 글자 그대로 돌아온다 ─────────────────────────
   await setSwitch(false);

@@ -11,6 +11,7 @@ import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import ErrorNote from "./ErrorNote";
 import { pfill } from "@/lib/progress-bar";
+import { APP_NAME } from "@/lib/brand";
 
 const GOAL_STATUS: Record<string, { label: string; tone: string }> = {
   ontrack: { label: "온트랙", tone: "--green" },
@@ -359,7 +360,7 @@ export default function PerfReport({ user }: { user: SessionUser }) {
 
           {/* 푸터 — 인쇄 시 각 페이지 하단에 반복되도록 @page 마진 영역과 함께 쓴다 */}
           <footer className="prep-foot">
-            Mission Deck · 내부 검토용 · <span className="num">{data.docNo}</span>
+            {APP_NAME} · 내부 검토용 · <span className="num">{data.docNo}</span>
           </footer>
         </article>
       )}

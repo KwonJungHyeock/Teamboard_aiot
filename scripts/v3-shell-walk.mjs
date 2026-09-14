@@ -26,6 +26,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("v3-shell-walk.mjs");
 
@@ -212,7 +213,7 @@ try {
       `카드 안 막대 ${bars}개 · config 의 관련 열쇠 [${startKeys.map((r) => r.key).join(", ") || "없음"}]` +
       ` — 시작일이 없으니 비율의 근거가 없다`);
 
-  await page.screenshot({ path: `${OUT}/A-껍데기.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/A-껍데기.png`, fullPage: true });
   chk("⑩-콘솔오류", errs.length === 0, `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}`);
   await ctx.close();
 

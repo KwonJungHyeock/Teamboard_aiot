@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import HoverActions from "./HoverActions";
 import { toast } from "@/lib/quick";
 import Skeleton from "./Skeleton";
+import { APP_NAME } from "@/lib/brand";
 
 type EntityType = "task" | "project" | "goal" | "decision";
 type Provider = "notion" | "figma" | "github" | "other";
@@ -179,7 +180,7 @@ export default function ResourceLinks({
 
       {/* §F — 경계 안내. 상시 노출한다. */}
       <p className="rlk-boundary">
-        상태·일정·우선순위는 <b>Mission Deck</b>에서 관리합니다. Notion은 리소스와 상세 기록용입니다.
+        상태·일정·우선순위는 <b>{APP_NAME}</b>에서 관리합니다. Notion은 리소스와 상세 기록용입니다.
       </p>
       {links.length > 0 && (
         <p className="rlk-note">연결 해제는 링크만 끊습니다 — 원본 문서는 삭제되지 않습니다.</p>

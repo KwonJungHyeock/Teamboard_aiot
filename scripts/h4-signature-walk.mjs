@@ -14,6 +14,7 @@ import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("h4-signature-walk.mjs");
 
@@ -89,13 +90,13 @@ try {
              scales: bars.map(sx) };
   });
   const f0 = await read1();
-  await p1.screenshot({ path: `${OUT}/H4-01히어로-1시작.png` });
+  await shot(p1, { path: `${OUT}/H4-01히어로-1시작.png` });
   await p1.waitForTimeout(120);
   const f1 = await read1();
-  await p1.screenshot({ path: `${OUT}/H4-01히어로-2중간.png` });
+  await shot(p1, { path: `${OUT}/H4-01히어로-2중간.png` });
   await p1.waitForTimeout(900);
   const f2 = await read1();
-  await p1.screenshot({ path: `${OUT}/H4-01히어로-3끝.png` });
+  await shot(p1, { path: `${OUT}/H4-01히어로-3끝.png` });
 
   console.log(`  프레임  시작 scaleX [${f0.scales.join(", ")}] → 중간 [${f1.scales.join(", ")}] → 끝 [${f2.scales.join(", ")}]`);
   chk("H4-01-최대6개", f0.growing <= 6 && f0.growing === Math.min(6, f0.total),
@@ -111,7 +112,7 @@ try {
   await p1.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
   await p1.waitForSelector(".hm-hero .gt2-bar", { timeout: 12000 }).catch(() => {});
   const again = await read1();
-  await p1.screenshot({ path: `${OUT}/H4-01히어로-재진입.png` });
+  await shot(p1, { path: `${OUT}/H4-01히어로-재진입.png` });
   chk("H4-01-세션1회", again.growing === 0,
     `재진입 시 hero-grow ${again.growing}개 (0이어야 한다) · scaleX [${again.scales.join(", ")}]`);
 
@@ -132,7 +133,7 @@ try {
     if (m === "none") return 1;
     const n = m.match(/matrix\(([^,]+)/); return n ? Math.round(parseFloat(n[1]) * 100) / 100 : 1;
   }));
-  await p1b.screenshot({ path: `${OUT}/H4-01히어로-이탈복귀.png` });
+  await shot(p1b, { path: `${OUT}/H4-01히어로-이탈복귀.png` });
   chk("H4-01-이탈안전", after.length > 0 && after.every((s) => s === 1),
     `stagger 도중 스크롤 + 화면 이동 후 복귀 — scaleX [${after.join(", ")}] (전부 1이어야 한다. 0 이 남으면 안 보이는 바다)`);
   await c1b.close();
@@ -245,11 +246,11 @@ try {
     await p2.waitForTimeout(1800);
     const before = await p2.locator(".gpv").first().innerText().catch(() => "?");
     const [seen] = await Promise.all([watch(p2, 9000), setProg(60)]);   // dev 서버의 목표 재조회가 느려 넉넉히 본다
-    await p2.screenshot({ path: `${OUT}/H4-02연쇄-2중간.png` });
+    await shot(p2, { path: `${OUT}/H4-02연쇄-2중간.png` });
     await p2.waitForTimeout(900);
     const afterTxt = await p2.locator(".gpv").first().innerText().catch(() => "?");
     const dbNow = (await sql(`SELECT progress FROM task WHERE id=$1`, [target.id]))[0]?.progress;
-    await p2.screenshot({ path: `${OUT}/H4-02연쇄-3끝.png` });
+    await shot(p2, { path: `${OUT}/H4-02연쇄-3끝.png` });
     chk("32g-직접변경", seen.length >= 3,
       `사람이 진행률을 ${target.progress}→60 으로 바꿨을 때(DB 확인 ${dbNow}) 화면 % 상태 ${seen.length}가지 (3가지 이상이어야 굴러간 것) · "${before.replace(/\n+/g, " ")}" → "${afterTxt.replace(/\n+/g, " ")}"`);
 
@@ -357,7 +358,7 @@ try {
   const rGrow = await p3.locator(".hm-hero .gt2-bar.hero-grow").count();
   const rAnim = await p3.evaluate(() => [...document.querySelectorAll(".hm-hero .gt2-bar")]
     .filter((el) => getComputedStyle(el).animationName !== "none").length);
-  await p3.screenshot({ path: `${OUT}/H4-reduce-홈.png` });
+  await shot(p3, { path: `${OUT}/H4-reduce-홈.png` });
   chk("H4-reduce", rGrow === 0 && rAnim === 0,
     `reduce 에서 hero-grow 클래스 ${rGrow}개 · 애니메이션 걸린 바 ${rAnim}개 (둘 다 0이어야 한다)`);
   await c3.close();

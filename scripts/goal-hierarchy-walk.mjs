@@ -15,6 +15,7 @@ import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("goal-hierarchy-walk.mjs");
 
@@ -106,12 +107,12 @@ try {
   await page.waitForTimeout(1000);
 
   const labels = await page.locator(".gadd select").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
-  await page.screenshot({ path: `${OUT}/A1-상위선택없음.png` });
+  await shot(page, { path: `${OUT}/A1-상위선택없음.png` });
   chk("A1-상위선택없음", !labels.includes("상위 목표"),
     `전역 폼의 셀렉트 [${labels.join(", ")}] — 후보가 0이라 "상위 목표" 셀렉트가 없다`);
 
   const askText = await page.locator(".gadd-mkparent label").innerText().catch(() => "(없음)");
-  await page.screenshot({ path: `${OUT}/A2-묻는화면.png` });
+  await shot(page, { path: `${OUT}/A2-묻는화면.png` });
   // 문구가 바뀌었다 (MD-P-2026-038 §A) — 이제 **왜 못 고르는지**까지 적는다.
   //   전: "2026 Q1 목표가 없습니다. 함께 만들까요?"
   //   후: "팀 2026 Q1 목표가 없어 상위를 고를 수 없습니다. 함께 만들까요?"
@@ -133,7 +134,7 @@ try {
             p.title AS ptitle, p.period_type AS ptype, p.period_start::text AS pps
        FROM goal g LEFT JOIN goal p ON p.id = g.parent_id
       WHERE g.title = $1 AND g.is_active`, [`${MARK} 2월 목표`]))[0];
-  await page.screenshot({ path: `${OUT}/A2-함께만든결과.png` });
+  await shot(page, { path: `${OUT}/A2-함께만든결과.png` });
   chk("A1-자동귀속", made2 && made2.ps === `${UI_YEAR}-02-01` && made2.ptype === "quarter" && made2.pps === `${UI_YEAR}-01-01`,
     `2월 목표(기간 ${made2?.ps}~${made2?.pe})의 상위 = "${made2?.ptitle ?? "없음"}" (${made2?.ptype} ${made2?.pps}) · 출처 ${made2?.goal_parent_source}`);
   chk("A2-함께생성", made2?.ptitle === `${MARK} ${UI_YEAR} Q1`,
@@ -171,7 +172,7 @@ try {
   await page.waitForTimeout(1000);
   const pickSel = await page.locator(".gadd select[aria-label='상위 목표']").count();
   const pickOpts = await page.locator(".gadd select[aria-label='상위 목표'] option").allTextContents().catch(() => []);
-  await page.screenshot({ path: `${OUT}/A3-고르게함.png` });
+  await shot(page, { path: `${OUT}/A3-고르게함.png` });
   // 조건을 못 만들었으면 통과시키지 않는다 — 「1개 == 1개」로 넘어가면 이 단언은
   // 아무것도 재지 못한다.
   chk("A3-화면이고르게함", q3n > 1 && pickSel === 1,
@@ -206,7 +207,7 @@ try {
   await page.waitForTimeout(900);
   const inSection = await page.locator(".gadd select").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
   const whereTxt = await page.locator(".gadd-where").first().innerText().catch(() => "(없음)");
-  await page.screenshot({ path: `${OUT}/A신1-자리에서만들면안묻는다.png` });
+  await shot(page, { path: `${OUT}/A신1-자리에서만들면안묻는다.png` });
   chk("A신1-자리는안묻음", !inSection.includes("상위 목표") && /아래로 들어갑니다/.test(whereTxt),
     `분기 섹션의 "+ 월 목표" — 셀렉트 [${inSection.join(", ")}] · 안내 "${whereTxt.replace(/\n+/g, " ")}" (같은 8월인데 여기선 묻지 않는다)`);
   await page.locator(".gadd .lk", { hasText: "취소" }).first().click();

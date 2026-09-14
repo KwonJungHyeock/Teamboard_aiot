@@ -21,6 +21,7 @@ import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("goal-link-walk.mjs");
 
@@ -127,7 +128,7 @@ try {
   const addP = await page.locator(".gdp-addp").count();
   const projRow = await page.locator(".gdp-proj").count();
   const panelOpen = await page.locator(".gdp .tdp-title, .gdp h2.tdp-title").count();
-  await page.screenshot({ path: `${OUT}/A1-목표상세.png` });
+  await shot(page, { path: `${OUT}/A1-목표상세.png` });
   chk("A1-프로젝트섹션없음",
     panelOpen > 0 && addP === 0 && projRow === 0 && !secH.some((t) => t.includes("연결된 프로젝트")),
     `패널은 열려 있고(제목 요소 ${panelOpen}개) 섹션 [${secH.join(" · ")}] 중 "연결된 프로젝트" 없음 · ` +
@@ -149,7 +150,7 @@ try {
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(1200);
   const headLine = (await page.locator(".gdp-prog-t").innerText()).replace(/\n/g, " ");
-  await page.screenshot({ path: `${OUT}/A3-수동값근거.png` });
+  await shot(page, { path: `${OUT}/A3-수동값근거.png` });
   chk("A3-값과근거가안싸운다", headLine.includes("70%") && !headLine.includes("집계 없음"),
     `진척 줄 "${headLine}" — 값이 떠 있으면 "집계 없음"이 같이 뜨면 안 된다`);
   await page.request.put(`${BASE}/api/goals/${made.goalId}`, { data: { progressMode: "auto" } });
@@ -160,7 +161,7 @@ try {
   const sub = await page.locator(".pws-sub").innerText().catch(() => "(없음)");
   const goalLink = await page.locator(".pws-goal-l, .pws-goal-pick").count();
   const title = await page.locator(".pws-title").innerText().catch(() => "(없음)");
-  await page.screenshot({ path: `${OUT}/A2-프로젝트상세.png` });
+  await shot(page, { path: `${OUT}/A2-프로젝트상세.png` });
   chk("A2-목표연결없음", title.includes(MARK) && goalLink === 0 && !sub.includes("＋ 목표 연결"),
     `프로젝트 "${title}" (project.goal_id 는 DB 에 #${made.goalId} 로 살아 있다) · ` +
     `목표 링크/피커 ${goalLink}개 · 부제 "${sub.replace(/\n/g, " ")}"`);
@@ -232,7 +233,7 @@ try {
   await page.locator(".ulbanner").click();
   await page.waitForTimeout(900);
   const panelN = await page.locator(".utp .dl-row").count();
-  await page.screenshot({ path: `${OUT}/B-배너와목록.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/B-배너와목록.png`, fullPage: true });
   chk("B3-배너=목록=서버", bannerN > 0 && bannerN === panelN && panelN === serverN && serverN === dbN,
     `배너 "${banner}" (${bannerN}) · 일괄 연결 화면 행 ${panelN} · API ${serverN} · DB 직접 조회 ${dbN}`);
 
@@ -268,7 +269,7 @@ try {
   // 이 줄은 그것이 다시 안 돌아오는지 보는 부재 단언이다(아래 `.ulbanner` 가 짝이 되는 존재 단언).
   const noticeGone = await page.locator(".lmn").count();
   const ulText = (await page.locator(".ulbanner").innerText().catch(() => "")).replace(/\n/g, " ");
-  await page.screenshot({ path: `${OUT}/C3-안내제거.png` });
+  await shot(page, { path: `${OUT}/C3-안내제거.png` });
   chk("C3-개발과정안내없음", noticeGone === 0 && ulText.includes("연결하면 진척에 집계됩니다"),
     `.lmn ${noticeGone}개 · 남은 줄 "${ulText}"`);
 
@@ -300,7 +301,7 @@ try {
   const ytext = (await ycard.innerText()).replace(/\n/g, " · ");
   const yfill = await ycard.locator(".ycard-bar .bar i").count();
   const yempty = await ycard.locator(".ycard-bar .bar.empty").count();
-  await ycard.screenshot({ path: `${OUT}/표본가드-연간1건.png` });
+  await shot(ycard, { path: `${OUT}/표본가드-연간1건.png` });
   chk("표본가드-막대없음", yfill === 0 && yempty === 1 && ytext.includes("업무 1건 — 표본 부족"),
     `연간 카드 "${ytext}" · 채운 막대 ${yfill}개(0이어야 한다) · 빈 막대 ${yempty}개`);
 

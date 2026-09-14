@@ -27,6 +27,7 @@ import { createHmac } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("v3-new-walk.mjs");
 
@@ -202,7 +203,7 @@ try {
   // 접힌 입력 칩. 046 §A 에서 `.v3-chip.dashed`(거르개) 와 갈라져 `.v3-ichip` 가 됐다.
   await page.locator(".v3-ichip").filter({ hasText: "기한" }).first().click();
   await page.waitForTimeout(300);
-  await page.screenshot({ path: `${OUT}/v3-new.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/v3-new.png`, fullPage: true });
 
   chk("⑪-콘솔오류", errs.length === 0, `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}`);
   await ctx.close();

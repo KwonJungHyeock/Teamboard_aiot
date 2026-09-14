@@ -34,6 +34,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("v3-tasks-walk.mjs");
 
@@ -181,11 +182,24 @@ try {
       `칩 "${ghostChip ?? "**없다**"}" · 색 ${ghostView?.tone} (etc = 회색)`);
 
   // ── ⑤ 행에 네 가지만 ───────────────────────────────────────────
+  //
+  // **개수로 안 묻는다** (§G 052). 057 §B 가 고르기 상자(`.v3-pick`)를 왼쪽에
+  // 더하면서 자식이 3개에서 4개가 됐다 — 지시서가 그러라고 한 것이라 제품이
+  // 옳다. 물어야 할 것은 개수가 아니라 **없어야 할 것이 없는가**다:
+  // ID 표기 · 진척 막대 · 카테고리 태그. 있어야 할 셋은 이름으로 센다.
   const row = page.locator(".v3-row").first();
   const kids = await row.evaluate((el) => Array.from(el.children).map((c) => c.className));
   const rowTxt = await row.innerText();
-  chk("⑤-행에-네-가지만", kids.length === 3 && !/#\d/.test(rowTxt) && await row.locator("progress, .v3-bar").count() === 0,
-      `자식 ${kids.length}개 [${kids.join(" | ")}] · ID 표기 없음 · 진척 막대 없음`);
+  const MUST = ["v3-cb", "v3-row-main", "v3-row-r"];
+  const has = MUST.every((m) => kids.some((k) => k.split(" ").includes(m)));
+  const extra = kids.filter((k) => !MUST.some((m) => k.split(" ").includes(m))
+                                   && !k.split(" ").includes("v3-pick"));
+  chk("⑤-행에-네-가지만",
+      has && extra.length === 0 && !/#\d/.test(rowTxt)
+      && await row.locator("progress, .v3-bar, .v3-tag").count() === 0,
+      `자식 [${kids.join(" | ")}] · 있어야 할 셋 ${has ? "다 있음" : "빠짐"}` +
+      ` · 그 밖의 것 ${extra.length}개 (고르기 상자는 057 §B 가 더한 것이라 뺀다)` +
+      ` · ID 표기 없음 · 진척 막대·카테고리 태그 없음`);
 
   // ── ⑥ 기한의 결 ────────────────────────────────────────────────
   const tone3 = page.locator(".v3-row").filter({ hasText: `${MARK} 지남 3일` }).first();
@@ -249,7 +263,7 @@ try {
       `전체 칩 ${allChip2} · DB ${rows.length} (완료 ${doneN}건이 빠지지 않았다)`);
 
   // 거르기 전 전체 목록도 남긴다 — 걸러진 화면만 있으면 결을 못 본다.
-  await page.screenshot({ path: `${OUT}/v3-tasks.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/v3-tasks.png`, fullPage: true });
 
   // ── ⑧ 정렬이 주소에 담긴다 ──────────────────────────────────────
   const firstTitle = async () => (await page.locator(".v3-card .v3-row .v3-row-t").first().innerText()).trim();
@@ -278,7 +292,7 @@ try {
   chk("⑨-거르기가-주소에-담긴다",
       u9.searchParams.get("cat") === String(ghostArea) && n9 === madeTasks.length,
       `?cat=${u9.searchParams.get("cat")} · 행 ${n9} (만든 ${madeTasks.length}건)`);
-  await page.screenshot({ path: `${OUT}/v3-tasks-filtered.png`, fullPage: true });
+  await shot(page, { path: `${OUT}/v3-tasks-filtered.png`, fullPage: true });
 
   /*
    * ── ⑩ 상세로 가는 링크가 안 삼켜진다 ──────────────────────────

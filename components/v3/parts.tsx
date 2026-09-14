@@ -174,6 +174,7 @@ export function Clip({ n }: { n: number }) {
    하위가 있을 때만 제목 아래 한 줄이 붙는다. */
 export function ListRow({
   href, title, sub, state, assignee, due, late, dueTone, clip, onToggle,
+  selected, onSelect,
 }: {
   href: string;
   title: string;
@@ -190,9 +191,38 @@ export function ListRow({
   /** 기한 글자의 결. 안 주면 `late` 만 보고 정한다. */
   dueTone?: DueTone;
   onToggle?: () => void;
+  /*
+   * ── 고르기 (057 §B) ───────────────────────────────────────────
+   * `onSelect` 를 주는 화면에서만 선택 상자가 선다. 안 주면 이 행은 예전 그대로다 —
+   * 「오늘」·「팀 현황」이 갑자기 고를 수 있게 되지 않는다.
+   */
+  selected?: boolean;
+  onSelect?: () => void;
 }) {
+  /*
+   * `x` 로도 고른다(지시 §B). 행 안에서 키를 받되 **입력 칸에서는 안 걸린다** —
+   * 제목에 x 를 못 치게 되면 그건 단축키가 아니라 고장이다. 051 의 `C` 와 같은 결.
+   */
+  const key = (e: React.KeyboardEvent) => {
+    if (!onSelect) return;
+    if (e.key !== "x" && e.key !== "X" && e.key !== "ㅌ") return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const el = e.target as HTMLElement;
+    const tag = el.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable) return;
+    e.preventDefault();
+    onSelect();
+  };
   return (
-    <div className={`v3-row${late ? " late" : ""}${state === "done" ? " done" : ""}`}>
+    <div className={`v3-row${late ? " late" : ""}${state === "done" ? " done" : ""}${selected ? " picked" : ""}`}
+         onKeyDown={onSelect ? key : undefined}>
+      {onSelect && (
+        /* 상태 네모(`.v3-cb`)와 **다르게 생겨야 한다.** 하나는 「이 업무가 어떤
+           상태인가」, 하나는 「내가 이것을 골랐는가」다. 한 모양이 둘을 말하면
+           안 된다(§G 047). 그래서 여기는 브라우저 기본 체크상자를 쓴다. */
+        <input type="checkbox" className="v3-pick" checked={selected ?? false}
+               onChange={onSelect} aria-label={`${title} 고르기`} />
+      )}
       <Checkbox state={state} onToggle={onToggle} disabled={!onToggle} />
       <span className="v3-row-main">
         <Link className="v3-row-t" href={href}>{title}</Link>

@@ -19,6 +19,7 @@ import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { purgeActor, purgeReport } from "./purge-actor.mjs";
+import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("first-run-walk.mjs");
 
@@ -58,7 +59,7 @@ const turnedOff = new Map();   // 표 → 이 스크립트가 끈 id 목록
 
 async function shot(page, id, note) {
   const path = `${OUT}/${id}.png`;
-  await page.screenshot({ path });
+  await shot(page, { path });
   steps.push({ id, note, shot: path });
   console.log(`  ▸ ${id.padEnd(22)} ${note}`);
 }
