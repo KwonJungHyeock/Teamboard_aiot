@@ -25,6 +25,7 @@ import { V3_BASE } from "@/lib/v3/routes";
 import { roleLabel, showsAdminGrantBadge, hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import DeniedNote from "../DeniedNote";
+import { APP_NAME_LONG } from "@/lib/brand";
 
 const NAV = [
   { href: `${V3_BASE}`, label: "오늘" },
@@ -93,7 +94,7 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
         <nav className="v3-rail" aria-label="주 메뉴">
           <span className="v3-rail-brand">
             Eduino AI
-            <small>MISSION DECK</small>
+            <small>{APP_NAME_LONG}</small>
           </span>
 
           {/* 메뉴 항목에는 제 이름표가 있다. 레일에 「＋ 새 업무」와 계정 링크가

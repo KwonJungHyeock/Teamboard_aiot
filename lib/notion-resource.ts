@@ -3,6 +3,7 @@
 // 하는 일: 페이지 메타 조회 / 페이지 생성(백링크 포함) / 연결 테스트.
 // 하지 않는 일: 상태·일정 양방향 동기화, Notion을 업무 저장소로 쓰기 (§제외).
 import { queryOne, query } from "./db";
+import { APP_NAME } from "@/lib/brand";
 
 const NOTION_VERSION = "2022-06-28"; // 페이지 CRUD에 안정적인 버전
 // 테스트·목(mock) 환경에서 엔드포인트를 바꿔 끼울 수 있게 (운영 기본값은 실제 API)
@@ -221,7 +222,7 @@ export async function createResourcePage(input: {
           object: "block", type: "paragraph",
           paragraph: {
             rich_text: [
-              { type: "text", text: { content: "Mission Deck · " } },
+              { type: "text", text: { content: `${APP_NAME} · ` } },
               { type: "text", text: { content: input.backlinkLabel, link: { url: input.backlinkUrl } } },
             ],
           },
@@ -232,7 +233,7 @@ export async function createResourcePage(input: {
             icon: { type: "emoji", emoji: "📌" },
             rich_text: [{
               type: "text",
-              text: { content: "상태·일정·우선순위는 Mission Deck에서 관리합니다. 이 문서는 리소스와 상세 기록용입니다." },
+              text: { content: `상태·일정·우선순위는 ${APP_NAME}에서 관리합니다. 이 문서는 리소스와 상세 기록용입니다.` },
             }],
           },
         },

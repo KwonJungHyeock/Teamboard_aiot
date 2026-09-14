@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { APP_NAME_LONG } from "@/lib/brand";
 
 const REASON_MESSAGE: Record<string, string> = {
   inactive: "계정이 비활성화되었습니다. 관리자에게 문의하세요.",
@@ -59,7 +60,7 @@ export default function LoginPage() {
         <img className="login-mk-img" src="/brand/eduino_mark_ondark.png" alt="Eduino AI" width={72} height={49} />
         <div className="login-hero-t">
           <b>Eduino AI</b>
-          <span>MISSION DECK</span>
+          <span>{APP_NAME_LONG}</span>
         </div>
       </div>
       <form className="login-card" onSubmit={submit}>

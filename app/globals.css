@@ -450,7 +450,13 @@ table.tl tr:hover td {
 .login-hero .login-mk-img { width: 72px; height: auto; }
 .login-hero-t { text-align: center; }
 .login-hero-t b { display: block; font-size: var(--f1); font-weight: 800; color: var(--sb-ink); letter-spacing: -.01em; }
-.login-hero-t span { display: block; font-family: var(--f-d); font-size: var(--f6); letter-spacing: .16em; color: var(--sb-muted); margin-top: 6px; }
+/* 057 §A — 한글 긴 이름. 자간은 **좁게**: 영문 대문자용 넓은 자간(.14em 등)을
+   한글에 그대로 쓰면 낱자가 흩어져 한 낱말로 안 읽힌다. 폭이 좁으면 두 줄로
+   접히게 둔다 — 줄이면 못 읽는다. 줄바꿈 자리는 손으로 넣지 않는다(폭에 맡긴다).
+   `word-break: keep-all` 은 자리를 지정하는 것이 아니라 **낱말 가운데서 자르지
+   말라**는 것이다. 없으면 「통합업무 / 관리」로 갈라진다. */
+.login-hero-t span { display: block; font-size: 11px; letter-spacing: -.01em; line-height: 1.35;
+  word-break: keep-all; color: var(--sb-muted); margin-top: 6px; }
 
 .login-card {
   width: 380px;
@@ -636,7 +642,13 @@ body {
 .brand .mk { width: 30px; height: 30px; border-radius: 9px; background: var(--coral); display: grid; place-items: center; font-family: var(--f-d); font-size: var(--f3); font-weight: 700; color: #fff; flex: 0 0 30px; box-shadow: 0 2px 8px rgba(238,76,81,.28); margin-top: 1px; }
 .brand .mk-img { width: 30px; height: 30px; flex: 0 0 30px; object-fit: contain; margin-top: 1px; }
 .brand .nm { font-size: var(--f4); font-weight: 700; letter-spacing: -.01em; line-height: 1.25; color: var(--ink); }
-.brand .nm small { display: block; font-family: var(--f-d); font-size: var(--f6); font-weight: 500; color: var(--coral); letter-spacing: .14em; margin-top: 2px; }
+/* 057 §A — 한글 긴 이름. 자간은 **좁게**: 영문 대문자용 넓은 자간(.14em 등)을
+   한글에 그대로 쓰면 낱자가 흩어져 한 낱말로 안 읽힌다. 폭이 좁으면 두 줄로
+   접히게 둔다 — 줄이면 못 읽는다. 줄바꿈 자리는 손으로 넣지 않는다(폭에 맡긴다).
+   `word-break: keep-all` 은 자리를 지정하는 것이 아니라 **낱말 가운데서 자르지
+   말라**는 것이다. 없으면 「통합업무 / 관리」로 갈라진다. */
+.brand .nm small { display: block; font-size: 11px; font-weight: 500; color: var(--coral);
+  letter-spacing: -.01em; line-height: 1.35; word-break: keep-all; margin-top: 2px; }
 .brand .tg { margin-left: auto; width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: var(--lo); cursor: pointer; display: grid; place-items: center; flex: 0 0 24px; }
 .brand .tg:hover { background: var(--glass); color: var(--mid); }
 .brand .tg svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; }
@@ -1249,7 +1261,13 @@ body {
 .side .brand { align-items: center; gap: 10px; }
 .side .mk-logo { width: 30px; height: auto; flex: 0 0 30px; object-fit: contain; margin-top: 0; }
 .side .brand .nm { font-size: var(--f3); font-weight: 800; color: var(--sb-ink); line-height: 1.15; letter-spacing: -.01em; }
-.side .brand .nm small { display: block; font-family: var(--f-d); font-size: var(--f6); font-weight: 500; letter-spacing: .08em; color: var(--sb-muted); margin-top: 3px; }
+/* 057 §A — 한글 긴 이름. 자간은 **좁게**: 영문 대문자용 넓은 자간(.14em 등)을
+   한글에 그대로 쓰면 낱자가 흩어져 한 낱말로 안 읽힌다. 폭이 좁으면 두 줄로
+   접히게 둔다 — 줄이면 못 읽는다. 줄바꿈 자리는 손으로 넣지 않는다(폭에 맡긴다).
+   `word-break: keep-all` 은 자리를 지정하는 것이 아니라 **낱말 가운데서 자르지
+   말라**는 것이다. 없으면 「통합업무 / 관리」로 갈라진다. */
+.side .brand .nm small { display: block; font-size: 11px; font-weight: 500;
+  letter-spacing: -.01em; line-height: 1.35; word-break: keep-all; color: var(--sb-muted); margin-top: 3px; }
 body.rail .side .mk-logo { margin: 0 auto; }
 
 /* 빈 상태 워터마크 제거 (MD-P-2026-026 §A).

@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "@/lib/quick";
 import Skeleton from "./Skeleton";
+import { APP_NAME } from "@/lib/brand";
 
 interface Status {
   configured: boolean;
@@ -114,7 +115,7 @@ export default function NotionConnection() {
         해당 페이지에 Integration이 초대돼 있어야 합니다.
       </p>
       <p className="rlk-boundary">
-        상태·일정·우선순위는 <b>Mission Deck</b>에서 관리합니다. Notion은 리소스와 상세 기록용입니다.
+        상태·일정·우선순위는 <b>{APP_NAME}</b>에서 관리합니다. Notion은 리소스와 상세 기록용입니다.
       </p>
     </section>
   );

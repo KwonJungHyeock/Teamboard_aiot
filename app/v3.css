@@ -83,8 +83,13 @@
   gap: 2px; padding: 18px 12px; width: 232px; flex: 0 0 232px;
   position: sticky; top: 0; height: 100vh; align-self: flex-start; }
 .v3-rail-brand { display: block; padding: 4px 10px 18px; font-weight: 700; letter-spacing: -.01em; }
-.v3-rail-brand small { display: block; font-weight: 500; font-size: 11px; letter-spacing: .16em;
-  color: rgba(255, 255, 255, .68); margin-top: 3px; }
+/* 057 §A — 한글 긴 이름. 자간은 **좁게**: 영문 대문자용 넓은 자간(.14em 등)을
+   한글에 그대로 쓰면 낱자가 흩어져 한 낱말로 안 읽힌다. 폭이 좁으면 두 줄로
+   접히게 둔다 — 줄이면 못 읽는다. 줄바꿈 자리는 손으로 넣지 않는다(폭에 맡긴다).
+   `word-break: keep-all` 은 자리를 지정하는 것이 아니라 **낱말 가운데서 자르지
+   말라**는 것이다. 없으면 「통합업무 / 관리」로 갈라진다. */
+.v3-rail-brand small { display: block; font-weight: 500; font-size: 11px; letter-spacing: -.01em;
+  line-height: 1.35; word-break: keep-all; color: rgba(255, 255, 255, .68); margin-top: 3px; }
 .v3-rail a { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 10px;
   border-radius: var(--v3-radius-s); color: rgba(255, 255, 255, .80); text-decoration: none;
   font-weight: 600; }

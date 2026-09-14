@@ -25,6 +25,7 @@ import type { SessionUser } from "@/lib/types";
 import { V3_BASE } from "@/lib/v3/routes";
 import { viewHref, type SavedView } from "@/lib/saved-views";
 import { SAVED_VIEWS_EVENT } from "@/lib/saved-views-events";
+import { APP_NAME_LONG } from "@/lib/brand";
 
 const RAIL_KEY = "tb.rail";
 
@@ -316,7 +317,7 @@ export default function Sidebar({
         <img className="mk-logo" src="/brand/eduino_mark_ondark.png" alt="Eduino AI" width={30} height={21} />
         <div className="nm">
           Eduino AI
-          <small>MISSION DECK</small>
+          <small>{APP_NAME_LONG}</small>
         </div>
         <button className="tg" onClick={toggleRail} aria-label="사이드바 접기">
           <svg viewBox="0 0 24 24">
