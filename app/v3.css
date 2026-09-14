@@ -756,3 +756,57 @@
 /* 실패 사유는 **한 줄씩 통째로** 선다 — 옆에 붙이면 긴 문장이 잘린다. */
 .v3-bulkr-why { flex: 1 0 100%; font-size: 13px; color: var(--v3-late); font-weight: 600; }
 .v3-bulkr-x { margin-left: auto; }
+
+/* ══ 059 §B ① — 좁은 화면에서 레일은 서랍 ═══════════════════════════
+
+   ── 왜 뿌리인가 ───────────────────────────────────────────────────
+   레일이 232px 고정이라 390px 에서 본문 몫이 158px 이었다. 업무 제목이 폭 0 이
+   되고 팀 현황 4열이 13px 씩이 된 것이 전부 여기서 왔다. 이것부터 고치면 나머지
+   다섯이 그 위에 얹힌다.
+
+   ── 넓은 화면은 **아무것도 안 바뀐다** ────────────────────────────
+   아래 규칙은 전부 `@media (max-width: 767.98px)` 안에 있다. 768px 이상에서
+   위 바는 `display: none` 이고 레일은 지금 그대로다. */
+
+.v3-topbar { display: none; }
+.v3-scrim { display: none; }
+
+@media (max-width: 767.98px) {
+  /* 위 바 — 화면 맨 위에 붙는다. 스크롤해도 ☰ 가 손에 닿아야 한다. */
+  .v3 .v3-topbar { display: flex; align-items: center; gap: 10px;
+    position: sticky; top: 0; z-index: 30;
+    padding: 8px 12px; background: var(--v3-rail); color: #fff; }
+  .v3-burger { width: 38px; height: 38px; flex: 0 0 38px; display: grid; place-items: center;
+    border: 0; border-radius: var(--v3-radius-s); background: rgba(255, 255, 255, .16);
+    color: #fff; font-size: 17px; line-height: 1; cursor: pointer; }
+  .v3-burger:hover { background: rgba(255, 255, 255, .26); }
+  /* 가운데 이름은 **줄이지 않고 줄인다** — 길면 … 로. 두 줄이 되면 바 높이가 뛴다. */
+  .v3-topbar-t { flex: 1; min-width: 0; font-size: 15px; font-weight: 700; color: #fff;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .v3-topbar-new { flex: 0 0 auto; min-height: 34px; padding: 0 12px; font-size: 13px;
+    background: #fff !important; color: var(--v3-rail) !important; }
+
+  /* 본문 위의 「＋ 새 업무」는 **숨긴다.** 위 바에 이미 있다 — 같은 곳으로 가는
+     버튼이 한 화면에 둘이면 「둘이 다른가」를 묻게 된다(056 §A). */
+  .v3 .v3-top { display: none; }
+
+  /* 서랍 — 왼쪽에서 덮는다. 닫혀 있을 때는 `visibility` 로도 감춘다.
+     `transform` 만 쓰면 화면 밖에 있어도 탭 키가 들어간다. */
+  .v3 .v3-app { display: block; }
+  .v3 .v3-rail { position: fixed; top: 0; left: 0; bottom: 0; z-index: 40;
+    width: 264px; max-width: 84vw; flex-basis: auto; height: 100dvh;
+    transform: translateX(-100%); visibility: hidden;
+    transition: transform .18s ease-out;
+    overflow-y: auto; }
+  .v3 .v3-rail.open { transform: translateX(0); visibility: visible;
+    box-shadow: 0 0 40px rgba(16, 24, 40, .35); }
+  /* 계정·설정은 서랍 안에서도 **바닥에 붙는다.** `margin-top: auto` 가 그대로
+     듣도록 레일은 여기서도 flex column 을 유지한다. */
+  .v3 .v3-rail { display: flex; flex-direction: column; }
+
+  .v3 .v3-scrim { display: block; position: fixed; inset: 0; z-index: 35;
+    border: 0; padding: 0; background: rgba(16, 24, 40, .44); cursor: pointer; }
+
+  /* 본문은 폭을 다 쓴다. 여백은 줄이되 없애지 않는다 — 0 이면 글자가 모서리에 붙는다. */
+  .v3 .v3-main { padding: 16px 14px 28px; }
+}

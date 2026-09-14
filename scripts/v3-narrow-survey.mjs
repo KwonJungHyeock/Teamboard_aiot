@@ -72,7 +72,12 @@ const PROBE = `() => {
     culprits: [], clipped: [], overlaps: [], dead: [],
     table: null, cols: null, cal: null,
   };
+  // 제 스타일만 보면 **부모가 감춘 것**을 놓친다. 059 §B ① 에서 실제로 걸렸다:
+  // 「display: none」인 위 바 **안의** 버튼은 자기 display 가 grid 라서 보이는
+  // 것으로 세어졌고, 크기가 0이라 「못 누른다」로 나왔다 — 그리지도 않은 것을.
+  // 사각형이 하나도 없으면 그려지지 않은 것이다.
   const vis = (el) => {
+    if (el.getClientRects().length === 0) return false;
     const s = getComputedStyle(el);
     return s.display !== "none" && s.visibility !== "hidden" && Number(s.opacity) > 0;
   };
@@ -145,6 +150,7 @@ const PROBE = `() => {
   out.deadSkipped = 0;
   for (const el of document.querySelectorAll("a[href], button, input, select, [role=button]")) {
     if (!vis(el)) continue;
+    if (el.closest("[hidden]")) continue;
     const r = el.getBoundingClientRect();
     if (r.width < 1 || r.height < 1) { out.dead.push({ el: name(el), why: "크기 0" }); continue; }
     if (r.right > vw + 1 || r.left < -1) { out.dead.push({ el: name(el), why: "가로로 화면 밖" }); continue; }
