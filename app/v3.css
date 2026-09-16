@@ -88,8 +88,12 @@
    접히게 둔다 — 줄이면 못 읽는다. 줄바꿈 자리는 손으로 넣지 않는다(폭에 맡긴다).
    `word-break: keep-all` 은 자리를 지정하는 것이 아니라 **낱말 가운데서 자르지
    말라**는 것이다. 없으면 「통합업무 / 관리」로 갈라진다. */
-.v3-rail-brand small { display: block; font-weight: 500; font-size: 11px; letter-spacing: -.01em;
-  line-height: 1.35; word-break: keep-all; color: rgba(255, 255, 255, .68); margin-top: 3px; }
+/* 061 §F-19 — 두 줄. **윗줄이 작고 아랫줄이 크다.**
+   팀은 어디 소속인지, 서비스는 무엇인지다 — 매번 읽는 쪽은 아래쪽이다. */
+.v3-rail-team { display: block; font-style: normal; font-weight: 500; font-size: 11px;
+  letter-spacing: -.01em; line-height: 1.35; word-break: keep-all;
+  color: rgba(255, 255, 255, .68); margin-bottom: 1px; }
+/* `small` 은 이제 로고 자리에 없다 — 규칙만 남기면 다음 사람이 찾아 헤맨다. */
 .v3-rail a { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 10px;
   border-radius: var(--v3-radius-s); color: rgba(255, 255, 255, .80); text-decoration: none;
   font-weight: 600; }

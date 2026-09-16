@@ -25,7 +25,7 @@ import type { SessionUser } from "@/lib/types";
 import { V3_BASE } from "@/lib/v3/routes";
 import { viewHref, type SavedView } from "@/lib/saved-views";
 import { SAVED_VIEWS_EVENT } from "@/lib/saved-views-events";
-import { APP_NAME_LONG } from "@/lib/brand";
+import { APP_NAME, TEAM_NAME } from "@/lib/brand";
 
 const RAIL_KEY = "tb.rail";
 
@@ -315,9 +315,12 @@ export default function Sidebar({
         {/* Eduino AI 로고 — 다크 표면이므로 ondark 마크(점=라이트). 레일 접힘 시 마크만. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="mk-logo" src="/brand/eduino_mark_ondark.png" alt="Eduino AI" width={30} height={21} />
+        {/* 061 §F-19 — **두 줄.** 윗줄 작게 팀, 아랫줄 크게 서비스.
+            한 줄로 이어 붙이면(전 `APP_NAME_LONG`) 좁은 화면에서 잘린다.
+            회사 이름은 왼쪽 마크(`alt="Eduino AI"`)와 `<title>` 이 든다. */}
         <div className="nm">
-          Eduino AI
-          <small>{APP_NAME_LONG}</small>
+          <em className="nm-team">{TEAM_NAME}</em>
+          {APP_NAME}
         </div>
         <button className="tg" onClick={toggleRail} aria-label="사이드바 접기">
           <svg viewBox="0 0 24 24">

@@ -38,7 +38,7 @@ import { V3_BASE } from "@/lib/v3/routes";
 import { roleLabel, showsAdminGrantBadge, hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import DeniedNote from "../DeniedNote";
-import { APP_NAME_LONG } from "@/lib/brand";
+import { APP_NAME, TEAM_NAME } from "@/lib/brand";
 
 const NAV = [
   { href: `${V3_BASE}`, label: "오늘" },
@@ -150,9 +150,10 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
 
       <div className="v3-app">
         <nav id="v3-rail" className={`v3-rail${drawer ? " open" : ""}`} aria-label="주 메뉴">
+          {/* 061 §F-19 — **두 줄.** 윗줄 작게 팀, 아랫줄 크게 서비스. */}
           <span className="v3-rail-brand">
-            Eduino AI
-            <small>{APP_NAME_LONG}</small>
+            <em className="v3-rail-team">{TEAM_NAME}</em>
+            {APP_NAME}
           </span>
 
           {/* 메뉴 항목에는 제 이름표가 있다. 레일에 「＋ 새 업무」와 계정 링크가

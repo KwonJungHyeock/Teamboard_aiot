@@ -66,7 +66,7 @@ try {
   const req = createRequire(path.join(TMP, "noop.cjs"));
   // **제품의 상수를 그대로 부른다.** 검사기가 이름을 옮겨 적으면 둘이 갈릴 때
   // 검사기가 틀린 쪽을 정답으로 삼는다 (§G 048).
-  const { APP_NAME, APP_NAME_LONG, ORG_NAME } = req(path.join(TMP, "brand.js"));
+  const { APP_NAME, APP_NAME_LONG, ORG_NAME, TEAM_NAME } = req(path.join(TMP, "brand.js"));
 
   /*
    * ── ① 이름이 한 곳에서만 나온다 ───────────────────────────────
@@ -169,8 +169,14 @@ try {
     const c = await signed(1440, 900);
     const p = await open(c);
     await p.goto(`${BASE}/`, { waitUntil: "networkidle" });
-    const el = p.locator(".brand .nm small").first();
-    logos.push({ name: "옛 사이드바", text: (await el.innerText()).trim(),
+    /*
+     * 061 §F-19 — 로고 자리는 **두 줄**이 됐다(윗줄 팀 · 아랫줄 서비스).
+     * 한 줄짜리 옛 구조를 물으면 「이름이 사라졌다」로 읽는다.
+     * 두 줄을 각각 읽고, 합쳐서 긴 이름과 같은지 본다 — 나뉘었어도 **잃은 글자가
+     * 없어야** 한다.
+     */
+    const el = p.locator(".brand .nm").first();
+    logos.push({ name: "옛 사이드바", text: (await el.innerText()).replace(/\s+/g, " ").trim(),
                  clipped: await el.evaluate(CLIPPED) });
 
     /*
@@ -187,7 +193,8 @@ try {
     const nm = await p.locator(".brand .nm").boundingBox();
     const after = await p.locator(".acctblk").evaluate((el) => Math.round(el.getBoundingClientRect().bottom));
     const before = await p.evaluate(() => {
-      const s = document.querySelector(".brand .nm small");
+      // 061 §F-19 — 로고 밑줄이 `small` 에서 `.nm-team` 으로 바뀌었다.
+      const s = document.querySelector(".brand .nm .nm-team");
       const keep = s.textContent;
       s.textContent = "AAA";                                  // 한 줄짜리로 되돌린다
       const y = Math.round(document.querySelector(".acctblk").getBoundingClientRect().bottom);
@@ -209,8 +216,8 @@ try {
   {
     const p = await open(v3ctx);
     await p.goto(`${BASE}/v3`, { waitUntil: "networkidle" });
-    const el = p.locator(".v3-rail-brand small");
-    logos.push({ name: "v3 레일", text: (await el.innerText()).trim(),
+    const el = p.locator(".v3-rail-brand");
+    logos.push({ name: "v3 레일", text: (await el.innerText()).replace(/\s+/g, " ").trim(),
                  clipped: await el.evaluate(CLIPPED) });
 
     /*
@@ -235,8 +242,18 @@ try {
   }
 
   // 061 §E-17(나) — 빈 배열이면 **화면을 못 읽은 것**이다. 최소 개수를 함께 묻는다.
-  chk("④-로고-넷에-긴-이름", logos.length === 3 && logos.every((l) => l.text === APP_NAME_LONG),
-      logos.map((l) => `${l.name} "${l.text}"`).join(" · ") + ` + 오류 화면(위)`);
+  /*
+   * 061 §F-19 — 로고 자리가 **두 줄**이 됐다. 로그인은 아직 한 줄(`APP_NAME_LONG`)이고
+   * 레일·사이드바는 팀 + 서비스 두 줄이다. **잃은 글자가 없는지**로 묻는다:
+   * 줄바꿈을 지우면 긴 이름과 같아야 하고, 두 조각이 다 들어 있어야 한다.
+   */
+  const whole = (t) => t.replace(/\s+/g, " ").trim();
+  chk("④-로고-넷에-긴-이름",
+      logos.length === 3
+      && logos.every((l) => whole(l.text) === APP_NAME_LONG)
+      && logos.every((l) => l.text.includes(TEAM_NAME) && l.text.includes(APP_NAME)),
+      logos.map((l) => `${l.name} "${l.text}"`).join(" · ") +
+      ` — 줄바꿈을 지우면 "${APP_NAME_LONG}" 과 같아야 한다 + 오류 화면(위)`);
   chk("⑤-긴-이름이-안-잘린다", logos.every((l) => !l.clipped),
       logos.map((l) => `${l.name} ${l.clipped ? "잘림" : "다 들어감"}`).join(" · ") +
       " — scrollWidth ≤ clientWidth 로 쟀다(보이는 것과 들어간 것은 다르다)");
@@ -250,7 +267,7 @@ try {
   {
     const p = await open(v3ctx);
     await p.goto(`${BASE}/v3`, { waitUntil: "networkidle" });
-    const el = p.locator(".v3-rail-brand small");
+    const el = p.locator(".v3-rail-brand .v3-rail-team");   // 061 §F-19 로 이름이 바뀌었다
     const forced = await el.evaluate((n) => {
       n.style.whiteSpace = "nowrap"; n.style.overflow = "hidden"; n.style.width = "40px";
       return n.scrollWidth > n.clientWidth + 1;
@@ -280,9 +297,29 @@ try {
      */
     await p.locator(".v3-burger").click();
     await p.waitForTimeout(320);                 // 서랍이 미끄러져 나올 때까지
-    const el = p.locator(".v3-rail-brand small");
-    const narrow = { text: (await el.innerText()).trim(), clipped: await el.evaluate(CLIPPED),
-                     lines: await el.evaluate((n) => n.getClientRects().length) };
+    const el = p.locator(".v3-rail-brand");
+    /*
+     * 061 §F-19 — 전에는 `getClientRects().length` 로 줄 수를 셌다. 로고가 한 줄일
+     * 때 쓰던 방법이고, 안쪽에 블록(`.v3-rail-team`)이 생긴 뒤로는 무엇을 세든
+     * 1 이 나온다 — **늘 같은 값을 내놓는 숫자는 근거가 아니다**(§G 054).
+     * 두 줄을 각각 읽어 적는다.
+     */
+    const narrow = { text: (await el.innerText()).replace(/\s+/g, " ").trim(), clipped: await el.evaluate(CLIPPED),
+                     rows: await el.evaluate((n) => {
+                       const team = n.querySelector(".v3-rail-team");
+                       /*
+                        * **줄이 나뉘었는지**를 재려면 두 조각의 세로 자리를 비교해야 한다.
+                        * 처음엔 「로고 칸이 윗줄보다 높다」로 물었다가 틀렸다 — 한 줄로
+                        * 되돌려도 좁은 화면에서는 어차피 접혀서 늘 참이었다. 서비스
+                        * 이름은 요소가 아니라 **글자 노드**라 Range 로 자리를 잡는다.
+                        */
+                       const svc = [...n.childNodes].find((c) => c.nodeType === 3 && c.textContent.trim());
+                       const r = document.createRange(); if (svc) r.selectNodeContents(svc);
+                       const tb = team?.getBoundingClientRect(), sb = svc ? r.getBoundingClientRect() : null;
+                       return { team: team?.textContent ?? "(없음)",
+                                teamBottom: tb ? Math.round(tb.bottom) : null,
+                                svcTop: sb ? Math.round(sb.top) : null };
+                     }) };
     const menu = await p.locator(".v3-rail a").first().boundingBox();
     // v3 레일은 `sticky` · `height: 100vh` 라 계정 블록이 **화면 안 바닥**에 있다.
     // 옛 사이드바와 달리 여기서는 화면 안에 있는지 물어도 된다.
@@ -290,8 +327,12 @@ try {
     const vh = 844;
     chk("⑦-390px-에서도-안-깨진다",
         narrow.text === APP_NAME_LONG && !narrow.clipped && menu !== null && menu.y < vh
-        && acct !== null && acct.y + acct.height <= vh + 1,
-        `"${narrow.text}" · ${narrow.lines}줄 · ${narrow.clipped ? "잘림" : "다 들어감"}` +
+        && acct !== null && acct.y + acct.height <= vh + 1
+        && narrow.rows.team === TEAM_NAME
+        && narrow.rows.svcTop !== null && narrow.rows.svcTop >= narrow.rows.teamBottom - 1,
+        `"${narrow.text}" · 윗줄 "${narrow.rows.team}" 아래끝 ${narrow.rows.teamBottom}px` +
+        ` · 서비스 이름 윗끝 ${narrow.rows.svcTop}px (아래여야 줄이 나뉜 것)` +
+        ` · ${narrow.clipped ? "잘림" : "다 들어감"}` +
         ` · 첫 메뉴 y=${menu ? Math.round(menu.y) : "(없음)"}px` +
         ` · 계정 블록 아래끝 ${acct ? Math.round(acct.y + acct.height) : "(없음)"}px` +
         ` (둘 다 화면 ${vh}px 안이라야 안 밀린 것)`);

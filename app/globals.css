@@ -647,8 +647,10 @@ body {
    접히게 둔다 — 줄이면 못 읽는다. 줄바꿈 자리는 손으로 넣지 않는다(폭에 맡긴다).
    `word-break: keep-all` 은 자리를 지정하는 것이 아니라 **낱말 가운데서 자르지
    말라**는 것이다. 없으면 「통합업무 / 관리」로 갈라진다. */
-.brand .nm small { display: block; font-size: 11px; font-weight: 500; color: var(--coral);
-  letter-spacing: -.01em; line-height: 1.35; word-break: keep-all; margin-top: 2px; }
+/* 061 §F-19 — 두 줄. 윗줄(팀)이 작고 아랫줄(서비스)이 크다. */
+.brand .nm .nm-team { display: block; font-size: 11px; font-weight: 500; color: var(--coral);
+  font-style: normal; letter-spacing: -.01em; line-height: 1.35; word-break: keep-all;
+  margin-bottom: 1px; }
 .brand .tg { margin-left: auto; width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: var(--lo); cursor: pointer; display: grid; place-items: center; flex: 0 0 24px; }
 .brand .tg:hover { background: var(--glass); color: var(--mid); }
 .brand .tg svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; }
@@ -1212,7 +1214,7 @@ mark.hl { background: color-mix(in srgb, var(--amber) 26%, var(--card)); color: 
 .side a[aria-current="page"] .cnt { color: var(--coral-l); }
 /* 브랜드 */
 .side .brand .nm { color: var(--sb-ink); }
-.side .brand .nm small { color: var(--coral-l); }
+.side .brand .nm .nm-team { color: var(--coral-l); }
 .side .brand .tg { color: var(--sb-muted); }
 .side .brand .tg:hover { background: rgba(255,255,255,.06); color: var(--sb-ink); }
 /* 검색바 */
@@ -1266,8 +1268,9 @@ body {
    접히게 둔다 — 줄이면 못 읽는다. 줄바꿈 자리는 손으로 넣지 않는다(폭에 맡긴다).
    `word-break: keep-all` 은 자리를 지정하는 것이 아니라 **낱말 가운데서 자르지
    말라**는 것이다. 없으면 「통합업무 / 관리」로 갈라진다. */
-.side .brand .nm small { display: block; font-size: 11px; font-weight: 500;
-  letter-spacing: -.01em; line-height: 1.35; word-break: keep-all; color: var(--sb-muted); margin-top: 3px; }
+.side .brand .nm .nm-team { display: block; font-size: 11px; font-weight: 500;
+  font-style: normal; letter-spacing: -.01em; line-height: 1.35; word-break: keep-all;
+  color: var(--sb-muted); margin-bottom: 1px; }
 body.rail .side .mk-logo { margin: 0 auto; }
 
 /* 빈 상태 워터마크 제거 (MD-P-2026-026 §A).
