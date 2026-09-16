@@ -55,10 +55,26 @@ try {
   const wantStanding = await one(
     `SELECT id, name FROM project WHERE type='standing' AND area_id = $1 AND is_active`, [myAreas[0]]
   );
-  const goalProjects = Number((await one(`SELECT count(*)::int n FROM project WHERE type='goal' AND is_active`)).n);
-  const wantBtn = goalProjects + myAreas.length;
+  /*
+   * 061 §A-1 로 **기준이 바뀌었다.** 전에는 「goal 프로젝트 전부 + 내 영역마다
+   * 상시 하나」였고, 그래서 지금 고른 영역에 안 맞는 프로젝트까지 버튼 줄에
+   * 나왔다 — 고르면 `trg_task_area_match` 가 500 을 냈다. 이제 버튼 줄은
+   * **지금 고른 영역의 프로젝트**만 낸다.
+   *
+   * 모달이 처음 뜰 때 고른 영역은 1순위 영역이다. 기대값은 여전히 DB 에서
+   * 만든다 — 화면이 낸 값으로 화면을 채점하지 않는다.
+   */
+  const wantBtn = Number((await one(
+    `SELECT count(*)::int n FROM project WHERE is_active AND area_id = $1`, [myAreas[0]])).n);
+  const firstAreaName = (await one(`SELECT name FROM area WHERE id = $1`, [myAreas[0]])).name;
+  /** ⑤ 를 재려면 버튼이 둘 이상인 영역이 필요하다 — 그 영역도 DB 에서 고른다. */
+  const manyArea = await one(
+    `SELECT a.id, a.name, count(p.id)::int n FROM area a JOIN project p ON p.area_id = a.id AND p.is_active
+      WHERE a.id = ANY($1::int[]) GROUP BY a.id, a.name HAVING count(p.id) >= 2
+      ORDER BY count(p.id) DESC LIMIT 1`, [myAreas]);
   console.log(`기대 — 소속 영역 [${myAreas.join(", ")}] · 1순위 상시 #${wantStanding?.id} ${wantStanding?.name}`);
-  console.log(`기대 — 버튼 ${goalProjects}(goal) + ${myAreas.length}(상시) = ${wantBtn}`);
+  console.log(`기대 — 1순위 영역(#${myAreas[0]}) 프로젝트 = 버튼 ${wantBtn}개 (061 §A-1: 그 영역 것만)`);
+  console.log(`⑤ 용 — 프로젝트가 둘 이상인 영역 ${manyArea ? `"${manyArea.name}" ${manyArea.n}개` : "없음"}`);
   console.log("");
 
   browser = await chromium.launch();
@@ -141,6 +157,24 @@ try {
   t(onLabels[0] === wantLabel, "④기본값", `눌린 것 「${onLabels[0]}」 (기대 「${wantLabel}」)`);
 
   // ── ⑤ 단일 선택 토글 ───────────────────────────────────────────
+  /*
+   * 061 §A-1 뒤로 1순위 영역에 프로젝트가 하나뿐일 수 있다. 그러면 「다른 것을
+   * 누르면 앞의 것이 벗는가」를 잴 대상이 없다 — 버튼이 둘 이상인 영역으로
+   * 옮기고 나서 잰다. **조건을 먼저 만든다**(§G 035).
+   */
+  if (!manyArea) throw new Error("프로젝트가 둘 이상인 영역이 없다 — ⑤를 잴 조건을 못 만든다");
+  {
+    const adv = page.locator(".ntm-adv");
+    if ((await adv.getAttribute("aria-expanded")) !== "true") await adv.click();
+    await page.locator('.ntm-side .prop-row:has(.prop-l:text-is("영역")) .prop-v').click();
+    await page.locator(".ntm-side select").selectOption({ label: manyArea.name });
+    await page.waitForTimeout(400);
+    // 영역을 바꾸면 선택이 비워진다(061 §A-1). 토글을 재려면 하나 눌러 둬야 한다.
+    await page.locator(".pp-b").first().click();
+    await page.waitForTimeout(200);
+    const n = await page.locator(".pp-b").count();
+    t(n >= 2, "⑤짝-잴-것이-있다", `영역 "${manyArea.name}" 버튼 ${n}개 (2개 이상이라야 ⑤가 뜻을 가진다)`);
+  }
   const other = page.locator(".pp-b:not(.on)").first();
   const otherLabel = await other.innerText();
   await other.click();
@@ -149,7 +183,22 @@ try {
     `「${otherLabel}」 누르니 [${after.join(" | ")}] — 앞의 것이 벗어야 한다`);
   await page.locator(".pp-b.on").first().click();
   t(await page.locator(".pp-b.on").count() === 0, "⑤벗기기", "같은 것을 다시 누르면 벗는다");
+  /*
+   * ⑥ 부터는 1순위 영역의 기본 프로젝트로 재므로 **영역을 되돌린다.**
+   * 되돌리지 않으면 「상시 · R&D」 버튼이 없어 ⑥ 이 30초를 기다리다 죽는다 —
+   * 검사가 제 앞 단계에 발이 걸린 것이지 화면이 틀린 것이 아니다.
+   */
+  await page.locator('.ntm-side .prop-row:has(.prop-l:text-is("영역")) .prop-v').click().catch(() => {});
+  await page.locator(".ntm-side select").selectOption({ label: firstAreaName });
+  await page.waitForTimeout(400);
   await page.locator(".pp-b", { hasText: wantLabel }).first().click();
+  // ⑦ 은 고급이 **닫힌 상태**에서 시작한다(제가 눌러서 연다). 열어 둔 채 넘기면
+  // ⑦ 의 클릭이 도로 닫아 버린다 — 내가 바꾼 상태는 내가 되돌린다.
+  {
+    const adv = page.locator(".ntm-adv");
+    if ((await adv.getAttribute("aria-expanded")) === "true") await adv.click();
+    await page.waitForTimeout(250);
+  }
 
   // ── ⑦ 목표 목록이 비어 있지 않다 ───────────────────────────────
   //

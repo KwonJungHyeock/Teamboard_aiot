@@ -12,7 +12,7 @@
 //
 //   ▸ **언제 다시 필요해지는가** — 모달 안에서 프로젝트를 새로 만드는 길이
 //     생기면 그때 되살린다. 백로그 「모달에서 프로젝트 새로 만들기」에 올려 뒀다
-//     (docs/backlog.md). 그때는 061 §A-1 때문에 **만든 프로젝트의 영역이 지금
+//     (docs/BACKLOG.md). 그때는 061 §A-1 때문에 **만든 프로젝트의 영역이 지금
 //     고른 영역과 같아야** 한다는 조건이 하나 더 붙는다.
 //
 //   ▸ D1-검색 은 안 지웠다. 지키려던 것이 검색이 아니라 「고를 수 있는 것이 다
@@ -160,7 +160,7 @@ try {
    *     061 §A-1 로 기준이 「전체」가 아니라 **「그 영역」**이 됐다.
    *
    *  ② 「그 자리에서 만들기」 → **지웠다.** 아직 없는 기능이다. 지운 줄은
-   *     이 파일 맨 위 주석에 남겼고, 백로그에 올렸다(docs/backlog.md).
+   *     이 파일 맨 위 주석에 남겼고, 백로그에 올렸다(docs/BACKLOG.md).
    *
    *  ③ 「만들고 바로 선택됨」 → **②와 같은 쪽.** ②가 만든 프로젝트를 확인하던
    *     검사라 ②가 없으면 잴 대상 자체가 없다. ①처럼 「지키려던 것」을 옮겨
@@ -252,6 +252,32 @@ try {
     await page.locator(".iti-q").first().press("Enter");
     await page.waitForTimeout(1300);
   }
+  /*
+   * ── 실측 프로젝트를 **직접 만든다** ──────────────────────────────
+   *
+   * 061 §C-11 에서 D1-생성(모달 안에서 프로젝트를 만드는 길)을 지웠다. 그
+   * 검사가 곁다리로 만들어 주던 프로젝트에 §D3·§D2·§D4 가 얹혀 있었고,
+   * 지우고 나서 셋이 `pjRow` 를 못 찾아 죽었다 — C2 가 D1 에 얹혀 있던 것과
+   * 똑같은 모양이다(§G 035). 이제 제 조건을 제가 만든다.
+   *
+   * 화면이 아니라 DB 에 넣는다. 저 셋이 재는 것은 「프로젝트를 만드는 길」이
+   * 아니라 「있는 프로젝트에 업무가 붙는가」라서, 만드는 방법은 무엇이든 된다.
+   *
+   * **영역은 방금 만든 업무에서 가져온다.** 아무 영역에나 만들면
+   * `trg_task_area_match` 가 일괄 지정을 막는다 — 061 §A 가 고친 바로 그
+   * 제약이다. 기준값을 손으로 적는 대신 붙일 업무 쪽에서 읽는다.
+   */
+  const bulkTargets = await sql(
+    `SELECT id, area_id FROM task WHERE title LIKE $1 AND is_active ORDER BY id`, [`${MARK} 일괄 대상%`]);
+  if (bulkTargets.length === 0) throw new Error("일괄 대상 업무가 안 만들어졌다 — 뒤 단계를 잴 수 없다");
+  const pjRow = await sql(
+    `INSERT INTO project (name, area_id) VALUES ($1, $2) RETURNING id`,
+    [PJ, bulkTargets[0].area_id]);
+  // 화면은 프로젝트 목록을 이미 받아 왔다. 새로 고치지 않으면 일괄 지정 콤보에
+  // 방금 만든 것이 안 뜬다 — 「없다」가 아니라 「아직 안 봤다」다.
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(1000);
+
   // 검색으로 실측 업무만 남긴다 — 전체 선택이 남의 업무를 집지 않게.
   await page.locator(".tsearch").fill(MARK);
   await page.waitForTimeout(700);
