@@ -104,7 +104,7 @@ try {
 
   const consoleErrors = [];
   page.on("pageerror", (e) => consoleErrors.push(String(e).slice(0, 120)));
-  page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 120)); });
+  page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") consoleErrors.push(m.text().slice(0, 120)); });
   page.on("requestfailed", (r) => {
     const why = r.failure()?.errorText ?? "";
     if (!/ABORTED/i.test(why)) consoleErrors.push(`요청 실패 ${r.url().slice(-50)} (${why})`);

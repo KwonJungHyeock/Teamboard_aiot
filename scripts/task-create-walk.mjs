@@ -46,6 +46,9 @@ try {
   const page = await ctx.newPage();
   const errs = [];
   page.on("pageerror", (e) => errs.push(e.message));
+  // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
+  page.on("console", (m) => { const t = m.type();
+    if (t === "error" || t === "warning") errs.push(`[${t}] ` + m.text().slice(0, 160)); });
   const shot = (id) => snap(page, { path: `${OUT}/${id}.png` });
   const box = (sel) => page.locator(sel).first().boundingBox();
 
@@ -82,6 +85,21 @@ try {
   chk("C3-확장", carried === t2, `⌘Enter → 모달 제목 "${carried}" (친 내용 "${t2}" 이어야 한다)`);
 
   // ══ §C1 형태 ════════════════════════════════════════════════════════
+  /*
+   * 060 §C — **「고급」을 열고 나서 잰다.**
+   *
+   * 027 §B 부터 고급(`.ntm-side`)은 언제나 닫힌 채로 시작한다. 이 검사기는 그
+   * 열이 처음부터 있다고 보고 30초를 기다리다 죽었다 — 027 이후로 줄곧
+   * 그랬다. 화면이 아니라 검사기가 옛 화면을 묻고 있었다.
+   *
+   * 아래 C1-우측열·C1-속성 과 D1 의 프로젝트 콤보가 전부 그 열 안에 있으므로,
+   * **사람이 하는 대로** 「고급」을 누르고 나서 잰다.
+   */
+  const adv = page.locator(".ntm-adv");
+  await adv.waitFor({ timeout: 5000 });
+  if ((await adv.getAttribute("aria-expanded")) !== "true") await adv.click();
+  await page.locator(".ntm-side").waitFor({ timeout: 5000 });
+
   const m = await box(".ntm");
   const side = await box(".ntm-side");
   const titleFs = await page.locator(".ntm-title").evaluate((el) => getComputedStyle(el).fontSize);
@@ -92,57 +110,81 @@ try {
     `모달 ${m ? `${Math.round(m.width)}×${Math.round(m.height)}` : "없음"} (720×560 이어야 한다) · 스크림 ${scrim}`);
   chk("C1-우측열", side && Math.round(side.width) === 220,
     `오른쪽 속성 열 ${side ? Math.round(side.width) : "없음"}px (220 이어야 한다) · 제목 ${titleFs}`);
-  chk("C1-속성", props.join(" · ") === "공개 범위 · 프로젝트 · 목표 · 담당 · 상태 · 우선순위 · 기한 · 영역",
-    `속성 순서 "${props.join(" · ")}"`);
+  /*
+   * 060 §C — **프로젝트와 기간은 옆 열에서 본문으로 옮겨졌다** (027 §B).
+   * 「언제까지인지는 나중에 채우는 값이 아니라 적을 때 아는 값이다」가 이유다.
+   * 옛 목록 여덟을 그대로 요구하면 **옮긴 것을 사라진 것으로** 읽는다.
+   *
+   * 그래서 두 가지를 같이 묻는다 — 옆 열에 남은 여섯이 그 차례대로인가,
+   * 그리고 **옮겨 간 둘이 본문에 있는가.** 뒤엣것을 안 물으면 「옆 열에서
+   * 지워 버렸다」도 통과한다.
+   */
+  const inBody = await page.locator(".ntm-main .ntm-fl").allTextContents();
+  const moved = ["프로젝트", "기간"];
+  chk("C1-속성", props.join(" · ") === "공개 범위 · 목표 · 담당 · 상태 · 우선순위 · 영역"
+      && moved.every((k) => inBody.some((t) => t.trim() === k)),
+    `옆 열 "${props.join(" · ")}" · 본문 [${inBody.map((t) => t.trim()).join(" · ")}]` +
+    ` — 옮겨 간 둘(${moved.join("·")})이 본문에 ${moved.every((k) => inBody.some((t) => t.trim() === k)) ? "있다" : "없다"}`);
 
   const foot = await page.locator(".ntm-foot").innerText();
   const corals = await page.locator(".ntm .btn-primary").count();
   chk("C1-하단", /취소/.test(foot) && /만들고 계속 추가/.test(foot) && /만들기/.test(foot) && corals === 1,
     `하단 "${foot.replace(/\n+/g, " · ")}" · 코랄 ${corals}개 (1이어야 한다)`);
 
-  // ══ §D1 프로젝트 검색형 콤보박스 ═════════════════════════════════════
-  await page.locator('.ntm-side .prop-row:has(.prop-l:text-is("프로젝트")) .pcb-v').click();
-  await page.waitForTimeout(300);
-  const allOpts = await page.locator(".pcb-list .pcb-o").allTextContents();
-  await page.locator(".pcb-q").fill("플랫");
-  await page.waitForTimeout(250);
-  const narrowed = await page.locator(".pcb-list .pcb-o").allTextContents();
-  await shot("D1-filter");
-  chk("D1-검색", narrowed.length < allOpts.length,
-    `전체 ${allOpts.length}줄 → "플랫" 입력 후 ${narrowed.length}줄 [${narrowed.join(", ")}]`);
-
-  await page.locator(".pcb-q").fill(PJ);
-  await page.waitForTimeout(250);
-  const createRow = await page.locator(".pcb-new").innerText().catch(() => "");
-  chk("D1-만들기줄", createRow.includes(PJ), `일치 0건일 때 맨 아래 "${createRow}"`);
-
-  await page.locator(".pcb-new").click();
-  // 고정 대기(1400ms)를 쓰면 안 된다. dev 서버가 /api/projects 를 처음 컴파일하는 회차에는
-  // 이 POST 가 2.1초 걸렸고(따뜻할 때는 36ms), 그 회차마다 이 검사가 통째로 무너졌다.
-  // **끝났는지를 보고 기다린다** — 시간이 아니라 조건이다.
-  const pickedCell = page.locator('.ntm-side .prop-row:has(.prop-l:text-is("프로젝트")) .pcb-v');
-  await pickedCell.filter({ hasText: PJ }).waitFor({ timeout: 15000 }).catch(() => {});
-  const picked = await pickedCell.innerText();
-  const pjRow = await sql(`SELECT id, area_id FROM project WHERE name=$1 AND is_active`, [PJ]);
-  await shot("D1-created");
-  chk("D1-생성", pjRow.length === 1 && picked.includes(PJ),
-    `그 자리에서 만들고 바로 선택됨 — 값 "${picked}" · project ${pjRow.length}건 · area_id ${pjRow[0]?.area_id ?? "없음"}`);
+  /* ══ §D1 프로젝트 검색형 콤보박스 — **그 UI 가 없어졌다** ═══════════
+   *
+   * 027 §B 가 콤보박스를 **버튼 줄**로 바꿨다: 「드롭다운이 아니라 버튼이다 —
+   * 열고·읽고·고르고·닫는 네 동작이 아무도 안 고르게 만들었다.」
+   * `components/ProjectPicker.tsx` 에는 검색 칸도, 「그 자리에서 만들기」 줄도
+   * 없다(`input` 0개). 그러니 D1 의 세 검사는 **없는 것을 재고 있다.**
+   *
+   * 여기서 멈추고 보고한다 (060 §C · 「제품이 틀린 자리가 나오면 멈추고 보고」).
+   * 제품이 틀린 것은 아니다 — 일부러 거둔 기능이다. 그래서 두 가지를 다 안 한다:
+   *   · 버튼 줄을 재는 **새 검사를 지어 넣지 않는다.** 그건 이번 지시가 아니다
+   *   · 세 검사를 **조용히 지우지도 않는다.** 지우면 덮던 자리가 소리 없이 준다
+   * 대신 소리 나게 실패시키고, 뒤 검사들이 돌 수 있게 길을 연다.
+   */
+  const pp = await page.locator(".ntm-main .pp").count();
+  const combo = await page.locator(".pcb-v, .pcb-q, .pcb-new").count();
+  chk("D1-검색·만들기줄·생성", false,
+    `**검사 불가 — 027 §B 에서 콤보박스가 버튼 줄로 바뀌었다.** ` +
+    `본문의 버튼 줄(.pp) ${pp}개 · 옛 콤보(.pcb-*) ${combo}개. ` +
+    `검색·「그 자리에서 만들기」는 지금 화면에 없는 기능이라 셋을 잴 수 없다. ` +
+    `버튼 줄을 재는 새 검사를 지어 넣을지는 지시를 기다린다.`);
 
   // ══ §C2 조작 — ⌘Enter 저장 · 만들고 계속 추가 ════════════════════════
+  /*
+   * 060 §C — **C2 의 조건을 여기서 만든다.**
+   *
+   * C2 가 묻는 것은 「저장해도 프로젝트가 유지되는가」다. 그러려면 프로젝트가
+   * 하나 **골라져 있어야** 하는데, 예전에는 D1 이 콤보박스에서 하나 만들어
+   * 끼워 주는 바람에 C2 가 그 곁다리로 조건을 얻고 있었다. D1 이 재던 UI 가
+   * 없어지자 C2 도 같이 죽었다 — 남의 조건에 얹혀 있었기 때문이다.
+   *
+   * 이제 C2 가 **제 조건을 제가 만든다**(§G 035). 버튼 줄에서 하나 고른다.
+   */
+  const pjBtn = page.locator(".ntm-main .pp .pp-b").first();
+  await pjBtn.click();
+  const pjName = (await pjBtn.innerText()).trim();
+  const pjPicked = await sql(`SELECT id FROM project WHERE name = $1 AND is_active`, [pjName]);
+
   await page.locator(".ntm-keep input").check();
   await page.keyboard.press("Meta+Enter");
   await page.waitForTimeout(1600);
   const stillOpen = await page.locator(".ntm").count();
   const titleAfter = await page.locator(".ntm-title").inputValue().catch(() => "!!닫힘");
-  const keptProject = await page.locator('.ntm-side .prop-row:has(.prop-l:text-is("프로젝트")) .pcb-v').innerText().catch(() => "");
+  // 골라진 버튼은 `aria-pressed="true"` 다 — 옛 콤보의 글자칸이 아니다.
+  const keptProject = await page.locator('.ntm-main .pp .pp-b[aria-pressed="true"]')
+    .innerText().catch(() => "");
   const madeBadge = await page.locator(".ntm-made").innerText().catch(() => "");
   await shot("C2-keep");
-  chk("C2-계속추가", stillOpen === 1 && titleAfter === "" && keptProject.includes(PJ),
-    `⌘Enter 저장 후 모달 유지 · 제목 "${titleAfter}"(비어야 함) · 프로젝트 "${keptProject}"(유지돼야 함) · 배지 "${madeBadge}"`);
+  chk("C2-계속추가", stillOpen === 1 && titleAfter === "" && keptProject.trim() === pjName,
+    `⌘Enter 저장 후 모달 유지 · 제목 "${titleAfter}"(비어야 함) · ` +
+    `프로젝트 "${keptProject.trim()}"(고른 "${pjName}" 이 유지돼야 함) · 배지 "${madeBadge}"`);
 
   const savedT2 = (await sql(`SELECT project_id FROM task WHERE title=$1 AND is_active`, [t2]));
-  chk("C2-저장값", savedT2.length === 1 && savedT2[0].project_id === pjRow[0]?.id,
-    `저장된 업무의 project_id ${savedT2[0]?.project_id ?? "없음"} (새 프로젝트 ${pjRow[0]?.id} 이어야 한다)`);
+  chk("C2-저장값", savedT2.length === 1 && savedT2[0].project_id === (pjPicked[0]?.id ?? null),
+    `저장된 업무의 project_id ${savedT2[0]?.project_id ?? "없음"} (고른 "${pjName}" = ${pjPicked[0]?.id ?? "없음"} 이어야 한다)`);
 
   // Esc — 내용이 없으면 바로 닫힌다
   await page.keyboard.press("Escape");

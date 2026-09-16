@@ -64,7 +64,7 @@ try {
   const page = await ctx.newPage();
   const jsErrors = [];
   page.on("pageerror", (e) => jsErrors.push(String(e).slice(0, 160)));
-  page.on("console", (m) => { if (m.type() === "error") jsErrors.push(m.text().slice(0, 160)); });
+  page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") jsErrors.push(m.text().slice(0, 160)); });
 
   const home = async () => {
     await page.goto(`${BASE}/`, { waitUntil: "networkidle" });

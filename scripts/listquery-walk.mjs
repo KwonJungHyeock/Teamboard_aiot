@@ -45,7 +45,7 @@ const page = await ctx.newPage();
 // ── 관측 도구부터 확인한다 ──────────────────────────────────────
 const consoleErrors = [];
 page.on("pageerror", (e) => consoleErrors.push(String(e).slice(0, 120)));
-page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 120)); });
+page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") consoleErrors.push(m.text().slice(0, 120)); });
 page.on("requestfailed", (r) => {
   const why = r.failure()?.errorText ?? "";
   if (/ABORTED/i.test(why)) return;

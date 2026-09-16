@@ -59,7 +59,7 @@ const page = await ctx.newPage();
 // ── ① 관측 도구 ──────────────────────────────────────────────────
 const consoleErrors = [];
 page.on("pageerror", (e) => consoleErrors.push(String(e).slice(0, 120)));
-page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 120)); });
+page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") consoleErrors.push(m.text().slice(0, 120)); });
 // 페이지를 떠나며 취소된 요청은 오류가 아니다 — 그것까지 세면 검사가 늘 실패한다.
 page.on("requestfailed", (r) => {
   const why = r.failure()?.errorText ?? "";

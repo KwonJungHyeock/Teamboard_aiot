@@ -96,6 +96,9 @@ try {
   const page = await ctx.newPage();
   const jsErr = [];
   page.on("pageerror", (e) => jsErr.push(e.message));
+  // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
+  page.on("console", (m) => { const t = m.type();
+    if (t === "error" || t === "warning") jsErr.push(`[${t}] ` + m.text().slice(0, 160)); });
 
   // ── 1. 로그인 화면 ──
   await page.goto(`${BASE}/`, { waitUntil: "networkidle" });

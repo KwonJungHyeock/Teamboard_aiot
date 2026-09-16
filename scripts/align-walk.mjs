@@ -22,10 +22,15 @@ const tok = (u) => {
   return `${p}.${createHmac("sha256", S).update(p).digest("base64url")}`;
 };
 
-// 준비 조사와 **같은 21경로**. 목록이 갈리면 "전 화면"이 뜻을 잃는다.
+// 준비 조사와 **같은 경로들**. 목록이 갈리면 "전 화면"이 뜻을 잃는다.
+//
+// 060 §C — `/assistant` 를 뺐다. 041 §B ① 에서 **철거된 화면**이라 404 가 나고,
+// 이 검사기는 콘솔 오류가 하나라도 있으면 측정 자체를 실패로 끝낸다. 그래서
+// 041 이후로 줄곧 「화면이 성한 상태가 아니다」로 떨어져 있었다 — 성하지 않은
+// 것은 화면이 아니라 이 목록이었다. 스무 경로.
 const ROUTES = [
   "/", "/tasks", "/goals", "/projects", "/projects/1", "/calendar", "/signals",
-  "/signals?tab=decision", "/inbox", "/activity", "/huddle", "/assistant",
+  "/signals?tab=decision", "/inbox", "/activity", "/huddle",
   "/reports", "/handover", "/members", "/settings", "/saved", "/notes",
   "/profile", "/status", "/areas/1",
 ];
@@ -50,7 +55,7 @@ const page = await ctx.newPage();
  */
 const consoleErrors = [];
 page.on("pageerror", (e) => consoleErrors.push(String(e).slice(0, 120)));
-page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 120)); });
+page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") consoleErrors.push(m.text().slice(0, 120)); });
 // 페이지를 떠나며 취소된 요청은 오류가 아니다 — 그것까지 세면 검사가 늘 실패한다.
 page.on("requestfailed", (r) => {
   const why = r.failure()?.errorText ?? "";
