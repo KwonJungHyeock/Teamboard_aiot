@@ -25,7 +25,7 @@ import type { TodayTask } from "@/lib/v3/today";
 import { areaOf, type AreaView } from "@/lib/v3/category";
 import {
   parseMonth, shiftMonth, monthLabel, monthGrid, inMonth, byDay, cellItems,
-  noDueSplit, monthCount, openDay, WEEKDAYS, CELL_MAX,
+  noDueSplit, monthCount, openDay, dayList, WEEKDAYS, CELL_MAX,
 } from "@/lib/v3/calendar";
 import { taskHref } from "@/lib/v3/routes";
 
@@ -38,6 +38,24 @@ export default function CalendarView({
   const sp = useSearchParams();
   const [tasks, setTasks] = useState<TodayTask[] | null>(null);
   const [err, setErr] = useState("");
+  /*
+   * ── 059 §B ⑤ 폰에서는 목록 ──────────────────────────────────────
+   *
+   * 폭은 **서버가 모른다.** 그래서 붙고 나서 묻고, 그 뒤로는 폭이 바뀔 때마다
+   * 따라간다(기기를 돌리면 바뀐다). 처음 한 칸은 격자로 그려지지만 그때는 아직
+   * 업무를 못 받아 「불러오는 중…」이라 눈에 걸리지 않는다.
+   *
+   * 격자와 목록을 **둘 다 그려 놓고 CSS 로 감추지 않는다.** 42칸을 헛되이 그리게
+   * 되고, 무엇보다 화면에 안 보이는 링크가 탭 순서에 남는다.
+   */
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767.98px)");
+    const read = () => setNarrow(mq.matches);
+    read();
+    mq.addEventListener("change", read);
+    return () => mq.removeEventListener("change", read);
+  }, []);
   const [tally, setTally] = useState<Tally | null>(null);
   /** 네 숫자를 못 본 이유. 팀원이면 403 이 온다 — 빈 자리로 두지 않는다. */
   const [tallyWhy, setTallyWhy] = useState("");
@@ -136,6 +154,48 @@ export default function CalendarView({
           <Button className="v3-sortbtn" onClick={() => goMonth(shiftMonth(ym, 1))}>다음달 ▸</Button>
         </div>
 
+        {/* 뷰가 바뀐 사실을 **적는다.** 월 그리드를 찾던 사람이 없어졌다고
+            여기면 안 된다 — 화면이 스스로 무엇을 하고 있는지 말한다. */}
+        {narrow && (
+          <p className="v3-why v3-calnote">
+            {/* 별표를 쓰지 않는다 — 여기는 마크다운이 아니라 글자 그대로 찍힌다. */}
+            폭이 좁아 <b>날짜별 목록</b>으로 보입니다. 월 그리드는 화면이 넓어지면 돌아옵니다.
+          </p>
+        )}
+
+        {narrow ? (
+          <div className="v3-daylist">
+            {dayList(days, ym, today, open).map((d) => (
+              <section className="v3-day" key={d.date}>
+                <header className={`v3-day-h${d.isToday ? " today" : ""}`}>
+                  <b>{d.label}</b>
+                  {d.isToday && <em className="v3-day-tag">오늘</em>}
+                  {d.isOpen && <em className="v3-cal-open">가오픈</em>}
+                  <span className="v3-day-n">{d.rows.length}건</span>
+                </header>
+                {/* 목록에서는 **안 접는다.** 격자는 칸 높이가 정해져 있어 접었지만
+                    여기는 세로로 흐르므로 접을 이유가 없다. 접으면 그날 몇 건인지
+                    보려고 한 번 더 눌러야 한다. */}
+                {d.rows.map((t) => {
+                  const a = areaOf(areas, t.areaId);
+                  return (
+                    <Link
+                      key={t.id}
+                      className={`v3-pill ${a?.tone ?? "etc"}${t.status === "done" ? " done" : ""}`}
+                      href={taskHref(t.id)}
+                      title={`${t.title}${a ? ` · ${a.name}` : ""}`}
+                    >
+                      {t.title}
+                    </Link>
+                  );
+                })}
+              </section>
+            ))}
+            {tasks !== null && dayList(days, ym, today, open).length === 0 && (
+              <p className="v3-why">이 달에 기한인 업무가 없습니다.</p>
+            )}
+          </div>
+        ) : (
         <div className="v3-cal" role="grid" aria-label={monthLabel(ym)}>
           {WEEKDAYS.map((w) => (
             <div className="v3-cal-w" key={w} role="columnheader">{w}</div>
@@ -184,6 +244,7 @@ export default function CalendarView({
             );
           }))}
         </div>
+        )}
       </Card>
 
       {tasks !== null && thisMonth === 0 && (

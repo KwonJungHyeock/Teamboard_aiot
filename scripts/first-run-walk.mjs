@@ -19,7 +19,9 @@ import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { purgeActor, purgeReport } from "./purge-actor.mjs";
-import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
+import { shot as snap } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
+// 이 검사기에는 제 `shot` 이 이미 있다. 모듈 쪽은 `snap` 으로 받는다 —
+// 같은 이름으로 받으면 제 함수가 저를 부르거나(무한) 선언이 겹친다.
 
 requireLocalDb("first-run-walk.mjs");
 
@@ -59,7 +61,7 @@ const turnedOff = new Map();   // 표 → 이 스크립트가 끈 id 목록
 
 async function shot(page, id, note) {
   const path = `${OUT}/${id}.png`;
-  await shot(page, { path });
+  await snap(page, { path });
   steps.push({ id, note, shot: path });
   console.log(`  ▸ ${id.padEnd(22)} ${note}`);
 }

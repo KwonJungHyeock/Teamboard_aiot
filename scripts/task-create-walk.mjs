@@ -12,7 +12,9 @@ import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
-import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
+import { shot as snap } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
+// 이 검사기에는 제 `shot` 이 이미 있다. 모듈 쪽은 `snap` 으로 받는다 —
+// 같은 이름으로 받으면 제 함수가 저를 부르거나(무한) 선언이 겹친다.
 
 requireLocalDb("task-create-walk.mjs");
 
@@ -44,7 +46,7 @@ try {
   const page = await ctx.newPage();
   const errs = [];
   page.on("pageerror", (e) => errs.push(e.message));
-  const shot = (id) => shot(page, { path: `${OUT}/${id}.png` });
+  const shot = (id) => snap(page, { path: `${OUT}/${id}.png` });
   const box = (sel) => page.locator(sel).first().boundingBox();
 
   const areaId = (await sql(`SELECT id FROM area WHERE is_active ORDER BY sort_order LIMIT 1`))[0].id;

@@ -103,11 +103,17 @@ try {
   for (const p of V3_PAGES) {
     await page.goto(`${BASE}${p}`, { waitUntil: "networkidle" });
     await page.locator(".v3-main").waitFor({ timeout: 9000 });
-    const btns = page.locator(".v3 a, .v3 button").filter({ hasText: /새 업무/ });
+    /*
+     * **보이는 것만** 센다. 059 ① 이 좁은 화면용 위 바에 「＋ 새 업무」를 하나
+     * 더 두고, 넓은 화면에서는 그것을 `display: none` 으로 감춘다. 있는 대로
+     * 세면 둘이지만 사람 눈에는 하나다 — 묻는 것은 「눈에 하나인가」다.
+     * 처음엔 안 걸러서 실패했고, 그건 화면이 아니라 검사기가 틀린 것이었다.
+     */
+    const btns = page.locator(".v3 a:visible, .v3 button:visible").filter({ hasText: /새 업무/ });
     const n = await btns.count();
     const hrefs = await btns.evaluateAll((els) => els.map((e) => e.getAttribute("href")));
     // 레일의 메뉴 항목 「새 업무」는 버튼이 아니라 **메뉴**다 — 세는 데서 뺀다.
-    const nav = await page.locator(".v3-navlink").filter({ hasText: /새 업무/ }).count();
+    const nav = await page.locator(".v3-navlink:visible").filter({ hasText: /새 업무/ }).count();
     seen.push({ p, n: n - nav, hrefs: hrefs.filter((h) => h !== null) });
   }
   chk("①-「새-업무」-버튼이-정확히-하나",
@@ -116,6 +122,33 @@ try {
   chk("②-그-하나가-같은-곳으로",
       seen.every((s) => s.hrefs.every((h) => h === "/v3/new")),
       `가리키는 곳 [${Array.from(new Set(seen.flatMap((s) => s.hrefs))).join(", ")}]`);
+
+  /*
+   * ①짝 — **좁은 화면에서도 하나다** (059 §B ①).
+   *
+   * ① 은 넓은 화면에서 본문 위 버튼을 센다. 좁은 화면에서는 그것을 감추고 위
+   * 바의 것이 대신 선다. 한쪽만 재면 「감췄는데 새것을 안 냈다」나 「둘 다 냈다」를
+   * 못 잡는다 — 둘 다 좁은 화면을 열어 보기 전엔 안 보인다.
+   */
+  {
+    const nctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await nctx.addCookies([{ name: "tb_session", domain: new URL(BASE).hostname, path: "/",
+      value: tok({ id: me.id, actorId: me.id, name: "검사", role: me.role,
+                   adminGrant: me.admin_grant, email: "x@x" }) }]);
+    const np = await nctx.newPage();
+    await np.goto(`${BASE}/v3/tasks`, { waitUntil: "networkidle" });
+    await np.locator(".v3-main").waitFor({ timeout: 9000 });
+    const nb = np.locator(".v3 a:visible, .v3 button:visible").filter({ hasText: /새 업무/ });
+    const nn = await nb.count();
+    const nhref = await nb.evaluateAll((els) => els.map((e) => e.getAttribute("href")));
+    // 서랍이 닫혀 있으니 레일 메뉴는 애초에 안 보인다 — 뺄 것이 없어야 맞다.
+    const nnav = await np.locator(".v3-navlink:visible").filter({ hasText: /새 업무/ }).count();
+    chk("①짝-390px-에서도-하나",
+        nn === 1 && nnav === 0 && nhref[0] === "/v3/new",
+        `390px 에서 보이는 「새 업무」 ${nn}개 · 레일 메뉴 ${nnav}개(서랍이 닫혀 0) · ` +
+        `가리키는 곳 ${nhref[0] ?? "(없음)"}`);
+    await nctx.close();
+  }
   // 레일의 흰 버튼이 **실제로 없어졌는지** 값으로 본다. 없어진 것을 세는 자리다.
   chk("②짝-레일의-흰-버튼은-없다",
       (await page.locator(".v3-railnew").count()) === 0,

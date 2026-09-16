@@ -18,8 +18,21 @@
 //
 // 그래서 레일의 흰 버튼을 뺐다. **뺀 자리는 그냥 비운다** — 다른 것으로 채우면
 // 줄인 의미가 없다. 단축키 `C` 는 그대로다.
+//
+// ── 좁은 화면에서는 레일이 **서랍**이다 (059 §B ①) ────────────────
+//
+// 레일은 232px 고정이라 390px 에서 본문 몫이 158px 밖에 안 됐다. 업무 제목이
+// 폭 0 으로 사라지고 팀 현황 4열이 13px 씩이 된 것이 전부 여기서 왔다.
+//
+// 768px 미만에서 레일을 **왼쪽에서 덮고 나오는 서랍**으로 바꾼다.
+//   · **같은 마크업을 그대로 쓴다.** 좁은 화면용 메뉴를 따로 만들면 항목이
+//     늘 때 한쪽만 늘고, 그 사실은 좁은 화면을 열어 보기 전엔 안 보인다
+//   · 768px 이상은 **아무것도 안 바뀐다.** 바뀌면 그게 결함이다
+//   · 열려 있는 동안 뒤 본문은 안 굴러간다 — 굴러가면 닫고 나서 딴 데 와 있다
+//   · 「＋ 새 업무」는 여전히 **하나다**(056 §A). 좁을 때는 위 바의 것 하나,
+//     넓을 때는 본문 위의 것 하나. 둘이 같이 서지 않는다
 import Link from "next/link";
-import { useCallback, useEffect, Suspense } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { V3_BASE } from "@/lib/v3/routes";
 import { roleLabel, showsAdminGrantBadge, hasLead } from "@/lib/types";
@@ -66,6 +79,30 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
 
   const openNew = useCallback(() => { router.push(newHref); }, [router, newHref]);
 
+  /*
+   * ── 서랍 (059 §B ①) ──────────────────────────────────────────
+   * 화면을 옮기면 닫는다. 안 닫으면 새 화면 위에 서랍이 덮인 채로 남는다.
+   */
+  const [drawer, setDrawer] = useState(false);
+  useEffect(() => { setDrawer(false); }, [pathname]);
+  useEffect(() => {
+    if (!drawer) return;
+    // 뒤 본문이 굴러가면 닫고 나서 딴 데 와 있다. 원래 값으로 되돌린다 —
+    // 빈 문자열로 덮으면 밖에서 걸어 둔 값을 지운다.
+    const keep = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setDrawer(false); };
+    window.addEventListener("keydown", esc);
+    return () => {
+      document.body.style.overflow = keep;
+      window.removeEventListener("keydown", esc);
+    };
+  }, [drawer]);
+
+  /** 위 바 가운데에 적는 화면 이름. **레일 항목과 같은 목록에서** 나온다. */
+  const title = [...NAV, ...LEAD_NAV].filter((n) => on(n.href))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.label ?? "오늘";
+
   // 단축키 `C`. 조합키가 눌려 있으면 안 건다 — ⌘C 는 복사다.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -89,9 +126,30 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
   }
 
   return (
-    <div className="v3">
+    <div className={`v3${drawer ? " drawer-on" : ""}`}>
+      {/*
+        위 바 — **768px 미만에서만** 보인다(CSS 가 정한다). 왼쪽 ☰ ·
+        가운데 화면 이름 · 오른쪽 ＋ 새 업무.
+      */}
+      <div className="v3-topbar">
+        <button type="button" className="v3-burger" aria-label="주 메뉴 열기"
+                aria-expanded={drawer} aria-controls="v3-rail"
+                onClick={() => setDrawer(true)}>
+          <span aria-hidden="true">☰</span>
+        </button>
+        <b className="v3-topbar-t">{title}</b>
+        <Link className="v3-btn primary v3-topbar-new" href={newHref}>＋ 새 업무</Link>
+      </div>
+
+      {/* 바깥을 누르면 닫힌다. 서랍이 닫혀 있으면 아예 안 그린다 —
+          투명한 판이 화면 위에 남아 있으면 아무것도 안 눌린다. */}
+      {drawer && (
+        <button type="button" className="v3-scrim" aria-label="메뉴 닫기"
+                onClick={() => setDrawer(false)} />
+      )}
+
       <div className="v3-app">
-        <nav className="v3-rail" aria-label="주 메뉴">
+        <nav id="v3-rail" className={`v3-rail${drawer ? " open" : ""}`} aria-label="주 메뉴">
           <span className="v3-rail-brand">
             Eduino AI
             <small>{APP_NAME_LONG}</small>

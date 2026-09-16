@@ -130,9 +130,37 @@ export type CbState = "todo" | "doing" | "review" | "done";
 const CB_LABEL: Record<CbState, string> = {
   todo: "아직 시작 안 함", doing: "진행 중", review: "검토 중", done: "완료",
 };
+/*
+ * ── 누를 수 없을 때는 **버튼이 아니다** (059 §B ⑥) ────────────────
+ *
+ * 상세의 상태 고르개는 `<button class="v3-stbtn">` 안에 이 네모를 넣는다.
+ * 안쪽도 `<button>` 이면 HTML 이 금지하는 **버튼 안 버튼**이고, React 가
+ * 하이드레이션 경고를 낸다 — 상세를 열 때마다 한 번씩. 046 §B 부터 있었다.
+ *
+ * 누르는 자리(`onToggle` 이 온 자리)는 그대로 버튼이다. 아무도 안 누르는
+ * 자리는 그냥 **모양**이므로 `<span role="img">` 로 낸다. 글자 설명은 양쪽 다
+ * 그대로 붙는다 — 모양만으로는 배워야 알 수 있다.
+ *
+ * 지금 v3 에서 `onToggle` 을 주는 자리는 없다(전부 `disabled` 인 버튼이었다).
+ * 그래서 이 바꾸기로 **없어지는 동작이 없다.**
+ */
 export function Checkbox({
   state, onToggle, disabled,
 }: { state: CbState; onToggle?: () => void; disabled?: boolean }) {
+  const mark = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4"
+         strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  );
+  if (!onToggle) {
+    return (
+      <span className={`v3-cb mark ${state}`} role="img"
+            title={CB_LABEL[state]} aria-label={CB_LABEL[state]}>
+        {mark}
+      </span>
+    );
+  }
   return (
     <button
       type="button"
@@ -144,10 +172,7 @@ export function Checkbox({
       title={CB_LABEL[state]}
       aria-label={CB_LABEL[state]}
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4"
-           strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M5 12.5l4.5 4.5L19 7.5" />
-      </svg>
+      {mark}
     </button>
   );
 }
