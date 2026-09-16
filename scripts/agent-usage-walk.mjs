@@ -29,6 +29,7 @@ import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
+import { ignoredWhy } from "./console-ignore.mjs";   // 안 세는 것은 한 파일에 (061 §D-14)
 
 requireLocalDb("agent-usage-walk.mjs");
 
@@ -106,9 +107,16 @@ try {
   const ctx = await mk({ id: ADMIN_ID, actorId: ADMIN_ID, name: "권정혁", role: "admin", email: "a@a" });
   const page = await ctx.newPage();
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
+  const ignoredLines = [];
   // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
+  // 061 §D-14 — 다만 **무시 목록**(scripts/console-ignore.mjs)에 있는 것은 뺀다.
+  //   목록은 한 파일에 모여 있고 줄마다 왜 뺐는지가 적혀 있다.
   page.on("console", (m) => { const t = m.type();
-    if (t === "error" || t === "warning") errs.push(`[${t}] ` + m.text().slice(0, 160)); });
+    if (t !== "error" && t !== "warning") return;
+    const line = `[${t}] ` + m.text().slice(0, 160);
+    const skip = ignoredWhy(line);
+    if (skip) { ignoredLines.push(`${line.slice(0, 60)} — ${skip}`); return; }
+    errs.push(line); });
   const reqs = []; page.on("request", (r) => reqs.push({ method: r.method(), url: r.url() }));
   await page.goto(`${BASE}/admin/agent-usage`, { waitUntil: "networkidle" });
   await page.waitForTimeout(900);

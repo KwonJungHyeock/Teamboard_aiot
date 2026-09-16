@@ -28,6 +28,7 @@ import { mkdirSync } from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
+import { ignoredWhy } from "./console-ignore.mjs";
 
 requireLocalDb("v3-new-walk.mjs");
 
@@ -74,10 +75,21 @@ try {
     value: tok({ id: me.id, actorId: me.id, name: "검사", role: me.role,
                  adminGrant: me.admin_grant, email: "x@x" }) }]);
   const page = await ctx.newPage();
-  const errs = []; page.on("pageerror", (e) => errs.push(e.message));
-  // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
-  page.on("console", (m) => { const t = m.type();
-    if (t === "error" || t === "warning") errs.push(`[${t}] ` + m.text().slice(0, 160)); });
+  /*
+   * 061 §D-13 — ⑩ 이 **일부러** 400 을 만든다(빈 제목을 보내 거부 이유를 받는다).
+   * 그때의 「Failed to load resource … 400」은 조건이지 고장이 아니다.
+   * 그 구간에서만 따로 센다 — 400 전부를 눈감으면 진짜 400 도 놓친다.
+   * **무시 목록에는 안 넣는다** (남이 낸 400 까지 같이 눈감게 된다).
+   */
+  let expect400 = false;
+  const errs = [], wanted = [], ignored = [];
+  const take = (t) => {
+    if (expect400 && /Failed to load resource.*400/.test(t)) { wanted.push(t); return; }
+    (ignoredWhy(t) ? ignored : errs).push(t.slice(0, 160));
+  };
+  page.on("pageerror", (e) => take(e.message));
+  page.on("console", (m) => { const k = m.type();
+    if (k === "error" || k === "warning") take(`[${k}] ${m.text()}`); });
 
   await page.goto(`${BASE}/v3/new`, { waitUntil: "networkidle" });
   await page.locator(".frn-skip").first().click({ timeout: 1500 }).catch(() => {});
@@ -189,6 +201,7 @@ try {
   //
   // 조건을 만든다 — 화면이 보내는 것과 **같은 모양**으로 제목만 비워 보낸다.
   await page.goto(`${BASE}/v3/new`, { waitUntil: "networkidle" });
+  expect400 = true;
   const rej = await page.evaluate(async () => {
     const r = await fetch("/api/tasks", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -208,7 +221,13 @@ try {
   await page.waitForTimeout(300);
   await shot(page, { path: `${OUT}/v3-new.png`, fullPage: true });
 
-  chk("⑪-콘솔오류", errs.length === 0, `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}`);
+  expect400 = false;
+  // ⑪짝 — 우리가 만든 400 이 실제로 났는가. 0이면 ⑩ 이 거부 없이 통과한 것이다.
+  chk("⑪짝-400-이-실제로-났다", wanted.length >= 1,
+      `우리가 만든 400 ${wanted.length}건 (1건 이상이라야 ⑩ 이 뜻을 가진다)`);
+  chk("⑪-콘솔오류", errs.length === 0,
+      `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}` +
+      ` (⑩ 이 일부러 만든 400 ${wanted.length}건 · 무시 목록 ${ignored.length}건은 따로 셌다)`);
   await ctx.close();
 
   console.log(`\n${pass}/${pass + fail} 통과`);

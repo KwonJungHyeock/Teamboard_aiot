@@ -202,6 +202,13 @@ try {
     `지정 → blocked_by=${mid.blocked_by}(C=#${C}) · "차단 없음" → blocked=${end.blocked} ` +
     `blocked_by=${end.blocked_by} 사유=${end.blocked_reason ?? "null"}`);
 
+  /*
+   * 061 §D-16 — **단언에 물린다.** 이제껏 건수를 찍기만 했고, 그래서
+   * 초록 밑에 경고가 쌓여 있었다. 무시 목록(console-ignore)에 걸린 것은
+   * 빠지고, 남은 것은 **빨개진다.** 빨개진 것을 고치는 것은 다른 회차다.
+   */
+  chk("콘솔오류·경고", errs.length === 0,
+      `${errs.length}건${errs.length ? " — " + errs[0].slice(0, 110) : ""}`);
   console.log(`\nJS 오류 ${errs.length}건${errs.length ? " — " + errs.join(" / ") : ""}`);
   const pass = rows.filter((r) => r.pass).length;
   console.log(`합계 ${rows.length} · 통과 ${pass} · 실패 ${rows.length - pass}`);
