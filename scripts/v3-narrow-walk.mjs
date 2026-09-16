@@ -75,7 +75,7 @@ try {
                    adminGrant: me.admin_grant, email: "x@x" }) }]);
     const p = await c.newPage();
     p.on("pageerror", (e) => errs.push(e.message));
-    p.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
+    p.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") errs.push(m.text()); });
     return { c, p };
   };
   /** 「새 업무」로 가는 **보이는** 것의 수. 레일 메뉴 항목은 뺀다(그건 메뉴다). */

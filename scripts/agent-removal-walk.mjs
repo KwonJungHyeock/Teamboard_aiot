@@ -186,6 +186,9 @@ try {
   const page = await ctx.newPage();
   const errs = [];
   page.on("pageerror", (e) => errs.push(e.message));
+  // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
+  page.on("console", (m) => { const t = m.type();
+    if (t === "error" || t === "warning") errs.push(`[${t}] ` + m.text().slice(0, 160)); });
 
   // ④ 화면들이 그려지는가. **에이전트가 있던 자리를 지나는 화면들**을 고른다.
   const SCREENS = [["홈", "/"], ["캘린더", "/calendar"], ["타임라인", "/timeline"],

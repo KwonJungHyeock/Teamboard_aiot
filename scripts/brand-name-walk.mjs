@@ -132,7 +132,7 @@ try {
   const open = async (ctx) => {
     const p = await ctx.newPage();
     p.on("pageerror", (e) => errs.push(e.message));
-    p.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
+    p.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") errs.push(m.text()); });
     return p;
   };
   const signed = async (w, h) => {

@@ -53,9 +53,76 @@ let browser;
  */
 let logMark = null;
 let restore = null;   // 실측으로 바꾼 진척값을 되돌리기 위한 기록
+/* 060 §C — 이 검사기가 만든 조건. 끝나면 지운다(§G 034·054). */
+const MARK = "[060H4]";
+let seeded = null;
 try {
   // 지금까지의 로그 최대 id — 이 뒤에 생긴 것이 **이 회차가 만든 것**이다.
   logMark = (await sql(`SELECT coalesce(max(id), 0) AS m FROM activity_log`))[0].m;
+
+  /*
+   * ══ 조건을 **먼저 만든다** (060 §C · §G 035·054) ═══════════════════
+   *
+   * 이 블록의 검사 넷이 오랫동안 **아무것도 안 재고 있었다.** 홈 히어로에 바가
+   * 0개였기 때문이다 — 「바가 0개뿐이라 초과분 없음」, `scaleX []`, `hero-grow
+   * 0개`. 전부 참이지만 전부 공(空)이다. 하나(이탈안전)만 빈 배열을 안 받아서
+   * 떨어졌고, 그래서 **떨어진 하나만 보였다.**
+   *
+   * 히어로는 **기준 달(anchor)의 날짜 칸**만 그린다. 그 달에 걸친 업무가 없으면
+   * 「이 기간에 표시할 업무가 없어요」가 뜨고 바가 하나도 없다. 그래서 이번 달에
+   * 걸치는 업무를 **여덟 개** 만든다 — 여섯까지만 stagger 이므로 일곱째·여덟째가
+   * 있어야 「나머지는 즉시」가 뜻을 가진다.
+   *
+   * 그리고 (d)32g-직접변경 을 위해 **목표에 연결된 진행 중 업무**도 하나 만든다.
+   * 이것도 있는 데이터에서 찾고 있었다.
+   */
+  {
+    // 시작에서도 쓸어낸다 — 지난 회차가 죽어 남겼을 수 있다(§G 054).
+    await sql(`DELETE FROM goal_task WHERE task_id IN (SELECT id FROM task WHERE title LIKE $1)`, [`${MARK}%`]);
+    await sql(`DELETE FROM task WHERE title LIKE $1`, [`${MARK}%`]);
+
+    const today = (await sql(`SELECT (now() AT TIME ZONE 'Asia/Seoul')::date::text d`))[0].d;
+    const [y, m] = today.split("-").map(Number);
+    const mEnd = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    /*
+     * **영역마다 하나씩** 만든다. 홈 히어로는 `summary` 모드라 영역 하나가 막대
+     * 하나로 **말려 올라간다**(`aggregateTasks`) — 한 영역에 여덟 개를 넣으면
+     * 막대는 여전히 하나다. 처음에 그렇게 넣고 「바 1개」를 봤다.
+     * 활성 영역이 일곱이면 막대도 일곱이고, 여섯까지만 stagger 이므로 일곱째가
+     * 「나머지는 즉시」의 재료가 된다.
+     */
+    const areas = await sql(`SELECT id FROM area WHERE is_active ORDER BY sort_order, id`);
+    const ids = [];
+    for (let i = 0; i < areas.length; i += 1) {
+      // 날짜를 조금씩 어긋나게 둔다 — 전부 같은 칸에 겹치면 막대가 포개져 보인다.
+      const st = String(Math.min(1 + i, mEnd)).padStart(2, "0");
+      const en = String(Math.min(3 + i, mEnd)).padStart(2, "0");
+      ids.push((await sql(
+        `INSERT INTO task (title, description, area_id, assignee_id, created_by, status,
+                           start_date, due_date, priority, origin, work_type, visibility,
+                           goal_source, is_active)
+         VALUES ($1, '', $2, 1, 1, 'doing', $3::date, $4::date, 'mid', 'human', 'team', 'team',
+                 'manual', true) RETURNING id`,
+        [`${MARK} 히어로 막대 ${i + 1}`, areas[i].id, `${y}-${String(m).padStart(2, "0")}-${st}`,
+         `${y}-${String(m).padStart(2, "0")}-${en}`]))[0].id);
+    }
+
+    /*
+     * (d) 의 조건 — **월 목표**에 진행 중 업무를 건다.
+     * 처음엔 `ORDER BY id LIMIT 1` 로 아무 목표나 집었다가 연간 목표에 걸렸고,
+     * 화면이 「집계 없음」만 내서 검사가 아무것도 못 쟀다. 굴러가는 것을 보려면
+     * **그 업무로 집계가 실제로 바뀌는 자리**여야 한다.
+     */
+    const g = (await sql(
+      `SELECT id FROM goal WHERE is_active AND period_type = 'month'
+         AND $1::date BETWEEN period_start AND period_end ORDER BY id LIMIT 1`, [today]))[0];
+    if (g) await sql(`INSERT INTO goal_task (goal_id, task_id) VALUES ($1, $2)
+                      ON CONFLICT DO NOTHING`, [g.id, ids[0]]);
+    seeded = { ids, goalId: g?.id ?? null };
+    console.log(`   (조건) 이번 달에 걸치는 업무 ${ids.length}개 — 영역마다 하나씩(히어로는 영역당 막대 하나로` +
+                ` 말아 올린다) · 여섯까지만 stagger 라 일곱째가 있어야 「나머지는 즉시」가 뜻을 가진다` +
+                ` · 이번 달 월 목표 #${g?.id ?? "없음"} 에 업무 #${ids[0]} 연결`);
+  }
   browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
     args: ["--no-proxy-server", "--no-sandbox"] });
   const host = new URL(BASE).hostname;
@@ -68,6 +135,9 @@ try {
   await c1.addCookies([COOKIE(host)]);
   const p1 = await c1.newPage();
   const e1 = []; p1.on("pageerror", (e) => e1.push(e.message));
+  // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
+  p1.on("console", (m) => { const t = m.type();
+    if (t === "error" || t === "warning") e1.push(`[${t}] ` + m.text().slice(0, 160)); });
 
   await p1.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
   await p1.waitForSelector(".hm-hero .gt2-bar", { timeout: 12000 }).catch(() => {});
@@ -127,7 +197,19 @@ try {
   await p1b.goto(`${BASE}/goals`, { waitUntil: "networkidle" });   // 다른 화면으로
   await p1b.goBack({ waitUntil: "domcontentloaded" });
   await p1b.waitForSelector(".hm-hero .gt2-bar", { timeout: 12000 }).catch(() => {});
-  await p1b.waitForTimeout(900);
+  /*
+   * 060 §C — **고정 시간(900ms)으로 기다리지 않는다.**
+   * 연쇄가 거의 끝난 자리에서는 프레임당 변화가 작아 「멈춘 것처럼」 보인다.
+   * 실제로 900ms 뒤에 읽으면 막대 하나가 0.99 로 잡혀 「중간 상태로 멈췄다」는
+   * 틀린 FAIL 이 났다. h2-hotfix 가 모달 크기에서 겪은 것과 같은 자리다 —
+   * **멈춘 것처럼 보이는 것과 멈춘 것은 다르다.**
+   *
+   * 끝났다는 진짜 신호를 기다린다: 제품이 끝나면 `hero-grow` 클래스를 뗀다.
+   * 그래도 남아 있으면 그때는 진짜로 멈춘 것이고, 아래 단언이 잡는다.
+   */
+  await p1b.waitForFunction(
+    () => document.querySelectorAll(".hm-hero .gt2-bar.hero-grow").length === 0,
+    { timeout: 5000, polling: "raf" }).catch(() => {});
   const after = await p1b.evaluate(() => [...document.querySelectorAll(".hm-hero .gt2-bar")].map((el) => {
     const m = getComputedStyle(el).transform;
     if (m === "none") return 1;
@@ -147,6 +229,9 @@ try {
   await c2.addCookies([COOKIE(host)]);
   const p2 = await c2.newPage();
   const e2 = []; p2.on("pageerror", (e) => e2.push(e.message));
+  // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
+  p2.on("console", (m) => { const t = m.type();
+    if (t === "error" || t === "warning") e2.push(`[${t}] ` + m.text().slice(0, 160)); });
 
   // 연쇄가 재생됐는지 판정하는 눈 — 화면의 %가 두 프레임에 걸쳐 **다른 값**을 지나가는지 본다.
   // 최종값만 보면 "굴러갔는지"와 "그냥 바뀌었는지"를 구별할 수 없다.
@@ -377,6 +462,12 @@ try {
   if (restore) {
     await sql(`UPDATE task SET progress = $1 WHERE id = $2`, [restore.progress, restore.id]);
     console.log(`정리 — task #${restore.id} 진행률을 ${restore.progress}% 로 되돌림`);
+  }
+  if (seeded) {
+    await sql(`DELETE FROM goal_task WHERE task_id = ANY($1::int[])`, [seeded.ids]);
+    await sql(`DELETE FROM task WHERE id = ANY($1::int[])`, [seeded.ids]);
+    const left = (await sql(`SELECT count(*)::int n FROM task WHERE title LIKE $1`, [`${MARK}%`]))[0].n;
+    console.log(`정리 — 조건으로 만든 업무 ${seeded.ids.length}건 삭제 · 잔여 ${left}건 (0이어야 한다)`);
   }
   await browser?.close();
   await pool.end();

@@ -46,13 +46,27 @@ try {
   const page = await ctx.newPage();
   const jsErrors = [];
   page.on("pageerror", (e) => jsErrors.push(String(e).slice(0, 160)));
-  page.on("console", (m) => { if (m.type() === "error") jsErrors.push(m.text().slice(0, 160)); });
+  page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") jsErrors.push(m.text().slice(0, 160)); });
 
   // ── ①② 새 업무 모달 ────────────────────────────────────────────
   await page.goto(`${BASE}/tasks?panel=task:new`, { waitUntil: "domcontentloaded" });
   const frn = page.locator(".frn-skip");
   if (await frn.count()) { await frn.first().click().catch(() => {}); }
   await page.waitForSelector(".ntm", { timeout: 10000 });
+  /*
+   * 060 §C — **「고급」을 열고 나서 잰다.**
+   *
+   * 027 §B 부터 고급(`.ntm-side`)은 **언제나 닫힌 채로** 시작한다 — 「한 번 연
+   * 사람이 계속 열린 채로 보면 네 칸으로 줄인 의미가 없다」. 그런데 이 검사기는
+   * 속성 행(`.prop-row`)이 처음부터 있다고 보고 5초를 기다리다 죽었다.
+   * 027 이후로 줄곧 0/1 이었다 — 화면이 아니라 검사기가 옛 화면을 묻고 있었다.
+   *
+   * 여기서 재려는 것은 속성 행의 팝업이 모달 밖으로 넘치는지다. 그러려면 고급이
+   * 열려 있어야 하므로, **사람이 하는 대로** 「고급」을 누른다.
+   */
+  const advBtn = page.locator(".ntm-adv");
+  await advBtn.waitFor({ timeout: 5000 });
+  if ((await advBtn.getAttribute("aria-expanded")) !== "true") await advBtn.click();
   await page.waitForSelector(".ntm .prop-row", { timeout: 5000 });
 
   // 모달은 **열릴 때 `transform: scale()` 로 커지며 들어온다.** 뜨자마자 재면

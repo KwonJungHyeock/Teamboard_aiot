@@ -46,9 +46,55 @@ let browser;
 let logMark = null;
 let restore = null;   // 실측으로 바꾼 값 되돌리기
 let sliderRestore = null;
+/* 060 §C — B3 의 조건으로 만든 것. 끝나면 지운다(§G 034). */
+const B3 = "[060B3]";
+let b3 = null;
 try {
   // 지금까지의 로그 최대 id — 이 뒤에 생긴 것이 **이 회차가 만든 것**이다.
   logMark = (await sql(`SELECT coalesce(max(id), 0) AS m FROM activity_log`))[0].m;
+
+  /*
+   * ── B3 의 조건을 **먼저 만든다** (060 §C · §G 035) ───────────────
+   *
+   * B3-누르면펼침 은 「연결 업무가 있는 월 행」을 **있는 데이터에서 찾고** 있었다.
+   * 그런 목표가 없으면 「검사 불가」로 떨어진다 — 실제로 줄곧 그랬다.
+   * 있는 것을 찾는 대신 **이번 분기의 월 목표 하나와 거기 걸린 업무 하나**를
+   * 직접 만든다. 그러면 데이터가 어떻든 이 검사는 늘 같은 것을 잰다.
+   *
+   * 뒷정리는 시작에서도 쓸어낸다(§G 054) — 지난 회차가 죽어 남겼을 수 있다.
+   */
+  await sql(`DELETE FROM goal_task WHERE goal_id IN (SELECT id FROM goal WHERE title LIKE $1)`, [`${B3}%`]);
+  await sql(`DELETE FROM goal WHERE title LIKE $1`, [`${B3}%`]);
+  await sql(`DELETE FROM task WHERE title LIKE $1`, [`${B3}%`]);
+  {
+    const today = (await sql(`SELECT (now() AT TIME ZONE 'Asia/Seoul')::date::text d`))[0].d;
+    const [y, m] = today.split("-").map(Number);
+    const mStart = `${y}-${String(m).padStart(2, "0")}-01`;
+    const mEnd = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+    const areaId = (await sql(`SELECT id FROM area WHERE is_active ORDER BY sort_order, id LIMIT 1`))[0].id;
+    /*
+     * **분기 목표 밑에 매단다.** 처음엔 부모 없이 만들었다가 화면에 안 떴다 —
+     * 이 화면은 연간 → 분기 → 월 위계로 그리므로, 부모 없는 월 목표는 그릴
+     * 자리가 없다. 「만들었는데 안 보인다」는 화면 탓이 아니라 내 조건 탓이었다.
+     */
+    const qg = (await sql(
+      `SELECT id FROM goal WHERE is_active AND period_type = 'quarter'
+         AND $1::date BETWEEN period_start AND period_end ORDER BY id LIMIT 1`, [today]))[0];
+    if (!qg) throw new Error("이번 분기의 분기 목표가 없다 — B3 조건을 만들 수 없다");
+    const gid = (await sql(
+      `INSERT INTO goal (period_type, period_start, period_end, title, scope, is_active, area_id, owner_actor_id, parent_id)
+       VALUES ('month', $1::date, $2::date, $3, 'team', true, $4, 1, $5) RETURNING id`,
+      [mStart, mEnd, `${B3} 월 목표`, areaId, qg.id]))[0].id;
+    const tid = (await sql(
+      `INSERT INTO task (title, description, area_id, assignee_id, created_by, status, due_date,
+                         priority, origin, work_type, visibility, goal_source, is_active)
+       VALUES ($1, '', $2, 1, 1, 'doing', $3::date, 'mid', 'human', 'team', 'team', 'manual', true)
+       RETURNING id`, [`${B3} 연결된 업무`, areaId, mEnd]))[0].id;
+    await sql(`INSERT INTO goal_task (goal_id, task_id) VALUES ($1, $2)`, [gid, tid]);
+    b3 = { gid, tid };
+    console.log(`   (조건) 분기 목표 #${qg.id} 밑에 이번 달 월 목표 #${gid} + 거기 걸린 업무 #${tid}` +
+                ` — B3 이 찾을 것을 만들어 둔다`);
+  }
   browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
     args: ["--no-proxy-server", "--no-sandbox"] });
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 } });
@@ -56,6 +102,9 @@ try {
     domain: new URL(BASE).hostname, path: "/" }]);
   const page = await ctx.newPage();
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
+  // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
+  page.on("console", (m) => { const t = m.type();
+    if (t === "error" || t === "warning") errs.push(`[${t}] ` + m.text().slice(0, 160)); });
   const box = (sel) => page.locator(sel).first().boundingBox();
   const css = (sel, prop) => page.locator(sel).first().evaluate((el, p) => getComputedStyle(el)[p], prop);
   /**
@@ -267,6 +316,13 @@ try {
     console.log(`정리 — task #${sliderRestore.id} 진행률을 ${sliderRestore.progress}% 로 되돌림`);
   }
   await sql(`DELETE FROM activity_log WHERE message LIKE '%실측%'`);
+  if (b3) {
+    await sql(`DELETE FROM goal_task WHERE goal_id = $1`, [b3.gid]);
+    await sql(`DELETE FROM goal WHERE id = $1`, [b3.gid]);
+    await sql(`DELETE FROM task WHERE id = $1`, [b3.tid]);
+    const left = (await sql(`SELECT count(*)::int n FROM goal WHERE title LIKE $1`, [`${B3}%`]))[0].n;
+    console.log(`정리 — B3 조건(월 목표 #${b3.gid} · 업무 #${b3.tid}) 삭제 · 잔여 ${left}건 (0이어야 한다)`);
+  }
   await browser?.close();
   await pool.end();
 }

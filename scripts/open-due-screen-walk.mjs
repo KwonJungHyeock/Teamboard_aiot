@@ -120,6 +120,9 @@ try {
                            adminGrant: lead.admin_grant, email: "l@l" });
   const page = await ctx.newPage();
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
+  // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
+  page.on("console", (m) => { const t = m.type();
+    if (t === "error" || t === "warning") errs.push(`[${t}] ` + m.text().slice(0, 160)); });
   const reqs = []; page.on("request", (r) => reqs.push({ method: r.method(), url: r.url() }));
 
   await page.goto(`${BASE}/open-due`, { waitUntil: "networkidle" });

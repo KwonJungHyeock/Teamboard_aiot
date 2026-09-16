@@ -48,6 +48,9 @@ await ctx.addCookies([{
 const page = await ctx.newPage();
 const jsErrors = [];
 page.on("pageerror", (e) => jsErrors.push(String(e)));
+// 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
+page.on("console", (m) => { const t = m.type();
+  if (t === "error" || t === "warning") jsErrors.push(`[${t}] ` + m.text().slice(0, 160)); });
 
 /** 기한 칸의 (텍스트 → 색·굵기) 표. 세 화면이 같은 모양으로 낸다. */
 const readDue = (sel) => page.evaluate((s) => {

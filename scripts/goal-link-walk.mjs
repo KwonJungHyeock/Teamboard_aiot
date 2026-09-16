@@ -56,6 +56,9 @@ try {
   await ctx.addCookies([cookie]);
   const page = await ctx.newPage();
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
+  // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
+  page.on("console", (m) => { const t = m.type();
+    if (t === "error" || t === "warning") errs.push(`[${t}] ` + m.text().slice(0, 160)); });
 
   // §C2 — "연결 데이터를 삭제하지 마세요". 시작 시점의 실물 개수를 떠 둔다.
   // 이 검사가 만든 행은 뒤에서 빼고 비교한다.
