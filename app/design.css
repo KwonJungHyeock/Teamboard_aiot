@@ -1314,6 +1314,10 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 /* ── §B 프로젝트 버튼 줄 ────────────────────────────────────────────
    드롭다운을 열고·읽고·고르고·닫는 네 동작이 한 동작이 된다. */
 .pp { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+/* 061 §A-1 ③ — 「영역을 바꿔서 프로젝트 선택을 지웠습니다」.
+   버튼 줄 **아래**에 붙는다: 옆에 두면 버튼과 같은 줄에서 밀려 잘린다. */
+.ntm-pp { display: flex; flex-direction: column; gap: 5px; min-width: 0; flex: 1; }
+.ntm-swap { font-size: var(--f6); color: var(--ink2); }
 .pp-b {
   padding: 4px 10px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--surface);

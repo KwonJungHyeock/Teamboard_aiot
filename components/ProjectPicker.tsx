@@ -23,6 +23,7 @@ export default function ProjectPicker({
   myAreaIds,
   areas,
   value,
+  areaId,
   onChange,
   disabled,
   disabledNote,
@@ -34,6 +35,8 @@ export default function ProjectPicker({
   myAreaIds: number[];
   areas: AreaOption[];
   value: number | null;
+  /** 지금 고른 영역 (061 §A-1). 이 영역의 프로젝트만 내놓는다. */
+  areaId?: number | null;
   onChange: (id: number | null) => void;
   disabled?: boolean;
   disabledNote?: string;
@@ -41,8 +44,8 @@ export default function ProjectPicker({
   onCreated?: (p: ComboProject) => void;
 }) {
   const set = useMemo(
-    () => projectButtons(projects, myAreaIds, areas),
-    [projects, myAreaIds, areas]
+    () => projectButtons(projects, myAreaIds, areas, areaId),
+    [projects, myAreaIds, areas, areaId]
   );
 
   // 조용히 틀리지 않는다. **렌더 중이 아니라 effect 에서** 남긴다 —
@@ -82,7 +85,16 @@ export default function ProjectPicker({
   }
 
   if (set.buttons.length === 0) {
-    return <p className="pp-off">고를 수 있는 프로젝트가 없습니다</p>;
+    /*
+     * 061 §A-1 ② — **빈 칸으로 두지 않는다.** 영역을 골라서 보는 중이면
+     * 「이 영역에는」이라고 적는다. 그냥 「없습니다」라고만 하면 프로젝트가
+     * 하나도 없는 것으로 읽히고, 영역을 바꾸면 된다는 것을 모른다.
+     */
+    return (
+      <p className="pp-off">
+        {areaId ? "이 영역에는 프로젝트가 없습니다" : "고를 수 있는 프로젝트가 없습니다"}
+      </p>
+    );
   }
 
   return (
