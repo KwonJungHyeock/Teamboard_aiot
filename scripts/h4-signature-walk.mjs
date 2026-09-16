@@ -171,10 +171,13 @@ try {
   console.log(`  프레임  시작 scaleX [${f0.scales.join(", ")}] → 중간 [${f1.scales.join(", ")}] → 끝 [${f2.scales.join(", ")}]`);
   chk("H4-01-최대6개", f0.growing <= 6 && f0.growing === Math.min(6, f0.total),
     `바 ${f0.total}개 중 hero-grow ${f0.growing}개 (min(6, ${f0.total}) 이어야 한다) · delay "${f0.delays}"`);
-  chk("H4-01-나머지즉시", f0.total <= 6 || f0.scales.slice(6).every((s) => s === 1),
+  // 061 §E-17(나) — 060 에서 조건(영역마다 하나)은 만들었지만 단언은 여전히
+  // 빈 배열·6개 이하를 받아 줬다. **일곱째가 실제로 있어야** 이 검사가 뜻을 가진다.
+  chk("H4-01-나머지즉시", f0.total > 6 && f0.scales.slice(6).every((s) => s === 1),
     f0.total <= 6 ? `바가 ${f0.total}개뿐이라 초과분 없음 — 7번째 이후 검사 불가` :
     `7번째 이후 scaleX [${f0.scales.slice(6).join(", ")}] (전부 1이어야 한다)`);
-  chk("H4-01-끝상태", f2.scales.every((s) => s === 1) && f2.growing === 0,
+  // 061 §E-17(나) — 바가 0개면 「끝 상태가 1」이 아무것도 안 잰다.
+  chk("H4-01-끝상태", f2.scales.length > 0 && f2.scales.every((s) => s === 1) && f2.growing === 0,
     `끝 scaleX 전부 1 · 남은 hero-grow ${f2.growing}개 (0이어야 한다 — 클래스를 떼야 중간 상태가 안 남는다)`);
 
   // 세션당 1회 — 같은 컨텍스트에서 다시 들어가면 재생하지 않는다
@@ -401,7 +404,9 @@ try {
     const later = await watchEach(p2, 2500);
     await p2.evaluate(() => window.scrollTo(0, 0));
     const backUp = await watchEach(p2, 2500);
-    chk("32g-나중에도안함", backUp.every((x) => x.states === 1),
+    chk("32g-나중에도안함",
+    // 061 §E-17(나) — 볼 것이 하나도 없으면 「안 굴렀다」가 아니다.
+    backUp.length > 0 && backUp.every((x) => x.states === 1),
       `뷰포트 360px 유지 · 화면 밖에서 바뀐 뒤 다시 위로 스크롤 → % 상태 [${backUp.map((x) => x.states).join(",")}] (전부 1이어야 한다) · 스크롤 직전 [${later.map((x) => x.states).join(",")}]`);
 
     // 짝 — 같은 변경이 **화면 안**에서는 굴러간다.

@@ -234,7 +234,8 @@ try {
         `app/global-error.tsx 가 APP_NAME_LONG 을 쓴다 (전역 오류 화면은 띄울 수 없어 소스로 확인)`);
   }
 
-  chk("④-로고-넷에-긴-이름", logos.every((l) => l.text === APP_NAME_LONG),
+  // 061 §E-17(나) — 빈 배열이면 **화면을 못 읽은 것**이다. 최소 개수를 함께 묻는다.
+  chk("④-로고-넷에-긴-이름", logos.length === 3 && logos.every((l) => l.text === APP_NAME_LONG),
       logos.map((l) => `${l.name} "${l.text}"`).join(" · ") + ` + 오류 화면(위)`);
   chk("⑤-긴-이름이-안-잘린다", logos.every((l) => !l.clipped),
       logos.map((l) => `${l.name} ${l.clipped ? "잘림" : "다 들어감"}`).join(" · ") +
