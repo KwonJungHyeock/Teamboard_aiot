@@ -804,7 +804,14 @@
 
 /* 상태 배지 잘림 근본 수정 — 상태·기한 칸은 배지에 맞춘 고정 폭 + 말줄임 금지(clip).
    여유 폭은 업무(제목) 칸이 흡수(제목만 truncate). 배지가 칸 밖으로 넘치지 않음. */
-.hv td.col-st, .hv td.col-due { white-space: nowrap; overflow: hidden; text-overflow: clip; }
+.hv td.col-st { white-space: nowrap; overflow: hidden; text-overflow: clip; }
+/* 061 §B — 기한 칸은 **줄바꿈을 허락한다.**
+   칸이 70px 인데 안에 든 것(날짜 + 「가오픈 D-xx」 배지)이 87~94px 라 20~56px 이
+   칸 밖으로 나갔다. `nowrap` 이라 한 줄에 억지로 세우다 잘린 것이다.
+   배지가 아랫줄로 내려가면 넓은 쪽(배지 65px)만 있으면 되고 70px 안에 든다.
+   배지 자체는 여전히 `.tt-open { white-space: nowrap }` 이라 낱말 가운데서 안 갈린다.
+   **줄바꿈만 바꾼다** — 칸 너비도 DOM 도 그대로다(§B-8). */
+.hv td.col-due { white-space: normal; overflow: hidden; text-overflow: clip; }
 .hv td.col-st .st, .hv td.col-st .stsel { white-space: nowrap; }
 
 /* ═══════════════════ 홈 v4 — 현황 분석 차트 · 프로젝트별 진행 바 ═══════════════════ */

@@ -379,11 +379,18 @@ export default function TaskTable({
               {range && <col />}
               <col style={{ width: "72px" }} />
               <col style={{ width: "88px" }} />
-              {/* 막대를 켜면 §D7 규격값 38px. 숫자만 들어가는 열이라 이 폭이면 충분하다
-                  (머리글도 「진행률」→「진척」으로 줄인다 — 4자는 38px 에 안 들어간다). */}
-              {showProg && <col style={{ width: withBars ? "38px" : "124px" }} />}
+              {/* 막대를 켜면 §D7 규격값 38px … 이었는데 **안 들어갔다** (061 §B).
+                  그 열의 입력칸(`.tt-prog-e`)이 46px 고정이라 좌우 여백 4px 을 더하면
+                  54px 이 필요하다. 38px 이면 16px 이 칸 밖으로 나간다 — 실측 22자리 중
+                  12자리가 이것이었다. **폭만 54px 로** 올린다. */}
+              {showProg && <col style={{ width: withBars ? "54px" : "124px" }} />}
               <col style={{ width: "92px" }} />
-              <col style={{ width: "70px" }} />
+              {/* 기한 열 — 70px 이면 「9/13」 과 「가오픈 D-52」 배지가 한 줄에 안 선다.
+                  줄바꿈을 허락해 배지를 아랫줄로 내렸지만(home.css), 배지 자체가
+                  테두리·여백까지 90px 근처라 여전히 넘쳤다. **폭만 100px 로** 올린다.
+                  (96px 으로 한 번 내밀었다가 1px 이 남았다 — 「거의 맞다」는 맞는 것이
+                   아니라서 재서 4px 을 더 줬다.) */}
+              <col style={{ width: "100px" }} />
             </>
           ) : (
             <>
