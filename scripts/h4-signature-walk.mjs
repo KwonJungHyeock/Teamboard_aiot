@@ -199,7 +199,15 @@ try {
   await p1b.mouse.wheel(0, 600);                      // 스크롤
   await p1b.goto(`${BASE}/goals`, { waitUntil: "networkidle" });   // 다른 화면으로
   await p1b.goBack({ waitUntil: "domcontentloaded" });
-  await p1b.waitForSelector(".hm-hero .gt2-bar", { timeout: 12000 }).catch(() => {});
+  /*
+   * 062 §E — **여기서 실패를 삼키고 있었다.**
+   * `.catch(() => {})` 라 막대가 끝내 안 나타나도 조용히 넘어갔고, 아래에서
+   * 빈 배열을 읽어 「막대가 중간에 멈췄다」는 **틀린 FAIL** 을 냈다.
+   * 서버를 바쁘게 해 놓고 돌리면 그대로 재현된다(§E-15 의 부하 실험).
+   * 기다리는 시간을 늘리지 않는다 — 못 기다렸으면 **못 기다렸다고 적는다**(§G 051).
+   */
+  const heroBack = await p1b.waitForSelector(".hm-hero .gt2-bar", { timeout: 12000 })
+    .then(() => true).catch(() => false);
   /*
    * 060 §C — **고정 시간(900ms)으로 기다리지 않는다.**
    * 연쇄가 거의 끝난 자리에서는 프레임당 변화가 작아 「멈춘 것처럼」 보인다.
@@ -219,7 +227,10 @@ try {
     const n = m.match(/matrix\(([^,]+)/); return n ? Math.round(parseFloat(n[1]) * 100) / 100 : 1;
   }));
   await shot(p1b, { path: `${OUT}/H4-01히어로-이탈복귀.png` });
-  chk("H4-01-이탈안전", after.length > 0 && after.every((s) => s === 1),
+  if (!heroBack || after.length === 0)
+    bad("H4-01-이탈안전", `복귀한 홈에서 히어로 막대를 못 봤다 — 조건을 못 만들었다(미검사) ·`
+      + ` 선택자 기다리기 ${heroBack ? "성공" : "12초 안에 실패"} · 읽은 막대 ${after.length}개`);
+  else chk("H4-01-이탈안전", after.every((s) => s === 1),
     `stagger 도중 스크롤 + 화면 이동 후 복귀 — scaleX [${after.join(", ")}] (전부 1이어야 한다. 0 이 남으면 안 보이는 바다)`);
   await c1b.close();
   await c1.close();
@@ -255,18 +266,74 @@ try {
    * 전체를 한 문자열로 합쳐 세면 "화면 밖 요소는 안 굴렀다"를 확인할 수 없다.
    * 화면 안 요소 하나만 굴러도 합계가 늘어나기 때문이다.
    */
+  /*
+   * 062 §E — **요소를 붙잡지 않는다.** 처음엔 시작할 때 `.gpv` 노드를 한 번
+   * 잡아 두고 9초 동안 그 노드들의 글자를 봤다. 그러다 화면이 목록을 다시 그려
+   * 노드를 **갈아 끼우면**, 검사는 떨어져 나간 옛 노드를 보게 된다. 옛 노드의
+   * 글자는 영영 안 바뀌므로 상태가 전부 1이 되고, 「안 굴렀다」로 읽힌다.
+   * 네 번에 한 번 [1,1,1,1,1,1] 이 나오던 것이 이 모양이다.
+   *
+   * 같은 파일의 `watch()` 는 매 틱마다 다시 찾기 때문에 한 번도 안 흔들렸다 —
+   * 둘의 차이가 곧 원인이다. 기다리는 시간을 늘려 덮지 않고, **보는 방법**을
+   * 고친다. 매 틱마다 다시 찾고, 노드가 갈렸는지도 같이 센다(`swapped`).
+   */
   const watchEach = async (page, ms) => page.evaluate((ms) => new Promise((res) => {
-    const els = [...document.querySelectorAll(".gpv")];
-    const vis = els.map((e) => { const r = e.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight; });
-    const seen = els.map((e) => new Set([e.textContent.trim()]));
+    const q = () => [...document.querySelectorAll(".gpv")];
+    const first = q();
+    const vis = first.map((e) => { const r = e.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight; });
+    const seen = first.map((e) => new Set([e.textContent.trim()]));
+    let swapped = 0;
     const t0 = performance.now();
     const tick = () => {
-      els.forEach((e, i) => seen[i].add(e.textContent.trim()));
+      const now = q();
+      now.forEach((e, i) => {
+        if (i < first.length && e !== first[i]) { first[i] = e; swapped++; }
+        (seen[i] ??= new Set()).add(e.textContent.trim());
+      });
       if (performance.now() - t0 < ms) requestAnimationFrame(tick);
-      else res(els.map((_, i) => ({ visible: vis[i], states: seen[i].size })));
+      else res(seen.map((s, i) => ({ visible: vis[i] ?? false, states: s.size, swapped })));
     };
     requestAnimationFrame(tick);
   }), ms);
+
+  /*
+   * 062 §E — 「굴러야 한다」를 잴 때는 **정해진 시간**이 아니라 **신호**를 기다린다.
+   *
+   * 고정 9초짜리 창으로 재면, dev 서버가 느린 판(전량 실행처럼 여럿이 같이 돌 때)
+   * 에서는 저장 왕복이 창보다 길어져 구르기가 창 밖에서 시작한다. 그러면 상태가
+   * 전부 1로 찍히고 「안 굴렀다」로 읽힌다 — 제품이 아니라 창이 짧았던 것이다.
+   * 창을 늘려서 덮는 것은 임시방편이고, 늘린 시간은 언젠가 또 모자란다.
+   *
+   * 그래서 **첫 변화가 보일 때까지** 기다리고, 보이고 나서 `settleMs` 만큼 더 본다.
+   * 끝내 안 변하면 `changed: false` 로 돌려준다 — 부르는 쪽이 그것을 「미검사」로
+   * 가른다. 「안 굴렀다」와 「아직 안 왔다」를 같은 값으로 내놓지 않는다.
+   */
+  const watchEachUntilChange = async (page, settleMs, capMs) =>
+    page.evaluate(([settleMs, capMs]) => new Promise((res) => {
+      const q = () => [...document.querySelectorAll(".gpv")];
+      const first = q();
+      const vis = first.map((e) => { const r = e.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight; });
+      const init = first.map((e) => e.textContent.trim());
+      const seen = init.map((t) => new Set([t]));
+      let swapped = 0, tChange = 0;
+      const t0 = performance.now();
+      const tick = () => {
+        const now = q();
+        now.forEach((e, i) => {
+          if (i < first.length && e !== first[i]) { first[i] = e; swapped++; }
+          const txt = e.textContent.trim();
+          (seen[i] ??= new Set()).add(txt);
+          if (!tChange && txt !== init[i]) tChange = performance.now();
+        });
+        const t = performance.now();
+        const done = tChange ? (t - tChange > settleMs) : (t - t0 > capMs);
+        if (!done) requestAnimationFrame(tick);
+        else res({ changed: !!tChange, swapped,
+                   waitedMs: Math.round((tChange || t) - t0),
+                   rows: seen.map((s, i) => ({ visible: vis[i] ?? false, states: s.size })) });
+      };
+      requestAnimationFrame(tick);
+    }), [settleMs, capMs]);
 
   await p2.goto(`${BASE}/goals`, { waitUntil: "networkidle" });
   await p2.waitForTimeout(1600);
@@ -417,12 +484,27 @@ try {
     await p2.waitForTimeout(200);
     await p2.evaluate(() => window.scrollTo(0, 0));
     await p2.waitForTimeout(300);
-    const [eachOn] = await Promise.all([watchEach(p2, 9000), setProg(45)]);
-    const onVis = eachOn.filter((x) => x.visible);
-    if (onVis.length === 0) bad("32g-화면안굴러감", "화면 안 .gpv 가 0개다 — 조건을 못 만들었다(미검사)");
+    const dbBefore = (await sql(`SELECT progress FROM task WHERE id=$1`, [target.id]))[0]?.progress;
+    // 변화가 올 때까지 기다리고(최대 25초), 오고 나서 2.5초 더 본다.
+    const [res45] = await Promise.all([watchEachUntilChange(p2, 2500, 25000), setProg(45)]);
+    const dbAfter = (await sql(`SELECT progress FROM task WHERE id=$1`, [target.id]))[0]?.progress;
+    const onVis = res45.rows.filter((x) => x.visible);
+    const tail = `화면 안 ${onVis.length}개 % 상태 [${onVis.map((x) => x.states).join(",")}]`
+      + ` · 진행률 DB ${dbBefore} → ${dbAfter}`
+      + ` · 첫 변화까지 ${res45.waitedMs}ms${res45.changed ? "" : " (끝내 안 변함)"}`
+      + ` · 관찰 중 노드가 갈린 횟수 ${res45.swapped}`;
+    /*
+     * **미검사와 실패를 가른다.** 옆줄(`32g-화면밖`)은 이미 「안 바뀐 값이 안
+     * 구르는 것은 증거가 아니다」를 짝으로 달아 두었는데 이 줄에는 없었다.
+     * 조건이 안 만들어진 판을 「안 굴렀다」로 적으면 제품을 헛으로 고발한다.
+     */
+    if (onVis.length === 0) bad("32g-화면안굴러감", `화면 안 .gpv 가 0개다 — 조건을 못 만들었다(미검사) · ${tail}`);
+    else if (dbAfter !== 45) bad("32g-화면안굴러감", `진행률이 45로 저장되지 않았다 — 조건을 못 만들었다(미검사) · ${tail}`);
+    else if (!res45.changed || onVis.every((x) => x.states === 1))
+      bad("32g-화면안굴러감", `화면 안 값이 **하나도 안 바뀌었다** — 안 바뀐 값이 안 구르는 것은 증거가 아니다(미검사) · ${tail}`);
     else chk("32g-화면안굴러감", onVis.some((x) => x.states >= 3),
-      `원래 높이로 되돌리고 위로 올린 뒤 같은 변경 — 화면 안 ${onVis.length}개 % 상태 [${onVis.map((x) => x.states).join(",")}] `
-      + `(최소 하나는 3 이상 = 굴러감). 이것이 위 「화면 밖은 안 구른다」의 짝이다`);
+      `원래 높이로 되돌리고 위로 올린 뒤 같은 변경 — ${tail} (최소 하나는 3 이상 = 굴러감).`
+      + ` 이것이 위 「화면 밖은 안 구른다」의 짝이다`);
 
     // (f) 연달아 변경 — 겹쳐 쌓이지 않는가. 마지막 값으로 조용히 끝나야 한다.
     await p2.evaluate(() => window.scrollTo(0, 0));

@@ -55,11 +55,28 @@ export default function ReportsView({ user, notionConnected = true }: { user: Se
   // 첫 목록이 오기 전 빈 상태를 띄우면 "보고서가 없다"고 잘못 말하게 된다 (§A-4)
   const [listLoading, setListLoading] = useState(true);
 
+  /*
+   * 062 §B-5 — **권한이 없으면 부르지도 않는다.**
+   *
+   * `GET /api/reports` 는 `requireLead()` 다. 그런데 이 화면은 팀원에게도
+   * 열리고(성과 리포트 탭은 전원), 목록 부르기가 탭과 상관없이 돌고 있었다.
+   * 팀원이 /reports 를 열 때마다 403 이 둘씩 콘솔에 쌓였다 — 화면은 `res.ok`
+   * 가 아니면 조용히 넘어가서 **보이는 고장이 없었고**, 그래서 오래 남았다.
+   *
+   * 콘솔에 403 이 남는 것 자체가 「화면이 자기가 할 수 없는 일을 했다」는
+   * 표시다(§G 061 · 못 하는 것은 하지 않는다). 서버의 403 은 그대로 둔다 —
+   * 화면이 안 부르는 건 편의고 서버가 막는 건 보증이다.
+   *
+   * 승인 보고서 탭 자체는 이미 팀장에게만 나온다(`tabs={isLead ? … }` ·
+   * `mainTab === "approval" && isLead`). §B-4 는 이 화면에서 이미 지켜져 있었고,
+   * 안 지켜진 것은 §B-5 하나였다.
+   */
   const loadList = useCallback(async () => {
+    if (!isLead) { setListLoading(false); return; }
     const res = await fetch("/api/reports").catch(() => null);
     if (res && res.ok) setList((await res.json()).reports ?? []);
     setListLoading(false);
-  }, []);
+  }, [isLead]);
 
   useEffect(() => {
     loadList();
