@@ -93,6 +93,11 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
   const [closing, setClosing] = useState(false);
   // 고급 접힘. **저장하지 않는다** — 모달이 닫히면 사라지고 다음에 다시 닫힌 채로 뜬다.
   const [adv, setAdv] = useState(false);
+  /*
+   * 061 §A-1 ③ — 영역을 바꿔서 프로젝트 선택을 지웠다는 **한 줄**.
+   * 조용히 비우면 사람은 그대로 남아 있는 줄 알고, 같은 조합을 다시 만든다.
+   */
+  const [areaSwapNote, setAreaSwapNote] = useState("");
   const titleRef = useRef<HTMLInputElement>(null);
 
   // ── 열림 상태: 이벤트 + URL(?panel=task:new) + 뒤로가기 ──
@@ -311,7 +316,18 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
       value: sel?.areas.find((a) => a.id === d.areaId)?.name ?? "—",
       editor: (close) => (
         <select autoFocus value={d.areaId}
-          onChange={(e) => { setD({ ...d, areaId: Number(e.target.value) }); close(); }}>
+          onChange={(e) => {
+            const next = Number(e.target.value);
+            /*
+             * 061 §A-1 ③ — 영역이 바뀌면 **고른 프로젝트는 그 영역 것이 아니다.**
+             * 남겨 두면 저장할 때 제약에 걸린다(그것이 이번에 고친 500 이다).
+             * 비우되 **비웠다고 적는다.**
+             */
+            const had = d.projectId !== null && next !== d.areaId;
+            setD({ ...d, areaId: next, projectId: had ? null : d.projectId });
+            setAreaSwapNote(had ? "영역을 바꿔서 프로젝트 선택을 지웠습니다" : "");
+            close();
+          }}>
           {sel?.areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
       ),
@@ -342,17 +358,21 @@ export default function NewTaskModal({ user }: { user: SessionUser }) {
                 버튼은 한 동작이고, 무엇이 있는지 열기 전에 보인다. */}
             <div className="ntm-f">
               <span className="ntm-fl">프로젝트</span>
-              <ProjectPicker
-                projects={sel?.projects ?? []}
-                myAreaIds={sel?.myAreaIds ?? []}
-                areas={sel?.areas ?? []}
-                value={d.projectId}
-                onChange={(id) => setD({ ...d, projectId: id })}
-                disabled={isPrivate}
-                disabledNote="개인 업무는 프로젝트에 넣지 않습니다"
-                canCreate={hasLead(user.role)}
-                onCreated={(p) => setSel((s) => (s ? { ...s, projects: [...s.projects, p] } : s))}
-              />
+              <div className="ntm-pp">
+                <ProjectPicker
+                  projects={sel?.projects ?? []}
+                  myAreaIds={sel?.myAreaIds ?? []}
+                  areas={sel?.areas ?? []}
+                  value={d.projectId}
+                  areaId={d.areaId || null}
+                  onChange={(id) => { setD({ ...d, projectId: id }); setAreaSwapNote(""); }}
+                  disabled={isPrivate}
+                  disabledNote="개인 업무는 프로젝트에 넣지 않습니다"
+                  canCreate={hasLead(user.role)}
+                  onCreated={(p) => setSel((s) => (s ? { ...s, projects: [...s.projects, p] } : s))}
+                />
+                {areaSwapNote && <span className="ntm-swap" role="status">{areaSwapNote}</span>}
+              </div>
             </div>
 
             {/* ── 기간 — 옆 속성 줄에서 앞으로 끌어올렸다 ──

@@ -70,29 +70,80 @@ export interface ProjectButtonSet {
 export function projectButtons(
   projects: ProjectOption[],
   myAreaIds: number[],
-  areas: AreaOption[]
+  areas: AreaOption[],
+  /**
+   * **지금 고른 영역** (061 §A-1). 주면 그 영역의 프로젝트만 내놓는다.
+   *
+   * 안 주면 예전 그대로다 — 이 함수를 부르는 다른 자리(기본값만 필요한 곳)가
+   * 영역을 모를 수 있기 때문이다.
+   */
+  selectedAreaId?: number | null
 ): ProjectButtonSet {
   const problems: string[] = [];
   const areaName = new Map(areas.map((a) => [a.id, a.name]));
 
-  // ── goal 프로젝트 — 이름 그대로, 영역으로 거르지 않는다 ──
-  // 프로젝트는 팀 단위이고 남의 영역 프로젝트에 일감이 생길 수 있다.
-  // 거르면 그 경우 등록 화면에서 길이 사라진다.
+  /*
+   * ── 061 §A-1 · 고를 수 없는 것은 내놓지 않는다 ──────────────────
+   *
+   * 032 §B 는 goal 프로젝트를 **영역으로 안 걸렀다**: 「프로젝트는 팀 단위이고
+   * 남의 영역 프로젝트에 일감이 생길 수 있다. 거르면 그 경우 등록 화면에서
+   * 길이 사라진다.」
+   *
+   * 그런데 DB 에 `trg_task_area_match` 가 있다 — 업무의 영역과 프로젝트의
+   * 영역이 다르면 저장이 거부된다. 그래서 **고를 수는 있는데 저장은 안 되는**
+   * 조합이 생겼고, 사람은 세 동작이면 500 을 만났다.
+   *
+   * 고를 수 없는 것을 내놓지 않는다. 남의 영역 프로젝트로 가는 길은
+   * **사라진 것이 아니라 영역을 먼저 바꾸는 것**으로 바뀌었다 — 그쪽이
+   * 실제로 일어나는 일(그 영역의 업무를 만든다)과도 맞다.
+   *
+   * 버린 두 안과 이유 (061 §A):
+   *   ㉠ 프로젝트를 고르면 영역이 따라간다 — 고르지 않은 값이 조용히 바뀐다.
+   *      화면에 R&D 라 적어 놓고 플랫폼으로 저장하는 것과 같다.
+   *   ㉡ 서버가 프로젝트의 영역을 쓴다 — 같은 문제가 서버로 옮겨간 것뿐이고
+   *      화면은 계속 거짓말을 한다.
+   */
+  const inArea = (p: ProjectOption) =>
+    selectedAreaId === undefined || selectedAreaId === null || p.areaId === selectedAreaId;
+
   const goalButtons: ProjectButton[] = projects
-    .filter((p) => p.type === "goal")
+    .filter((p) => p.type === "goal" && inArea(p))
     .map((p) => ({ id: p.id, label: p.name, areaId: p.areaId, kind: "goal" as const }));
 
-  // ── 상시 — 내 소속 영역만, 소속 순서대로 ──
+  /*
+   * ── 상시 — 내 소속 영역만, 소속 순서대로 ──
+   *
+   * 061 §A-1 — **영역을 골랐으면 그 영역 하나만 본다. 내 영역인지는 안 따진다.**
+   *
+   * 처음엔 `myAreaIds.filter(...)` 로 적었다가 화면이 거짓말을 했다: 연구소·
+   * 교육자료·현장실습교육·기타에는 상시 프로젝트가 **실재하는데** 내 소속이
+   * 아니라서 버튼이 0개가 되고, 화면이 「이 영역에는 프로젝트가 없습니다」라고
+   * 적었다. 그 영역을 고른 업무라면 그 상시 프로젝트는 제약을 통과한다 —
+   * 고를 수 있는 것을 안 내놓고 없다고 말한 것이다. §A 가 없애려는 것의 거울상이다.
+   *
+   * 소속 제한은 **아무 영역도 안 골랐을 때**의 뜻이다 — 그때는 「내 일」의
+   * 기본값을 고르는 자리이고, 순서(`sort_order`)가 곧 우선순위다.
+   */
+  const areaLoop = (selectedAreaId === undefined || selectedAreaId === null)
+    ? myAreaIds
+    : [selectedAreaId];
   const many = myAreaIds.length > 1;
   const standingButtons: ProjectButton[] = [];
-  for (const areaId of myAreaIds) {
+  for (const areaId of areaLoop) {
     const found = projects.filter((p) => p.type === "standing" && p.areaId === areaId);
 
     if (found.length === 0) {
       // **버튼을 그리지 않는다.** 없는 것을 누르게 하지 않는다.
-      problems.push(
-        `영역 ${areaName.get(areaId) ?? areaId}(id ${areaId}) 에 상시 프로젝트가 없다 — 버튼을 그리지 않는다`
-      );
+      //
+      // 061 §A-1 — 다만 **영역을 골라서 보는 중이면 이것은 사고가 아니다.**
+      // 그 영역에 프로젝트가 없는 것은 있을 수 있는 일이고, 화면이 그때
+      // 「이 영역에는 프로젝트가 없습니다」를 적는다. 고를 때마다
+      // `console.error` 가 찍히면 진짜 사고가 그 밑에 묻힌다.
+      if (selectedAreaId === undefined || selectedAreaId === null) {
+        problems.push(
+          `영역 ${areaName.get(areaId) ?? areaId}(id ${areaId}) 에 상시 프로젝트가 없다 — 버튼을 그리지 않는다`
+        );
+      }
       continue;
     }
     if (found.length > 1) {

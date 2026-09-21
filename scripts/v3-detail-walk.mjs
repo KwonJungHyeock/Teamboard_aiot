@@ -440,7 +440,8 @@ try {
     await page.goto(`${BASE}/v3`, { waitUntil: "networkidle" });
     await page.locator(".v3-row-t").filter({ hasText: "상세로 여는 업무" }).first().click();
   }));
-  chk("⑪-C1·C2·C5-가-새-상세로", hops.every((h) => h.ok),
+  // 061 §E-17(나) — 셋을 다 밟아야 한다. 하나라도 못 밟았으면 통과가 아니다.
+  chk("⑪-C1·C2·C5-가-새-상세로", hops.length === 3 && hops.every((h) => h.ok),
       hops.map((h) => `${h.label} → ${h.where} ${h.ok ? "도착" : "**못 감**"}`).join(" · "));
 
   // ── ⑫ 옛 상세 주소가 그 업무의 새 상세로 ───────────────────────

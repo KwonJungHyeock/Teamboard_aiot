@@ -27,6 +27,7 @@ import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
+import { ignoredWhy } from "./console-ignore.mjs";
 
 requireLocalDb("v3-links-walk.mjs");
 
@@ -108,10 +109,23 @@ try {
     value: tok({ id: me.id, actorId: me.id, name: "검사", role: me.role,
                  adminGrant: me.admin_grant, email: "x@x" }) }]);
   const page = await ctx.newPage();
-  const errs = []; page.on("pageerror", (e) => errs.push(e.message));
-  // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
-  page.on("console", (m) => { const t = m.type();
-    if (t === "error" || t === "warning") errs.push(`[${t}] ` + m.text().slice(0, 160)); });
+  /*
+   * 061 §D-13 — 이 검사기가 **스스로 만든** 404 를 따로 센다.
+   * `page.route` 로 `https://img.test/bad.png` 를 404 로 내주는 것이 조건이고,
+   * 그때 브라우저가 적는 「Failed to load resource … 404」는 고장이 아니다.
+   * **무시 목록(console-ignore)에는 안 넣는다** — 거기 넣으면 다른 검사기에서
+   * 난 진짜 404 까지 같이 눈감게 된다. 여기서만, 이 주소에 대해서만 뺀다.
+   * (v3-bulk ③ · v3-detail ⑲ 와 같은 방법. 새 방법을 만들지 않았다.)
+   */
+  const errs = [], wanted = [];
+  const take = (t) => {
+    if (/Failed to load resource.*404/.test(t)) { wanted.push(t); return; }
+    (ignoredWhy(t) ? ignored : errs).push(t.slice(0, 160));
+  };
+  const ignored = [];
+  page.on("pageerror", (e) => take(e.message));
+  page.on("console", (m) => { const k = m.type();
+    if (k === "error" || k === "warning") take(`[${k}] ${m.text()}`); });
 
   /*
    * **쓰기 요청을 센다** (⑥). 첨부를 그리는 동안 POST·PUT·PATCH·DELETE 가
@@ -254,7 +268,13 @@ try {
       shownBefore === MAX_LINKS && /^＋\d+개 더$/.test(moreTxt) && shownAfter === 10,
       `열 개 적음 → 그려진 것 ${shownBefore}개 + "${moreTxt}" → 펼치면 ${shownAfter}개`);
 
-  chk("⑧-콘솔오류", errs.length === 0, `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}`);
+  // ⑧짝 — 우리가 만든 404 가 **실제로 났는가.** 0이면 ⑤(안 뜨는 그림)가
+  // 404 없이 통과한 것이고, 그럼 그 검사가 아무것도 안 잰 것이다.
+  chk("⑧짝-404-가-실제로-났다", wanted.length >= 1,
+      `우리가 만든 404 ${wanted.length}건 (1건 이상이라야 「안 뜨는 그림」이 뜻을 가진다)`);
+  chk("⑧-콘솔오류", errs.length === 0,
+      `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}` +
+      ` (우리가 만든 404 ${wanted.length}건 · 무시 목록 ${ignored.length}건은 따로 셌다)`);
   await ctx.close();
 
   console.log(`\n${pass}/${pass + fail} 통과`);

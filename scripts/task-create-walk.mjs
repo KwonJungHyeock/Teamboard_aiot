@@ -1,5 +1,23 @@
 // 업무 등록 모달 · 프로젝트 연결 실측 (MD-P-2026-027 §C · §D).
 //
+// ══ 061 §C 에서 **지운 검사와 그 이유** ═══════════════════════════════
+//
+// 027 §B 가 프로젝트 콤보박스를 버튼 줄로 바꾸면서 두 기능이 없어졌고, 그것을
+// 재던 검사 둘을 지웠다. 조용히 지우면 무엇이 덮이지 않게 됐는지 아무도 모른다.
+//
+//   · **D1-만들기줄** — 「일치하는 프로젝트가 0건일 때 목록 맨 아래 『"이름"
+//     만들기』 줄이 뜬다」. 지금 화면에는 그 줄이 없다.
+//   · **D1-생성** — 「그 줄을 누르면 프로젝트가 만들어지고 바로 선택된다」.
+//     위 줄이 없으니 누를 것이 없다. 「고르면 선택된다」 부분은 §C2 가 잰다.
+//
+//   ▸ **언제 다시 필요해지는가** — 모달 안에서 프로젝트를 새로 만드는 길이
+//     생기면 그때 되살린다. 백로그 「모달에서 프로젝트 새로 만들기」에 올려 뒀다
+//     (docs/BACKLOG.md). 그때는 061 §A-1 때문에 **만든 프로젝트의 영역이 지금
+//     고른 영역과 같아야** 한다는 조건이 하나 더 붙는다.
+//
+//   ▸ D1-검색 은 안 지웠다. 지키려던 것이 검색이 아니라 「고를 수 있는 것이 다
+//     보인다」였고, 그건 버튼 줄에서도 물을 수 있다 — 아래 D1 참고.
+//
 // 화면을 실제로 밟는다. 규격 숫자(720×560·220px)는 코드가 아니라 **렌더된 박스**에서 읽는다.
 // 라벨에는 화면에서 읽은 값을 적는다 (§G 캡처 라벨 규격).
 // 만든 것은 끝나고 지운다 — 실측 흔적을 데이터에 남기지 않는다.
@@ -131,26 +149,38 @@ try {
   chk("C1-하단", /취소/.test(foot) && /만들고 계속 추가/.test(foot) && /만들기/.test(foot) && corals === 1,
     `하단 "${foot.replace(/\n+/g, " · ")}" · 코랄 ${corals}개 (1이어야 한다)`);
 
-  /* ══ §D1 프로젝트 검색형 콤보박스 — **그 UI 가 없어졌다** ═══════════
+  /* ══ §D1 프로젝트 고르개 (061 §C) ═══════════════════════════════
    *
-   * 027 §B 가 콤보박스를 **버튼 줄**로 바꿨다: 「드롭다운이 아니라 버튼이다 —
-   * 열고·읽고·고르고·닫는 네 동작이 아무도 안 고르게 만들었다.」
-   * `components/ProjectPicker.tsx` 에는 검색 칸도, 「그 자리에서 만들기」 줄도
-   * 없다(`input` 0개). 그러니 D1 의 세 검사는 **없는 것을 재고 있다.**
+   * 027 §B 가 검색형 콤보박스를 **버튼 줄**로 바꿨다. 셋을 하나씩 판단했다:
    *
-   * 여기서 멈추고 보고한다 (060 §C · 「제품이 틀린 자리가 나오면 멈추고 보고」).
-   * 제품이 틀린 것은 아니다 — 일부러 거둔 기능이다. 그래서 두 가지를 다 안 한다:
-   *   · 버튼 줄을 재는 **새 검사를 지어 넣지 않는다.** 그건 이번 지시가 아니다
-   *   · 세 검사를 **조용히 지우지도 않는다.** 지우면 덮던 자리가 소리 없이 준다
-   * 대신 소리 나게 실패시키고, 뒤 검사들이 돌 수 있게 길을 연다.
+   *  ① 「검색해서 고르기」 → **다시 쓴다.** 이 검사가 지키려던 것은 검색 자체가
+   *     아니라 **「고를 수 있는 프로젝트가 사람 눈에 다 보인다」**였다. 콤보박스
+   *     시절엔 목록을 열고 좁혀야 보였으니 검색으로 쟀을 뿐이다. 버튼 줄에서는
+   *     한눈에 보이므로, **DB 와 개수를 맞춰** 같은 것을 묻는다.
+   *     061 §A-1 로 기준이 「전체」가 아니라 **「그 영역」**이 됐다.
+   *
+   *  ② 「그 자리에서 만들기」 → **지웠다.** 아직 없는 기능이다. 지운 줄은
+   *     이 파일 맨 위 주석에 남겼고, 백로그에 올렸다(docs/BACKLOG.md).
+   *
+   *  ③ 「만들고 바로 선택됨」 → **②와 같은 쪽.** ②가 만든 프로젝트를 확인하던
+   *     검사라 ②가 없으면 잴 대상 자체가 없다. ①처럼 「지키려던 것」을 옮겨
+   *     적을 수도 없다 — 지키려던 것이 「만들기의 결과」이고 그 만들기가 없다.
+   *     그래서 지웠다. 「고르면 선택된다」는 §C2 가 이미 잰다.
    */
-  const pp = await page.locator(".ntm-main .pp").count();
-  const combo = await page.locator(".pcb-v, .pcb-q, .pcb-new").count();
-  chk("D1-검색·만들기줄·생성", false,
-    `**검사 불가 — 027 §B 에서 콤보박스가 버튼 줄로 바뀌었다.** ` +
-    `본문의 버튼 줄(.pp) ${pp}개 · 옛 콤보(.pcb-*) ${combo}개. ` +
-    `검색·「그 자리에서 만들기」는 지금 화면에 없는 기능이라 셋을 잴 수 없다. ` +
-    `버튼 줄을 재는 새 검사를 지어 넣을지는 지시를 기다린다.`);
+  const areaOf = async () =>
+    (await page.locator('.ntm-side .prop-row:has(.prop-l:text-is("영역")) .prop-v').innerText()).trim();
+  const curArea = await areaOf();
+  const areaRow = (await sql(`SELECT id FROM area WHERE is_active AND name = $1`, [curArea]))[0];
+  const dbInArea = (await sql(
+    `SELECT count(*)::int n FROM project WHERE is_active AND area_id = $1`, [areaRow?.id ?? -1]))[0].n;
+  const seenBtns = await page.locator(".ntm-main .pp .pp-b").allInnerTexts();
+  const emptyNote = await page.locator(".ntm-main .pp-off").innerText().catch(() => null);
+  chk("D1-그-영역-프로젝트가-다-보인다",
+      areaRow !== undefined && seenBtns.length === dbInArea
+      && (dbInArea === 0) === (emptyNote !== null),
+      `영역 "${curArea}" — 버튼 ${seenBtns.length}개 [${seenBtns.join(" | ")}] · ` +
+      `DB 그 영역 프로젝트 ${dbInArea}개 · 빈 안내 ${emptyNote ? `"${emptyNote}"` : "없음"} ` +
+      `(061 §A-1 로 기준이 「전체」가 아니라 「그 영역」이다)`);
 
   // ══ §C2 조작 — ⌘Enter 저장 · 만들고 계속 추가 ════════════════════════
   /*
@@ -164,7 +194,15 @@ try {
    * 이제 C2 가 **제 조건을 제가 만든다**(§G 035). 버튼 줄에서 하나 고른다.
    */
   const pjBtn = page.locator(".ntm-main .pp .pp-b").first();
-  await pjBtn.click();
+  /*
+   * **이미 눌려 있으면 누르지 않는다.** 버튼은 토글이라(「누른 것을 다시 누르면
+   * 벗는다」) 눌린 것을 또 누르면 선택이 풀린다.
+   *
+   * 061 §A-1 전에는 버튼 줄이 전체 프로젝트였고 첫 버튼이 기본값이 아니었다.
+   * 이제 그 영역의 것만 남아서 **첫 버튼이 곧 기본값**(1순위 영역의 상시)인
+   * 경우가 생겼고, 그대로 누르니 벗겨졌다. 화면이 아니라 이 조건이 틀렸다.
+   */
+  if ((await pjBtn.getAttribute("aria-pressed")) !== "true") await pjBtn.click();
   const pjName = (await pjBtn.innerText()).trim();
   const pjPicked = await sql(`SELECT id FROM project WHERE name = $1 AND is_active`, [pjName]);
 
@@ -214,6 +252,32 @@ try {
     await page.locator(".iti-q").first().press("Enter");
     await page.waitForTimeout(1300);
   }
+  /*
+   * ── 실측 프로젝트를 **직접 만든다** ──────────────────────────────
+   *
+   * 061 §C-11 에서 D1-생성(모달 안에서 프로젝트를 만드는 길)을 지웠다. 그
+   * 검사가 곁다리로 만들어 주던 프로젝트에 §D3·§D2·§D4 가 얹혀 있었고,
+   * 지우고 나서 셋이 `pjRow` 를 못 찾아 죽었다 — C2 가 D1 에 얹혀 있던 것과
+   * 똑같은 모양이다(§G 035). 이제 제 조건을 제가 만든다.
+   *
+   * 화면이 아니라 DB 에 넣는다. 저 셋이 재는 것은 「프로젝트를 만드는 길」이
+   * 아니라 「있는 프로젝트에 업무가 붙는가」라서, 만드는 방법은 무엇이든 된다.
+   *
+   * **영역은 방금 만든 업무에서 가져온다.** 아무 영역에나 만들면
+   * `trg_task_area_match` 가 일괄 지정을 막는다 — 061 §A 가 고친 바로 그
+   * 제약이다. 기준값을 손으로 적는 대신 붙일 업무 쪽에서 읽는다.
+   */
+  const bulkTargets = await sql(
+    `SELECT id, area_id FROM task WHERE title LIKE $1 AND is_active ORDER BY id`, [`${MARK} 일괄 대상%`]);
+  if (bulkTargets.length === 0) throw new Error("일괄 대상 업무가 안 만들어졌다 — 뒤 단계를 잴 수 없다");
+  const pjRow = await sql(
+    `INSERT INTO project (name, area_id) VALUES ($1, $2) RETURNING id`,
+    [PJ, bulkTargets[0].area_id]);
+  // 화면은 프로젝트 목록을 이미 받아 왔다. 새로 고치지 않으면 일괄 지정 콤보에
+  // 방금 만든 것이 안 뜬다 — 「없다」가 아니라 「아직 안 봤다」다.
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(1000);
+
   // 검색으로 실측 업무만 남긴다 — 전체 선택이 남의 업무를 집지 않게.
   await page.locator(".tsearch").fill(MARK);
   await page.waitForTimeout(700);

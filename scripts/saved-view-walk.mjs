@@ -10,6 +10,7 @@ import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
+import { ignoredWhy } from "./console-ignore.mjs";   // 안 세는 것은 한 파일에 (061 §D-14)
 
 requireLocalDb("saved-view-walk.mjs");
 
@@ -17,6 +18,17 @@ const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-027/saved-view";
 const S = process.env.AUTH_SECRET, DSN = process.env.DATABASE_URL;
 if (!S || !DSN) { console.error("AUTH_SECRET / DATABASE_URL 필요"); process.exit(1); }
+
+/*
+ * 061 §D-16 — 이 검사기에는 단언 함수가 없었다(찍기만 했다).
+ * 콘솔 검사를 물리려면 **실패가 실패로 끝나야** 하므로 최소한만 둔다.
+ * 다른 검사기들과 같은 모양(`OK`/`FAIL` 한 줄 + 종료 코드)이다.
+ */
+const chk = (id, c, n) => {
+  console.log(`${c ? "OK  " : "FAIL"} ${String(id).padEnd(22)} ${n}`);
+  if (!c) process.exitCode = 1;
+};
+
 const pool = new pg.Pool({ connectionString: DSN });
 const sql = async (t, p = []) => (await pool.query(t, p)).rows;
 const tok = (u) => { const p = Buffer.from(JSON.stringify({ ...u, exp: Math.floor(Date.now()/1000)+3600 })).toString("base64url");
@@ -33,9 +45,16 @@ try {
   await ctx.addCookies([{ name: "tb_session", value: tok({ id:1, actorId:1, name:"권정혁", role:"lead", email:"l@l" }), domain: new URL(BASE).hostname, path: "/" }]);
   const page = await ctx.newPage();
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
+  const ignoredLines = [];
   // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
+  // 061 §D-14 — 다만 **무시 목록**(scripts/console-ignore.mjs)에 있는 것은 뺀다.
+  //   목록은 한 파일에 모여 있고 줄마다 왜 뺐는지가 적혀 있다.
   page.on("console", (m) => { const t = m.type();
-    if (t === "error" || t === "warning") errs.push(`[${t}] ` + m.text().slice(0, 160)); });
+    if (t !== "error" && t !== "warning") return;
+    const line = `[${t}] ` + m.text().slice(0, 160);
+    const skip = ignoredWhy(line);
+    if (skip) { ignoredLines.push(`${line.slice(0, 60)} — ${skip}`); return; }
+    errs.push(line); });
 
   const step = async (id, note) => { await shot(page, { path: `${OUT}/${id}.png` }); rows.push({ id, note }); console.log(`  ▸ ${id.padEnd(18)} ${note}`); };
 
@@ -102,6 +121,13 @@ try {
   console.log(`  ${foreignName === "남의 뷰 (실측)" ? "OK  " : "FAIL"} 남의 뷰 이름 변경 안 됨      PATCH ${renameForeign} · 이름 "${foreignName}"`);
   console.log(`  ${mineLeft === 0 ? "OK  " : "FAIL"} 내 뷰는 삭제 됨 (짝 단언)     DELETE ${delMine} · 남은 행 ${mineLeft} (0 이어야 한다)`);
 
+  /*
+   * 061 §D-16 — **단언에 물린다.** 이제껏 건수를 찍기만 했고, 그래서
+   * 초록 밑에 경고가 쌓여 있었다. 무시 목록(console-ignore)에 걸린 것은
+   * 빠지고, 남은 것은 **빨개진다.** 빨개진 것을 고치는 것은 다른 회차다.
+   */
+  chk("콘솔오류·경고", errs.length === 0,
+      `${errs.length}건${errs.length ? " — " + errs[0].slice(0, 110) : ""}`);
   console.log(`\nJS 오류 ${errs.length}건${errs.length ? ": " + errs[0].slice(0,90) : ""}`);
   fs.writeFileSync(`${OUT}/steps.json`, JSON.stringify({ rows, jsErrors: errs }, null, 2));
 } finally {

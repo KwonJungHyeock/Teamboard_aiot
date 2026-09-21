@@ -58,10 +58,10 @@
       "id": "combo-new-project",
       "path": "/tasks?panel=task:new",
       "what": "프로젝트 콤보박스의 '새 프로젝트로 만들기'",
-      "lead": true,
+      "lead": false,
       "member": false,
-      "ok": true,
-      "why": ""
+      "ok": false,
+      "why": "팀장에게도 안 보임 — **단언이 죽어 있다**"
     },
     {
       "id": "huddle-review",

@@ -200,12 +200,14 @@ try {
   })));
   const wantColors = DIST_SEGMENTS.map((s) => s.color.toLowerCase());
   chk("④-막대-색이-지시서-값-그대로",
-      shown.every((s) => wantColors.includes(toHex(s.bg))),
+      // 061 §E-17(나) — 조각이 0개면 색을 하나도 안 잰 것이다.
+      shown.length > 0 && shown.every((s) => wantColors.includes(toHex(s.bg))),
       `그려진 바탕 [${shown.map((s) => toHex(s.bg)).join(", ")}] · 지시서 [${wantColors.join(", ")}]`);
 
   const worst = shown.map((s) => contrast(toHex(s.bg), toHex(s.ink)));
   chk("⑤-조각마다-숫자-·-읽힌다",
-      shown.every((s) => /^\d+$/.test(s.text)) && shown[0].gap === "2px"
+      // 061 §E-17(나) — 조각이 0개면 숫자도 대비도 안 잰 것이다.
+      shown.length > 0 && shown.every((s) => /^\d+$/.test(s.text)) && shown[0].gap === "2px"
       && worst.every((c) => c >= 4.5),
       `조각 ${segN}개 숫자 [${shown.map((s) => s.text).join(", ")}] · 틈 ${shown[0]?.gap}` +
       ` · 대비 [${worst.map((c) => c.toFixed(1)).join(", ")}] (4.5 이상이라야 읽힌다)`);

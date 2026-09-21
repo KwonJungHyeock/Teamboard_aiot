@@ -1314,6 +1314,10 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 /* ── §B 프로젝트 버튼 줄 ────────────────────────────────────────────
    드롭다운을 열고·읽고·고르고·닫는 네 동작이 한 동작이 된다. */
 .pp { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+/* 061 §A-1 ③ — 「영역을 바꿔서 프로젝트 선택을 지웠습니다」.
+   버튼 줄 **아래**에 붙는다: 옆에 두면 버튼과 같은 줄에서 밀려 잘린다. */
+.ntm-pp { display: flex; flex-direction: column; gap: 5px; min-width: 0; flex: 1; }
+.ntm-swap { font-size: var(--f6); color: var(--ink2); }
 .pp-b {
   padding: 4px 10px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--surface);
@@ -2034,7 +2038,11 @@ a.areatag:hover { border-color: var(--ink2); color: var(--ink); }
    기본 셀 좌우 여백(8+8)을 그대로 두면 "100%" 가 22px 안에 안 들어가 넘친다(실측).
    숫자만 들어가는 칸이라 여백을 4px 로 줄이고 한 단 작은 글자를 쓴다. 오른쪽 정렬 —
    퍼센트는 자릿수가 달라지므로 왼쪽을 맞추면 소수점 자리가 흔들린다. */
-.tt-table .col-prog.narrow { padding-left: 4px; padding-right: 4px; text-align: right; }
+/* 061 §B — 칸이 38px 인데 안의 입력칸이 46px 이라 **16px 이 칸 밖으로** 나갔다.
+   입력칸을 줄이면 숫자 세 자리가 안 들어간다. 칸을 46 + 좌우 4 = 54px 로 넓힌다.
+   **너비만 바꾼다** — DOM·클래스·기능은 그대로다(§B-8). */
+.tt-table .col-prog.narrow { padding-left: 4px; padding-right: 4px; text-align: right;
+  min-width: 54px; }
 .tt-table .col-prog.narrow .tt-prog-n { font-size: var(--f5); }
 
 /* 막대 — 높이 16 · 완전 알약 · 안쪽 1px 링 (§D6) */

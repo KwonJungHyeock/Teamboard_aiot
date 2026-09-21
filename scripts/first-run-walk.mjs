@@ -20,6 +20,7 @@ import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { purgeActor, purgeReport } from "./purge-actor.mjs";
 import { shot as snap } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
+import { ignoredWhy } from "./console-ignore.mjs";   // 안 세는 것은 한 파일에 (061 §D-14)
 // 이 검사기에는 제 `shot` 이 이미 있다. 모듈 쪽은 `snap` 으로 받는다 —
 // 같은 이름으로 받으면 제 함수가 저를 부르거나(무한) 선언이 겹친다.
 
@@ -29,6 +30,15 @@ const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-026/first-run";
 const DSN = process.env.DATABASE_URL;
 if (!DSN) { console.error("DATABASE_URL 필요"); process.exit(1); }
+
+/*
+ * 061 §D-16 — 이 검사기에는 단언 함수가 없었다(찍기만 했다).
+ * 콘솔 검사를 물리려면 **실패가 실패로 끝나야** 하므로 최소한만 둔다.
+ */
+const chk = (id, c, n) => {
+  console.log(`${c ? "OK  " : "FAIL"} ${String(id).padEnd(22)} ${n}`);
+  if (!c) process.exitCode = 1;
+};
 
 const pool = new pg.Pool({ connectionString: DSN });
 const sql = async (t, p = []) => (await pool.query(t, p)).rows;
@@ -96,9 +106,14 @@ try {
   const page = await ctx.newPage();
   const jsErr = [];
   page.on("pageerror", (e) => jsErr.push(e.message));
-  // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
+  const ignoredLines = [];
+  // 059 §G — 경고까지 센다. 061 §D-14 — 무시 목록에 있는 것은 뺀다.
   page.on("console", (m) => { const t = m.type();
-    if (t === "error" || t === "warning") jsErr.push(`[${t}] ` + m.text().slice(0, 160)); });
+    if (t !== "error" && t !== "warning") return;
+    const line = `[${t}] ` + m.text().slice(0, 160);
+    const skip = ignoredWhy(line);
+    if (skip) { ignoredLines.push(skip); return; }
+    jsErr.push(line); });
 
   // ── 1. 로그인 화면 ──
   await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
@@ -244,6 +259,12 @@ try {
   await shot(page, "07-after-first-task", `첫 업무 생성 결과 — DB ${made.length}건 ${made.map((t) => `#${t.id} ${t.visibility}`).join(", ")}`);
 
   fs.writeFileSync(`${OUT}/steps.json`, JSON.stringify({ email: EMAIL, actorId, steps, jsErrors: jsErr, created: made }, null, 2));
+  /*
+   * 061 §D-16 — **단언에 물린다.** 이제껏 건수를 찍기만 했다.
+   * 빨개진 것을 고치는 것은 다른 회차다.
+   */
+  chk("콘솔오류·경고", jsErr.length === 0,
+      `${jsErr.length}건${jsErr.length ? " — " + jsErr[0].slice(0, 110) : ""}`);
   console.log(`\nJS 오류 ${jsErr.length}건${jsErr.length ? ": " + jsErr[0].slice(0, 100) : ""}`);
 } finally {
   if (browser) await browser.close();

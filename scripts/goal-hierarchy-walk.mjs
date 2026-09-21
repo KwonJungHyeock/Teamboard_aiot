@@ -266,7 +266,8 @@ try {
   chk("A4-알림", !!mv.body?.moved,
     `서버가 이동 사실을 돌려줌 — ${mv.body?.moved ? `"${mv.body.moved.fromTitle}" → "${mv.body.moved.toTitle}"` : "없음"} (화면이 한 줄로 알린다)`);
   chk("A4-양쪽재계산",
-    recalc.every((r) => r.updated_at),
+    // 061 §E-17(나) — 두 행이 다 와야 한다. 비면 「재계산됐다」가 아니라 못 읽은 것이다.
+    recalc.length === 2 && recalc.every((r) => r.updated_at),
     `떠난 쪽 #${made.parent_id} 진척 ${before.find((b) => b.id === made.parent_id)?.progress ?? "null"} → ${recalc.find((r) => r.id === made.parent_id)?.progress ?? "null"} · ` +
     `붙은 쪽 #${q4.goal.id} ${before.find((b) => b.id === q4.goal.id)?.progress ?? "null"} → ${recalc.find((r) => r.id === q4.goal.id)?.progress ?? "null"} (둘 다 재계산 대상)`);
 
