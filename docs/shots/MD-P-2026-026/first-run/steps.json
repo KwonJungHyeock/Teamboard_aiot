@@ -1,6 +1,6 @@
 {
-  "email": "firstrun.1789546669171@local.test",
-  "actorId": 128,
+  "email": "firstrun.1789954936052@local.test",
+  "actorId": 135,
   "steps": [
     {
       "id": "01-login",
@@ -104,17 +104,14 @@
     },
     {
       "id": "07-after-first-task",
-      "note": "첫 업무 생성 결과 — DB 1건 #1572 team",
+      "note": "첫 업무 생성 결과 — DB 1건 #1848 team",
       "shot": "docs/shots/MD-P-2026-026/first-run/07-after-first-task.png"
     }
   ],
-  "jsErrors": [
-    "[error] Failed to load resource: the server responded with a status of 403 (Forbidden)",
-    "[error] Failed to load resource: the server responded with a status of 403 (Forbidden)"
-  ],
+  "jsErrors": [],
   "created": [
     {
-      "id": 1572,
+      "id": 1848,
       "title": "첫 업무 — 개발 환경 세팅",
       "visibility": "team"
     }
