@@ -76,6 +76,48 @@ try {
       `팀장 둘(${L1?.id}·${L2?.id}) · 팀원 하나(${M1?.id}) — 셋이라야 ①③⑤가 뜻을 가진다`);
   if (!(L1 && L2 && M1)) throw new Error("검사에 필요한 계정 구성이 없다");
 
+  /*
+   * ── 063 §B-12 — 서 있는 결정을 **양쪽에서** 묻는다 ──────────────
+   *
+   * 결정은 「둘만 모두관리자」다. 「둘이 맞다」만 물으면 셋째가 생겨도 그 검사는
+   * 여전히 참이다(`>= 2` 와 구별이 안 된다). **둘이 맞는 것**과 **셋이 아닌 것**을
+   * 따로 묻는다. 이 둘은 검사기가 무엇을 만지기 **전**에, 시드 그대로에서 본다.
+   *
+   * 이름으로 판정하지 않는다(§G) — 누가인지는 안 묻고 **몇이며 나머지가 0인지**만
+   * 묻는다. 판정 기준은 `lib/types.ts` 의 `adminWhereSql` 과 같은 식이다.
+   */
+  const admins = await sql(
+    `SELECT a.actor_id id, a.role, a.admin_grant g FROM account a JOIN actor ac ON ac.id = a.actor_id
+      WHERE ac.is_active AND (a.role = 'admin' OR a.admin_grant = true) ORDER BY a.actor_id`);
+  const others = (await sql(
+    `SELECT count(*)::int n FROM account a JOIN actor ac ON ac.id = a.actor_id
+      WHERE ac.is_active AND a.role <> 'admin' AND a.admin_grant = false`))[0].n;
+  chk("0-모두관리자는-둘", admins.length === 2,
+      `모두관리자 ${admins.length}명 [${admins.map((a) => `#${a.id} ${a.role}${a.g ? "+G" : ""}`).join(" · ")}]` +
+      ` — 「권정혁·박정길 둘만」이 서 있는 결정이다`);
+  const allHumans = (await sql(
+    `SELECT count(*)::int n FROM account a JOIN actor ac ON ac.id = a.actor_id WHERE ac.is_active`))[0].n;
+  /*
+   * 「둘이다」는 **셋이 될 수 있는데 둘일 때만** 뜻이 있다.
+   *
+   * 처음엔 「나머지 전원이 관리자도 권한도 아니다」로 적었는데, 그건 위 개수에서
+   * 그냥 따라 나오는 말이라 **혼자서는 떨어질 수가 없었다**(§G 053).
+   * 그래서 셋째에게 실제로 권한을 켜 셋이 되는지 보고, 끈 뒤 둘로 돌아오는지 본다.
+   * 세는 식이 고장 나 있으면 여기서 걸린다. 켠 것은 바로 끄고, 뒷정리가 또 대조한다.
+   */
+  const third = humans.find((h) => h.id !== L1.id && h.id !== L2.id && h.role !== "admin");
+  const nAdmin = async () => (await sql(
+    `SELECT count(*)::int n FROM account a JOIN actor ac ON ac.id = a.actor_id
+      WHERE ac.is_active AND (a.role = 'admin' OR a.admin_grant = true)`))[0].n;
+  await sql(`UPDATE account SET admin_grant = true WHERE actor_id = $1`, [third.id]);
+  const asThree = await nAdmin();
+  await sql(`UPDATE account SET admin_grant = false WHERE actor_id = $1`, [third.id]);
+  const backTwo = await nAdmin();
+  chk("0짝-셋이-될-수-있는데-둘이다", asThree === 3 && backTwo === 2,
+      `계정 ${allHumans}명 · 아무 권한 없는 사람 ${others}명 ·` +
+      ` 셋째(#${third.id})에게 켜 보니 ${asThree}명, 끄니 ${backTwo}명` +
+      ` — 셋이 안 되면 「둘이다」는 세는 식이 고장 나도 참이다`);
+
   browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
     args: ["--no-proxy-server", "--no-sandbox"] });
   const host = new URL(BASE).hostname;
@@ -123,9 +165,20 @@ try {
       `역할 셀렉트 ${await g1.page.locator(".role-sel").count()}개`);
 
   // ② 이름표 — 「관리자」가 아니라 「팀장」 + 「관리자 권한」
+  /*
+   * 063 §B — **이름표 전체가 아니라 역할 칸만 읽는다.**
+   * 전에는 이름표 통째로 읽어 「관리자」라는 낱말이 있는지 봤다. 그런데 이 계정의
+   * **사람 이름이 "ROBODYNE 관리자"** 라서, 역할이 「팀장」으로 잘 그려져 있는데도
+   * 사람 이름에 든 낱말 때문에 떨어졌다. 이름으로 판정한 셈이다(§G).
+   * 역할은 `<b>이름</b>` 옆 `<span>` 의 **제 글자**다 — 배지(`em.acct-g`)는 뺀다.
+   */
+  const roleText = await g1.page.locator(".acctblk .acct > div > span").first()
+    .evaluate((el) => [...el.childNodes].filter((n) => n.nodeType === 3)
+      .map((n) => n.textContent).join("").trim());
   const nameplate = (await g1.page.locator(".acctblk .acct > div").innerText()).trim();
-  chk("②-이름표-팀장", /팀장/.test(nameplate) && !/(^|\n|\s)관리자(\s|$)/.test(nameplate.replace("관리자 권한", "")),
-      `이름표 "${nameplate.replace(/\n/g, " · ")}"`);
+  chk("②-이름표-팀장", roleText === "팀장",
+      `역할 칸 "${roleText}" (「팀장」이어야 한다 — 관리자 권한은 정체가 아니라 옆 배지다)` +
+      ` · 이름표 전체 "${nameplate.replace(/\n/g, " · ")}"`);
   chk("②-이름표-권한배지", await g1.page.locator(".acct-g").count() === 1,
       `「관리자 권한」 배지 ${await g1.page.locator(".acct-g").count()}개`);
 
@@ -188,7 +241,22 @@ try {
   // 조건을 먼저 만든다: 역할 관리자를 내리고, 권한 관리자를 둘로 만든다.
   // 그래야 「둘일 때 통과 · 하나일 때 차단」이 같은 축에서 비교된다.
   await sql(`UPDATE account SET role = 'lead' WHERE actor_id = $1`, [M1.id]);
-  await sql(`UPDATE account SET admin_grant = true WHERE actor_id = $1`, [L2.id]);
+  /*
+   * 063 §B — **조건을 세어서 만든다.**
+   *
+   * 전에는 「L2 의 권한을 켜면 둘이 된다」로 적혀 있었다. 그건 다른 관리자가
+   * 하나도 없다는 가정인데, 시드에는 **역할이 관리자인 사람**(권정혁)이 늘 있다.
+   * 그대로 두면 셋이 되고, 「마지막 하나」를 만들 수가 없다 — 역할 관리자는
+   * 권한을 꺼도 관리자로 남아서 개수가 1 밑으로 안 내려간다.
+   * (0-짝조건이 오래 막고 있어서 이 줄들은 **한 번도 돈 적이 없었다.**)
+   *
+   * 그래서 이 한 줄 동안만 역할 관리자를 내리고, 권한을 L1·L2 **둘에게만** 준다.
+   * 뒷정리가 시작 전 지문(`before`)으로 전부 되돌린다 — 아래 finally 가 역할과
+   * 권한을 둘 다 복원하고, 같은지 대조해서 다르면 실패로 끝낸다.
+   */
+  await sql(`UPDATE account SET role = 'lead' WHERE role = 'admin'`);
+  await sql(`UPDATE account a SET admin_grant = (a.actor_id = ANY($1::int[]))
+               FROM actor ac WHERE ac.id = a.actor_id AND ac.is_active`, [[L1.id, L2.id]]);
   const cnt = async () => (await sql(
     `SELECT count(*)::int n FROM account a JOIN actor ac ON ac.id = a.actor_id
       WHERE (a.role = 'admin' OR a.admin_grant = true) AND ac.is_active = true`))[0].n;
