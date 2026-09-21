@@ -2181,7 +2181,12 @@ a.areatag:hover { border-color: var(--ink2); color: var(--ink); }
   color: var(--sb-ink); background: rgba(255,255,255,.10); }
 
 /* 구성원 표의 권한 칸 — 켜고 끄는 자리다. */
-.mbr-grant-l { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+/* 062 §D — 세로정렬만 고친다. 칸 안의 글자 중심이 칸 중심보다 2.2px 위에 있었다.
+   `inline-flex` 상자는 기본값이 `vertical-align: baseline` 이라, 안의 체크박스가
+   글줄의 기준선을 끌어올린다. 상자를 줄 한가운데에 맞춘다 — 크기·간격·구조는
+   그대로다(061 §B 의 옛 화면 규칙과 같다). */
+.mbr-grant-l { display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  vertical-align: middle; }
 .mbr-grant-l input { margin: 0; cursor: pointer; }
 .mbr-grant-l span { font-size: var(--f6); color: var(--muted); }
 .mbr-grant-l input:checked + span { color: var(--edu-text); font-weight: 700; }
