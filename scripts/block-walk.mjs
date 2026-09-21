@@ -47,10 +47,27 @@ try {
   await ctx.addCookies([{ name: "tb_session", value: tok({ id:1, actorId:1, name:"권정혁", role:"lead", email:"l@l" }),
     domain: new URL(BASE).hostname, path: "/" }]);
   const page = await ctx.newPage();
-  const errs = []; page.on("pageerror", (e) => errs.push(e.message));
+  /*
+   * 064 §A — **이 검사기가 스스로 만든 오류는 따로 센다.**
+   *
+   * §B1 의 순환 가드를 **화면에서** 확인하려고 일부러 막히는 조합을 저장한다.
+   * 서버가 409 로 거절하는 것이 그 검사의 정답이고, 그때 브라우저가 적는
+   * 「Failed to load resource … 409」는 고장이 아니다. 063 까지는 겹침 경고에
+   * 가려 안 보였는데, 겹침이 없어지자 이것만 남아 빨개졌다.
+   *
+   * 무시 목록(console-ignore)에는 **안 넣는다** — 거기 넣으면 다른 검사기에서
+   * 난 진짜 409 까지 같이 눈감는다. 여기서만, 이 상태코드에 대해서만 뺀다.
+   * (v3-bulk ③짝 · v3-links ⑧짝 · v3-new ⑪짝 과 같은 방법. 새 방법을 안 만든다.)
+   */
+  const errs = [], wanted = [];
+  const take = (t) => {
+    if (/Failed to load resource.*\b409\b/.test(t)) { wanted.push(t); return; }
+    errs.push(t);
+  };
+  page.on("pageerror", (e) => take(e.message));
   // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
   page.on("console", (m) => { const t = m.type();
-    if (t === "error" || t === "warning") errs.push(`[${t}] ` + m.text().slice(0, 160)); });
+    if (t === "error" || t === "warning") take(`[${t}] ` + m.text().slice(0, 160)); });
   const api = (m, u, d) => page.request[m](`${BASE}${u}`, d ? { data: d } : undefined);
 
   const area = await one(`SELECT id FROM area WHERE is_active AND kind='workspace' ORDER BY sort_order, id LIMIT 1`);
@@ -207,6 +224,12 @@ try {
    * 초록 밑에 경고가 쌓여 있었다. 무시 목록(console-ignore)에 걸린 것은
    * 빠지고, 남은 것은 **빨개진다.** 빨개진 것을 고치는 것은 다른 회차다.
    */
+  /*
+   * 짝 — 그 409 가 **실제로 났는지** 센다. 0이면 순환 가드를 한 번도 안 건드린
+   * 것이고, 그러면 위 「콘솔 0건」은 아무것도 안 잰 값이다(§G 053).
+   */
+  chk("콘솔짝-우리가-만든-409", wanted.length > 0,
+    `일부러 만든 409 ${wanted.length}건 (1건 이상이라야 위 줄이 뜻을 가진다)`);
   chk("콘솔오류·경고", errs.length === 0,
       `${errs.length}건${errs.length ? " — " + errs[0].slice(0, 110) : ""}`);
   console.log(`\nJS 오류 ${errs.length}건${errs.length ? " — " + errs.join(" / ") : ""}`);
