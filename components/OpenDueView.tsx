@@ -14,6 +14,7 @@ import PageShell from "./PageShell";
 import Skeleton from "./Skeleton";
 import ErrorNote from "./ErrorNote";
 import EmptyState from "./EmptyState";
+import { STATUS_META } from "@/lib/task-view";
 
 interface Row {
   id: number; title: string; status: string; dueDate: string | null;
@@ -28,9 +29,18 @@ interface Payload {
   none: Row[];
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  proposed: "제안", todo: "할 일", doing: "진행", review: "검토", done: "완료", dropped: "중단",
-};
+/*
+ * 064 §B — **제 사본을 지웠다.**
+ *
+ * 여기에만 있던 이름표가 다른 화면과 다른 낱말을 쓰고 있었다:
+ *   todo 「할 일」 · review 「검토」   ← 이 화면
+ *   todo 「대기」  · review 「리뷰」   ← 그 밖의 전부
+ * 같은 상태가 화면마다 다른 낱말로 보이면, 읽는 사람은 같은 것인지 아닌지를
+ * 매번 다시 판단해야 한다. 사본을 만든 값이라 두 곳이 갈린 줄도 몰랐다.
+ *
+ * 공용은 이미 있었다 — `lib/task-view.ts` 의 `STATUS_META`(TaskGantt 가 쓴다).
+ * 새로 만들지 않고 그것을 쓴다.
+ */
 
 function Table({ rows, showAfter }: { rows: Row[]; showAfter: boolean }) {
   return (
@@ -55,7 +65,7 @@ function Table({ rows, showAfter }: { rows: Row[]; showAfter: boolean }) {
             <td>{r.assignee ?? "—"}</td>
             <td className="num">{r.dueDate ?? "—"}</td>
             <td>{r.area ?? r.project ?? "—"}</td>
-            <td>{STATUS_LABEL[r.status] ?? r.status}</td>
+            <td>{STATUS_META[r.status]?.label ?? r.status}</td>
             {showAfter && <td className="od-n num">{r.daysAfterOpen === null ? "—" : `+${r.daysAfterOpen}일`}</td>}
           </tr>
         ))}
