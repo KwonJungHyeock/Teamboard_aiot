@@ -22,12 +22,30 @@ if (!DATABASE_URL) {
 
 const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD || "teamboard123!";
 
+/*
+ * ── 063 §B-1 — 시드가 **서 있는 결정**을 담는다 ──────────────────
+ *
+ * 「권정혁·박정길 둘만 모두관리자」가 서 있는 결정이다. 시드가 그걸 안 담고
+ * 있으면 검사가 결정을 못 지킨다 — `admin-grant-walk` 은 팀장 둘·팀원 하나를
+ * 요구하는데 시드에 팀장이 하나뿐이어서 **0-짝조건에서 멈춰 있었다.**
+ *
+ * `adminGrant` 를 **모든 줄에 명시**한다. 빠뜨릴 수 있게 두면 다시 돌릴 때
+ * 조용히 꺼지고, 0035 가 한 번 켜 놓은 권한이 시드 재실행에 지워진다.
+ * (`lib/types.ts` 가 같은 이유로 `adminGrant` 를 선택 칸으로 안 둔다.)
+ *
+ * 권정혁의 `role` 도 `lead` → `admin` 으로 맞춘다. DB 에는 이미 `admin` 인데
+ * 시드가 `lead` 라서, 시드를 다시 돌리면 **관리자가 강등됐다.**
+ * 값은 짐작이 아니라 DB 에서 읽어 왔다(account.role = 'admin').
+ *
+ * ⚠ 이 파일은 **로컬 시드**다. 프로덕션 데이터는 손대지 않는다(§B-11).
+ */
 const TEAM = [
   {
     email: "kwonjunghyeock@robodyne.co.kr",
     name: "권정혁",
     shortName: "정혁",
-    role: "lead",
+    role: "admin",
+    adminGrant: true,
     notionUserId: "3ba23515-d244-458a-a0f7-a92cfadf950a",
     assistantName: "정혁의 에이전트",
     workAreas: ["R&D"],
@@ -38,6 +56,7 @@ const TEAM = [
     name: "박주희",
     shortName: "주희",
     role: "member",
+    adminGrant: false,
     notionUserId: "260d872b-594c-81e4-9f78-000299e7e74b",
     assistantName: "주희의 에이전트",
     workAreas: ["연구소"],
@@ -48,6 +67,7 @@ const TEAM = [
     name: "조서연",
     shortName: "서연",
     role: "member",
+    adminGrant: false,
     notionUserId: "5453c24d-940e-4cdf-9f89-1adfe5cc18ab",
     assistantName: "서연의 에이전트",
     workAreas: ["디자인"],
@@ -59,11 +79,31 @@ const TEAM = [
     name: "ROBODYNE 관리자",
     shortName: "관리자",
     role: "lead",
+    adminGrant: false,
     notionUserId: null,
     password: "robodyne",
     assistantName: "관리자의 에이전트",
     workAreas: ["R&D"],
     actorAreas: ["플랫폼", "R&D"],
+  },
+  /*
+   * 063 §B-10 — 박정길. **모두관리자 둘 중 하나**이고, 동시에 두 번째 팀장이다.
+   *
+   * 모르는 값은 채우지 않았다(§G 049). 이메일·노션 id·영역은 **자리만** 잡았다 —
+   * 이메일은 위 관리자 계정과 같은 모양(도메인 없는 손잡이)이고, 노션 id 는 비웠다.
+   * 아는 값이 오면 이 줄만 고치면 된다. `admin-grant-walk` 은 이 값들을 안 보고
+   * **역할과 권한만** 본다.
+   */
+  {
+    email: "parkjeonggil",
+    name: "박정길",
+    shortName: "정길",
+    role: "lead",
+    adminGrant: true,
+    notionUserId: null,
+    assistantName: "정길의 에이전트",
+    workAreas: ["R&D"],
+    actorAreas: ["R&D", "플랫폼"],
   },
 ];
 
@@ -114,8 +154,10 @@ for (const member of TEAM) {
     );
     // email 포함 갱신 (email 변경 시 여기서 반영). password_hash는 기존 유지.
     await pool.query(
-      "UPDATE account SET email = $1, role = $2, notion_user_id = $3 WHERE actor_id = $4",
-      [member.email, member.role, member.notionUserId, humanId]
+      // 063 §B-1 — `admin_grant` 를 같이 쓴다. 안 쓰면 시드를 다시 돌릴 때마다
+      // 0035 가 켠 권한이 남아 있는지 아무도 보증하지 못한다.
+      "UPDATE account SET email = $1, role = $2, notion_user_id = $3, admin_grant = $5 WHERE actor_id = $4",
+      [member.email, member.role, member.notionUserId, humanId, member.adminGrant === true]
     );
   } else {
     const inserted = await pool.query(
@@ -124,9 +166,10 @@ for (const member of TEAM) {
     );
     humanId = inserted.rows[0].id;
     await pool.query(
-      `INSERT INTO account (actor_id, email, password_hash, role, notion_user_id)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [humanId, member.email, hashPassword(member.password ?? DEFAULT_PASSWORD), member.role, member.notionUserId]
+      `INSERT INTO account (actor_id, email, password_hash, role, notion_user_id, admin_grant)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [humanId, member.email, hashPassword(member.password ?? DEFAULT_PASSWORD), member.role,
+       member.notionUserId, member.adminGrant === true]
     );
   }
 
@@ -158,7 +201,8 @@ for (const member of TEAM) {
       [humanId, member.actorAreas[i], i]
     );
   }
-  console.log(`시드: ${member.name} (${member.email}) / 역할=${member.role} / 에이전트 actor#${agentId}`);
+  console.log(`시드: ${member.name} (${member.email}) / 역할=${member.role}` +
+    `${member.adminGrant ? " +관리자권한" : ""} / 에이전트 actor#${agentId}`);
 }
 
 // ── 프로젝트 3종 (area=플랫폼) — 구명 "AI 트레이너" 개명 반영 ──
