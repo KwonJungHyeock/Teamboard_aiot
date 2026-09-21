@@ -31,7 +31,7 @@ const rows = [];
 const say = (id, note) => { rows.push({ id, note }); console.log(`  ${id.padEnd(22)} ${note}`); };
 
 const PATHS = ["/", "/tasks", "/goals", "/projects", "/projects/1", "/calendar", "/signals",
-  "/signals?tab=decision", "/inbox", "/activity", "/huddle", "/assistant", "/reports", "/handover",
+  "/signals?tab=decision", "/inbox", "/activity", "/huddle", "/reports", "/handover",
   "/members", "/settings", "/saved", "/notes", "/profile", "/status", "/areas/1"];
 
 let browser;

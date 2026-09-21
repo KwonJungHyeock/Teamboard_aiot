@@ -29,9 +29,15 @@ function token(user) {
 }
 
 /** 21경로 — 회귀 점검과 같은 목록을 쓴다. 목록이 갈리면 "전 화면"이 뜻을 잃는다. */
+// 064 §C — **`/assistant` 를 뺐다.** 그 화면은 없어졌고 지금 열면 404 다.
+// 누를 수 있는 자리도 0개다(옛 화면 20곳 링크 494개 · v3 6곳 87개를 훑었고,
+// `agent-removal-walk` ① 도 같은 것을 센다). 없는 화면을 목록에 두면 검사가
+// 매번 404 를 만나고, 그 404 가 다른 문지기를 먼저 넘어뜨린다.
+// 조용히 지우지 않는다 — 왜 뺐는지 이 줄이 답한다. 그래서 **20경로**다.
+
 const ROUTES = [
   "/", "/tasks", "/goals", "/projects", "/projects/1", "/calendar", "/signals",
-  "/signals?tab=decision", "/inbox", "/activity", "/huddle", "/assistant",
+  "/signals?tab=decision", "/inbox", "/activity", "/huddle",
   "/reports", "/handover", "/members", "/settings", "/saved", "/notes",
   "/profile", "/status", "/areas/1",
 ];
