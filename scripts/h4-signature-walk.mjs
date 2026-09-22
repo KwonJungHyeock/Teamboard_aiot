@@ -15,8 +15,12 @@ import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
+import { testUser } from "./test-user.mjs";
 
 requireLocalDb("h4-signature-walk.mjs");
+
+/* 065 §B-9 — 검사가 쓰는 신분은 손으로 안 적는다. DB 에서 읽는다. */
+const TEST_ME = await testUser();
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-027/h4";
@@ -33,7 +37,7 @@ const ok = (id, n) => { rows.push({ id, pass: true, n }); console.log(`OK   ${id
 const bad = (id, n) => { rows.push({ id, pass: false, n }); console.log(`FAIL ${id.padEnd(26)} ${n}`); };
 const chk = (id, c, n) => (c ? ok(id, n) : bad(id, n));
 
-const COOKIE = (h) => ({ name: "tb_session", value: tok({ id:1, actorId:1, name:"권정혁", role:"lead", email:"l@l" }),
+const COOKIE = (h) => ({ name: "tb_session", value: tok(TEST_ME),
   domain: h, path: "/" });
 
 let browser;

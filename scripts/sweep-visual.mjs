@@ -10,6 +10,10 @@
 import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import fs from "node:fs";
+import { testUser } from "./test-user.mjs";
+
+/* 065 §B-9 — 검사가 쓰는 신분은 손으로 안 적는다. DB 에서 읽는다. */
+const TEST_ME = await testUser();
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-026/sweep";
@@ -18,7 +22,7 @@ const SECRET = process.env.AUTH_SECRET;
 if (!SECRET) { console.error("AUTH_SECRET 필요"); process.exit(1); }
 
 const USERS = {
-  lead: { id: 1, actorId: 1, name: "권정혁", role: "lead", email: "lead@local" },
+  lead: TEST_ME,
   member: { id: 3, actorId: 3, name: "박주희", role: "member", email: "member@local" },
 };
 const who = USERS[process.env.ROLE ?? "lead"];

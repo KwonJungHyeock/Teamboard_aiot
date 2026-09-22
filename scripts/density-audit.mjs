@@ -17,6 +17,10 @@ import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
+import { testUser } from "./test-user.mjs";
+
+/* 065 §B-9 — 검사가 쓰는 신분은 손으로 안 적는다. DB 에서 읽는다. */
+const TEST_ME = await testUser();
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const ALLOW_PATH = process.env.ALLOW ?? "docs/design/density-allow.json";
@@ -53,7 +57,7 @@ const browser = await chromium.launch({
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 } });
 await ctx.addCookies([{
   name: "tb_session",
-  value: tok({ id: 1, actorId: 1, name: "권정혁", role: "lead", email: "l@l" }),
+  value: tok(TEST_ME),
   domain: new URL(BASE).hostname, path: "/",
 }]);
 const page = await ctx.newPage();

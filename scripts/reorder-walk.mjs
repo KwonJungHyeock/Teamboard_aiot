@@ -16,8 +16,12 @@ import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
+import { testUser } from "./test-user.mjs";
 
 requireLocalDb("reorder-walk.mjs");
+
+/* 065 §B-9 — 검사가 쓰는 신분은 손으로 안 적는다. DB 에서 읽는다. */
+const TEST_ME = await testUser();
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-028/reorder";
@@ -44,7 +48,7 @@ try {
     executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
     args: ["--no-proxy-server", "--no-sandbox"] });
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 } });
-  await ctx.addCookies([{ name: "tb_session", value: tok({ id:1, actorId:1, name:"권정혁", role:"lead", email:"l@l" }),
+  await ctx.addCookies([{ name: "tb_session", value: tok(TEST_ME),
     domain: new URL(BASE).hostname, path: "/" }]);
   const page = await ctx.newPage();
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
@@ -194,7 +198,7 @@ try {
 
   // ── §E reduce 에서 FLIP 이 멈추는가 ──────────────────────────────
   const rctx = await browser.newContext({ viewport: { width: 1440, height: 950 }, reducedMotion: "reduce" });
-  await rctx.addCookies([{ name: "tb_session", value: tok({ id:1, actorId:1, name:"권정혁", role:"lead", email:"l@l" }),
+  await rctx.addCookies([{ name: "tb_session", value: tok(TEST_ME),
     domain: new URL(BASE).hostname, path: "/" }]);
   const rpage = await rctx.newPage();
   await rpage.goto(`${BASE}/tasks`, { waitUntil: "networkidle" });

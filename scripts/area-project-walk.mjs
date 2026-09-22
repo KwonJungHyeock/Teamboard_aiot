@@ -243,7 +243,25 @@ try {
   });
   await v3.goto(`${BASE}/v3/new`, { waitUntil: "networkidle" });
   const v3pick = await v3.locator(".pp, .pp-b, [aria-label='프로젝트']").count();
-  const v3word = (await v3.locator("body").innerText()).includes("프로젝트");
+  /*
+   * 065 §C-11 — **넓은 그릇의 글자로 판정하지 않는다.**
+   *
+   * 전에는 `body` 전체를 읽어 「프로젝트」가 있는지 봤다. 그 낱말은 레일에도
+   * 제목에도 안내문에도 있을 수 있고, 그러면 **새 업무 화면과 아무 상관 없는
+   * 글자 하나가 판정을 뒤집는다.** 064 §B-1 의 이름표가 사람 이름 때문에
+   * 떨어진 것과 같은 자리다.
+   *
+   * 물으려던 것은 「**이 폼에** 프로젝트를 고르는 자리가 있는가」다.
+   * 그러니 폼 하나만 본다 — 새 업무 본문(`.v3-main`)의 글자와, 거기 있는
+   * 조작거리(라벨·안내문·버튼 이름)를 따로 센다.
+   */
+  const form = v3.locator(".v3-main");
+  const v3word = (await form.innerText()).includes("프로젝트");
+  const v3ctrl = await form.evaluate((el) =>
+    [...el.querySelectorAll("button, label, select, input, [aria-label]")]
+      .filter((n) => /프로젝트/.test(
+        (n.getAttribute("aria-label") || "") + (n.getAttribute("placeholder") || "") + (n.textContent || "")))
+      .length);
   await v3.locator(".v3-title-in").fill(`${MARK} v3 새 업무`);
   await v3.locator(".v3-catbtn").first().click();
   await v3.locator(".v3-newfoot .v3-btn.primary").click();
@@ -251,9 +269,10 @@ try {
   const mine = await sql(`SELECT id, project_id FROM task WHERE title = $1`, [`${MARK} v3 새 업무`]);
   made = mine.map((t) => t.id);
   chk("④-v3-에는-그-자리가-없다",
-      v3pick === 0 && !v3word && mine.length === 1 && mine[0].project_id === null
+      v3pick === 0 && !v3word && v3ctrl === 0 && mine.length === 1 && mine[0].project_id === null
       && bodies.length === 1 && !bodies[0].includes("projectId"),
-      `v3 새 업무 — 프로젝트 고르개 ${v3pick}개 · 화면 글에 「프로젝트」 ${v3word ? "있음" : "없음"}` +
+      `v3 새 업무 — 프로젝트 고르개 ${v3pick}개 · **폼 글**에 「프로젝트」 ${v3word ? "있음" : "없음"}` +
+      ` · 폼 안 조작거리 중 그 이름 ${v3ctrl}개` +
       ` · 보낸 몸통에 projectId ${bodies[0]?.includes("projectId") ? "있음" : "없음"}` +
       ` · 만들어진 업무의 project_id ${mine[0]?.project_id ?? "null"}` +
       ` — 고를 자리가 없으니 어긋난 조합을 만들 수 없다`);

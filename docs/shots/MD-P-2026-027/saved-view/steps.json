@@ -6,7 +6,7 @@
     },
     {
       "id": "02-pinned",
-      "note": "저장 후 사이드바 핀 \"실측 뷰 A\""
+      "note": "저장 후 사이드바 핀 \"실측 뷰 A · 실측 뷰 B\""
     },
     {
       "id": "03-restored",
@@ -17,7 +17,5 @@
       "note": "순서 변경 후 핀 \"실측 뷰 B · 실측 뷰 A\" (변경 전 \"실측 뷰 A · 실측 뷰 B\")"
     }
   ],
-  "jsErrors": [
-    "[error] Failed to load resource: the server responded with a status of 404 (Not Found)"
-  ]
+  "jsErrors": []
 }

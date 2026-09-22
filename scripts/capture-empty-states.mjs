@@ -21,8 +21,12 @@ import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { testUser } from "./test-user.mjs";
 
 requireLocalDb("capture-empty-states.mjs");
+
+/* 065 §B-9 — 검사가 쓰는 신분은 손으로 안 적는다. DB 에서 읽는다. */
+const TEST_ME = await testUser();
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-026";
@@ -39,7 +43,7 @@ function token(user) {
   return `${payload}.${createHmac("sha256", SECRET).update(payload).digest("base64url")}`;
 }
 
-const LEAD = { id: 1, actorId: 1, name: "권정혁", role: "lead", email: "lead@local" };
+const LEAD = TEST_ME;
 
 /**
  * 케이스 정의.

@@ -10,8 +10,12 @@ import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
+import { testUser } from "./test-user.mjs";
 
 requireLocalDb("goal-screen-walk.mjs");
+
+/* 065 §B-9 — 검사가 쓰는 신분은 손으로 안 적는다. DB 에서 읽는다. */
+const TEST_ME = await testUser();
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-029/screen";
@@ -98,13 +102,27 @@ try {
   browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
     args: ["--no-proxy-server", "--no-sandbox"] });
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 } });
-  await ctx.addCookies([{ name: "tb_session", value: tok({ id:1, actorId:1, name:"권정혁", role:"lead", email:"l@l" }),
+  await ctx.addCookies([{ name: "tb_session", value: tok(TEST_ME),
     domain: new URL(BASE).hostname, path: "/" }]);
   const page = await ctx.newPage();
-  const errs = []; page.on("pageerror", (e) => errs.push(e.message));
+  /*
+   * 065 §A-1 — **이 검사기가 스스로 만든 500 은 따로 센다.**
+   *
+   * D2-저장실패 는 `page.route` 로 `PUT /api/goals/*` 를 500 으로 떨어뜨려
+   * 「저장 실패」 안내와 다시 시도 버튼이 뜨는지 본다. 그 500 은 검사의 조건이지
+   * 고장이 아니다. 무시 목록에는 안 넣는다 — 넣으면 다른 검사기의 진짜 500 까지
+   * 눈감는다(§G 064 · console-ignore 의 규칙 그대로).
+   */
+  const wanted = [];
+  const errs = [];
+  const take = (t) => {
+    if (/Failed to load resource.*\b500\b/.test(t)) { wanted.push(t); return; }
+    errs.push(t);
+  };
+  page.on("pageerror", (e) => take(e.message));
   // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
   page.on("console", (m) => { const t = m.type();
-    if (t === "error" || t === "warning") errs.push(`[${t}] ` + m.text().slice(0, 160)); });
+    if (t === "error" || t === "warning") take(`[${t}] ` + m.text().slice(0, 160)); });
   const box = (sel) => page.locator(sel).first().boundingBox();
   const css = (sel, prop) => page.locator(sel).first().evaluate((el, p) => getComputedStyle(el)[p], prop);
   /**
@@ -303,6 +321,9 @@ try {
    * 초록 밑에 경고가 쌓여 있었다. 무시 목록(console-ignore)에 걸린 것은
    * 빠지고, 남은 것은 **빨개진다.** 빨개진 것을 고치는 것은 다른 회차다.
    */
+  // 짝 — 그 500 이 실제로 났는지. 0이면 D2-저장실패 가 조건을 못 만든 것이다.
+  chk("콘솔짝-우리가-만든-500", wanted.length > 0,
+      `일부러 만든 500 ${wanted.length}건 (1건 이상이라야 위 줄이 뜻을 가진다)`);
   chk("콘솔오류·경고", errs.length === 0,
       `${errs.length}건${errs.length ? " — " + errs[0].slice(0, 110) : ""}`);
   console.log(`\nJS 오류 ${errs.length}건`);

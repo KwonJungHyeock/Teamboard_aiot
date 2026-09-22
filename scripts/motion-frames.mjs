@@ -13,8 +13,12 @@ import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { testUser } from "./test-user.mjs";
 
 requireLocalDb("motion-frames.mjs");
+
+/* 065 §B-9 — 검사가 쓰는 신분은 손으로 안 적는다. DB 에서 읽는다. */
+const TEST_ME = await testUser();
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-027/motion";
@@ -38,7 +42,7 @@ let browser;
 try {
   browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
     args: ["--no-proxy-server", "--no-sandbox"] });
-  const cookie = { name: "tb_session", value: tok({ id:1, actorId:1, name:"권정혁", role:"lead", email:"l@l" }),
+  const cookie = { name: "tb_session", value: tok(TEST_ME),
     domain: new URL(BASE).hostname, path: "/" };
 
   // ══════════════════════════════════════════════════════════════════
