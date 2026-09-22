@@ -1,6 +1,6 @@
 {
-  "email": "firstrun.1789980206797@local.test",
-  "actorId": 158,
+  "email": "firstrun.1790057740384@local.test",
+  "actorId": 169,
   "steps": [
     {
       "id": "01-login",
@@ -104,14 +104,14 @@
     },
     {
       "id": "07-after-first-task",
-      "note": "첫 업무 생성 결과 — DB 1건 #2195 team",
+      "note": "첫 업무 생성 결과 — DB 1건 #2381 team",
       "shot": "docs/shots/MD-P-2026-026/first-run/07-after-first-task.png"
     }
   ],
   "jsErrors": [],
   "created": [
     {
-      "id": 2195,
+      "id": 2381,
       "title": "첫 업무 — 개발 환경 세팅",
       "visibility": "team"
     }
