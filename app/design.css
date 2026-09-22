@@ -351,6 +351,17 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
 .prop-v { flex: 1; min-width: 0; text-align: left; background: 0; border: 0; padding: 4px 0; cursor: pointer;
   font-family: inherit; font-size: var(--f4); color: var(--ink); display: flex; align-items: center; gap: 6px; }
 .prop-v.ro { cursor: default; }
+/* 064 §A — 값이 스스로 눌리는 줄의 **편집 손잡이**. 값과 형제다(B-15 와 같은 짜임).
+   보이는 것은 하나도 안 바뀐다 — 예전 감싸개도 배경·테두리가 없었다. 바뀌는 것은
+   **누르면 무엇이 일어나는가**뿐이다.
+   `flex: 1` 로 남는 폭을 다 채운다. 063 이 잰 그 폭(294px·279px)이 편집기가 열리던
+   자리이고, 좁은 손잡이로 줄이면 사람 손이 가던 자리를 옮기는 것이 된다. */
+.prop-edit { flex: 1; min-width: 0; align-self: stretch; background: 0; border: 0; padding: 0;
+  cursor: pointer; font: inherit; color: inherit;
+  /* `.prop-v` 의 `gap: 6px` 만큼 되민다. 안 되밀면 값과 손잡이 사이 6px 이
+     **아무 일도 안 하는 띠**로 남는다 — 예전에는 거기를 눌러도 편집기가 열렸다.
+     6px 이라도 사람 손이 가던 자리를 줄이면 옮긴 것이다(§A-2-4). */
+  margin-left: -6px; }
 /* 상위 업무·차단 줄의 링크 (MD-P-2026-024 §6-1) — 새 규격을 만들지 않고 값 자리에 그대로 넣는다 */
 .prop-link { background: 0; border: 0; padding: 0; cursor: pointer; font: inherit; color: var(--blue);
   text-align: left; }
@@ -1232,6 +1243,13 @@ a.lk, :is(.hv, .pg-body) a.lk { text-decoration: none; display: inline-block; }
   padding: 14px 18px; margin-bottom: 10px;
   border: 1px solid var(--line); border-radius: 9px;
   background: var(--surface);
+  /* 064 §D-19 — **폭을 줄인다.** 전체 폭(1072px)을 쓰면서 오른쪽 676px(63%)이
+     빈 채로 남아 있었다. §B1 의 규칙은 「폭을 정보로 채우거나 폭을 줄인다」이고,
+     여기서는 채울 정보가 없다 — 남은 시간과 가오픈 날짜가 전부다.
+     양 끝으로 밀어 채우는 것은 **더 나쁘다**: 자식이 둘뿐이라 가운데가 벌어지고,
+     그건 같은 규칙이 「억지 여백」으로 잡는 모양이다.
+     바꾼 것은 폭 하나다. 안쪽 짜임·글자·간격은 그대로. */
+  width: fit-content; max-width: 100%;
 }
 .oc-l { display: flex; flex-direction: column; gap: 2px; }
 .oc-cap { font-size: var(--f5); color: var(--muted); letter-spacing: .04em; }

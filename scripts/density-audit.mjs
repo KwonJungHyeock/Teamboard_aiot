@@ -16,6 +16,7 @@
 import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const ALLOW_PATH = process.env.ALLOW ?? "docs/design/density-allow.json";
@@ -26,10 +27,16 @@ const tok = (u) => {
   return `${p}.${createHmac("sha256", S).update(p).digest("base64url")}`;
 };
 
-// 다른 검사와 **같은 21경로**. 목록이 갈리면 "전 화면"이 뜻을 잃는다.
+// 다른 검사와 **같은 경로 목록**. 목록이 갈리면 "전 화면"이 뜻을 잃는다.
+// 064 §C — **`/assistant` 를 뺐다.** 그 화면은 없어졌고 지금 열면 404 다.
+// 누를 수 있는 자리도 0개다(옛 화면 20곳 링크 494개 · v3 6곳 87개를 훑었고,
+// `agent-removal-walk` ① 도 같은 것을 센다). 없는 화면을 목록에 두면 검사가
+// 매번 404 를 만나고, 그 404 가 다른 문지기를 먼저 넘어뜨린다.
+// 조용히 지우지 않는다 — 왜 뺐는지 이 줄이 답한다. 그래서 **20경로**다.
+
 const ROUTES = [
   "/", "/tasks", "/goals", "/projects", "/projects/1", "/calendar", "/signals",
-  "/signals?tab=decision", "/inbox", "/activity", "/huddle", "/assistant",
+  "/signals?tab=decision", "/inbox", "/activity", "/huddle",
   "/reports", "/handover", "/members", "/settings", "/saved", "/notes",
   "/profile", "/status", "/areas/1",
 ];
@@ -69,12 +76,34 @@ page.on("requestfailed", (r) => {
 
 const viol = [];
 let scanned = 0;
+/** 064 §D-17 — 경로마다 **화면이 떴는가**. 존재 단언은 이제 이것으로 한다. */
+const drew = [];
 
 try {
   for (const route of ROUTES) {
-    const res = await page.goto(`${BASE}${route}`, { waitUntil: "networkidle" }).catch(() => null);
-    if (!res) { console.log(`SKIP ${route}`); continue; }
+    /*
+     * dev 서버가 그 경로를 처음 컴파일하는 중이면 `networkidle` 이 시간 안에
+     * 안 온다. 그건 화면이 없는 것이 아니라 **아직 안 온 것**이다 —
+     * 「안 굴렀다」와 「아직 안 왔다」를 같은 값으로 내놓지 않는다(§G 062).
+     * 한 번 더 간다. 두 번 다 못 가면 그때가 진짜 못 읽은 것이다.
+     */
+    let res = await page.goto(`${BASE}${route}`, { waitUntil: "networkidle" }).catch(() => null);
+    if (!res) res = await page.goto(`${BASE}${route}`, { waitUntil: "networkidle", timeout: 60000 }).catch(() => null);
+    if (!res) { console.log(`SKIP ${route}`); drew.push({ route, ok: false, why: "두 번 다 응답 없음" }); continue; }
     await page.waitForTimeout(500);
+    /*
+     * 「검사가 무언가를 보고 있는가」를 **행 수**로 묻던 것을 여기로 옮긴다.
+     * 행 수는 레이아웃이 아니라 **데이터**를 센다 — 063 에서 같은 기준으로
+     * main 56 · 062 브랜치 80 · 그다음 81 이 나왔다. 빈 화면이라 행이 0인 것은
+     * 정상이고, 그것까지 「못 읽었다」로 읽으면 없는 고장을 센다.
+     * 물어야 할 것은 **그 경로가 화면을 그렸는가**다.
+     */
+    const state = await page.evaluate(() => {
+      const main = document.querySelector("main, .ws, .pg-body");
+      return { status: !!main, chars: (main?.innerText ?? "").trim().length };
+    });
+    drew.push({ route, ok: res.status() < 400 && state.status && state.chars > 0,
+                why: `HTTP ${res.status()} · 본문 ${state.chars}자${state.status ? "" : " · main 없음"}` });
 
     const found = await page.evaluate(() => {
       const sel = (el) => {
@@ -174,11 +203,24 @@ try {
     console.log(`${route.padEnd(24)} 전체 폭 행 ${String(found.scanned).padStart(4)} · 위반 ${String(kept.length).padStart(3)}`);
   }
 
-  // ── 존재 단언 — 검사가 실제로 무언가를 보고 있는가 (지시 28) ──
-  if (scanned < 100) {
-    console.error(`\n전체 폭 행이 ${scanned}개뿐이다 — 화면을 못 읽은 것이다.`);
+  /*
+   * ── 존재 단언 (지시 28 · 064 §D-17 에서 세는 대상을 바꿨다) ──────
+   *
+   * 옛 단언은 「전체 폭 행 100개 이상」이었다. 그 수는 데이터에 따라 45% 씩
+   * 움직였고(56 · 80 · 81), 스물한 경로 중 아홉이 원래 0이었다. 데이터가 적은
+   * 날에는 멀쩡한 실행이 「화면을 못 읽었다」로 끝났고, 그 문지기 뒤에서
+   * 위반 2건과 `/assistant` 404 가 **한 번도 출력되지 않았다.**
+   *
+   * 이제 경로마다 화면이 떴는지로 묻는다. 행이 0인 것은 정상으로 센다.
+   */
+  const blind = drew.filter((d) => !d.ok);
+  if (blind.length) {
+    console.error(`\n화면을 못 읽은 경로 ${blind.length}개 — ${blind.map((d) => `${d.route}(${d.why})`).join(" · ")}`);
     process.exit(1);
   }
+  // 064 §D-18 — 행 수는 없애지 않고 **참고로** 찍는다. 갑자기 뛰거나 떨어지면
+  // 데이터가 움직였다는 신호이고, 그건 그것대로 쓸모가 있다.
+  console.log(`\n경로 ${drew.length}개 전부 화면이 떴다 · 전체 폭 행 ${scanned}개(참고 — 데이터에 따라 움직인다)`);
 
   const open = [], allowed = [];
   for (const v of viol) {
@@ -217,14 +259,35 @@ try {
       console.log(`  ${String(rows.length).padStart(3)}  ${k}${a?.until ? `   [${a.until} 까지]` : ""}\n       ${rows[0].why}`);
     }
   }
-  // 안 쓰이는 허용 항목은 지운다 — 남겨 두면 "예외였던 것"이 영원히 예외로 남는다.
+  /*
+   * 안 쓰이는 허용 항목은 지운다 — 남겨 두면 "예외였던 것"이 영원히 예외로 남는다.
+   *
+   * 064 §D — 다만 **「그 자리가 없어졌다」와 「오늘 데이터에 안 나왔다」를 가른다.**
+   * `gt2-bar.late`(지난 목표 막대) · `cal2-bar`(캘린더 막대) · `hm-blk-h` 는
+   * 데이터가 있어야 그려진다. 데이터가 없는 날 지우면, 데이터가 돌아오는 날
+   * 없던 위반이 새로 생긴다 — 이 파일이 이번 회차에 고친 바로 그 병이다.
+   * 그래서 **소스에 그 클래스가 아직 있는지**로 가른다.
+   *   · 소스에도 없다 → 자리가 없어진 것. 지울 것이고 **빨개진다.**
+   *   · 소스에는 있다 → 오늘 안 나왔을 뿐. 적어만 두고 안 넘어뜨린다.
+   */
+  const srcAll = execFileSync("git", ["grep", "-h", "-o", "-E", "[a-z0-9-]+", "--", "components", "app"],
+    { encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
+  const srcWords = new Set(srcAll.split("\n"));
+  const classesOf = (key) => (key.split("|").pop() ?? "").split(">").pop().trim()
+    .split(".").slice(1).filter(Boolean);
   const stale = allow.items.filter((a) => !used.has(a.key));
-  if (stale.length) {
-    console.log(`\n── 더 이상 안 걸리는 허용 항목 (지울 것) ──`);
-    for (const a of stale) console.log(`  ${a.key}`);
+  const gone = stale.filter((a) => { const cs = classesOf(a.key); return cs.length > 0 && !cs.every((c) => srcWords.has(c)); });
+  const napping = stale.filter((a) => !gone.includes(a));
+  if (gone.length) {
+    console.log(`\n── 자리가 없어진 허용 항목 (지울 것) ──`);
+    for (const a of gone) console.log(`  ${a.key}`);
+  }
+  if (napping.length) {
+    console.log(`\n── 오늘 안 나온 허용 항목 (클래스는 소스에 있다 — 안 지운다) ──`);
+    for (const a of napping) console.log(`  ${a.key}`);
   }
 
-  process.exit(open.length || stale.length ? 1 : 0);
+  process.exit(open.length || gone.length ? 1 : 0);
 } finally {
   await browser.close();
 }

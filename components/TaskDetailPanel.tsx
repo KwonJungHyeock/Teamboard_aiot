@@ -537,6 +537,8 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
         </button>
       ),
       empty: t.parentTaskId === null, action: "＋ 상위 지정",
+      // 064 §A — 값 안에 제 버튼(그 업무로 가는 링크)이 있다. 감싸지 말라고 알린다.
+      valueActs: true,
       editor: () => (
         <TaskCombo
           selfId={t.id} value={t.parentTaskId}
@@ -562,6 +564,8 @@ export default function TaskDetailPanel({ user }: { user: SessionUser }) {
         <span className="prop-blk"><em className="prop-blk-r">{t.blockedReason}</em></span>
       ) : null,
       empty: t.blockedBy === null && !t.blockedReason, action: "＋ 차단 지정",
+      // 064 §A — 값 안에 제 버튼(막고 있는 업무로 가는 링크)이 있다.
+      valueActs: true,
       editor: () => (
         <TaskCombo
           selfId={t.id} value={t.blockedBy}

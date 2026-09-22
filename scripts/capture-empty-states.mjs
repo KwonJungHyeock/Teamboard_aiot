@@ -133,11 +133,13 @@ const CASES = [
     empty: ["UPDATE task SET is_active = false WHERE is_active",
             "UPDATE goal SET is_active = false WHERE is_active"],
     restore: ["UPDATE task SET is_active = true", "UPDATE goal SET is_active = true"] },
-  { id: "sec-assistant", path: "/assistant", scope: "section",
-    empty: ["DROP TABLE IF EXISTS _bk_job", "CREATE TABLE _bk_job AS SELECT * FROM agent_job",
-            "DELETE FROM agent_job"],
-    restore: ["INSERT INTO agent_job SELECT * FROM _bk_job ON CONFLICT DO NOTHING",
-              "DROP TABLE IF EXISTS _bk_job"] },
+  /*
+   * 064 §C — **`sec-assistant` 를 뺐다.** `/assistant` 화면은 없어졌고 지금 열면
+   * 404 다. 누를 수 있는 자리도 0개다(옛 화면 20곳 링크 494개 · v3 6곳 87개를
+   * 훑었다). 빈 상태를 찍으려면 화면이 있어야 하는데 없다.
+   * 조용히 지우지 않는다 — 지운 줄과 이유를 여기 남긴다. 화면이 돌아오면
+   * `agent_job` 을 비웠다 되돌리던 위 방식 그대로 되살리면 된다.
+   */
   // ── 로딩(§A-4) · 오류(§A-5) ──
   // 데이터가 "아직" / "못" 오는 상태는 DB 로 못 만든다 — 네트워크를 가로챈다.
   { id: "load-tasks", path: "/tasks", scope: "skeleton", route: { url: "**/api/tasks*", mode: "hang" },

@@ -16,6 +16,17 @@ export interface PropRow {
   action?: string;
   /** 클릭 시 열리는 편집기. 없으면 읽기 전용 행 */
   editor?: (close: () => void) => ReactNode;
+  /**
+   * **이 값은 스스로 눌린다** (064 §A-1).
+   *
+   * 값 안에 제 버튼이 들어 있다는 뜻이다(예: 「상위 업무」의 `#12 제목` 링크).
+   * 켜면 값을 `<button>` 으로 **감싸지 않고**, 값과 편집 버튼을 형제로 둔다.
+   *
+   * 이 블록은 건네받은 노드 속을 **안 들여다본다.** 값이 어떻게 생겼는지는
+   * 건네준 쪽이 안다 — 여기서 알아내려 하면 그때부터 틀린다(§G 063).
+   * 기본값은 꺼짐이라 다른 줄은 한 곳도 안 바뀐다.
+   */
+  valueActs?: boolean;
 }
 
 export default function PropertyBlock({
@@ -63,7 +74,39 @@ export default function PropertyBlock({
       {shown.map((r) => (
         <div className={`prop-row${openKey === r.key ? " open" : ""}`} key={r.key}>
           <span className="prop-l">{r.label}</span>
-          {r.editor ? (
+          {/*
+            ── 064 §A — 값이 스스로 눌리는 줄은 **감싸지 않는다** ──────────
+            값 안에 버튼이 있는데 값을 또 `<button>` 으로 감싸면 `<button>` 안의
+            `<button>` 이 된다. 눌렀을 때 두 가지가 같이 일어나고(「차단」 줄은
+            실제로 그랬다 — 그 업무로 가면서 편집기도 열렸다), 하이드레이션
+            경고도 난다.
+
+            바깥을 `div[role=button]` 으로 바꾸거나 안쪽 버튼을 `<a>` 로 바꾸지
+            않는다. 그건 경고만 끄고 병은 남긴다(§G 063).
+
+            **B-15(031 §E3)와 같은 짜임이다** — 분기 헤더가 같은 병이었고,
+            거기서 `div.qsec-h` 로 감싸고 접기 버튼과 제목 버튼을 형제로 뒀다.
+            집안에 답이 있으면 두 번째 답을 만들지 않는다.
+
+            편집 버튼은 **남는 폭을 다 채운다**(`.prop-edit { flex: 1 }`).
+            063 이 잰 바로 그 자리다 — 「상위 업무」 294px · 「차단」 279px 이
+            편집기가 열리던 폭이었다. 좁은 손잡이로 바꾸면 고친 게 아니라
+            사람 손이 가던 자리를 옮긴 것이다.
+
+            비어 있을 때(`empty`)는 값이 「＋ 지정」 글자뿐이라 안에 버튼이 없다.
+            그때는 예전처럼 통째로 감싼다 — 나눌 것이 없다.
+          */}
+          {r.editor && r.valueActs && !r.empty ? (
+            <span className="prop-v">
+              {r.value}
+              <button
+                className="prop-edit"
+                aria-expanded={openKey === r.key}
+                aria-label={`${r.label} 편집`}
+                onClick={() => setOpenKey(openKey === r.key ? null : r.key)}
+              />
+            </span>
+          ) : r.editor ? (
             <button
               className={`prop-v${r.empty ? " empty" : ""}`}
               aria-expanded={openKey === r.key}

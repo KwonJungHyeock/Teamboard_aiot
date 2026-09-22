@@ -216,9 +216,19 @@ for (const d of maybe) console.log(`  ${d}`);
  * 프롭을 따라가는 일반 검사는 안 만들었다. 이 자리 하나를 위해 타입을 풀어
  * 따라가는 기계를 만드는 것은 과하다 — **이 모양**을 이름으로 적어 둔다.
  */
+/*
+ * 주석만 걷어낸다(글자열은 남긴다 — `key: "parent"` 를 읽어야 한다).
+ * 이게 없어서 한 번 속았다: `valueActs` 를 **주석 처리**해 놓고 깨뜨리기를
+ * 해 봤는데 검사가 여전히 초록이었다. 주석 안의 글자를 약속으로 읽은 것이다.
+ * 062 에서 주석 속 `tabs={isLead ?` 를 치환하고 JSX 는 그대로 둔 것과 같은 자리다.
+ */
+const stripComments = (t) => t
+  .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
+  .replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + m.slice(p1.length).replace(/[^\n]/g, " "));
+
 const propRows = [];
 for (const f of files) {
-  const src = readFileSync(f, "utf-8");
+  const src = stripComments(readFileSync(f, "utf-8"));
   if (!/<PropertyBlock/.test(src)) continue;
   const marks = [...src.matchAll(/\bkey:\s*"([\w]+)"/g)];
   marks.forEach((m, i) => {
@@ -228,6 +238,15 @@ for (const f of files) {
     if (/\beditor:\s*undefined\b/.test(chunk)) return;    // 아예 안 주는 줄
     const valuePart = chunk.slice(0, ed);
     if (!/<button/.test(valuePart)) return;
+    /*
+     * 064 §A — **부르는 쪽이 「이 값은 스스로 눌린다」고 말했으면 겹치지 않는다.**
+     * PropertyBlock 이 그런 줄은 `<button>` 으로 감싸지 않고 값과 편집 버튼을
+     * 형제로 둔다. 이 줄이 없으면 고친 자리가 영원히 빨갛고, 그러면 검사기가
+     * 무엇을 재는지 아무도 안 믿게 된다.
+     * 프롭 이름을 여기 적어 두는 것은 **부르는 쪽의 약속을 읽는 것**이지
+     * 값의 속을 들여다보는 것이 아니다(§G 063).
+     */
+    if (/\bvalueActs:\s*true\b/.test(chunk)) return;
     propRows.push(`${f}:${src.slice(0, m.index).split("\n").length} 「${
       chunk.match(/label:\s*"([^"]*)"/)?.[1] ?? m[1]}」 — value 안에 <button> · editor 있음`);
   });
