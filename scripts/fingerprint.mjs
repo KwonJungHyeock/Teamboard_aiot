@@ -63,6 +63,30 @@ try {
        FROM account a JOIN actor ac ON ac.id = a.actor_id
       WHERE ac.is_active ORDER BY a.actor_id`);
   console.log(`계정 — ${accounts.map((a) => `#${a.id} ${a.nm}:${a.role}${a.g ? "+G" : ""}`).join(" · ")}`);
+
+  /*
+   * 067 §E-12 — **팀 칸.** 0036 이 열두 표에 `team_id` 를 붙였다. 찍을 것은
+   * 「비어 있는 줄 0」이다 — 숫자로. 표 목록은 **DB 에게 묻는다**(`team_id` 칸이
+   * 있는 표 전부). 손으로 열둘을 적으면 13번째가 생긴 날 지문만 모른다.
+   * 0036 전의 DB(칸이 없음)에서는 「(팀 칸 없음)」이라고 찍고 넘어간다.
+   */
+  const teamTables = (await sql(
+    `SELECT table_name t FROM information_schema.columns
+      WHERE table_schema = 'public' AND column_name = 'team_id' ORDER BY table_name`)).map((r) => r.t);
+  if (teamTables.length === 0) {
+    console.log("팀 칸 — (팀 칸 없음 · 0036 전)");
+  } else {
+    const parts = [];
+    let empty = 0;
+    for (const t of teamTables) {
+      const r = (await sql(`SELECT count(*)::int n, count(*) FILTER (WHERE team_id IS NULL)::int e FROM "${t}"`))[0];
+      empty += r.e;
+      parts.push(`${t} ${r.n}${r.e ? `(빈 ${r.e})` : ""}`);
+    }
+    const teams = (await sql(`SELECT count(*)::int n FROM team`))[0].n;
+    console.log(`팀 칸 — 표 ${teamTables.length}개 · 팀 ${teams}개 · **빈 줄 ${empty}** (0이어야 한다)`);
+    console.log(`        ${parts.join(" · ")}`);
+  }
 } finally {
   await pool.end();
 }
