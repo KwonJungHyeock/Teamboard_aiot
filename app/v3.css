@@ -340,6 +340,67 @@
 .v3-search::placeholder { color: var(--v3-ink-3); }
 .v3-search:focus { outline: none; border-color: var(--v3-rail); }
 
+/* ── 066 §C-1 거르개 줄 — **차례가 고정이다** ──────────────────────
+       [◉내 항목] | [전체][진행][검토][완료] | [영역▾][담당▾][기한▾]
+
+   한 줄이다. 좁아지면 감기지만 **차례는 안 바뀐다** — 차례가 뜻이기 때문이다
+   (자주 하는 것이 왼쪽, 가끔 쓰는 것이 오른쪽).
+
+   051 §B 의 `.v3-filters`(축을 줄로 눕힌 상자)는 **그대로 둔다** — 팀 현황이
+   아직 쓴다. 지우면 그 화면의 거르개가 같이 무너진다. */
+.v3-fbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 0 0 var(--v3-gap); padding: 12px 14px; background: var(--v3-card);
+  border: 1px solid var(--v3-line); border-radius: var(--v3-radius); }
+/* 묶음 사이의 선. 「내 항목」이 **혼자 떨어져 있다**는 것을 눈으로 만든다 */
+.v3-fbar-div { width: 1px; height: 20px; background: var(--v3-line-2); }
+.v3-fbar-gap { flex: 1 1 8px; }
+.v3-fbar .v3-search { flex: 0 1 200px; width: auto; min-width: 120px; height: 34px; }
+.v3-csv { height: 34px; padding: 0 14px; font-size: 13px; }
+
+/* 상태 넷 — **탭**이다(하나만 골린다). 알약 네 개가 아니라 한 덩어리로 보이게
+   테두리를 한 번만 두른다. 여러 개를 고르는 자리였으면 칩이어야 한다. */
+.v3-tabs { display: inline-flex; border: 1px solid var(--v3-line-2);
+  border-radius: var(--v3-radius-pill); overflow: hidden; }
+.v3-tab { height: 34px; padding: 0 14px; border: 0; background: var(--v3-card);
+  color: var(--v3-ink-2); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.v3-tab + .v3-tab { border-left: 1px solid var(--v3-line-2); }
+.v3-tab:hover { color: var(--v3-ink); }
+.v3-tab.on { background: var(--v3-ink); color: #fff; }
+
+/* ── 066 §C-1 ▾ 고르개 — 「가끔 쓰는 것」 ──────────────────────────
+   접힌 단추는 `.v3-ichip` 의 세 결을 그대로 따른다(046 §A): 값 없음은 점선,
+   값 있음은 연한 바탕. **값을 단추에 적는다** — 열어 봐야 아는 조건은 없는
+   조건과 같다. */
+.v3-menu { position: relative; display: inline-flex; }
+.v3-mbtn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px;
+  border-radius: var(--v3-radius-pill); border: 1px dashed var(--v3-line-2);
+  background: var(--v3-card); color: var(--v3-ink-3); font: inherit; font-size: 13px;
+  font-weight: 600; cursor: pointer; }
+.v3-mbtn:hover { border-color: var(--v3-ink-3); color: var(--v3-ink-2); }
+.v3-mbtn.on { border-style: solid; border-color: transparent;
+  background: var(--v3-ichip-bg); color: var(--v3-ink); }
+/* 걸린 값 — 길면 자른다. 이름 다섯 개가 줄을 밀어내면 차례가 무너진다 */
+.v3-mbtn-v { max-width: 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-mbtn-cv { font-size: 10px; line-height: 1; color: var(--v3-ink-3); }
+.v3-mbtn.on .v3-mbtn-cv { color: var(--v3-ink-2); }
+
+.v3-mpop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20;
+  min-width: 208px; max-height: 320px; overflow: auto; padding: 6px;
+  background: var(--v3-card); border: 1px solid var(--v3-line-2);
+  border-radius: var(--v3-radius-s); box-shadow: 0 12px 28px -14px rgba(16, 24, 40, .34); }
+.v3-mitem { display: flex; align-items: center; gap: 8px; width: 100%; height: 32px;
+  padding: 0 8px; border: 0; border-radius: var(--v3-radius-s); background: none;
+  color: var(--v3-ink-2); font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+.v3-mitem:hover { background: var(--v3-ichip-bg); color: var(--v3-ink); }
+/* ✓ 자리는 골라지지 않아도 **폭을 차지한다** — 안 그러면 고를 때마다 글자가 밀린다 */
+.v3-mitem-k { flex: 0 0 12px; font-size: 12px; color: var(--v3-ink); }
+.v3-mitem-t { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-mitem.on { color: var(--v3-ink); font-weight: 600; }
+
+/* 보기 방식 — 조건이 아니다. 거르개 줄과 갈라 둔다 */
+.v3-vbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: -6px 0 var(--v3-gap); }
+
 /* 걸린 조건 — **× 가 붙은 칩**으로 나열한다. 조건이 어디 숨어 있으면
    빈 목록이 고장으로 읽힌다. */
 .v3-active { display: flex; flex-wrap: wrap; align-items: center; gap: 6px;

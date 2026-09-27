@@ -20,15 +20,23 @@
 // 7일 이내 지남은 코랄, 7일 초과는 회색.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Card, Chip, InputChip, ListRow, Empty, Button } from "./parts";
+import { Card, Chip, ListRow, Empty, Button, Menu, MenuItem } from "./parts";
 import type { CbState } from "./parts";
 import { childLine, shortDue, type TodayTask } from "@/lib/v3/today";
 import {
   countByArea, areaLeak, groupTasks, allGroups, dueTone,
-  applyFilters, activeChips, isEmptyQuery, isDueSel, dueMonth, dueSelLabel,
-  DUE_FILTERS, GROUPS,
-  type SortKey, type Query, type DueSel, type ChipView,
+  dueMonth, dueSelLabel, DUE_FILTERS, GROUPS,
+  type SortKey, type DueSel, type ChipView,
 } from "@/lib/v3/tasks";
+/*
+ * 066 §C-2 — **조건은 한 파일에서 온다.** 주소를 읽는 것도, 행을 고르는 것도,
+ * 권한을 거르는 것도 여기 하나다. CSV 경로(`/api/tasks/csv`)가 같은 함수를
+ * 부른다 — 각자 만들면 화면은 막혀 있는데 파일로는 남의 것이 나간다(§C-19).
+ */
+import {
+  parseListQuery, serializeListQuery, isEmptyListQuery, selectRows, countMine,
+  listChips, type ListQuery,
+} from "@/lib/v3/list-query";
 import { chipRow, type AreaView } from "@/lib/v3/category";
 import { taskHref } from "@/lib/v3/routes";
 // 목록에는 **썸네일이 아니라 개수만** (051 §C-3).
@@ -44,17 +52,27 @@ const SORT_LABEL: Record<SortKey, string> = { due: "기한순", recent: "최신�
 
 interface Person { id: number; name: string }
 
-/** 주소의 `1,2,3` 을 번호 집합으로. 이상한 값은 조용히 버린다 — 주소는 손으로 고친다. */
-function nums(raw: string | null): Set<number> {
-  return new Set((raw ?? "").split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0));
-}
-function strs(raw: string | null, allowed: readonly string[]): Set<string> {
-  return new Set((raw ?? "").split(",").filter((s) => allowed.includes(s)));
-}
+/**
+ * 상태 탭 넷 — **지시서 §C-15 의 차례 그대로다.**
+ *
+ * `[전체][진행][검토][완료]`. 「전체」는 상태 축을 비우는 것이고 나머지는 하나씩
+ * 고른다. **탭이라 하나만** 골린다 — 여러 개를 고르는 자리였으면 칩이어야 한다.
+ *
+ * 주소의 모양(`st=doing,review`)은 그대로 둔다. 옛 링크가 여럿을 담고 있으면
+ * 걸러지는 것은 그대로고, 탭은 「전체」로 보인다 — 없는 탭을 켜서 거짓말하지 않는다.
+ */
+const STATUS_TABS = [
+  { v: null, label: "전체" },
+  { v: "doing", label: "진행" },
+  { v: "review", label: "검토" },
+  { v: "done", label: "완료" },
+] as const;
 
 export default function TasksView({
-  today, areas, people,
-}: { today: string; areas: AreaView[]; people: Person[] }) {
+  today, areas, people, me,
+}: { today: string; areas: AreaView[]; people: Person[];
+     /** 보는 사람의 `actor.id`. 「내 항목」과 권한 거르기가 이 값을 쓴다 (066 §C). */
+     me: number }) {
   const router = useRouter();
   const sp = useSearchParams();
   const [tasks, setTasks] = useState<TodayTask[] | null>(null);
@@ -74,15 +92,11 @@ export default function TasksView({
    *
    * 상태를 컴포넌트에만 두면 링크를 보낸 사람과 받은 사람이 다른 것을 본다.
    * 축은 다섯이고 **더 늘리지 않는다**: 카테고리 · 담당 · 상태 · 기한 · 검색.
+   * 「내 항목」은 새 축이 아니라 **담당 축의 값**이다 (066 §C-16).
+   *
+   * 읽는 일은 `parseListQuery()` 가 한다 (066 §C-2) — CSV 가 같은 함수를 쓴다.
    */
-  const query: Query = useMemo(() => ({
-    cat: nums(sp.get("cat")),
-    who: nums(sp.get("who")),
-    status: strs(sp.get("st"), STATUS_VALUES),
-    // 네 갈래 + 달 하나(`m:2026-09`). 집계 화면의 칸이 이 값으로 온다 (052 §B).
-    due: isDueSel(sp.get("due")) ? (sp.get("due") as DueSel) : "all",
-    q: sp.get("q") ?? "",
-  }), [sp, STATUS_VALUES]);
+  const query: ListQuery = useMemo(() => parseListQuery(sp), [sp]);
   const picked = query.cat;
   const sort: SortKey = sp.get("sort") === "recent" ? "recent" : "due";
   /*
@@ -116,7 +130,7 @@ export default function TasksView({
 
   const setQuery = useCallback((next: {
     cat?: Set<number>; who?: Set<number>; status?: Set<string>; due?: DueSel; q?: string;
-    sort?: SortKey; done?: boolean;
+    mine?: boolean; sort?: SortKey; done?: boolean;
   }) => {
     const p = new URLSearchParams(wrote.current ?? spStr);
     /** 빈 값은 주소에서 **뺀다.** 기본값을 적으면 「돌아온 자리」가 둘이 된다. */
@@ -130,6 +144,8 @@ export default function TasksView({
     }
     if (next.due !== undefined) put("due", next.due === "all" ? "" : next.due);
     if (next.q !== undefined) put("q", next.q.trim());
+    // 「내 항목」 — 켜면 `mine=1`, 끄면 주소에서 **빠진다**(기본값은 안 적는다).
+    if (next.mine !== undefined) { if (next.mine) p.set("mine", "1"); else p.delete("mine"); }
     if (next.sort !== undefined) put("sort", next.sort === "due" ? "" : next.sort);
     if (next.done !== undefined) { if (next.done) p.set("done", "1"); else p.delete("done"); }
     wrote.current = p.toString();
@@ -142,12 +158,13 @@ export default function TasksView({
     else if (c.axis === "who") { const n = new Set(query.who); n.delete(c.value as number); setQuery({ who: n }); }
     else if (c.axis === "status") { const n = new Set(query.status); n.delete(c.value as string); setQuery({ status: n }); }
     else if (c.axis === "due") setQuery({ due: "all" });
+    else if (c.axis === "mine") setQuery({ mine: false });
     else setQuery({ q: "" });
   }, [query, setQuery]);
 
   /** 다섯을 한 번에 푼다. 정렬·완료 펼침은 **조건이 아니라 보기 방식**이라 안 건드린다. */
   const clearAll = useCallback(() => {
-    setQuery({ cat: new Set(), who: new Set(), status: new Set(), due: "all", q: "" });
+    setQuery({ cat: new Set(), who: new Set(), status: new Set(), due: "all", q: "", mine: false });
   }, [setQuery]);
 
   useEffect(() => {
@@ -175,10 +192,35 @@ export default function TasksView({
   const counts = useMemo(() => countByArea(tasks ?? []), [tasks]);
   const { shown, hidden } = useMemo(() => chipRow(areas, counts), [areas, counts]);
   const leak = useMemo(() => areaLeak(tasks ?? [], areas), [tasks, areas]);
+  /*
+   * **CSV 와 같은 함수다** (§C-19 · §C-27). 권한 거르기도 이 안에 있다 —
+   * `/api/tasks` 가 이미 SQL 에서 걸렀으므로 여기서는 아무것도 안 빠지는 것이
+   * 정상이고, 그물이 없는 것이 사고다.
+   */
   const filtered = useMemo(
-    () => applyFilters(tasks ?? [], query, today), [tasks, query, today]);
-  const chips = useMemo(() => activeChips(query, areas, people), [query, areas, people]);
-  const nothing = isEmptyQuery(query);
+    () => selectRows(tasks ?? [], query, me, today), [tasks, query, me, today]);
+  const chips = useMemo(() => listChips(query, areas, people), [query, areas, people]);
+  const nothing = isEmptyListQuery(query);
+  /*
+   * ▾ 단추에 적는 값. **접힌 동안에도 무엇이 걸렸는지 보인다** —
+   * 열어 봐야 아는 조건은 없는 조건과 같다.
+   */
+  const catValue = picked.size === 0 ? null
+    : areas.filter((a) => picked.has(a.id)).map((a) => a.name).join(" · ");
+  const whoValue = query.who.size === 0 ? null
+    : people.filter((p) => query.who.has(p.id)).map((p) => p.name).join(" · ");
+  /** 머리 보조설명의 둘째 숫자 (§C-18). **거른 목록에서** 센다. */
+  const mineCount = useMemo(() => countMine(filtered, me), [filtered, me]);
+  /**
+   * CSV 주소 — **지금 걸린 조건 그대로**(§C-21).
+   *
+   * `<Link>` 가 아니라 `<a href>` 다(§C-22): Next 가 미리 불러오면 사람이
+   * 누르지 않아도 전 건이 만들어진다.
+   */
+  const csvHref = useMemo(() => {
+    const qs = serializeListQuery(query);
+    return `/api/tasks/csv${qs ? `?${qs}` : ""}`;
+  }, [query]);
   /*
    * 완료 묶음은 기본으로 접히지만, **상태를 완료로 골랐으면 펼친다.**
    * 안 그러면 「상태 · 완료」가 걸려 있는데 결과가 0건으로 보이고,
@@ -302,42 +344,122 @@ export default function TasksView({
   return (
     <>
       <h1 className="v3-h1">업무</h1>
+      {/*
+        머리 보조설명 — **두 숫자** (§C-18). 「24건 · 내 것 5건」.
+        둘 다 같은 목록에서 센다. 「내 것」을 따로 불러와 세면 조건이 걸린 화면에서
+        두 숫자가 서로 다른 모집단을 말한다.
+      */}
       <p className="v3-lede">
         {tasks === null ? "불러오는 중…"
-          : `${total}건${nothing ? "" : ` · 조건 ${chips.length}개로 거름 (전체 ${leak.total}건)`}`}
+          : `${total}건 · 내 것 ${mineCount}건${nothing ? "" : ` · 조건 ${chips.length}개로 거름 (전체 ${leak.total}건)`}`}
       </p>
 
       {err && <Card><p className="v3-err">{err}</p></Card>}
 
-      {/* 카테고리 칩 줄 — **사이드바가 아니라 줄**이다.
-          「어디로 갈까」가 아니라 「무엇을 볼까」이기 때문이다. */}
-      <div className="v3-chips" role="group" aria-label="카테고리">
-        <Chip on={picked.size === 0} onClick={() => setQuery({ cat: new Set() })}
-              count={tasks === null ? undefined : leak.total}>
-          전체
-        </Chip>
-        {shown.map(({ area, count }) => (
-          <Chip key={area.id} on={picked.has(area.id)} count={count}
-                onClick={() => toggle(area.id)}>
-            {area.name}
-          </Chip>
-        ))}
-        {/* 건수 0인 카테고리 — 접되 **몇 개가 접혔는지는 보인다.**
-            조용히 없애면 일곱 개가 다 있는지 세어 볼 수가 없다. */}
-        {hidden.length > 0 && !openHidden && (
-          <Chip dashed onClick={() => setOpenHidden(true)}>＋{hidden.length}</Chip>
-        )}
-        {openHidden && hidden.map(({ area, count }) => (
-          <Chip key={area.id} on={picked.has(area.id)} count={count}
-                onClick={() => toggle(area.id)}>
-            {area.name}
-          </Chip>
-        ))}
+      {/*
+        ── 거르개 줄 — **차례가 고정이다** (§C-15) ────────────────────
+            [◉내 항목] | [전체][진행][검토][완료] | [영역▾][담당▾][기한▾]
 
-        <span className="v3-chips-sp" />
-        {/* 「묶기: 상태」 — 네 상태를 **전부** 건수와 함께 보인다(0건 포함).
-            빈 묶음을 목록에 안 그리므로, 「없어서 안 보이는 것」과 「원래 없는 것」을
-            여기서 갈라 준다. */}
+        「내 항목」이 맨 앞에 **혼자** 떨어져 있다(§C-16) — 하루에 열 번 누르는
+        것이고 나머지는 가끔 쓰는 것이다. 자주 하는 것은 한 번에 닿는 칩으로.
+
+        영역·담당·기한은 ▾ 로 접는다(§C-17). 사람이 늘어도 **줄의 모양이 안
+        바뀐다.** 담당을 탭으로 깔면 사람이 들어올 때마다 화면이 달라지고,
+        전체를 보려면 매번 탭을 옮겨야 한다.
+      */}
+      <div className="v3-fbar" role="group" aria-label="거르개">
+        <Chip on={query.mine} onClick={() => setQuery({ mine: !query.mine })}>
+          ◉ 내 항목
+        </Chip>
+
+        <span className="v3-fbar-div" aria-hidden="true" />
+
+        <div className="v3-tabs" role="group" aria-label="상태">
+          {STATUS_TABS.map((t) => {
+            /* 「전체」는 축이 비었을 때. 옛 링크가 둘 이상을 담고 있으면 어느
+               탭도 안 켜진다 — 없는 탭을 켜서 거짓말하지 않는다. */
+            const on = t.v === null
+              ? query.status.size === 0
+              : query.status.size === 1 && query.status.has(t.v);
+            return (
+              <button key={t.label} type="button" className={`v3-tab${on ? " on" : ""}`}
+                      aria-pressed={on}
+                      onClick={() => setQuery({ status: t.v === null ? new Set() : new Set([t.v]) })}>
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <span className="v3-fbar-div" aria-hidden="true" />
+
+        {/* 영역 — 건수를 **메뉴 안에서** 그대로 보인다. 칩 줄에서 옮겨 오며
+            숫자를 버리지 않는다. 0건인 영역도 그대로 나온다 —
+            「없는 것」과 「0건인 것」은 다른 말이다. */}
+        <Menu label="영역" value={catValue}>
+          <MenuItem on={picked.size === 0} count={tasks === null ? undefined : leak.total}
+                    onClick={() => setQuery({ cat: new Set() })}>전체</MenuItem>
+          {[...shown, ...hidden].map(({ area, count }) => (
+            <MenuItem key={area.id} on={picked.has(area.id)} count={count}
+                      onClick={() => toggle(area.id)}>
+              {area.name}
+            </MenuItem>
+          ))}
+        </Menu>
+
+        <Menu label="담당" value={whoValue}>
+          {people.map((p) => (
+            <MenuItem key={p.id} on={query.who.has(p.id)}
+                      onClick={() => {
+                        const n = new Set(query.who);
+                        if (n.has(p.id)) n.delete(p.id); else n.add(p.id);
+                        setQuery({ who: n });
+                      }}>
+              {p.name}
+            </MenuItem>
+          ))}
+        </Menu>
+
+        {/* 기한은 **하나만** 고른다 — 「지남」이면서 「기한 없음」인 업무는 없다. */}
+        <Menu label="기한" value={query.due === "all" ? null : dueSelLabel(query.due)}>
+          {DUE_FILTERS.map((d) => (
+            <MenuItem key={d.key} on={query.due === d.key}
+                      onClick={() => setQuery({ due: d.key })}>
+              {d.label}
+            </MenuItem>
+          ))}
+          {/* 달로 온 경우(집계 화면의 칸) — 그 달을 **항목으로** 보인다.
+              안 보이면 넷이 다 비어서 아무 조건도 안 걸린 것처럼 읽힌다. */}
+          {dueMonth(query.due) !== null && (
+            <MenuItem on onClick={() => setQuery({ due: "all" })}>
+              {dueSelLabel(query.due)}
+            </MenuItem>
+          )}
+        </Menu>
+
+        <span className="v3-fbar-gap" />
+
+        <input
+          className="v3-search"
+          type="search"
+          value={text}
+          placeholder="제목에서 찾기"
+          aria-label="제목에서 찾기"
+          onChange={(e) => setText(e.target.value)}
+        />
+
+        {/*
+          ⤓ CSV (§C-21) — **지금 화면에 보이는 것과 같은 조건.**
+          `<Link>` 가 아니라 평범한 `<a href>` 다(§C-22): 미리 불러오는 링크로
+          만들면 누르지 않아도 전 건이 만들어진다.
+        */}
+        <a className="v3-btn v3-csv" href={csvHref} download>⤓ CSV</a>
+      </div>
+
+      {/* 보기 방식 — **조건이 아니다.** 그래서 거르개 줄과 갈라 둔다.
+          거르개 줄의 차례가 고정이라는 것은 거기에 다른 것을 끼우지 않는다는
+          뜻이다(§C-15). */}
+      <div className="v3-vbar" role="group" aria-label="보기">
         <Button className="v3-sortbtn" aria-expanded={openGroups}
                 onClick={() => setOpenGroups((v) => !v)}>
           묶기 · 상태
@@ -355,74 +477,6 @@ export default function TasksView({
             전체 선택
           </label>
         )}
-      </div>
-
-      {/*
-        ── 거르개 축 셋 + 검색 (051 §B) ─────────────────────────────
-        카테고리는 위 칩 줄이 이미 한다. 여기는 담당 · 상태 · 기한 · 검색.
-        **축을 더 만들지 않는다** — 우선순위·프로젝트·생성일 필터는 없다.
-      */}
-      <div className="v3-filters" role="group" aria-label="거르개">
-        <input
-          className="v3-search"
-          type="search"
-          value={text}
-          placeholder="제목에서 찾기"
-          aria-label="제목에서 찾기"
-          onChange={(e) => setText(e.target.value)}
-        />
-
-        <div className="v3-fx">
-          <span className="v3-fx-l">담당</span>
-          {people.map((p) => (
-            <InputChip key={p.id} filled={query.who.has(p.id)}
-                       aria-pressed={query.who.has(p.id)}
-                       onClick={() => {
-                         const n = new Set(query.who);
-                         if (n.has(p.id)) n.delete(p.id); else n.add(p.id);
-                         setQuery({ who: n });
-                       }}>
-              {p.name}
-            </InputChip>
-          ))}
-        </div>
-
-        <div className="v3-fx">
-          <span className="v3-fx-l">상태</span>
-          {GROUPS.map((g) => (
-            <InputChip key={g.key} filled={query.status.has(g.statuses[0])}
-                       aria-pressed={query.status.has(g.statuses[0])}
-                       onClick={() => {
-                         const n = new Set(query.status);
-                         const v = g.statuses[0] as string;
-                         if (n.has(v)) n.delete(v); else n.add(v);
-                         setQuery({ status: n });
-                       }}>
-              {g.label}
-            </InputChip>
-          ))}
-        </div>
-
-        <div className="v3-fx">
-          <span className="v3-fx-l">기한</span>
-          {/* 기한은 **하나만** 고른다 — 「지남」이면서 「기한 없음」인 업무는 없다.
-              「전체」도 골라진 것으로 그린다. 넷이 똑같이 비어 보이면 지금 무엇이
-              걸려 있는지 알 수가 없다 — 다만 조건은 아니라서 위 칩 줄에는 안 선다. */}
-          {DUE_FILTERS.map((d) => (
-            <InputChip key={d.key} filled={query.due === d.key}
-                       aria-pressed={query.due === d.key}
-                       onClick={() => setQuery({ due: d.key })}>
-              {d.label}
-            </InputChip>
-          ))}
-          {/* 달로 온 경우(집계 화면의 칸) — **그 달을 칸으로 보인다.**
-              안 보이면 넷이 다 비어 있어서 아무 조건도 안 걸린 것처럼 읽힌다. */}
-          {dueMonth(query.due) !== null && (
-            <InputChip filled aria-pressed="true" onClick={() => setQuery({ due: "all" })}>
-              {dueSelLabel(query.due)}
-            </InputChip>
-          )}
-        </div>
       </div>
 
       {/*

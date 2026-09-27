@@ -1,4 +1,10 @@
+"use client";
+
 // 미션덱 v3 — 기본 부품 (MD-P-2026-042 §A).
+//
+// 066 §C-1 에서 `Menu`(여닫는 고르개)가 들어오면서 이 파일에 처음 상태가
+// 생겼다. 그래서 `"use client"` 를 붙였다 — 여덞 화면 전부가 이미 클라이언트
+// 부품이라 **닿는 범위가 바뀌지 않는다.**
 //
 // ── 규칙 두 개 ──────────────────────────────────────────────────
 //
@@ -10,6 +16,7 @@
 // 파일을 열 개로 쪼개면 무엇이 있는지 보려고 매번 폴더를 훑어야 한다.
 // 늘어나면 그때 쪼갠다.
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import type { AreaView } from "@/lib/v3/category";
 import type { DueTone } from "@/lib/v3/tasks";
 
@@ -94,6 +101,73 @@ export function InputChip({
 }
 
 /* ── Card ────────────────────────────────────────────────────────── */
+/* ── Menu — 「가끔 쓰는 것」의 자리 (MD-P-2026-066 §C-1 · §C-16 · §C-17) ──
+
+   §C-16 의 뒷말이 이것이다: 자주 하는 것은 한 번에 닿는 칩으로, **가끔 쓰는
+   것은 골라서.** 영역 일곱 · 사람 다섯 · 기한 넷을 전부 칩으로 깔면 거르개 줄이
+   열여섯 알이 되고, 그러면 지금 무엇이 걸려 있는지를 사람이 셀 수 없다.
+   못 세면 빈 목록이 고장으로 읽힌다.
+
+   §C-17: 사람이 늘어도 **줄의 모양이 안 바뀐다.** 담당을 탭으로 깔면 사람이
+   들어올 때마다 화면이 달라진다.
+
+   여는 단추와 항목들은 **형제**다 — 단추가 목록을 품으면 버튼 안 버튼이 된다
+   (B-15 선례 · 064 §A 와 같은 모양). */
+export function Menu({
+  label, value, children,
+}: { label: string; value?: string | null; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  /*
+   * 밖을 누르면 닫힌다. `mousedown` 으로 듣는 이유: `click` 으로 들으면
+   * 안쪽 항목의 클릭보다 먼저 닫혀서 **고른 값이 안 들어가는** 때가 있다.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", away);
+    window.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      window.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+
+  return (
+    <div className="v3-menu" ref={box}>
+      {/* 걸린 값을 **단추에 적는다.** 안 적으면 접힌 동안 무엇이 걸렸는지가
+          화면에서 사라진다 — 열어 봐야 아는 조건은 없는 조건과 같다. */}
+      <button type="button" className={`v3-mbtn${value ? " on" : ""}`}
+              aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        {label}
+        {value && <b className="v3-mbtn-v">{value}</b>}
+        <span className="v3-mbtn-cv" aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className="v3-mpop" role="group" aria-label={label}>{children}</div>
+      )}
+    </div>
+  );
+}
+
+/** 고르개 한 줄. 눌리는 자리이므로 버튼이고, **골라졌음을 글자로도** 남긴다. */
+export function MenuItem({
+  on, count, children, ...rest
+}: { on?: boolean; count?: number; children: React.ReactNode }
+  & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button {...rest} type="button" aria-pressed={on ? "true" : "false"}
+            className={`v3-mitem${on ? " on" : ""}`}>
+      <span className="v3-mitem-k" aria-hidden="true">{on ? "✓" : ""}</span>
+      <span className="v3-mitem-t">{children}</span>
+      {count !== undefined && <span className="v3-chip-n">{count}</span>}
+    </button>
+  );
+}
+
 export function Card({
   title, sub, children, ...rest
 }: { title?: string; sub?: React.ReactNode; children: React.ReactNode }

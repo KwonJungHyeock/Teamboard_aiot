@@ -27,6 +27,16 @@ export interface TodayTask {
   assigneeId: number | null;
   /** 링크 미리보기가 여기서 URL 을 뽑는다 (051 §C). **본문은 안 고친다.** */
   description: string;
+  /*
+   * ── 권한 두 칸 (066 §C-2) ────────────────────────────────────
+   * 목록과 CSV 가 **같은 함수**로 권한을 묻기 위해 행이 들고 다닌다
+   * (`lib/v3/list-query.ts` 의 `visibleTo`). SQL 이 이미 걸렀으므로 화면에서는
+   * 아무것도 안 걸러지는 것이 정상이다 — 그물이 비는 것이 정상이고
+   * 그물이 없는 것이 사고다.
+   */
+  visibility: string;
+  /** 개인 업무의 주인. 담당이 아니라 **만든 사람**이다 (025 §A2). */
+  createdById: number | null;
 }
 
 /** 진행 중으로 세는 상태 — `/api/tasks` 기본 목록과 같은 뜻. */
