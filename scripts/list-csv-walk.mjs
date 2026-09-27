@@ -139,6 +139,13 @@ try {
       `${meaningful.join(" · ")}`);
 
   // ── ② 머리에 두 숫자 (§C-18) ──────────────────────────────────
+  /*
+   * **완료를 접은 채로 본다**(`done=1` 없이). 처음엔 펼친 화면에서만 쟀는데,
+   * 접힌 화면에서 앞 숫자는 보이는 행만 세고 뒤 숫자는 전부 세서
+   * 「12건 · 내 것 18건」이 떠 있었다 — 내 것이 전체보다 많다.
+   * 검사기가 못 잡았고 **화면을 눈으로 보고서** 찾았다.
+   */
+  await screenIds("");
   const lede = (await page.locator(".v3-lede").first().textContent()) ?? "";
   const m = /^(\d+)건 · 내 것 (\d+)건/.exec(lede.trim());
   // 「내 것」은 **DB 에서 센 값**과 맞춘다 — 화면이 자기가 그린 것을 그렸는지가 아니라
@@ -147,7 +154,8 @@ try {
     `SELECT count(*)::int n FROM task t
       WHERE t.is_active AND t.status <> 'proposed' AND t.assignee_id = $1
         AND (t.visibility = 'team' OR t.created_by = $1)`, [ADMIN.id]))[0].n;
-  chk("②-머리에-두-숫자", m !== null && Number(m[2]) === dbMine,
+  chk("②-머리에-두-숫자",
+      m !== null && Number(m[2]) === dbMine && Number(m[1]) >= Number(m[2]),
       `"${lede.trim().slice(0, 48)}" · 내 것 ${m ? m[2] : "(못 읽음)"} / DB ${dbMine}`);
 
   // ── ③ 「내 항목」 == 「담당 ▾ 나」 — **id 집합으로** (§C-26) ────

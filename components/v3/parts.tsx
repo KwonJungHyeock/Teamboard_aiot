@@ -238,13 +238,29 @@ export function Card({
 /* ── StatTile ────────────────────────────────────────────────────
    「기한 없음」만 호박색이다 — 아무 날에도 안 걸려서 마지막까지 안 보이는
    것들이라, 세 숫자 중 그것만 손댈 일이 남아 있다는 뜻이다. */
-export function StatTile({ n, label, warn }: { n: number; label: string; warn?: boolean }) {
-  return (
-    <div className={`v3-stat${warn ? " warn" : ""}`}>
+export function StatTile({
+  n, label, warn, late, sub, href,
+}: {
+  n: number; label: string; warn?: boolean;
+  /** 066 §D-30 — **기한 지남만** 색을 준다. 나머지는 무채색이다 */
+  late?: boolean;
+  /** 숫자 아래 한 줄 (「진행 4 · 검토 2」 같은 것). 없으면 안 그린다 */
+  sub?: string;
+  /** 누르면 **같은 조건의 목록**으로 간다 (§D-35 가 그 값끼리 맞춰 본다) */
+  href?: string;
+}) {
+  const inner = (
+    <>
       <span className="v3-stat-n">{n}</span>
       <span className="v3-stat-l">{label}</span>
-    </div>
+      {sub && <span className="v3-stat-s">{sub}</span>}
+    </>
   );
+  const cls = `v3-stat${warn ? " warn" : ""}${late ? " late" : ""}`;
+  // 누를 수 있는 자리면 링크다. 아니면 그냥 칸이다 — 안 눌리는 것을 링크처럼
+  // 그리지 않는다.
+  return href ? <Link className={`${cls} act`} href={href}>{inner}</Link>
+              : <div className={cls}>{inner}</div>;
 }
 
 /* ── Checkbox — 상태 네 가지 ─────────────────────────────────────

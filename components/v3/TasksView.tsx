@@ -346,12 +346,15 @@ export default function TasksView({
       <h1 className="v3-h1">업무</h1>
       {/*
         머리 보조설명 — **두 숫자** (§C-18). 「24건 · 내 것 5건」.
-        둘 다 같은 목록에서 센다. 「내 것」을 따로 불러와 세면 조건이 걸린 화면에서
-        두 숫자가 서로 다른 모집단을 말한다.
+
+        둘 다 **조건에 맞는 전부**(`filtered`)에서 센다. 처음엔 앞 숫자만 「지금
+        보이는 행」으로 셌더니 완료가 접힌 화면에서 「12건 · 내 것 18건」이 떴다 —
+        내 것이 전체보다 많다. 두 숫자가 다른 모집단을 말하면 둘 다 못 믿는다.
+        접힌 완료 건수는 아래 「완료 n건」 줄이 따로 말한다.
       */}
       <p className="v3-lede">
         {tasks === null ? "불러오는 중…"
-          : `${total}건 · 내 것 ${mineCount}건${nothing ? "" : ` · 조건 ${chips.length}개로 거름 (전체 ${leak.total}건)`}`}
+          : `${filtered.length}건 · 내 것 ${mineCount}건${nothing ? "" : ` · 조건 ${chips.length}개로 거름 (전체 ${leak.total}건)`}`}
       </p>
 
       {err && <Card><p className="v3-err">{err}</p></Card>}

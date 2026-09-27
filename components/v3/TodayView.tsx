@@ -24,6 +24,15 @@ import {
   type TodayTask, type InboxItem,
 } from "@/lib/v3/today";
 import { areaOf, type AreaView } from "@/lib/v3/category";
+/*
+ * 066 §D — 대시보드의 숫자는 **새로 계산하지 않는다.**
+ *   · 세 숫자와 「내 업무」는 목록 화면과 **같은 함수**를 지난다(§C-2 · §D-35)
+ *   · 목표 진척은 서버가 `lib/progress.ts` 로 센 값을 그대로 그린다(§D-32)
+ */
+import {
+  selectRows, serializeListQuery, EMPTY_LIST_QUERY, type ListQuery,
+} from "@/lib/v3/list-query";
+import { STATUS_META } from "@/lib/task-view";
 import { V3_BASE, taskHref } from "@/lib/v3/routes";
 // 가오픈 카드가 쓰는 것 — **계산은 저기 한 곳에 있다** (051 §A-3).
 import { weeksAndDays, longDateKst } from "@/lib/countdown";
@@ -52,9 +61,11 @@ const INBOX_LABEL: Record<string, string> = {
 };
 
 export default function TodayView({
-  name, today, openAtMs, dday, areas,
+  name, today, openAtMs, dday, areas, me,
 }: {
   name: string;
+  /** 보는 사람의 `actor.id`. 「내 업무」와 권한 거르기가 쓴다 (066 §D-31). */
+  me: number;
   /** KST 오늘(YYYY-MM-DD). **서버가 정해서 넘긴다** — 브라우저 시계를 안 믿는다. */
   today: string;
   openAtMs: number;
@@ -64,6 +75,8 @@ export default function TodayView({
 }) {
   const [tasks, setTasks] = useState<TodayTask[] | null>(null);
   const [inbox, setInbox] = useState<InboxItem[] | null>(null);
+  /** 분기 목표 — `/api/goals` 가 주는 나무를 펴서 쓴다. **새 API 는 없다.** */
+  const [goals, setGoals] = useState<{ id: number; title: string; progress: number | null }[] | null>(null);
   const [err, setErr] = useState("");
   // 오래 밀린 일은 **접혀서** 시작한다. 펼치는 것은 사람이 정한다.
   const [openStale, setOpenStale] = useState(false);
@@ -76,6 +89,55 @@ export default function TodayView({
       .then(([t, n]) => { setTasks(t.tasks ?? []); setInbox(inboxItems(n.items ?? [])); })
       .catch((e) => setErr(String(e.message ?? e)));
   }, []);
+
+  /*
+   * 분기 목표 (§D-32). **진척을 여기서 다시 계산하지 않는다** — 서버가
+   * `lib/progress.ts` 로 센 `progress` 를 그대로 그린다. 못 받으면 빈 목록이고,
+   * 그때는 카드에 이유가 선다(0%로 그리지 않는다 — 없는 값과 0은 다르다).
+   */
+  useEffect(() => {
+    void (async () => {
+      const r = await fetch("/api/goals").catch(() => null);
+      if (!r || !r.ok) { setGoals([]); return; }
+      const d = await r.json().catch(() => ({}));
+      interface Node { id: number; title: string; progress: number | null;
+        periodType: string; periodStart: string; periodEnd: string; children?: Node[] }
+      const flat: Node[] = [];
+      const walk = (ns: Node[] | undefined) => {
+        for (const g of ns ?? []) { flat.push(g); walk(g.children); }
+      };
+      walk(d.tree as Node[] | undefined);
+      setGoals(flat
+        .filter((g) => g.periodType === "quarter" && g.periodStart <= today && g.periodEnd >= today)
+        .map((g) => ({ id: g.id, title: g.title, progress: g.progress })));
+    })();
+  }, [today]);
+
+  /*
+   * ── 세 숫자와 「내 업무」 (§D-30 · §D-31 · §D-35) ─────────────────
+   *
+   * **목록 화면과 같은 함수로 센다.** 대시보드가 따로 세면 언젠가 갈린다 —
+   * 그래서 조건을 `ListQuery` 로 적고 `selectRows()` 에 넣는다. 칸을 누르면
+   * **그 조건 그대로의 목록**으로 가므로, 숫자와 목록이 구조적으로 같다.
+   *
+   * 완료를 뺀 세 상태를 조건에 적는다. 안 적으면 「기한 지남」에 **완료된 지난
+   * 업무**가 섞여서, 손댈 일이 아닌 것이 손댈 일로 세어진다.
+   */
+  const OPEN_ST = useMemo(() => new Set(["todo", "doing", "review"]), []);
+  const countOf = (due: "late" | "soon"): { n: number; href: string } => {
+    const q: ListQuery = { ...EMPTY_LIST_QUERY, status: OPEN_ST, due };
+    const n = selectRows(tasks ?? [], q, me, today).length;
+    return { n, href: `${V3_BASE}/tasks?${serializeListQuery(q)}` };
+  };
+  const late = countOf("late");
+  const week = countOf("soon");
+  /** 내가 담당인, 아직 안 끝난 것 — **다섯 줄만.** 나머지는 「내 업무」에서 본다 */
+  const mineQ: ListQuery = useMemo(
+    () => ({ ...EMPTY_LIST_QUERY, status: OPEN_ST, mine: true }), [OPEN_ST]);
+  const mineRows = useMemo(
+    () => selectRows(tasks ?? [], mineQ, me, today), [tasks, mineQ, me, today]);
+  /** §B-4 — 「내 업무」는 업무 목록에 `?mine=1` 을 붙인 자리다. 새 화면이 아니다. */
+  const mineHref = `${V3_BASE}/tasks?${serializeListQuery(mineQ)}`;
 
   const view = useMemo(() => {
     if (!tasks) return null;
@@ -127,9 +189,84 @@ export default function TodayView({
           <span className="v3-open-when">{longDateKst(openAtMs)}</span>
           {left && <span className="v3-open-left">{left.text}</span>}
         </div>
-        <StatTile n={view?.counts.doing ?? 0} label="진행 중" />
-        <StatTile n={view?.counts.thisWeek ?? 0} label={`이번 주 마감 (~${shortDate(weekEnd(today))})`} />
-        <StatTile n={view?.counts.noDue ?? 0} label="기한 없음" warn />
+        {/*
+          ── 위 칸 셋 (066 §D-30) ────────────────────────────────────
+          오늘 할 일 · 기한 지남 · 이번 주 마감.
+          **기한 지남만 색을 준다.** 나머지는 무채색이다.
+
+          숫자를 여기서 새로 세지 않는다 — 뒤의 둘은 목록 화면과 **같은 함수**를
+          지나고(`selectRows`), 누르면 그 조건 그대로의 목록으로 간다(§D-35).
+
+          「오늘 할 일」은 목록의 기한 축에 딱 맞는 값이 없다(축에 「오늘」이
+          없다 — 축을 늘리는 것은 새 규칙이라 손대지 않았다). 그래서 이 숫자는
+          **바로 아래 「오늘 할 일」 카드와 같은 함수**(`splitToday`)에서 온다.
+        */}
+        <StatTile n={view?.todo.length ?? 0} label="오늘 할 일"
+                  sub={view ? `진행 ${view.todo.filter((t) => t.status === "doing").length}` +
+                              ` · 검토 ${view.todo.filter((t) => t.status === "review").length}` : undefined} />
+        <StatTile n={late.n} label="기한 지남" late href={late.href}
+                  sub={view ? `${STALE_DAYS}일 넘게 밀린 것 ${view.stale.length}` : undefined} />
+        <StatTile n={week.n} label={`이번 주 마감 (~${shortDate(weekEnd(today))})`} href={week.href}
+                  sub={view ? `기한 없음 ${view.counts.noDue}` : undefined} />
+      </div>
+
+      {/*
+        ── 아래 두 칸 (066 §D-31 · §D-32) ────────────────────────────
+        왼쪽 「내 업무」 다섯 줄 · 오른쪽 「분기 목표」 진척.
+
+        「내 업무」는 **업무 목록에 `?mine=1` 을 붙인 자리**다(§B-4) — 새 화면이
+        아니다. 그래서 더 보기는 그 주소로 간다.
+      */}
+      <div className="v3-two">
+        <Card title="내 업무" sub={view ? `${mineRows.length}건 중 ${Math.min(5, mineRows.length)}줄` : undefined}>
+          {!view ? <p className="v3-loading">불러오는 중…</p>
+            : mineRows.length === 0 ? (
+              <Empty title="내가 담당인 일이 없어요"
+                     why="아직 안 끝난 업무 중 담당이 나인 것이 없습니다."
+                     action={{ label: "업무 보기", href: `${V3_BASE}/tasks` }} />
+            ) : (<>
+              {mineRows.slice(0, 5).map((t) => {
+                const a = areaOf(areas, t.areaId);
+                return (
+                  <div className="v3-row" key={t.id}>
+                    <span className="v3-row-main">
+                      <Link className="v3-row-t" href={taskHref(t.id)}>{t.title}</Link>
+                    </span>
+                    <span className="v3-row-r">
+                      {/* 영역 이름표 · 상태 — 지시서가 적은 셋이다(제목 · 이름표 · 상태) */}
+                      {a && <Tag area={a} />}
+                      {/* 상태 낱말은 **한 곳에서** 온다(`STATUS_META`) — 065 §A-2 */}
+                      <span className="v3-due">{STATUS_META[t.status]?.label ?? t.status}</span>
+                    </span>
+                  </div>
+                );
+              })}
+              {mineRows.length > 5 && (
+                <p className="v3-why"><Link href={mineHref}>내 업무 {mineRows.length}건 전부 보기</Link></p>
+              )}
+            </>)}
+        </Card>
+
+        <Card title="분기 목표" sub={goals ? `${goals.length}개` : undefined}>
+          {goals === null ? <p className="v3-loading">불러오는 중…</p>
+            : goals.length === 0 ? (
+              <Empty title="이번 분기 목표가 없어요"
+                     why="기간이 오늘을 포함하는 분기 목표가 없습니다. 목표는 「목표」 화면에서 만듭니다."
+                     action={{ label: "목표 화면으로", href: "/goals" }} />
+            ) : goals.map((g) => (
+              <div className="v3-goalrow" key={g.id}>
+                <span className="v3-goalrow-h">
+                  <span className="v3-goalrow-t">{g.title}</span>
+                  {/* 못 센 진척은 **「—」다. 0% 가 아니다** — 없는 값과 0은 다른 말이다 */}
+                  <span className="v3-goalrow-n">{g.progress === null ? "—" : `${g.progress}%`}</span>
+                </span>
+                <span className="v3-bar" role="img"
+                      aria-label={`${g.title} 진척 ${g.progress === null ? "산출 불가" : `${g.progress}%`}`}>
+                  <span style={{ width: `${g.progress ?? 0}%` }} />
+                </span>
+              </div>
+            ))}
+        </Card>
       </div>
 
       <Card title="오늘 할 일" sub={view ? `${view.todo.length}건 · 오늘 마감이거나 ${STALE_DAYS}일 이내로 지난 것` : undefined}>
