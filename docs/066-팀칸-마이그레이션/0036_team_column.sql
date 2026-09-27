@@ -1,54 +1,55 @@
--- MD-P-2026-066 §F — 팀 칸 하나 (`team_id`)
+-- MD-P-2026-066 §F · 067 §E — 팀 칸 하나 (`team_id`)
 --
--- ⚠ **아직 승인 전이다.** 지시서 §F-54: 「마이그레이션 파일을 만들었으면 푸시 전에
---    멈추고 보고한다. 파일 내용을 그대로 보고에 적는다. 승인 뒤에 푸시한다.」
---    이 파일은 그래서 **커밋에 안 들어가 있다.**
+-- ⚠ **아직 승인 전이다.** 이 파일은 `docs/` 에 있고 러너는 여기를 안 본다.
+--    승인 뒤에 `db/migrations/0036_team_column.sql` 로 옮긴다(§E-30).
 --
 -- ── 왜 지금 넣는가 ───────────────────────────────────────────────
 --
 -- 내년에 에듀이노 시스템으로 합친다. 그때 「이 줄이 어느 팀 것인가」가 없으면
--- 1년치를 한꺼번에 채워야 한다. 지금 넣으면 칸 하나다(§F).
+-- 1년치를 한꺼번에 채워야 한다. 지금 넣으면 칸 하나다.
 --
 -- ── 무엇을 하는가 ────────────────────────────────────────────────
 --
 --   ① `team` 표를 만든다 — id · key · name 셋뿐이다
 --   ② `AIoT` 한 줄을 넣는다
---   ③ 네 표에 `team_id` 를 더한다 — task · goal · project · note
---   ④ 기존 줄을 전부 그 팀으로 채운다
---   ⑤ DEFAULT 를 걸고 NOT NULL 로 잠근다 — **새 줄도 비지 않는다**(§F-50)
+--   ③ 열두 표에 `team_id` 를 더한다
+--   ④ 기존 줄을 전부 그 팀으로 채운다 — **UPDATE 없이**(트리거를 안 돌린다)
+--   ⑤ DEFAULT 를 걸고 NOT NULL 로 잠근다 — **새 줄도 비지 않는다**
 --
--- **화면은 만들지 않는다**(§F-51). 팀 탭도, 팀 고르기도 없다. 이 파일은 칸만 만든다.
--- **소속 표(사용자 × 팀 × 역할)는 안 만든다**(§F-53) — 에듀이노 모양을 보고 정한다.
+-- **화면은 만들지 않는다.** 팀 탭도, 팀 고르기도 없다.
+-- **소속 표(사용자 × 팀 × 역할)는 안 만든다** — 에듀이노 모양을 보고 정한다.
 --
--- ── 「기록」을 `note` 로 읽었다 (판단한 자리) ────────────────────
+-- ── 어느 표인가 — 067 §E-1 의 **기준으로** 찾았다 ────────────────
 --
--- 지시서의 넷은 「업무 · 목표 · 프로젝트 · 기록」이다. 앞의 셋은 표 이름이 그대로
--- 있는데 **「기록」은 이 제품에서 두 가지를 뜻한다**:
+-- 066 에서는 지시서가 준 넷(업무 · 목표 · 프로젝트 · 기록)만 넣었다. 067 §E-24:
+-- 「목록을 받아 쓰지 말고 기준으로 찾는다.」 기준은 둘이다 —
+--   ① 사람이 만드는 줄인가 (기계가 찍는 것은 뺀다)
+--   ② 부모를 타고 올라가도 팀에 못 닿는가 (닿으면 안 넣는다)
+-- 표 41개를 외래키 76개로 전부 훑었다. 전문은 같은 폴더의 `067-전수조사.md`.
 --
---   · `task.description` — v3 상세가 「기록」이라고 부르는 **칸**. 표가 아니다
---   · `note` (메모, 지금 0행) — 사람이 만드는 **독립된 줄**
---   · `task_comment`(6행) · `comment`(12행) — 사람이 적지만 **업무·시그널에 매달려
---     있다.** 부모 줄이 team_id 를 들고 있으므로 합칠 때 따라온다
---   · `activity_log`(217행) — **기계가 만든다.** 「사람이 만드는 줄」이 아니다
+--   066 부터   task · goal · project · note
+--   067 에 더함 signal · event · artifact · review_session · handover ·
+--              saved_view · personal_event · area
 --
--- 그래서 합칠 때 **혼자 떠 있는 것**만 칸이 필요하다고 보고 `note` 를 골랐다.
--- 다르게 읽어야 하면 ③·④·⑤ 의 `note` 줄을 바꾸면 된다 — 한 줄씩이다.
+-- 빠진 표를 나중에 채우는 것은 다시 데이터 작업이고, 그때는 줄이 더 쌓여 있다
+-- (§E-28). 그래서 **한 번에** 넣는다.
 --
--- ── 실행 전 확인 (§F-55 — 짐작하지 않고 실제 스키마를 읽었다) ────
+-- ── 실행 전 확인 (짐작하지 않고 실제 스키마를 읽었다) ──────────────
 --
---   · `team` 이라는 표·컬럼은 **없다.** 닮은 이름은 `event.is_team` 하나뿐이고
---     이 파일은 그걸 안 건드린다
---     (information_schema.columns 전량 조회 · 2026-09-27 로컬)
---   · 네 표의 PK 는 전부 `id` (integer, serial) 다
---   · `note` 는 `owner_actor_id` · `title` · `body`(jsonb) · `is_active` ·
---     `created_at` · `updated_at` 을 갖는다. `team_id` 라는 이름은 비어 있다
---   · 행 수 — task 44 · goal 7 · project 9 · note 0 (로컬)
+--   · `team` 이라는 표·컬럼은 **없다.** 닮은 이름은 `event.is_team`(참/거짓 —
+--     팀 일정인가 개인 일정인가) 하나뿐이고, 뜻이 다르며 이 파일은 안 건드린다
+--   · 열두 표의 PK 는 전부 `id` (integer, serial) 다. `team_id` 라는 이름은 비어 있다
+--   · 행 수(로컬) — task 44 · goal 7 · project 9 · note 0 · signal 8 · event 5 ·
+--     artifact 0 · review_session 0 · handover 0 · saved_view 0 ·
+--     personal_event 0 · area 7
+--   · `note` 는 `db/schema.sql` 에 **없고** `0026_personal_space.sql` 에만 있다.
+--     러너는 0026 을 먼저 돌리므로 여기까지 오면 있다(066 에서 확인)
 --
 -- ── 러너가 이 파일에서 멈추면 어떻게 되는가 ──────────────────────
 --
--- 0031·0035 의 자리다 — 러너가 실패하면 그 뒤 전 요청이 500 이 된다(§F-55).
--- 그래서 이 파일은 **비파괴만** 한다: CREATE TABLE IF NOT EXISTS ·
--- ADD COLUMN IF NOT EXISTS · UPDATE · SET DEFAULT · SET NOT NULL.
+-- 0031·0035 의 자리다 — 러너가 실패하면 그 뒤 전 요청이 500 이 된다.
+-- 그래서 **비파괴만** 한다: CREATE TABLE IF NOT EXISTS · ADD COLUMN IF NOT EXISTS ·
+-- SET DEFAULT · SET NOT NULL · CREATE INDEX IF NOT EXISTS. UPDATE 는 빈 줄에만 닿는다.
 -- 지우는 문장이 없다. 두 번 돌려도 같은 결과다(멱등).
 --
 -- DEFAULT 값을 **숫자로 박지 않는다.** `team` 의 id 는 serial 이라 환경마다 다를
@@ -56,10 +57,13 @@
 -- `area` 의 id 를 코드에 박을 수 없었던 것과 같은 이유다(043 §1).
 -- 그래서 id 를 읽어서 ALTER 문을 만든다.
 --
--- 되돌리기: db/migrations/rollback/0036_team_column_down.sql
---   ⚠ 되돌리기는 **컬럼 넷과 표 하나를 지운다.** 채워 둔 팀 값이 통째로 사라진다.
+-- 표 목록은 **한 곳**(아래 배열 두 군데가 아니라 `tbls` 하나)에만 적는다 —
+-- 칸을 더하는 자리와 채우는 자리가 다른 목록을 보면 하나가 빠진다.
+--
+-- 되돌리기: `0036_team_column_down.sql`
+--   ⚠ 되돌리기는 **컬럼 열둘과 표 하나를 지운다.** 채워 둔 팀 값이 통째로 사라진다.
 
--- ① 팀 표 — 셋뿐이다. 소속·역할은 여기 없다(§F-53)
+-- ① 팀 표 — 셋뿐이다. 소속·역할은 여기 없다
 CREATE TABLE IF NOT EXISTS team (
   id         SERIAL PRIMARY KEY,
   key        TEXT NOT NULL UNIQUE,
@@ -71,17 +75,18 @@ CREATE TABLE IF NOT EXISTS team (
 INSERT INTO team (key, name) VALUES ('aiot', 'AIoT')
   ON CONFLICT (key) DO NOTHING;
 
--- ③ 칸을 더한다 — **비파괴.** 이미 있으면 아무 일도 안 일어난다
-ALTER TABLE task    ADD COLUMN IF NOT EXISTS team_id INTEGER REFERENCES team(id);
-ALTER TABLE goal    ADD COLUMN IF NOT EXISTS team_id INTEGER REFERENCES team(id);
-ALTER TABLE project ADD COLUMN IF NOT EXISTS team_id INTEGER REFERENCES team(id);
-ALTER TABLE note    ADD COLUMN IF NOT EXISTS team_id INTEGER REFERENCES team(id);
-
--- ④⑤ 기존 줄을 채우고 · DEFAULT 를 걸고 · NOT NULL 로 잠근다
+-- ③④⑤ 칸을 더하고 · 채우고 · DEFAULT 를 걸고 · 잠그고 · 색인을 둔다
 DO $$
 DECLARE
-  t INTEGER;
-  tbl TEXT;
+  t    INTEGER;
+  tbl  TEXT;
+  tbls TEXT[] := ARRAY[
+    -- 066 부터
+    'task', 'goal', 'project', 'note',
+    -- 067 §E-1 에서 기준으로 찾은 것
+    'signal', 'event', 'artifact', 'review_session', 'handover',
+    'saved_view', 'personal_event', 'area'
+  ];
 BEGIN
   SELECT id INTO t FROM team WHERE key = 'aiot';
   -- 없으면 **여기서 멈춘다.** 조용히 넘어가면 NOT NULL 을 걸 때 죽고,
@@ -90,15 +95,40 @@ BEGIN
     RAISE EXCEPTION '0036: team.key = aiot 행이 없다 — ② 의 INSERT 가 안 들어갔다';
   END IF;
 
-  FOREACH tbl IN ARRAY ARRAY['task', 'goal', 'project', 'note'] LOOP
+  FOREACH tbl IN ARRAY tbls LOOP
+    -- 표가 없으면 **이름을 대고** 멈춘다. `ALTER TABLE` 이 알아서 죽게 두면
+    -- 「relation does not exist」만 남고 어느 줄에서였는지 찾아야 한다.
+    IF to_regclass(format('public.%I', tbl)) IS NULL THEN
+      RAISE EXCEPTION '0036: 표 % 가 없다 — 앞선 마이그레이션이 덜 돌았다', tbl;
+    END IF;
+    /*
+     * ── **UPDATE 로 채우지 않는다** (067 §E-29 에서 고쳤다) ──────────
+     *
+     * 066 판은 `ADD COLUMN` 뒤에 `UPDATE … SET team_id` 로 채웠다. 그런데
+     * `task` 에는 BEFORE UPDATE 트리거가 **다섯** 있다 — 영역·프로젝트 일치 ·
+     * 막힘 순환 · 막힘 파생 · 깊이 · 개인 업무 주인. UPDATE 는 **모든 줄에서**
+     * 그 다섯을 돌린다.
+     *   · 옛 줄 하나라도 조건을 어기면 마이그레이션이 멈추고 → 러너가 멈추고 →
+     *     **전 요청이 500** 이다(0031 의 자리)
+     *   · `trg_task_blocked_derive` 는 **값을 바꾼다** — 팀 칸을 채우다가
+     *     막힘 표시가 같이 바뀔 수 있다
+     * 066 의 검사용 DB 에는 줄이 1개라 안 드러났다.
+     *
+     * `ADD COLUMN … NOT NULL DEFAULT <상수>` 는 기존 줄을 **UPDATE 없이** 채운다
+     * (Postgres 11 부터 목록에 값을 적어 두는 방식). 트리거가 안 돈다.
+     * 새 줄은 DEFAULT 로 채워진다 — 값을 비워 두지 않는다.
+     */
+    EXECUTE format(
+      'ALTER TABLE %I ADD COLUMN IF NOT EXISTS team_id INTEGER NOT NULL DEFAULT %s REFERENCES team(id)',
+      tbl, t);
+    /*
+     * 안전망 — 칸이 **이미 있는데 비어 있는** 줄(앞선 실행이 반쯤 된 경우)만
+     * 채운다. 처음 적용에서는 **0줄**이라 트리거가 한 번도 안 돈다.
+     */
     EXECUTE format('UPDATE %I SET team_id = %s WHERE team_id IS NULL', tbl, t);
     EXECUTE format('ALTER TABLE %I ALTER COLUMN team_id SET DEFAULT %s', tbl, t);
     EXECUTE format('ALTER TABLE %I ALTER COLUMN team_id SET NOT NULL', tbl);
+    -- 합칠 때 팀으로 훑는다
+    EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I(team_id)', 'idx_' || tbl || '_team', tbl);
   END LOOP;
 END $$;
-
--- 합칠 때 팀으로 훑는다. 네 표 다 같은 모양의 색인을 둔다
-CREATE INDEX IF NOT EXISTS idx_task_team    ON task(team_id);
-CREATE INDEX IF NOT EXISTS idx_goal_team    ON goal(team_id);
-CREATE INDEX IF NOT EXISTS idx_project_team ON project(team_id);
-CREATE INDEX IF NOT EXISTS idx_note_team    ON note(team_id);
