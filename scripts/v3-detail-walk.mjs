@@ -184,9 +184,16 @@ try {
       ` · 몰아넣는 날 ${pileDay}`);
 
   // ══ §A 칩 두 종류 ═══════════════════════════════════════════════
-  await page.goto(`${BASE}/v3/tasks`, { waitUntil: "networkidle" });
+  /*
+   * 066 §C-1 에서 **거르개 줄이 바뀌었다.** 영역 칩 줄이 「영역 ▾」 안으로
+   * 들어가서, 이 화면의 `.v3-chip` 은 이제 「◉ 내 항목」 하나다.
+   *
+   * 재는 것은 그대로다 — **거르개 칩은 검정 채움**(046 §A: 입력 칩과 다른
+   * 물건이다). 그래서 눌린 거르개 칩을 하나 만들어 놓고 잰다: `?mine=1`.
+   */
+  await page.goto(`${BASE}/v3/tasks?mine=1`, { waitUntil: "networkidle" });
   await page.locator(".v3-chip").first().waitFor({ timeout: 8000 });
-  // ① 거르개는 검정 채움 그대로 — 「전체」가 눌려 있다.
+  // ① 거르개는 검정 채움 그대로 — 「내 항목」이 눌려 있다.
   const filterOn = page.locator('.v3-chip[aria-pressed="true"]').first();
   const filterBg = await bg(filterOn);
   chk("①-거르개-칩은-검정-채움", filterBg === "rgb(22, 32, 58)",

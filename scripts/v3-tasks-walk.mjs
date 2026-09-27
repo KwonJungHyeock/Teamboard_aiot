@@ -151,25 +151,36 @@ try {
   const counts = countByArea(rows);
   const { shown, hidden } = chipRow(areas, counts);
 
-  // ── ② 일곱(+검사용 하나) 카테고리가 전부 있다 ───────────────────
-  const chipTexts = async () => {
-    const n = await page.locator(".v3-chips .v3-chip").count();
-    const out = [];
-    for (let i = 0; i < n; i++) out.push((await page.locator(".v3-chips .v3-chip").nth(i).innerText()).replace(/\s+/g, " ").trim());
-    return out;
+  /*
+   * ── 066 §C-1 에서 자리가 옮겨졌다 ───────────────────────────────
+   *
+   * 영역은 이제 **칩 줄이 아니라 「영역 ▾」 안**이다(거르개 줄의 차례가 고정됐다).
+   * 재는 것은 그대로다 — **일곱이 다 있는가 · 합이 전체와 맞는가 · 색 없는
+   * 영역도 이름이 남는가.** 읽는 자리만 메뉴로 바꾼다.
+   *
+   * 접힘(＋n)은 **없어졌다.** 메뉴는 0건인 영역도 그대로 내놓는다 —
+   * 「없는 것」과 「0건인 것」은 다른 말이고, 메뉴에는 접을 이유가 없다.
+   */
+  const openAreaMenu = async () => {
+    const b = page.locator(".v3-mbtn").filter({ hasText: "영역" }).first();
+    if ((await b.getAttribute("aria-expanded")) !== "true") await b.click();
+    await page.waitForTimeout(250);
   };
-  const before = await chipTexts();
-  const plus = page.locator(".v3-chip.dashed");
-  const hasPlus = await plus.count() > 0;
-  if (hasPlus) { await plus.first().click(); await page.waitForTimeout(250); }
-  const after = await chipTexts();
+  const areaItems = async () => {
+    await openAreaMenu();
+    return page.locator(".v3-mpop .v3-mitem").evaluateAll(
+      (els) => els.map((e) => e.innerText.replace(/\s+/g, " ").replace(/^✓ ?/, "").trim()));
+  };
+  const after = await areaItems();
+  const before = after;
   // 「전체」 칩에는 건수가 붙어 "전체 27" 이다 — `!== "전체"` 로는 안 걸러진다.
   // 처음에 그렇게 썼다가 칩을 9개로 세고 FAIL 이 났다. 화면이 아니라 셈이 틀렸다.
   const named = after.filter((t) => !t.startsWith("전체") && !t.startsWith("＋"));
   const allNames = areas.map((a) => a.name);
   chk("②-카테고리가-전부-있다",
       allNames.every((n) => named.some((t) => t.startsWith(n))) && named.length === areas.length,
-      `칩 ${named.length}개 · area ${areas.length}개 · 접힘 ${hidden.length}개(${hasPlus ? "＋n 있었다" : "없었다"})`);
+      `메뉴 항목 ${named.length}개 · area ${areas.length}개` +
+      ` · 건수 0인 영역 ${hidden.length}개도 메뉴에 있다(접지 않는다)`);
 
   // ── ③ 합이 맞는가 ──────────────────────────────────────────────
   const chipSum = shown.concat(hidden).reduce((n, c) => n + c.count, 0);
@@ -178,7 +189,7 @@ try {
       `칩 합 ${chipSum} · 전체 칩 ${allChip} · DB ${rows.length}`);
 
   // ── ④ 색 없는 area — 회색이되 이름이 남는다 ─────────────────────
-  const ghostChip = after.find((t) => t.startsWith(GHOST_AREA));
+  const ghostChip = after.find((t) => t.startsWith(GHOST_AREA));   // 메뉴 항목
   const ghostView = areas.find((a) => a.id === ghostArea);
   chk("④-색없는-영역도-이름이-남는다",
       !!ghostChip && ghostView?.tone === "etc",
@@ -261,7 +272,7 @@ try {
       `"${gTxt}"`);
 
   // ⑦-4 접힌 상태에서도 칩 합은 그대로 — **완료를 빼지 않는다.**
-  const allChip2 = ((await page.locator(".v3-chip").first().innerText()).match(/\d+/) ?? [""])[0];
+  const allChip2 = ((((await areaItems()).find((t) => t.startsWith("전체")) ?? "").match(/\d+/)) ?? [""])[0];
   chk("⑦-④-접혀도-칩-합은-전체", Number(allChip2) === rows.length,
       `전체 칩 ${allChip2} · DB ${rows.length} (완료 ${doneN}건이 빠지지 않았다)`);
 
@@ -286,9 +297,9 @@ try {
   // ── ⑨ 카테고리 거르기도 주소에 ─────────────────────────────────
   await page.goto(`${BASE}/v3/tasks`, { waitUntil: "networkidle" });
   await page.waitForTimeout(600);
-  const dashed = page.locator(".v3-chip.dashed");
-  if (await dashed.count()) { await dashed.first().click(); await page.waitForTimeout(200); }
-  await page.locator(".v3-chip").filter({ hasText: GHOST_AREA }).first().click();
+  // 066 §C-1 — 영역을 고르는 자리는 「영역 ▾」 안이다. 접힘(＋n)은 없어졌다.
+  await openAreaMenu();
+  await page.locator(".v3-mpop .v3-mitem").filter({ hasText: GHOST_AREA }).first().click();
   await page.waitForTimeout(600);
   const u9 = new URL(page.url());
   const n9 = await page.locator(".v3-row").count();

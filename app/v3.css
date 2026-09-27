@@ -397,6 +397,35 @@
 .v3-mitem-t { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .v3-mitem.on { color: var(--v3-ink); font-weight: 600; }
 
+/* ── 066 §E-37 속성 줄 — 상세의 일곱 ──────────────────────────────
+   왼쪽에 이름, 오른쪽에 값. 값 자리가 **누르는 자리**다.
+
+   §E-39 — 상위·하위는 값이 스스로 눌리므로(링크) 값과 손잡이를 **형제**로 둔다.
+   064 §A 에서 옛 패널에 한 것과 같은 모양이다: 손잡이가 값이 안 덮은 자리를
+   끝까지 덮어서, 눌리는 폭이 줄지 않는다. */
+.v3-prop { display: flex; flex-wrap: wrap; align-items: flex-start;
+  gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--v3-line); }
+.v3-prop:last-child { border-bottom: 0; }
+.v3-prop-k { flex: 0 0 96px; padding-top: 3px; font-size: 13px; color: var(--v3-ink-2); }
+/* 값 — 줄의 남은 자리를 다 쓴다. 좁으면 줄바꿈해서 아래로 내려간다 */
+.v3-prop-v { display: flex; flex: 1 1 200px; align-items: center; gap: 6px;
+  min-width: 0; padding: 3px 6px; border: 0; border-radius: var(--v3-radius-s);
+  background: none; font: inherit; font-size: 13px; color: var(--v3-ink); text-align: left; }
+.v3-prop-v.act { cursor: pointer; }
+.v3-prop-v.act:hover, .v3-prop-v:has(.v3-prop-edit:hover) { background: var(--v3-ichip-bg); }
+/* 읽기 전용 — 누를 수 없으니 **손 모양도 안 준다.** 회색으로 내린다 */
+.v3-prop-v.ro { color: var(--v3-ink-2); }
+/* 값이 비었을 때. 「＋」로 부르되 값과 같은 자리를 차지한다 */
+.v3-prop-v .empty { color: var(--v3-ink-3); }
+/* 편집 손잡이 — 값이 안 덮은 자리를 **끝까지** 덮는다. 보이지는 않는다 */
+.v3-prop-edit { flex: 1 1 auto; min-width: 0; align-self: stretch; margin-left: -6px;
+  border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+.v3-prop-ed { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin: 4px 0 2px; padding: 8px 10px; background: var(--v3-bg);
+  border: 1px solid var(--v3-line); border-radius: var(--v3-radius-s); font-size: 13px; }
+.v3-prop-ed select, .v3-prop-ed input[type="date"] { height: 30px; font: inherit; font-size: 13px; }
+.v3-prop-ed label { color: var(--v3-ink-2); }
+
 /* 보기 방식 — 조건이 아니다. 거르개 줄과 갈라 둔다 */
 .v3-vbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   margin: -6px 0 var(--v3-gap); }

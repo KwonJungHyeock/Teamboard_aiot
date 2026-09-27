@@ -101,6 +101,56 @@ export function InputChip({
 }
 
 /* ── Card ────────────────────────────────────────────────────────── */
+/* ── PropRow — 속성 한 줄 (MD-P-2026-066 §E-37 · §E-39) ─────────────
+
+   옛 상세 패널의 `PropertyBlock` 과 **같은 뜻**을 v3 에 둔다. 064 §A 에서
+   거기 고친 것을 여기서 다시 만들지 않기 위해서다.
+
+   ── `valueActs` 가 무엇인가 ─────────────────────────────────────
+
+   대부분의 줄은 **값 전체가 여는 단추**다(누르면 고르개가 펼친다). 그런데
+   상위·하위처럼 **값이 스스로 눌리는** 줄이 있다 — 값이 링크라서 누르면 그
+   업무로 간다. 그 줄에서 값을 단추로 감싸면 **버튼 안 버튼**이 되고(B-15),
+   감싸지 않으면 편집할 자리가 사라진다.
+
+   그래서 064 §A 의 모양을 그대로 쓴다: 값과 편집 손잡이를 **형제**로 두고,
+   손잡이가 값이 안 덮은 자리를 끝까지 덮는다. 눌리는 폭이 줄지 않는다. */
+export function PropRow({
+  label, valueActs, editing, onEdit, children, editor,
+}: {
+  label: string;
+  /** 값이 스스로 눌리는 줄인가 (상위·하위). 형제 모양으로 그린다 */
+  valueActs?: boolean;
+  editing?: boolean;
+  /** 없으면 **읽기 전용 줄**이다 — 누를 수 없는 단추로 부르지 않는다 */
+  onEdit?: () => void;
+  children: React.ReactNode;
+  /** 펼쳤을 때 아래에 서는 고르개 */
+  editor?: React.ReactNode;
+}) {
+  return (
+    <div className="v3-prop" data-k={label}>
+      <span className="v3-prop-k">{label}</span>
+      {onEdit === undefined ? (
+        <span className="v3-prop-v ro">{children}</span>
+      ) : valueActs ? (
+        <span className="v3-prop-v">
+          {children}
+          {/* 값이 안 덮은 자리를 **끝까지** 덮는다. 형제라서 버튼 안 버튼이 아니다 */}
+          <button type="button" className="v3-prop-edit" aria-expanded={editing === true}
+                  aria-label={`${label} 편집`} onClick={onEdit} />
+        </span>
+      ) : (
+        <button type="button" className="v3-prop-v act" aria-expanded={editing === true}
+                onClick={onEdit}>
+          {children}
+        </button>
+      )}
+      {editing && editor !== undefined && <div className="v3-prop-ed">{editor}</div>}
+    </div>
+  );
+}
+
 /* ── Menu — 「가끔 쓰는 것」의 자리 (MD-P-2026-066 §C-1 · §C-16 · §C-17) ──
 
    §C-16 의 뒷말이 이것이다: 자주 하는 것은 한 번에 닿는 칩으로, **가끔 쓰는

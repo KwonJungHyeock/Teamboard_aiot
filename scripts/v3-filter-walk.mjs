@@ -126,16 +126,27 @@ try {
   const chipTexts = async () =>
     (await page.locator(".v3-acx").allInnerTexts()).map((t) => t.replace(/\s*×\s*$/, "").trim());
 
-  // ── ⑤ 축이 넷 + 검색뿐 ─────────────────────────────────────────
+  /*
+   * ── ⑤ 축이 넷 + 검색뿐 ─────────────────────────────────────────
+   *
+   * **066 §C-1 에서 자리가 바뀌었다.** 축을 줄로 눕힌 상자(`.v3-filters`)가
+   * 아니라 차례가 고정된 한 줄(`.v3-fbar`)이다:
+   *   [◉내 항목] | [전체][진행][검토][완료] | [영역▾][담당▾][기한▾] | 찾기 | ⤓CSV
+   *
+   * 묻는 것은 그대로다 — **축이 넷이고 그 밖의 축이 없다.** 카테고리(영역)와
+   * 담당·기한은 ▾ 로, 상태는 탭으로 선다. 우선순위·프로젝트·생성일은 없다.
+   */
   await page.goto(`${BASE}/v3/tasks`, { waitUntil: "networkidle" });
-  await page.locator(".v3-filters").waitFor({ timeout: 9000 });
-  const axes = (await page.locator(".v3-fx-l").allInnerTexts()).map((t) => t.trim());
+  await page.locator(".v3-fbar").waitFor({ timeout: 9000 });
+  const axes = (await page.locator(".v3-fbar .v3-mbtn").allInnerTexts())
+    .map((t) => t.replace(/\s+/g, " ").trim().split(" ")[0]);
+  const tabs = (await page.locator(".v3-tabs .v3-tab").allInnerTexts()).map((t) => t.trim());
   const searchN = await page.locator(".v3-search").count();
-  const banned = await page.locator(".v3-filters").innerText();
+  const banned = await page.locator(".v3-fbar").innerText();
   chk("⑤-축이-넷-+-검색뿐",
-      axes.join("|") === "담당|상태|기한" && searchN === 1
-      && !/우선순위|프로젝트|생성일/.test(banned),
-      `축 [카테고리(칩 줄) · ${axes.join(" · ")}] + 검색 ${searchN}칸` +
+      axes.join("|") === "영역|담당|기한" && tabs.join("|") === "전체|진행|검토|완료"
+      && searchN === 1 && !/우선순위|프로젝트|생성일/.test(banned),
+      `▾ [${axes.join(" · ")}] · 상태 탭 [${tabs.join(" ")}] + 검색 ${searchN}칸` +
       ` · 금지어 ${/우선순위|프로젝트|생성일/.test(banned) ? "**있음**" : "없음"}`);
 
   // ── ① 조건 넷을 다 걸고 새로고침 ───────────────────────────────
@@ -147,20 +158,27 @@ try {
   const myArea = areas.find((a) => a.id === mineAreaId);
   // **실패를 삼키지 않는다.** 처음엔 담당 클릭에 `.catch(() => {})` 를 달아 뒀는데,
   // 그래서 「안 눌렸다」가 「안 걸렸다」로 조용히 넘어갔다.
-  await page.locator(".v3-chips .v3-chip").filter({ hasText: myArea.name }).first().click();
-  await page.locator(".v3-fx").filter({ hasText: "담당" })
-    .locator(".v3-ichip").filter({ hasText: myName }).first().click();
-  await page.locator(".v3-fx").filter({ hasText: "상태" })
-    .locator(".v3-ichip").filter({ hasText: "진행 중" }).first().click();
-  await page.locator(".v3-fx").filter({ hasText: "기한" })
-    .locator(".v3-ichip").filter({ hasText: "지남" }).first().click();
+  /** ▾ 를 열고 항목을 누른다. 열고 나면 **그 메뉴 안에서만** 찾는다. */
+  const pickIn = async (menu, item) => {
+    const b = page.locator(".v3-fbar .v3-mbtn").filter({ hasText: menu }).first();
+    if ((await b.getAttribute("aria-expanded")) !== "true") await b.click();
+    await page.waitForTimeout(250);
+    await page.locator(".v3-mpop .v3-mitem").filter({ hasText: item }).first().click();
+    await page.waitForTimeout(400);
+  };
+  await pickIn("영역", myArea.name);
+  await pickIn("담당", myName);
+  // 상태는 **탭**이다 — 하나만 골린다(§C-15).
+  await page.locator(".v3-tabs .v3-tab").filter({ hasText: "진행" }).first().click();
+  await page.waitForTimeout(400);
+  await pickIn("기한", "지남");
   await page.locator(".v3-search").fill("지난 것");
   await page.waitForTimeout(900);
 
   const before = await titles();
   const url1 = new URL(page.url());
   await page.reload({ waitUntil: "networkidle" });
-  await page.locator(".v3-filters").waitFor({ timeout: 9000 });
+  await page.locator(".v3-fbar").waitFor({ timeout: 9000 });
   await page.waitForTimeout(900);
   const after = await titles();
   const url2 = new URL(page.url());

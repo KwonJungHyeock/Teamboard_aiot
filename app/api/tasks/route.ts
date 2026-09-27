@@ -10,6 +10,7 @@ import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
 import { kstToday } from "@/lib/home";
 import { visibleTaskSql, isVisibility } from "@/lib/visibility";
+import { areaProjectError } from "@/lib/area-project-server";
 import { countableSql, doneSql, taskProgress } from "@/lib/progress";
 
 export const runtime = "nodejs";
@@ -393,6 +394,15 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    /*
+     * ── 영역·프로젝트 조합 (066 §E-44) ──────────────────────────────
+     * 안 맞는 조합은 **400 이다.** 여기서 안 막으면 DB 트리거가 막고, 그때
+     * 사람이 받는 것은 영문 예외가 실린 500 이다. 판단과 문구는 한 곳에서 온다
+     * (`lib/area-project.ts`) — 고치기(PATCH)도 같은 함수를 부른다.
+     */
+    const apErr = await areaProjectError(areaId, projectId);
+    if (apErr) return NextResponse.json({ error: apErr }, { status: 400 });
 
     const task = await queryOne<{ id: number }>(
       // goal_source 를 **명시**한다. 컬럼 기본값은 아직 'inherited' 이고(§A5 — 컬럼은 안 건드린다),

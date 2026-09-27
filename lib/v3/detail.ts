@@ -62,6 +62,17 @@ export interface DetailTask {
   parentTaskId: number | null;
   parentTitle: string | null;
   children: { id: number; title: string; status: string }[];
+  /*
+   * ── 속성 일곱이 쓰는 칸 (066 §E-37) ──────────────────────────
+   * 영역 · 프로젝트 · 목표 · 상위 · 하위 · 우선순위 · 기간.
+   * `GET /api/tasks/{id}` 가 **이미 주는 것들**이다 — API 를 안 고쳤다.
+   *
+   * 셋은 안 넣는다(§E-38): 차단 · 이 업무가 막는 업무 · 공개 범위. 가오픈 뒤다.
+   */
+  projectId: number | null;
+  projectName: string | null;
+  priority: string;
+  goalIds: number[];
 }
 
 export interface ActivityRow {
@@ -130,11 +141,66 @@ export function dueOpenNote(dueDate: string | null, openAtMs: number): string | 
  * 필드 이름을 화면 여기저기에 흩뿌리면 `body` 같은 오타가 한 곳에서만 고쳐지고
  * 나머지는 조용히 안 저장된다. 이름은 위 표에 적힌 실재하는 것들이다.
  */
-export type EditField = "title" | "description" | "status" | "assigneeId" | "dueDate";
+export type EditField =
+  | "title" | "description" | "status" | "assigneeId" | "dueDate"
+  /* 066 §E-37 의 일곱. 이름은 전부 `PATCH /api/tasks/{id}` 가 **이미 받는 것**이다 */
+  | "areaId" | "projectId" | "priority" | "startDate" | "parentTaskId" | "goalIds";
 
-export function patchBody(field: EditField, value: string | number | null): Record<string, unknown> {
-  return { [field]: value };
+/** 칸 이름 → 사람이 읽는 말. 저장 실패 줄과 검사기가 같은 말을 쓴다. */
+export const FIELD_LABEL: Record<EditField, string> = {
+  title: "제목", description: "기록", status: "상태", assigneeId: "담당", dueDate: "기한",
+  areaId: "영역", projectId: "프로젝트", priority: "우선순위", startDate: "시작일",
+  parentTaskId: "상위 업무", goalIds: "목표",
+};
+
+/**
+ * 보내는 몸통. **값이 배열인 칸이 하나 있다**(`goalIds`) — 나머지는 그대로 실린다.
+ *
+ * 영역을 바꾸면서 프로젝트를 비우는 경우처럼 **둘을 같이 보내야 하는** 자리가
+ * 있다. 따로 보내면 첫 요청이 안 맞는 조합이라 400 을 맞는다(§E-44).
+ * 그래서 `extra` 를 받는다 — 화면이 아무 이름이나 끼워 넣지 못하게
+ * **부르는 쪽이 이름을 적어 넘긴다.**
+ */
+export function patchBody(
+  field: EditField, value: string | number | number[] | null,
+  extra?: Partial<Record<EditField, string | number | null>>,
+): Record<string, unknown> {
+  return { [field]: value, ...(extra ?? {}) };
 }
+
+/**
+ * 우선순위 셋. **API 가 받는 값 그대로**(`high`·`mid`·`low`)이고 이름은 여기서 푼다.
+ * 화면이 영문 코드를 그리면 무슨 뜻인지 배워야 한다.
+ */
+export const PRIORITY_CHOICES = [
+  { value: "high", label: "높음" },
+  { value: "mid", label: "보통" },
+  { value: "low", label: "낮음" },
+] as const;
+
+export const PRIORITY_LABEL: Record<string, string> =
+  Object.fromEntries(PRIORITY_CHOICES.map((p) => [p.value, p.label]));
+
+/**
+ * 기간 한 줄 — 「시작 ~ 기한」. 둘 다 없으면 `null`(빈 값 표시는 화면이 한다).
+ *
+ * 한쪽만 있는 것도 그대로 보인다. 「2026-09-01 ~」 는 시작만 정한 상태를
+ * 사실대로 말한다 — 없는 쪽을 오늘로 채우면 화면이 없는 값을 지어낸다.
+ */
+export function periodText(startDate: string | null, dueDate: string | null): string | null {
+  if (!startDate && !dueDate) return null;
+  return `${startDate ?? "—"} ~ ${dueDate ?? "—"}`;
+}
+
+/**
+ * 하위 업무는 **여기서 못 만든다.** 상위를 정하는 쪽이 만든다 (§E-37 의 「하위」).
+ *
+ * 왜 이렇게 두는가: 같은 관계를 양쪽에서 고칠 수 있게 하면 「A 의 하위에서 B 를
+ * 떼기」와 「B 의 상위를 비우기」가 각자 다른 길로 같은 일을 하게 되고,
+ * 둘 중 하나만 상속 규칙(§A2)을 지나면 값이 갈린다.
+ */
+export const CHILD_EDIT_WHY =
+  "하위는 그 업무의 「상위 업무」에서 정합니다. 여기서 더하거나 떼는 자리는 두지 않았습니다.";
 
 /** 저장할 값이 있는가 — **안 바뀐 값은 안 보낸다.** 보내면 활동 로그가 더러워진다. */
 export function changed(before: string | number | null, after: string | number | null): boolean {

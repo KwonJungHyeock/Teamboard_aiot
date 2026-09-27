@@ -29,13 +29,22 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, InputChip, Button, Tag, Checkbox, Empty } from "./parts";
+import { Card, InputChip, Button, Tag, Checkbox, Empty, PropRow } from "./parts";
 import type { CbState } from "./parts";
 import {
   STATUS_CHOICES, statusEditable, progressWhy, dueOpenNote, patchBody, changed,
   childSummary, saveNote, stampFrom, titleReject, IDLE,
+  PRIORITY_CHOICES, PRIORITY_LABEL, FIELD_LABEL, periodText, CHILD_EDIT_WHY,
   type DetailTask, type ActivityRow, type EditField, type SaveState,
 } from "@/lib/v3/detail";
+/*
+ * 066 §E-3 — 영역·프로젝트 규칙은 **한 곳에서 온다.** 새 업무 화면도 같은
+ * 파일을 부른다. 두 화면이 각자 판단하면 언젠가 갈린다(§E-45).
+ */
+import {
+  projectsForArea, clearsProject, PROJECT_CLEARED, PICK_AREA_FIRST,
+  type ProjectPick,
+} from "@/lib/area-project";
 import { dueTone } from "@/lib/v3/tasks";
 import { areaOf, type AreaView } from "@/lib/v3/category";
 import { taskHref } from "@/lib/v3/routes";
@@ -72,12 +81,26 @@ export default function TaskDetailView({
   const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [err, setErr] = useState("");        // 못 불러온 이유
   /** 칸마다 따로 (§G — 한 번에 하나씩 저장한다). 하나로 묶으면 어느 칸이 거부됐는지 모른다. */
-  const [save, setSave] = useState<Record<EditField, SaveState>>({
-    title: IDLE, description: IDLE, status: IDLE, assigneeId: IDLE, dueDate: IDLE,
-  });
+  /*
+   * 칸이 열둘로 늘었다(066 §E-37). **목록을 손으로 적지 않는다** —
+   * `FIELD_LABEL` 의 열쇠에서 만든다. 손으로 적으면 칸을 더할 때 하나가 빠지고,
+   * 빠진 칸은 「저장 중」도 「저장 안 됨」도 안 보이는 칸이 된다.
+   */
+  const [save, setSave] = useState<Record<EditField, SaveState>>(
+    () => Object.fromEntries((Object.keys(FIELD_LABEL) as EditField[]).map((k) => [k, IDLE])) as Record<EditField, SaveState>);
   const put = (f: EditField, patch: Partial<SaveState>) =>
     setSave((prev) => ({ ...prev, [f]: { ...prev[f], ...patch } }));
   const [open, setOpen] = useState<Set<string>>(new Set());
+  /*
+   * ── 속성 일곱이 고를 재료 (066 §E-37) ────────────────────────────
+   * `/api/meta/selectors` 하나로 프로젝트·목표를 받고, 상위 후보는 `/api/tasks`
+   * 에서 받는다. **둘 다 이미 있는 경로다** — 새 API 는 없다.
+   */
+  const [projects, setProjects] = useState<ProjectPick[]>([]);
+  const [goals, setGoals] = useState<{ id: number; title: string }[]>([]);
+  const [others, setOthers] = useState<{ id: number; title: string; areaId: number | null; parentTaskId: number | null }[]>([]);
+  /** 영역을 바꿔서 프로젝트를 비웠다는 한 줄 (§E-43). 조용히 비우지 않는다. */
+  const [cleared, setCleared] = useState("");
   // 편집 중인 글자. 저장 전까지는 화면 것이 이긴다.
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
@@ -94,16 +117,42 @@ export default function TaskDetailView({
 
   useEffect(() => { void load(); }, [load]);
 
+  /* 고를 재료. 못 받아도 화면은 뜬다 — 그때는 고르개에 「없습니다」가 선다. */
+  useEffect(() => {
+    void (async () => {
+      const r = await fetch("/api/meta/selectors").catch(() => null);
+      if (r && r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setProjects((d.projects ?? []).map((x: { id: number; name: string; areaId?: number; area_id?: number; type?: string }) => ({
+          id: x.id, name: x.name, areaId: (x.areaId ?? x.area_id) as number, type: x.type })));
+        // 후보는 분기·월 목표다(서버가 이미 그렇게 고른다). 여기서 다시 고르지 않는다.
+        const gs = [...(d.linkGoals ?? []), ...(d.monthGoals ?? [])] as { id: number; title: string }[];
+        const seen = new Set<number>();
+        setGoals(gs.filter((g) => (seen.has(g.id) ? false : (seen.add(g.id), true)))
+                   .map((g) => ({ id: g.id, title: g.title })));
+      }
+      const t = await fetch("/api/tasks").catch(() => null);
+      if (t && t.ok) {
+        const d = await t.json().catch(() => ({}));
+        setOthers((d.tasks ?? []).map((x: { id: number; title: string; areaId?: number | null; parentTaskId?: number | null }) => ({
+          id: x.id, title: x.title, areaId: x.areaId ?? null, parentTaskId: x.parentTaskId ?? null })));
+      }
+    })();
+  }, []);
+
   /**
    * 한 칸을 보낸다. **안 바뀐 값은 안 보낸다** — 보내면 활동 로그가 더러워지고,
    * 「고친 적 없는데 고쳤다고 적혀 있다」가 된다.
    */
-  const send = useCallback(async (field: EditField, value: string | number | null) => {
+  const send = useCallback(async (
+    field: EditField, value: string | number | number[] | null,
+    extra?: Partial<Record<EditField, string | number | null>>,
+  ) => {
     put(field, { busy: true, err: "" });
     const res = await fetch(`/api/tasks/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patchBody(field, value)),
+      body: JSON.stringify(patchBody(field, value, extra)),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -230,6 +279,174 @@ export default function TaskDetailView({
         {task.status === "dropped" && task.dropReason && (
           <p className="v3-why">중단 사유 — {task.dropReason}</p>
         )}
+      </Card>
+
+      {/*
+        ── 속성 일곱 (066 §E-37) ─────────────────────────────────────
+        영역 · 프로젝트 · 목표 · 상위 · 하위 · 우선순위 · 기간.
+
+        **셋은 안 넣었다**(§E-38): 차단 · 이 업무가 막는 업무 · 공개 범위.
+        가오픈 뒤다.
+
+        저장은 여기서도 **한 칸씩**이다(§G) — 일곱을 「저장」 하나로 묶으면
+        어느 칸이 왜 거절됐는지 알 수 없다. 칸마다 증거 한 줄이 붙는다.
+      */}
+      <Card title="속성" sub="일곱">
+        {/* ① 영역 — 바꾸면 프로젝트가 안 맞을 수 있다. 그때는 **함께** 비운다.
+            따로 보내면 첫 요청이 안 맞는 조합이라 400 을 맞는다(§E-44). */}
+        <PropRow label="영역" editing={open.has("area")} onEdit={() => toggle("area")}
+                 editor={
+                   <>
+                     <label htmlFor="v3-d-area">영역</label>
+                     <select id="v3-d-area" value={task.areaId} disabled={save.areaId.busy}
+                             onChange={(e) => {
+                               const next = Number(e.target.value);
+                               if (next === task.areaId) return;
+                               // §E-43 — 조용히 비우지 않는다. 비웠다고 **적는다.**
+                               if (clearsProject(projects, next, task.projectId)) {
+                                 setCleared(PROJECT_CLEARED);
+                                 void send("areaId", next, { projectId: null });
+                               } else {
+                                 setCleared("");
+                                 void send("areaId", next);
+                               }
+                             }}>
+                       {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                     </select>
+                   </>
+                 }>
+          {area ? area.name : <span className="empty">알 수 없는 영역</span>}
+        </PropRow>
+        {open.has("area") && <Note field="areaId" hint="고르면 바로 저장됩니다." />}
+
+        {/* ② 프로젝트 — **그 영역의 것만 나온다**(§E-42). 안 맞는 것은 내놓지 않는다 */}
+        <PropRow label="프로젝트" editing={open.has("project")} onEdit={() => toggle("project")}
+                 editor={(() => {
+                   const pick = projectsForArea(projects, task.areaId);
+                   if (pick.length === 0) {
+                     return <span className="v3-newwhy">
+                       {projects.length === 0 ? PICK_AREA_FIRST : "이 영역에는 프로젝트가 없습니다."}
+                     </span>;
+                   }
+                   return (
+                     <>
+                       <label htmlFor="v3-d-pj">프로젝트</label>
+                       <select id="v3-d-pj" value={task.projectId ?? ""} disabled={save.projectId.busy}
+                               onChange={(e) => { setCleared("");
+                                 void send("projectId", e.target.value === "" ? null : Number(e.target.value)); }}>
+                         <option value="">— 없음</option>
+                         {pick.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                       </select>
+                       <span className="v3-newwhy">이 영역의 프로젝트만 나옵니다</span>
+                     </>
+                   );
+                 })()}>
+          {task.projectName ?? <span className="empty">＋ 프로젝트</span>}
+        </PropRow>
+        {/* 영역을 바꿔서 비웠으면 **여기 적혀 있다.** 조용히 비우지 않는다 */}
+        {cleared && <p className="v3-why">{cleared}</p>}
+        {open.has("project") && <Note field="projectId" hint="고르면 바로 저장됩니다." />}
+
+        {/* ③ 목표 — 여럿이 붙는다. 하나를 켜고 끌 때 **배열 전체**를 보낸다 */}
+        <PropRow label="목표" editing={open.has("goal")} onEdit={() => toggle("goal")}
+                 editor={goals.length === 0
+                   ? <span className="v3-newwhy">연결할 분기·월 목표가 없습니다.</span>
+                   : (
+                     <div className="v3-chips">
+                       {goals.map((g) => {
+                         const on = task.goalIds.includes(g.id);
+                         return (
+                           <InputChip key={g.id} filled={on} disabled={save.goalIds.busy}
+                                      onClick={() => {
+                                        const next = on ? task.goalIds.filter((x) => x !== g.id)
+                                                        : [...task.goalIds, g.id];
+                                        void send("goalIds", next);
+                                      }}>
+                             {on ? `✓ ${g.title}` : g.title}
+                           </InputChip>
+                         );
+                       })}
+                     </div>
+                   )}>
+          {task.goalIds.length === 0
+            ? <span className="empty">＋ 목표</span>
+            : goals.filter((g) => task.goalIds.includes(g.id)).map((g) => g.title).join(" · ")
+              || `${task.goalIds.length}개 연결됨`}
+        </PropRow>
+        {open.has("goal") && <Note field="goalIds" hint="누르면 바로 저장됩니다." />}
+
+        {/* ④ 상위 업무 — **값이 스스로 눌린다**(링크). 그래서 형제 모양이다(§E-39) */}
+        <PropRow label="상위 업무" valueActs editing={open.has("parent")} onEdit={() => toggle("parent")}
+                 editor={
+                   <>
+                     <label htmlFor="v3-d-pa">상위</label>
+                     <select id="v3-d-pa" value={task.parentTaskId ?? ""} disabled={save.parentTaskId.busy}
+                             onChange={(e) => void send("parentTaskId",
+                               e.target.value === "" ? null : Number(e.target.value))}>
+                       <option value="">— 없음 (최상위)</option>
+                       {others.filter((o) => o.id !== task.id && o.parentTaskId === null
+                                          && !task.children.some((c) => c.id === o.id))
+                              .map((o) => <option key={o.id} value={o.id}>{o.title}</option>)}
+                     </select>
+                     {/* 하위를 가진 업무는 남의 하위가 될 수 없다 — 2단까지다(§A4) */}
+                     <span className="v3-newwhy">상위가 되면 영역·프로젝트를 상위에서 물려받습니다</span>
+                   </>
+                 }>
+          {task.parentTaskId === null
+            ? <span className="empty">없음 (최상위)</span>
+            : <Link className="v3-prop-link" href={taskHref(task.parentTaskId)}>
+                {task.parentTitle ?? `#${task.parentTaskId}`}
+              </Link>}
+        </PropRow>
+        {open.has("parent") && <Note field="parentTaskId" hint="고르면 바로 저장됩니다." />}
+
+        {/* ⑤ 하위 업무 — **읽기 전용이다.** 값은 눌린다(링크) 하지만 고치는 자리는
+            그 업무의 「상위 업무」다. 칸이 없고 왜 없는지 적혀 있는 편이 낫다 */}
+        <PropRow label="하위 업무">
+          {task.children.length === 0
+            ? <span className="empty">없음</span>
+            : task.children.map((c) => (
+                <Link key={c.id} className="v3-prop-link" href={taskHref(c.id)}>{c.title}</Link>
+              ))}
+        </PropRow>
+        <p className="v3-why">{CHILD_EDIT_WHY}</p>
+
+        {/* ⑥ 우선순위 */}
+        <PropRow label="우선순위" editing={open.has("prio")} onEdit={() => toggle("prio")}
+                 editor={
+                   <div className="v3-chips">
+                     {PRIORITY_CHOICES.map((c) => (
+                       <InputChip key={c.value} filled={task.priority === c.value}
+                                  disabled={save.priority.busy}
+                                  onClick={() => { if (task.priority !== c.value) void send("priority", c.value); }}>
+                         {c.label}
+                       </InputChip>
+                     ))}
+                   </div>
+                 }>
+          {PRIORITY_LABEL[task.priority] ?? task.priority}
+        </PropRow>
+        {open.has("prio") && <Note field="priority" hint="누르면 바로 저장됩니다." />}
+
+        {/* ⑦ 기간 — 시작일과 기한. **기한을 고치는 자리는 아래 「담당과 기한」 하나다** —
+            같은 값에 칸을 둘 두면 어느 쪽이 정본인지 묻게 된다(§E-45 의 뜻) */}
+        <PropRow label="기간" editing={open.has("period")} onEdit={() => toggle("period")}
+                 editor={
+                   <>
+                     <label htmlFor="v3-d-st">시작일</label>
+                     <input id="v3-d-st" type="date" value={task.startDate ?? ""}
+                            disabled={save.startDate.busy}
+                            onChange={(e) => void send("startDate", e.target.value)} />
+                     {task.startDate && (
+                       <button type="button" className="v3-clear"
+                               onClick={() => void send("startDate", "")}>지우기</button>
+                     )}
+                     <span className="v3-newwhy">기한은 아래 「담당과 기한」에서 정합니다</span>
+                   </>
+                 }>
+          {periodText(task.startDate, task.dueDate) ?? <span className="empty">＋ 기간</span>}
+        </PropRow>
+        {open.has("period") && <Note field="startDate" hint="고르면 바로 저장됩니다." />}
       </Card>
 
       <Card title="담당과 기한">
