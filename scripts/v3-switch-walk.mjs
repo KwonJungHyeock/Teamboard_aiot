@@ -25,7 +25,7 @@
 // ⚠ | head 로 파이프하지 말 것. SIGPIPE 로 finally 정리가 죽는다.
 import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
-import { readFileSync, mkdirSync, rmSync } from "node:fs";
+import { readFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -66,19 +66,31 @@ try {
   rmSync(TMP, { recursive: true, force: true });
   mkdirSync(TMP, { recursive: true });
   execFileSync(path.join(process.cwd(), "node_modules", ".bin", "tsc"),
-    [path.join(process.cwd(), "lib", "v3", "routes.ts"), "--outDir", TMP,
+    [path.join(process.cwd(), "lib", "v3", "routes.ts"),
+     path.join(process.cwd(), "lib", "v3", "nine.ts"), path.join(process.cwd(), "lib", "v3", "not-yet.ts"),
+     "--outDir", TMP,
      "--module", "commonjs", "--moduleResolution", "node", "--target", "es2022",
      "--skipLibCheck", "--esModuleInterop"], { stdio: "inherit" });
-  const { ROUTE_PAIRS } = createRequire(path.join(TMP, "noop.cjs"))(path.join(TMP, "routes.js"));
+  const reqT = createRequire(path.join(TMP, "noop.cjs"));
+  const { ROUTE_PAIRS } = reqT(path.join(TMP, "routes.js"));
+  // 067 §A — 레일 이름과 막음 목록도 **제품에게 묻는다.**
+  const { RAIL } = reqT(path.join(TMP, "nine.js"));
+  const { notYetForOld } = reqT(path.join(TMP, "not-yet.js"));
   const paired = new Set(ROUTE_PAIRS.map((r) => r.old));
   console.log(`   (짝표) ${ROUTE_PAIRS.length}개 — ${ROUTE_PAIRS.map((r) => `${r.old}→${r.v3}`).join(" · ") || "없음"}`);
 
   // 짝표에 적힌 옛 경로가 **실재하는지** 먼저 본다(지시 §2).
   // 없는 경로를 적으면 아무도 안 지나가는 규칙이 되고, 그건 안 보인다.
-  const known = new Set(OLD.map(([, href]) => href));
-  const ghosts = [...paired].filter((o) => !known.has(o));
+  /*
+   * 「실재한다」를 **파일로** 묻는다. 처음엔 이 검사기의 손 목록(`OLD`)에 있는지로
+   * 물었는데, 067 에서 짝표에 `/profile` · `/members` 가 늘자 「모르는 경로」가 됐다 —
+   * 경로는 멀쩡히 있는데 **검사기의 목록이 뒤처진** 것이다(§G 048).
+   * 옛 화면은 `app/<경로>/page.tsx` 가 있으면 있는 것이다(`/` 는 `(dashboard)`).
+   */
+  const pageOf = (o) => path.join(process.cwd(), "app", o === "/" ? "(dashboard)" : o, "page.tsx");
+  const ghosts = [...paired].filter((o) => !existsSync(pageOf(o)));
   chk("0-짝표의-옛-경로가-실재한다", ghosts.length === 0,
-      ghosts.length ? `**모르는 경로 ${ghosts.join(", ")}**` : `${paired.size}개 전부 기존 화면 목록에 있다`);
+      ghosts.length ? `**모르는 경로 ${ghosts.join(", ")}**` : `${paired.size}개 전부 app/ 에 화면 파일이 있다`);
   // ── 시작 전 스위치 값. **절대값을 기대하지 않는다** — 켜져 있을 수도 있다.
   const row = (await sql(`SELECT value FROM config WHERE key = $1`, [KEY]))[0];
   before = row === undefined ? null : row.value;
@@ -175,9 +187,11 @@ try {
      */
     const railNames = (await page.locator(".v3 .v3-rail .v3-navlink").allInnerTexts())
       .map((t) => t.trim());
-    const WANT = ["오늘", "업무", "새 업무", "캘린더"];
+    // 067 §0-4 — 레일이 세 묶음이 됐다. 이름은 제품의 `RAIL` 에서 온다.
+    const WANT = RAIL.flatMap((g) => g.items.map((i) => i.label));
     chk("④-켜면-v3-가-열린다",
-        landed === "/v3" && res?.status() === 200 && WANT.every((w) => railNames.includes(w)),
+        landed === "/v3" && res?.status() === 200
+        && WANT.every((w) => railNames.map((t) => t.replace(/🔒/g, "").trim()).includes(w)),
         `→ ${landed} (${res?.status()}) · 레일 [${railNames.join(" · ")}]`);
     await shot(page, { path: `${OUT}/v3-parts.png`, fullPage: true });
 
@@ -195,14 +209,26 @@ try {
     await shot(page, { path: `${OUT}/v3-switch.png`, fullPage: true });
   }
   {
-    // **짝이 없는** 옛 화면에서 본다. `/` 는 이제 v3 로 가므로 옛 사이드바가 없다 —
-    // 거기서 「새 화면으로」를 찾으면 화면이 아니라 검사기가 틀린 것이다.
-    const stillOld = OLD.find(([, href]) => !paired.has(href));
-    await page.goto(`${BASE}${stillOld[1]}`, { waitUntil: "networkidle" });
-    await page.waitForTimeout(300);
-    const navOn = await page.locator(".side .side-v3").count();
-    chk("④-켜면-가는-길이-생긴다", navOn === 1,
-        `${stillOld[0]}(${stillOld[1]}) 에서 사이드바 「새 화면으로」 ${navOn}개`);
+    /*
+     * ── ④-가는 길 → **옛 화면이 하나도 안 남는다** (067 §A) ────────────
+     *
+     * 042~066 에서는 「짝이 없는 옛 화면」의 사이드바에 「새 화면으로」가 서는지를
+     * 쟀다. 067 §A 가 아홉 밖을 전부 막으면서 **그런 화면이 없어졌다** — 켜면 옛 화면
+     * 열여섯이 전부 짝표(새 화면)나 막음 목록(막음 화면)으로 넘어간다. 그 링크가
+     * 설 자리가 없는 것이 **§A 가 노린 상태**다.
+     *
+     * 그래서 묻는 것을 바꾼다: 켰을 때 옛 주소를 쳐서 **옛 화면에 머무는 곳이 0개**인가.
+     */
+    const stayOld = [];
+    for (const [name, href] of OLD) {
+      await page.goto(`${BASE}${href}`, { waitUntil: "networkidle" });
+      await page.waitForTimeout(200);
+      const at = new URL(page.url()).pathname;
+      if (!at.startsWith("/v3")) stayOld.push(`${name}(${href}→${at})`);
+    }
+    chk("④-켜면-옛-화면이-안-남는다", stayOld.length === 0,
+        `옛 주소 ${OLD.length}곳 중 옛 화면에 머문 곳 ${stayOld.length}` +
+        `${stayOld.length ? ` [${stayOld.join(" · ")}]` : " — 전부 새 화면이나 막음 화면으로 갔다"}`);
   }
   const fpOn = await fingerprint(page);
   /*
@@ -231,7 +257,9 @@ try {
      * 그게 맞는 동작이다. 그러니 도착지로 물어야 한다.
      */
     const landedOff = offRows[i].split(":")[2];
-    const shouldMove = paired.has(href) || paired.has(landedOff);
+    // 067 §A — **막음 목록**에 든 옛 경로도 옮겨진다(막음 화면으로).
+    const shouldMove = paired.has(href) || paired.has(landedOff)
+      || notYetForOld(href) !== null || notYetForOld(landedOff) !== null;
     if (shouldMove) {
       (changed ? moved : wrong).push(`${name}${changed ? "" : " (안 바뀜)"}`);
     } else if (changed) {
