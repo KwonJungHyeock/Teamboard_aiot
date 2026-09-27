@@ -6,11 +6,11 @@
     },
     {
       "id": "02-pinned",
-      "note": "저장 후 사이드바 핀 \"실측 뷰 A · 실측 뷰 B\""
+      "note": "저장 후 사이드바 핀 \"실측 뷰 A\""
     },
     {
       "id": "03-restored",
-      "note": "핀 클릭 → /tasks?area=1%2C2&done=1 · 켜진 칩 \"R&D · 플랫폼\""
+      "note": "핀 클릭 → /tasks?area=1%2C2&done=1 · 켜진 칩 \"\""
     },
     {
       "id": "04-reordered",
