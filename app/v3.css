@@ -447,6 +447,10 @@
 .v3-prop-ed select, .v3-prop-ed input[type="date"] { height: 30px; font: inherit; font-size: 13px; }
 .v3-prop-ed label { color: var(--v3-ink-2); }
 
+/* 066 §B-8 — 자물쇠. **지우지 않고 남긴다** — 지우면 없어진 줄 알고,
+   그냥 두면 404 를 만난다. 작게, 글자 옆에 */
+.v3-lock { margin-left: 5px; font-size: 10px; opacity: .75; }
+
 /* 보기 방식 — 조건이 아니다. 거르개 줄과 갈라 둔다 */
 .v3-vbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   margin: -6px 0 var(--v3-gap); }

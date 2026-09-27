@@ -35,6 +35,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { V3_BASE } from "@/lib/v3/routes";
+/*
+ * 066 §B-8·§B-11 — 아직 안 여는 곳은 **레일에서 지우지 않는다.**
+ * 지우면 없어진 줄 알고, 그냥 두면 404 를 만난다. 자물쇠를 남기고 막음 화면으로 보낸다.
+ * 목록은 한 파일에 있다(`lib/v3/not-yet.ts`) — 067 에서 푸는 일이 한 줄 지우기다.
+ */
+import { notYetHref } from "@/lib/v3/not-yet";
 import { roleLabel, showsAdminGrantBadge, hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import DeniedNote from "../DeniedNote";
@@ -182,10 +188,15 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
             상태는 한 낱말로 못 적으므로 배지가 둘이다. 새로 만들지 않는다.
           */}
           <div className="v3-acct">
-            <Link className="v3-acct-me" href="/profile" title="내 프로필">
+            {/*
+              내 정보 — **067 이다**(§B-11). 그때까지는 막음 화면으로 간다.
+              옛 화면으로 내보내면 새 화면을 쓰다가 갑자기 옛 화면이 열린다 —
+              섞여 보이는 것보다 막음 화면이 낫다.
+            */}
+            <Link className="v3-acct-me" href={notYetHref("profile")} title="내 정보 — 아직 안 엽니다">
               <span className="v3-acct-av">{user.name.slice(0, 1)}</span>
               <span className="v3-acct-nm">
-                <b>{user.name}</b>
+                <b>{user.name}<span className="v3-lock" aria-label="아직 안 엽니다">🔒</span></b>
                 <span className="v3-acct-bg">
                   <em>{roleLabel(user.role)}</em>
                   {showsAdminGrantBadge(user) && <em className="grant">관리자 권한</em>}
@@ -193,10 +204,14 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
               </span>
             </Link>
             <div className="v3-acct-a">
-              {lead
-                ? <Link className="v3-acct-l" href="/settings">설정</Link>
-                // 없는 것을 조용히 빼지 않는다 — **왜 없는지**가 보여야 한다.
-                : <span className="v3-acct-l off" title="설정은 팀장부터 볼 수 있습니다">설정</span>}
+              {/*
+                설정도 **아직 안 연다**(§B-11). 팀장·팀원을 가리지 않는다 —
+                지금 막는 이유는 등급이 아니라 **아직 안 만든 것**이기 때문이다.
+                등급 이야기(「설정은 팀장부터」)는 화면이 서는 날 다시 한다.
+              */}
+              <Link className="v3-acct-l" href={notYetHref("settings")}>
+                설정<span className="v3-lock" aria-label="아직 안 엽니다">🔒</span>
+              </Link>
               <button type="button" className="v3-acct-l" onClick={() => void logout()}>로그아웃</button>
             </div>
           </div>
