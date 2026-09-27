@@ -34,6 +34,7 @@ import {
 } from "@/lib/v3/list-query";
 import { STATUS_META } from "@/lib/task-view";
 import { V3_BASE, taskHref } from "@/lib/v3/routes";
+import { notYetHref } from "@/lib/v3/not-yet";
 // 가오픈 카드가 쓰는 것 — **계산은 저기 한 곳에 있다** (051 §A-3).
 import { weeksAndDays, longDateKst } from "@/lib/countdown";
 // 오늘 화면에도 **썸네일이 아니라 개수만** (051 §C-3).
@@ -42,9 +43,14 @@ import { countLinks } from "@/lib/v3/links";
 /** 알림이 가리키는 곳. 종류마다 갈 데가 다르다. */
 function inboxHref(i: InboxItem): string {
   if (i.refType === "task" && i.refId) return taskHref(i.refId);
-  if (i.refType === "signal" && i.refId) return `/signals?panel=signal:${i.refId}`;
-  if (i.refType === "handover") return "/handover";
-  return "/activity";
+  /*
+   * 067 §A-2 — **v3 안에서 옛 화면이 열리는 자리 0개.**
+   * 시그널·인계·활동은 가오픈 뒤다(§0-2). 알림을 눌러 옛 화면으로 나가면
+   * 새 화면을 쓰다가 갑자기 옛 화면이 열린다 — 막음 화면으로 보낸다.
+   */
+  if (i.refType === "signal") return notYetHref("signals");
+  if (i.refType === "handover") return notYetHref("handover");
+  return notYetHref("activity");
 }
 /** 마친 시각 `HH:mm` (KST). 날짜가 오늘인 것만 이 목록에 오므로 시각만 적는다. */
 function doneTime(iso: string | null): string {
@@ -252,7 +258,7 @@ export default function TodayView({
             : goals.length === 0 ? (
               <Empty title="이번 분기 목표가 없어요"
                      why="기간이 오늘을 포함하는 분기 목표가 없습니다. 목표는 「목표」 화면에서 만듭니다."
-                     action={{ label: "목표 화면으로", href: "/goals" }} />
+                     action={{ label: "목표 화면으로", href: `${V3_BASE}/goals` }} />
             ) : goals.map((g) => (
               <div className="v3-goalrow" key={g.id}>
                 <span className="v3-goalrow-h">
@@ -278,7 +284,7 @@ export default function TodayView({
                 ? `기한이 오늘이거나 지난 업무가 없습니다. 다만 기한 없는 업무 ${view.counts.noDue}건은 아무 날에도 안 걸려 여기 안 뜹니다.`
                 : "기한이 오늘이거나 지난 업무가 없습니다. 진행 중인 업무는 「업무」에서 봅니다."}
               action={view.counts.noDue > 0
-                ? { label: "기한 없는 업무 보기", href: "/open-due" }
+                ? { label: "기한 없는 업무 보기", href: notYetHref("open-due") }
                 : { label: "업무 보기", href: `${V3_BASE}/tasks` }}
             />
           ) : view.todo.map((t) => (
@@ -339,7 +345,7 @@ export default function TodayView({
             <Empty
               title="받은 것이 없어요"
               why="승인 요청 · 멘션 · 답글 · 인계가 여기로 모입니다. 지금은 처리할 것이 없습니다."
-              action={{ label: "활동 전체 보기", href: "/activity" }}
+              action={{ label: "활동 전체 보기", href: notYetHref("activity") }}
             />
           ) : inbox.map((i) => (
             <div className="v3-row v3-inbox" key={i.id}>

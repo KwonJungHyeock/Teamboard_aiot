@@ -37,6 +37,11 @@ export interface TodayTask {
   visibility: string;
   /** 개인 업무의 주인. 담당이 아니라 **만든 사람**이다 (025 §A2). */
   createdById: number | null;
+  /**
+   * 달린 목표들 (067 §B-8). `/api/tasks` 가 **이미 주는 칸**이다 —
+   * 목표 상세가 업무를 따로 고르지 않고 이 목록에서 고르기 위해 들고 다닌다.
+   */
+  goalIds: number[];
 }
 
 /** 진행 중으로 세는 상태 — `/api/tasks` 기본 목록과 같은 뜻. */

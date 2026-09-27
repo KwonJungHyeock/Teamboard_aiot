@@ -106,6 +106,9 @@ export async function GET(request: Request) {
       }),
       parentTaskId: r.parent_task_id, completedAt: r.completed_at,
       description: r.description,
+      // 목록 행이 들고 다니는 칸(067 §B-8). CSV 는 이 값을 안 내보내지만,
+      // **같은 함수를 지나려면 같은 모양**이어야 한다.
+      goalIds: [],
     }));
 
     // **화면과 같은 함수.** 조건도 권한도 이 한 줄을 지난다.

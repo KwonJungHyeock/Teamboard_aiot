@@ -41,27 +41,24 @@ import { V3_BASE } from "@/lib/v3/routes";
  * 목록은 한 파일에 있다(`lib/v3/not-yet.ts`) — 067 에서 푸는 일이 한 줄 지우기다.
  */
 import { notYetHref } from "@/lib/v3/not-yet";
-import { roleLabel, showsAdminGrantBadge, hasLead } from "@/lib/types";
+import { RAIL, nineOf } from "@/lib/v3/nine";
+import { roleLabel, showsAdminGrantBadge, hasLead, isAdmin } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import DeniedNote from "../DeniedNote";
 import { APP_NAME, TEAM_NAME } from "@/lib/brand";
 
-const NAV = [
-  { href: `${V3_BASE}`, label: "오늘" },
-  { href: `${V3_BASE}/tasks`, label: "업무" },
-  { href: `${V3_BASE}/team`, label: "팀 현황" },
-  { href: `${V3_BASE}/new`, label: "새 업무" },
-  { href: `${V3_BASE}/calendar`, label: "캘린더" },
-];
-
-/**
- * 팀장부터 보이는 항목. **그 화면과 같은 함수로 가린다** (§G 038) —
- * `app/v3/stats/page.tsx` 도 `hasLead` 로 막는다. 두 벌이 되는 순간
- * 「보이는데 눌러도 튕기는」 자리가 생긴다.
+/*
+ * ── 레일은 **세 묶음**이다 (067 §0-4) ───────────────────────────
+ *
+ *   개인   대시보드 · 내 업무 · 캘린더🔒
+ *   업무   업무 목록 · 목표 · 집계 · 팀 · 프로젝트🔒
+ *   관리   구성원 · 영역🔒 · 내 정보
+ *
+ * **목록을 여기 적지 않는다.** `lib/v3/nine.ts` 에서 온다 — 뿌리
+ * (`app/v3/layout.tsx`)가 아홉을 막는 데 쓰는 그 목록이다. 두 벌이 되면
+ * 「레일에 있는데 막히는」 자리나 「레일에 없는데 열리는」 자리가 생기고,
+ * 둘 다 눌러 보기 전엔 안 보인다.
  */
-const LEAD_NAV = [
-  { href: `${V3_BASE}/stats`, label: "집계" },
-];
 
 /**
  * 단축키가 **먹으면 안 되는 자리**.
@@ -105,9 +102,8 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
     };
   }, [drawer]);
 
-  /** 위 바 가운데에 적는 화면 이름. **레일 항목과 같은 목록에서** 나온다. */
-  const title = [...NAV, ...LEAD_NAV].filter((n) => on(n.href))
-    .sort((a, b) => b.href.length - a.href.length)[0]?.label ?? "오늘";
+  /** 위 바 가운데에 적는 화면 이름. **아홉과 같은 목록에서** 나온다. */
+  const title = nineOf(pathname)?.label ?? "아직 안 여는 화면";
 
   // 단축키 `C`. 조합키가 눌려 있으면 안 건다 — ⌘C 는 복사다.
   useEffect(() => {
@@ -125,6 +121,8 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
    * 「링크의 조건과 화면의 조건은 같은 함수에서 온다」(§G 038). 같은 함수를 쓴다.
    */
   const lead = hasLead(user.role);
+  // 구성원 화면은 **관리자만**이다 — 그 화면과 같은 함수로 가린다(067 §C-14).
+  const admin = isAdmin(user);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
@@ -165,18 +163,34 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
           {/* 메뉴 항목에는 제 이름표가 있다. 레일에 「＋ 새 업무」와 계정 링크가
               함께 서면서 「레일의 모든 `a`」가 더는 메뉴를 뜻하지 않게 됐다 —
               세는 쪽이 무엇을 세는지 이름으로 말하게 한다. */}
-          {NAV.map((n) => (
-            <Link key={n.href} className="v3-navlink" href={n.href}
-                  aria-current={on(n.href) ? "page" : undefined}>
-              {n.label}
-            </Link>
-          ))}
-          {lead && LEAD_NAV.map((n) => (
-            <Link key={n.href} className="v3-navlink" href={n.href}
-                  aria-current={on(n.href) ? "page" : undefined}>
-              {n.label}
-            </Link>
-          ))}
+          {RAIL.map((g) => {
+            /*
+             * 등급으로 가리는 항목은 **그 화면과 같은 함수로** 가린다(§G 038) —
+             * 「보이는데 눌러도 튕기는」 자리가 안 생긴다. 권한이 없으면 레일에
+             * 안 나오고 부르지도 않는다(067 §C-18): **아홉에 들어 있다는 것과
+             * 누구에게나 보인다는 것은 다른 말이다.**
+             */
+            const items = g.items.filter((i) => (i.lead ? lead : true) && (i.admin ? admin : true));
+            if (items.length === 0) return null;
+            return (
+              <div className="v3-railg" key={g.title}>
+                <span className="v3-railg-t">{g.title}</span>
+                {items.map((i) => (i.lock ? (
+                  /* 자물쇠는 **지우지 않고 남긴다**(066 §B-8) — 지우면 없어진 줄
+                     알고, 그냥 두면 404 를 만난다. 목적지는 막음 화면이다. */
+                  <Link key={i.label} className="v3-navlink lock" href={notYetHref(i.lock)}>
+                    {i.label}<span className="v3-lock" aria-label="아직 안 엽니다">🔒</span>
+                  </Link>
+                ) : (
+                  <Link key={i.label} className="v3-navlink" href={i.href as string}
+                        aria-current={on((i.href as string).split("?")[0]) && !(i.href as string).includes("?")
+                          ? "page" : undefined}>
+                    {i.label}
+                  </Link>
+                )))}
+              </div>
+            );
+          })}
 
           {/*
             계정 · 설정 — **바닥 붙박이** (051 §A-2).
@@ -193,16 +207,23 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
               옛 화면으로 내보내면 새 화면을 쓰다가 갑자기 옛 화면이 열린다 —
               섞여 보이는 것보다 막음 화면이 낫다.
             */}
-            <Link className="v3-acct-me" href={notYetHref("profile")} title="내 정보 — 아직 안 엽니다">
+            {/*
+              계정 블록은 **이름표다. 문이 아니다.**
+              066 §B-3 은 「레일 아래 내 계정 고정 — 이름 · 역할」이고,
+              067 §0-4 는 「내 정보」를 관리 묶음에 뒀다. 둘 다 링크로 만들면
+              같은 화면으로 가는 문이 한 레일에 둘이 되고, 그러면 「둘이 다른가」를
+              한 번 묻게 된다(056 §A 에서 ＋새 업무로 겪은 그것).
+            */}
+            <div className="v3-acct-me">
               <span className="v3-acct-av">{user.name.slice(0, 1)}</span>
               <span className="v3-acct-nm">
-                <b>{user.name}<span className="v3-lock" aria-label="아직 안 엽니다">🔒</span></b>
+                <b>{user.name}</b>
                 <span className="v3-acct-bg">
                   <em>{roleLabel(user.role)}</em>
                   {showsAdminGrantBadge(user) && <em className="grant">관리자 권한</em>}
                 </span>
               </span>
-            </Link>
+            </div>
             <div className="v3-acct-a">
               {/*
                 설정도 **아직 안 연다**(§B-11). 팀장·팀원을 가리지 않는다 —

@@ -59,6 +59,7 @@ try {
   mkdirSync(TMP, { recursive: true });
   execFileSync(path.join(REPO, "node_modules", ".bin", "tsc"),
     [path.join(REPO, "lib", "v3", "not-yet.ts"), path.join(REPO, "lib", "v3", "routes.ts"),
+     path.join(REPO, "lib", "v3", "nine.ts"),
      "--outDir", TMP, "--rootDir", path.join(REPO, "lib"), "--module", "commonjs",
      "--moduleResolution", "node", "--target", "es2022", "--skipLibCheck", "--esModuleInterop"],
     { stdio: "inherit" });
@@ -86,8 +87,15 @@ try {
     if (!ignoredWhy(line)) errs.push(line); });
 
   // ── ① 주소로 직접 들어와도 막힌다 (§B-9) · 404 가 아니다 (§B-5) ─
-  for (const s of NOT_YET) {
-    const res = await page.goto(`${BASE}${s.old}`, { waitUntil: "networkidle" });
+  /*
+   * 067 §A-3 — 목록이 열넷이 됐다. 그중 `old` 가 없는 것은 옛 주소가 없어 잴
+   * 것이 없다. **앞붙이**(`/areas` · `/projects`) 항목은 뒤에 값이 붙은 주소가
+   * 실제 화면이다 — `/areas` 자체는 옛 앱에 없는 주소라 404 가 **옛 앱의 사실**이지
+   * 막음이 새는 것이 아니다. 그래서 `/areas/1` 처럼 실제로 열리던 주소로 잰다.
+   */
+  for (const s of NOT_YET.filter((x) => x.old !== null)) {
+    const target = s.prefix && s.key === "areas" ? `${s.old}/1` : s.old;
+    const res = await page.goto(`${BASE}${target}`, { waitUntil: "networkidle" });
     await page.waitForTimeout(500);
     const url = new URL(page.url());
     const body = await page.locator("body").innerText();
@@ -114,10 +122,17 @@ try {
       `눌렀더니 ${landed} (가야 할 곳 ${NOT_YET_BACK.href})`);
 
   // ── ④ 자물쇠가 레일에 **남아 있다** (§B-8) ─────────────────────
+  /*
+   * 막은 것 **전부가** 레일에 서지는 않는다 — 레일에 있던 것만 자물쇠를 단다
+   * (066 §B-8: 「지우면 없어진 줄 안다」는 레일에 **있던** 자리의 이야기다).
+   * 그래서 있어야 할 자물쇠 수는 **레일 목록(`RAIL`)과 설정 하나**에서 센다.
+   */
+  const { RAIL } = req(path.join(TMP, "v3", "nine.js"));
+  const wantLocks = RAIL.flatMap((g) => g.items.filter((i) => i.lock)).length + 1;   // + 설정
   const locks = await page.locator(".v3-rail .v3-lock").count();
   const railOld = await page.locator('.v3-rail a[href="/profile"], .v3-rail a[href="/settings"]').count();
-  chk("④-레일에-자물쇠가-남는다", locks >= NOT_YET.length,
-      `자물쇠 ${locks}개 · 막은 화면 ${NOT_YET.length}개 (지우면 없어진 줄 안다)`);
+  chk("④-레일에-자물쇠가-남는다", locks === wantLocks,
+      `자물쇠 ${locks}개 · 있어야 할 것 ${wantLocks}개 (레일의 자물쇠 항목 + 설정)`);
   chk("④짝-레일이-옛-화면으로-안-내보낸다", railOld === 0,
       `레일의 /profile·/settings 링크 ${railOld}개 (0이어야 한다 — §B-11)`);
 

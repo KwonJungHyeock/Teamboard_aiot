@@ -447,6 +447,43 @@
 .v3-prop-ed select, .v3-prop-ed input[type="date"] { height: 30px; font: inherit; font-size: 13px; }
 .v3-prop-ed label { color: var(--v3-ink-2); }
 
+/* ── 067 §C 구성원 줄 ────────────────────────────────────────────
+   한 줄에 다섯 — 이름 · 이메일 · 역할 · 관리자 권한 · 활성.
+   좁아지면 감긴다. 못 누르는 자리 밑에는 **왜인지** 한 줄이 선다. */
+.v3-mem { display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--v3-line); }
+.v3-mem:last-child { border-bottom: 0; }
+.v3-mem.off { opacity: .55; }
+.v3-mem-role { height: 30px; font: inherit; font-size: 13px; }
+.v3-mem-grant { display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--v3-ink-2); }
+.v3-mem-grant input { width: 15px; height: 15px; accent-color: var(--v3-rail); }
+.v3-mem-fixed { font-size: 12px; color: var(--v3-ink-3); }
+.v3-mem-act { height: 30px; padding: 0 12px; font-size: 13px; }
+/* 못 누르는 이유 — 줄 전체를 차지한다. 옆에 붙이면 잘린다 */
+.v3-mem-why { flex: 1 1 100%; margin: 2px 0 0; font-size: 12px; color: var(--v3-warn); }
+
+/* ── 067 §B 목표 줄 — 이름 · 기간 · **진척 막대** · 업무 수 · 담당 ────
+   막대를 줄 안에 둔다. 따로 칸을 빼면 목록이 표가 되고, 표가 되면 한 줄에
+   들어가는 것이 늘어난다. */
+.v3-goal { text-decoration: none; color: inherit; }
+.v3-goal:hover .v3-row-t { text-decoration: underline; }
+.v3-goal-bar { display: flex; align-items: center; gap: 8px; flex: 0 0 180px; }
+.v3-goal-bar .v3-bar { flex: 1 1 auto; }
+.v3-goal-pct { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--v3-ink-2);
+  min-width: 34px; text-align: right; }
+@media (max-width: 720px) { .v3-goal-bar { flex: 0 0 96px; } }
+
+/* ── 067 §0-4 레일 세 묶음 ────────────────────────────────────────
+   묶음 제목은 **작은 글자**다. 항목과 같은 크기면 제목이 항목으로 읽힌다. */
+.v3-railg { display: flex; flex-direction: column; }
+.v3-railg + .v3-railg { margin-top: 14px; }
+.v3-railg-t { padding: 0 12px 4px; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  color: rgba(255, 255, 255, .45); }
+/* 자물쇠 항목 — **지우지 않고 남긴다.** 흐리게 두되 누를 수는 있다(막음 화면으로) */
+.v3-navlink.lock { color: rgba(255, 255, 255, .55); }
+.v3-navlink.lock:hover { color: rgba(255, 255, 255, .78); }
+
 /* 066 §B-8 — 자물쇠. **지우지 않고 남긴다** — 지우면 없어진 줄 알고,
    그냥 두면 404 를 만난다. 작게, 글자 옆에 */
 .v3-lock { margin-left: 5px; font-size: 10px; opacity: .75; }
