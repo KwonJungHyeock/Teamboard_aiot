@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { AuthError } from "./auth";
 import { UnknownPropertyTypeError } from "./notion-schema";
+import { AREA_PROJECT_MISMATCH } from "./area-project";
 
 export function jsonError(error: unknown): NextResponse {
   if (error instanceof AuthError) {
@@ -29,8 +30,8 @@ export function jsonError(error: unknown): NextResponse {
    * 호출 · 앞으로 생길 화면)이 늘 있다.
    */
   if (isAreaProjectMismatch(error)) {
-    return NextResponse.json(
-      { error: "고른 프로젝트가 고른 영역에 속하지 않습니다." }, { status: 400 });
+    // 문장은 **한 곳에서** 온다 — 066 에서 두 벌이 됐다가 067 에서 합쳤다.
+    return NextResponse.json({ error: AREA_PROJECT_MISMATCH }, { status: 400 });
   }
   const message = error instanceof Error ? error.message : "알 수 없는 오류";
   console.error("[api]", error);

@@ -230,52 +230,44 @@ try {
   chk("③짝-DB-제약은-그대로", trg === 1,
       `trg_task_area_match ${trg}개 (1이어야 한다 — 편의가 생겼다고 보증을 떼지 않는다)`);
 
-  // ── ④ v3 에는 이 조합을 만들 자리가 없다 (§A-3) ───────────────
-  //
-  // 코드를 읽어 「없다」고 적지 않는다. **화면을 열고 프로젝트를 고르는 자리가
-  // 있는지 세고**, 새 업무를 실제로 만들어 보낸 몸통에 `projectId` 가 없는지 본다.
+  /*
+   * ── ④ v3 새 업무로는 어긋난 조합을 **만들 수 없다** ─────────────────
+   *
+   * **066 §E-40 에서 전제가 바뀌었다.** 061 에서는 「v3 에는 프로젝트를 고를 자리가
+   * **없다**」로 이 조합을 막았다. 066 이 프로젝트 칸을 **넣었고**, 대신 영역에 안
+   * 맞는 프로젝트는 **목록에 안 나오게** 했다(§E-42). 그래서 묻는 것이 바뀐다 —
+   * 「자리가 없다」가 아니라 **「자리가 있어도 어긋난 것은 고를 수 없다」**.
+   * 물으려던 것은 처음부터 「어긋난 조합을 만들 수 없는가」였다.
+   *
+   * 화면을 열어 영역을 고르고, 프로젝트 목록에 **다른 영역의 것이 0개**인지 세고,
+   * 그 목록에서 하나를 골라 **실제로 만든 뒤** DB 의 두 영역이 같은지 본다.
+   */
   await sql(`INSERT INTO config (key, value) VALUES ($1, to_jsonb(true))
              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [KEY]);
   const v3 = await ctx.newPage();
-  const bodies = [];
-  v3.on("request", (r) => {
-    if (r.url().endsWith("/api/tasks") && r.method() === "POST") bodies.push(r.postData() ?? "");
-  });
   await v3.goto(`${BASE}/v3/new`, { waitUntil: "networkidle" });
-  const v3pick = await v3.locator(".pp, .pp-b, [aria-label='프로젝트']").count();
-  /*
-   * 065 §C-11 — **넓은 그릇의 글자로 판정하지 않는다.**
-   *
-   * 전에는 `body` 전체를 읽어 「프로젝트」가 있는지 봤다. 그 낱말은 레일에도
-   * 제목에도 안내문에도 있을 수 있고, 그러면 **새 업무 화면과 아무 상관 없는
-   * 글자 하나가 판정을 뒤집는다.** 064 §B-1 의 이름표가 사람 이름 때문에
-   * 떨어진 것과 같은 자리다.
-   *
-   * 물으려던 것은 「**이 폼에** 프로젝트를 고르는 자리가 있는가」다.
-   * 그러니 폼 하나만 본다 — 새 업무 본문(`.v3-main`)의 글자와, 거기 있는
-   * 조작거리(라벨·안내문·버튼 이름)를 따로 센다.
-   */
-  const form = v3.locator(".v3-main");
-  const v3word = (await form.innerText()).includes("프로젝트");
-  const v3ctrl = await form.evaluate((el) =>
-    [...el.querySelectorAll("button, label, select, input, [aria-label]")]
-      .filter((n) => /프로젝트/.test(
-        (n.getAttribute("aria-label") || "") + (n.getAttribute("placeholder") || "") + (n.textContent || "")))
-      .length);
+  const pickArea = (await sql(
+    `SELECT a.id, a.name FROM area a JOIN project p ON p.area_id = a.id AND p.is_active
+      WHERE a.is_active GROUP BY a.id, a.name, a.sort_order ORDER BY a.sort_order, a.id LIMIT 1`))[0];
+  await v3.locator(".v3-catbtn", { hasText: new RegExp(`^${pickArea.name}$`) }).first().click();
+  await v3.locator(".v3-ichip", { hasText: "프로젝트" }).first().click();
+  await v3.waitForTimeout(400);
+  const opts = await v3.locator("#v3-pj option").evaluateAll(
+    (els) => els.map((e) => Number(e.value)).filter((n) => n > 0));
+  const outside = (await sql(
+    `SELECT id FROM project WHERE id = ANY($1::int[]) AND area_id <> $2`, [opts, pickArea.id])).length;
+  await v3.locator("#v3-pj").selectOption(String(opts[0]));
   await v3.locator(".v3-title-in").fill(`${MARK} v3 새 업무`);
-  await v3.locator(".v3-catbtn").first().click();
   await v3.locator(".v3-newfoot .v3-btn.primary").click();
   await v3.waitForTimeout(1600);
-  const mine = await sql(`SELECT id, project_id FROM task WHERE title = $1`, [`${MARK} v3 새 업무`]);
+  const mine = await sql(
+    `SELECT t.id, t.area_id, p.area_id AS p_area FROM task t LEFT JOIN project p ON p.id = t.project_id
+      WHERE t.title = $1`, [`${MARK} v3 새 업무`]);
   made = mine.map((t) => t.id);
-  chk("④-v3-에는-그-자리가-없다",
-      v3pick === 0 && !v3word && v3ctrl === 0 && mine.length === 1 && mine[0].project_id === null
-      && bodies.length === 1 && !bodies[0].includes("projectId"),
-      `v3 새 업무 — 프로젝트 고르개 ${v3pick}개 · **폼 글**에 「프로젝트」 ${v3word ? "있음" : "없음"}` +
-      ` · 폼 안 조작거리 중 그 이름 ${v3ctrl}개` +
-      ` · 보낸 몸통에 projectId ${bodies[0]?.includes("projectId") ? "있음" : "없음"}` +
-      ` · 만들어진 업무의 project_id ${mine[0]?.project_id ?? "null"}` +
-      ` — 고를 자리가 없으니 어긋난 조합을 만들 수 없다`);
+  chk("④-v3-로는-어긋난-조합을-못-만든다",
+      opts.length > 0 && outside === 0 && mine.length === 1 && mine[0].p_area === mine[0].area_id,
+      `영역 「${pickArea.name}」 — 고를 수 있는 프로젝트 ${opts.length}개 · 다른 영역의 것 ${outside}개` +
+      ` · 만든 업무의 영역 ${mine[0]?.area_id} = 프로젝트의 영역 ${mine[0]?.p_area}`);
   await v3.close();
 
   chk("⑤-콘솔오류", errs.length === 0,
