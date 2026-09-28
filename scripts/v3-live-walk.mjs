@@ -426,7 +426,13 @@ try {
     await t.click();
     await page.waitForURL(/\/v3\/tasks/, { timeout: 10000 });
     await page.waitForLoadState("networkidle");
-    await sleep(500);
+    /*
+     * 목록이 **다 그려진 뒤에** 읽는다 — 줄이 섰거나 빈 목록 안내가 섰을 때.
+     * 071 재는 판에서 「이번 주 마감 규칙 3 · 목록 0」이 한 번 나왔다. 목록이 아직
+     * 「불러오는 중」일 때 읽은 것이다 — v3-tiles-walk 에서 먼저 찾은 것과 같은 자리.
+     */
+    await page.locator(".v3-row a.v3-row-t, .v3-empty").first().waitFor({ timeout: 15000 }).catch(() => {});
+    await sleep(300);
     const got = new Set(await page.evaluate(() => [...document.querySelectorAll(".v3-row a.v3-row-t")]
       .map((a) => Number((a.getAttribute("href") ?? "").match(/\/v3\/tasks\/(\d+)/)?.[1])).filter(Boolean)));
     const same = want.size === got.size && [...want].every((x) => got.has(x));
