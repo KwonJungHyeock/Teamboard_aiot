@@ -25,12 +25,20 @@
 // 글자 그대로 맞춰 되돌린다. 절대값(「grant 켜진 사람 0명」)을 기대하지 않는다.
 // 이름은 넣지 않는다 — 검사가 만드는 것은 전부 `[039검사]` 로 시작한다.
 //
+// ── 076 §A — **역할 · 권한은 제 계정에서만 바꾼다** ─────────────────
+// 075 까지는 사람 계정(첫 팀장 · 둘째 팀장 · 첫 팀원 · 셋째)의 역할과 권한을 바꿨다 되돌렸고,
+// ⑤ 에서는 **모든 관리자를 잠시 내렸다.** 되돌리기가 빗나가면 사람이 못 들어온다. 이제 바꿔 볼
+// 계정은 전부 이번 판에 만든다(`own-people.mjs`). 사람 계정은 **읽기만** 한다(0-모두관리자는-둘).
+// ⑤ 의 「마지막 하나 끄기 400」은 사람 관리자를 내리지 않고는 만들 수 없다 — **미검사로 적는다**.
+//
 // ⚠ | head 로 파이프하지 말 것. SIGPIPE 로 finally 정리가 죽는다.
 import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { ownPeople } from "./own-people.mjs";            // 076 §A — 역할·권한은 제 계정에서만 바꾼다
+import { peopleSnapshot, peopleDiff } from "./people-guard.mjs";   // 076 §A — 사람 줄 대조
 import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 
 requireLocalDb("admin-grant-walk.mjs");
@@ -57,7 +65,11 @@ const fp = async () => (await sql(
   .map((r) => `${r.actor_id}:${r.role}${r.admin_grant ? "+G" : ""}`).join(" ");
 
 let browser, before = null, made = { projects: [], goals: [] };
+const own = ownPeople(pool, MARK);
+let peopleGuard = null;
+let skipped = 0;
 try {
+  peopleGuard = await peopleSnapshot(pool);
   before = await fp();
   const madeBefore = (await sql(
     `SELECT (SELECT count(*)::int FROM project WHERE name LIKE $1) p,
@@ -65,16 +77,7 @@ try {
   console.log(`   (시작 전) 역할·권한 ${before}`);
   console.log(`   (시작 전) ${MARK} 프로젝트 ${madeBefore.p} · 목표 ${madeBefore.g}`);
 
-  // 세 사람을 쓴다. 누가 누구인지는 **역할로만** 고른다 — 이름으로 판정하지 않는다(§G).
-  const humans = await sql(
-    `SELECT a.actor_id id, a.role FROM account a JOIN actor ac ON ac.id = a.actor_id
-      WHERE ac.is_active = true ORDER BY a.actor_id`);
-  const L1 = humans.find((h) => h.role === "lead");
-  const L2 = humans.find((h) => h.role === "lead" && h.id !== L1?.id);
-  const M1 = humans.find((h) => h.role === "member");
-  chk("0-짝조건", !!(L1 && L2 && M1),
-      `팀장 둘(${L1?.id}·${L2?.id}) · 팀원 하나(${M1?.id}) — 셋이라야 ①③⑤가 뜻을 가진다`);
-  if (!(L1 && L2 && M1)) throw new Error("검사에 필요한 계정 구성이 없다");
+  // 세 사람 — 076 §A: **이번 판에 만든 제 계정**이다. 사람 계정은 쓰지 않는다
 
   /*
    * ── 063 §B-12 — 서 있는 결정을 **양쪽에서** 묻는다 ──────────────
@@ -97,6 +100,12 @@ try {
       ` — 「권정혁·박정길 둘만」이 서 있는 결정이다`);
   const allHumans = (await sql(
     `SELECT count(*)::int n FROM account a JOIN actor ac ON ac.id = a.actor_id WHERE ac.is_active`))[0].n;
+  // ↑ 여기까지는 **사람 계정을 읽기만** 했다. 여기서부터 바꿔 볼 계정은 제 것이다
+  const L1 = await own.make({ role: "lead", grant: false, label: "팀장1" });
+  const L2 = await own.make({ role: "lead", grant: false, label: "팀장2" });
+  const M1 = await own.make({ role: "member", grant: false, label: "팀원" });
+  chk("0-짝조건", !!(L1 && L2 && M1),
+      `제 계정 — 팀장 둘(#${L1.id}·#${L2.id}) · 팀원 하나(#${M1.id}) · 사람 계정은 읽기만 한다`);
   /*
    * 「둘이다」는 **셋이 될 수 있는데 둘일 때만** 뜻이 있다.
    *
@@ -105,7 +114,7 @@ try {
    * 그래서 셋째에게 실제로 권한을 켜 셋이 되는지 보고, 끈 뒤 둘로 돌아오는지 본다.
    * 세는 식이 고장 나 있으면 여기서 걸린다. 켠 것은 바로 끄고, 뒷정리가 또 대조한다.
    */
-  const third = humans.find((h) => h.id !== L1.id && h.id !== L2.id && h.role !== "admin");
+  const third = await own.make({ role: "member", grant: false, label: "셋째" });
   const nAdmin = async () => (await sql(
     `SELECT count(*)::int n FROM account a JOIN actor ac ON ac.id = a.actor_id
       WHERE ac.is_active AND (a.role = 'admin' OR a.admin_grant = true)`))[0].n;
@@ -113,9 +122,9 @@ try {
   const asThree = await nAdmin();
   await sql(`UPDATE account SET admin_grant = false WHERE actor_id = $1`, [third.id]);
   const backTwo = await nAdmin();
-  chk("0짝-셋이-될-수-있는데-둘이다", asThree === 3 && backTwo === 2,
+  chk("0짝-셋이-될-수-있는데-둘이다", asThree === admins.length + 1 && backTwo === admins.length && admins.length === 2,
       `계정 ${allHumans}명 · 아무 권한 없는 사람 ${others}명 ·` +
-      ` 셋째(#${third.id})에게 켜 보니 ${asThree}명, 끄니 ${backTwo}명` +
+      ` 제 셋째(#${third.id})에게 켜 보니 ${asThree}명, 끄니 ${backTwo}명` +
       ` — 셋이 안 되면 「둘이다」는 세는 식이 고장 나도 참이다`);
 
   browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
@@ -187,7 +196,9 @@ try {
   await g1.page.reload({ waitUntil: "networkidle" });
   await g1.page.locator("table tbody tr").first().waitFor({ timeout: 8000 });
   // 행은 이름이 아니라 **화면에 그려진 역할**로 찾는다 — 이름으로 판정하지 않는다(§G).
-  const adminRow = g1.page.locator("table tbody tr").filter({ has: g1.page.locator(".role-sel.role-admin") });
+  // 076 §A — 사람 관리자 행도 「관리자」라 **제 계정 행**으로 좁힌다(표식 이름)
+  const adminRow = g1.page.locator("table tbody tr").filter({ has: g1.page.locator(".role-sel.role-admin") })
+    .filter({ hasText: M1.name });
   chk("④-관리자행-권한칸없음",
       await adminRow.locator(".mbr-grant input").count() === 0,
       `역할=관리자 행의 체크박스 ${await adminRow.locator(".mbr-grant input").count()}개 (0이어야 한다)`);
@@ -236,42 +247,25 @@ try {
         `프로젝트 ${r.project} · 목표 생성 ${r.goal} · 보관 ${r.archive}`);
   }
 
-  // ══ ⑤ 마지막 관리자 차단 — **짝으로 잰다** ════════════════════════
+  // ══ ⑤ 마지막 관리자 차단 ══════════════════════════════════════════
   //
-  // 조건을 먼저 만든다: 역할 관리자를 내리고, 권한 관리자를 둘로 만든다.
-  // 그래야 「둘일 때 통과 · 하나일 때 차단」이 같은 축에서 비교된다.
-  await sql(`UPDATE account SET role = 'lead' WHERE actor_id = $1`, [M1.id]);
-  /*
-   * 063 §B — **조건을 세어서 만든다.**
-   *
-   * 전에는 「L2 의 권한을 켜면 둘이 된다」로 적혀 있었다. 그건 다른 관리자가
-   * 하나도 없다는 가정인데, 시드에는 **역할이 관리자인 사람**(권정혁)이 늘 있다.
-   * 그대로 두면 셋이 되고, 「마지막 하나」를 만들 수가 없다 — 역할 관리자는
-   * 권한을 꺼도 관리자로 남아서 개수가 1 밑으로 안 내려간다.
-   * (0-짝조건이 오래 막고 있어서 이 줄들은 **한 번도 돈 적이 없었다.**)
-   *
-   * 그래서 이 한 줄 동안만 역할 관리자를 내리고, 권한을 L1·L2 **둘에게만** 준다.
-   * 뒷정리가 시작 전 지문(`before`)으로 전부 되돌린다 — 아래 finally 가 역할과
-   * 권한을 둘 다 복원하고, 같은지 대조해서 다르면 실패로 끝낸다.
-   */
-  await sql(`UPDATE account SET role = 'lead' WHERE role = 'admin'`);
-  await sql(`UPDATE account a SET admin_grant = (a.actor_id = ANY($1::int[]))
-               FROM actor ac WHERE ac.id = a.actor_id AND ac.is_active`, [[L1.id, L2.id]]);
+  // 076 §A — 075 까지는 **사람 관리자를 전부 내리고** 제 팀장 둘만 관리자로 만들어 「둘 → 하나」를
+  // 쟀다. 서버는 **활성 관리자 전체**를 세므로, 사람 관리자를 안 건드리면 「마지막 하나」를 만들 수
+  // 없다. 못 고르면 안 만진다 — 「둘 이상일 때 끄기 200」만 제 계정으로 재고, 「마지막 하나 400」은
+  // **미검사**로 적는다. 재려면 사람이 없는 빈 검사용 DB 에서 잰다(BACKLOG).
+  await sql(`UPDATE account SET admin_grant = true WHERE actor_id = ANY($1::int[])`, [[L1.id, L2.id]]);
   const cnt = async () => (await sql(
     `SELECT count(*)::int n FROM account a JOIN actor ac ON ac.id = a.actor_id
       WHERE (a.role = 'admin' OR a.admin_grant = true) AND ac.is_active = true`))[0].n;
-  chk("⑤-조건", await cnt() === 2, `관리자 ${await cnt()}명 (2라야 ⑤가 짝이 된다)`);
-
+  const beforeOff = await cnt();
   const off2 = await g1.page.put(L2.id, { adminGrant: false });
-  chk("⑤-둘일때-끄기200", off2.status === 200, `PUT ${off2.status} · 남은 관리자 ${await cnt()}명`);
-
-  const offSelf = await g1.page.put(L1.id, { adminGrant: false });
-  chk("⑤-마지막하나-끄기400", offSelf.status === 400,
-      `PUT ${offSelf.status} · ${offSelf.body?.error ?? "—"} (자기 자신이라도 막힌다)`);
-  chk("⑤짝-막혔으면-안바뀐다", await cnt() === 1, `관리자 ${await cnt()}명 (여전히 1)`);
+  chk("⑤-둘-이상일때-끄기200", off2.status === 200 && (await cnt()) === beforeOff - 1,
+      `제 팀장2 권한 끄기 PUT ${off2.status} · 관리자 ${beforeOff} → ${await cnt()}명`);
+  skipped += 1;
+  console.log(`SKIP ⑤-마지막하나-끄기400          사람 관리자 ${admins.length}명을 내리지 않고는 「마지막 한 명」을 못 만든다 — 미검사(076 §A)`);
 
   await g1.ctx.close();
-  console.log(`\n${pass}/${pass + fail} 통과`);
+  console.log(`\n${pass}/${pass + fail} 통과 · 미검사 ${skipped} (사람 권한을 안 만지면 못 만드는 조건)`);
   process.exitCode = fail ? 1 : 0;
 } catch (e) {
   console.error("검사 중 예외:", String(e && e.stack ? e.stack : e));
@@ -280,6 +274,9 @@ try {
   // ── 뒷정리 ── 만든 것을 지우고, 역할·권한을 **시작 전 지문과 대조해** 되돌린다.
   for (const id of made.goals) await pool.query(`DELETE FROM goal WHERE id = $1`, [id]).catch(() => {});
   for (const id of made.projects) await pool.query(`DELETE FROM project WHERE id = $1`, [id]).catch(() => {});
+  // 076 §A — 제 계정과 그 계정이 남긴 기록만 지운다
+  const dropped = await own.dropAll().catch((e) => { console.error("제 계정 지우기 실패", e.message); return -1; });
+  console.log(`정리 — 제 계정 ${dropped}개 지움`);
   if (before) {
     for (const part of before.split(" ")) {
       const [id, rest] = part.split(":");
@@ -294,6 +291,11 @@ try {
     console.log(`\n뒷정리 확인 — 역할·권한 ${after === before ? "시작 전과 같음" : `**다름**\n     전 ${before}\n     후 ${after}`}`);
     console.log(`             ${MARK} 잔여 프로젝트 ${left.p} · 목표 ${left.g} (둘 다 0이어야 한다)`);
     if (after !== before || left.p !== 0 || left.g !== 0) process.exitCode = 1;
+  }
+  if (peopleGuard) {
+    const diff = await peopleDiff(pool, peopleGuard).catch((e) => [`대조 실패 — ${e.message}`]);
+    console.log(`사람 줄 대조 — 시작 전과 다른 것 ${diff.length}건${diff.length ? ` **[${diff.slice(0, 6).join(" · ")}]**` : ""}`);
+    if (diff.length) process.exitCode = 1;
   }
   await browser?.close();
   await pool.end();
