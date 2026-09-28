@@ -4,6 +4,7 @@
 // 검사기가 같은 함수를 못 불러서 「화면이 자기가 그린 것을 그렸다」밖에 못 잰다
 // (043 부터의 방식). **이 파일은 순수하다** — `fetch` 도 DOM 도 없다.
 import { STATUS_META } from "../task-view";
+import { canEditProgress } from "../progress-permission";
 
 /* ══ §A-1 토스트 ═══════════════════════════════════════════════════ */
 
@@ -65,6 +66,44 @@ export function undoneLine(status: string, title: string): { strong: string; res
 }
 /** §A-2-6 — 실패. 「저장하지 못했습니다 · 다시」 의 앞부분. 버튼이 「다시」다. */
 export const FAIL_LINE = "저장하지 못했습니다";
+
+/* ══ 073 §A — 되돌리기가 진행률도 되돌린다 ══════════════════════════ */
+
+/**
+ * 진행률 권한이 없어 **상태만** 되돌렸을 때의 한 줄(073 §A-6 문구 그대로).
+ * 조용히 두지 않는다 — 「조용히 되돌리지 않는다」(070 §G)가 그대로 걸린다.
+ */
+export const PROGRESS_KEPT_LINE = "상태는 되돌렸습니다. 진행률은 그대로입니다";
+
+/**
+ * 이 동작을 되돌릴 때 **다시 보내야 할 진행률.** 없으면 `null`.
+ *
+ * 완료로 바꾸면 서버가 진행률을 100 으로 올린다(`nextProgress = 100`). 상태만 되돌리면
+ * 진행률은 100 에 남고, 그 값이 목표 진척으로 올라간다 — 보고 숫자가 틀린다(073 §A-4).
+ *
+ *   · 완료로 가는 동작일 때만 — 다른 전이는 진행률을 안 건드린다
+ *   · 하위로 계산되는 업무는 빼다 — 손 값이 안 쓰이므로 되돌릴 것이 없다
+ *   · 원래 100 이었으면 뺀다 — 되돌릴 차이가 없다
+ *
+ * `progress` 는 `/api/tasks` 의 **실효 진척**이다. 하위가 없고 완료가 아니면 저장값과 같다
+ * (`taskProgress`) — 그래서 70% 였으면 70 을 돌려준다. 0 이 아니다(073 §A-10).
+ */
+export function progressToRestore(
+  t: { status: string; progress?: number; childCounted?: number | null }, next: string,
+): number | null {
+  if (next !== "done" || t.status === "done") return null;
+  if ((t.childCounted ?? 0) > 0) return null;
+  if (typeof t.progress !== "number" || t.progress === 100) return null;
+  return t.progress;
+}
+
+/**
+ * 이 사람이 진행률을 되돌릴 수 있는가 — **서버와 같은 함수**(`canEditProgress`)에게 묻는다.
+ * 하위가 없는 업무만 여기 오므로 하위 수는 0 이다. 편집자를 모르면(`null`) 없는 것으로 본다.
+ */
+export function canRestoreProgress(viewerId: number, editorId: number | null): boolean {
+  return canEditProgress(viewerId, editorId, { childCount: 0 }).canEdit;
+}
 
 /** 받침이 있으면 「으로」, 없거나 ㄹ 받침이면 「로」. */
 export function josaRo(word: string): string {

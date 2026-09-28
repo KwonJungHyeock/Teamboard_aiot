@@ -296,6 +296,9 @@ export async function GET(request: Request) {
       parentTaskId: r.parent_task_id,
       sortOrder: r.sort_order,
       childCount: r.child_count,
+      // 073 §A — **집계 대상** 하위 수. 진행률 권한 판정(`canEditProgress`)이 보는 값이다.
+      // 위 `childCount`(전부)와 다르다 — 하위가 전부 취소·중복이면 자기 값이 쓰인다(036 §B).
+      childCounted: r.child_counted,
       completedAt: r.completed_at,
       createdAt: r.created_at,
     }));

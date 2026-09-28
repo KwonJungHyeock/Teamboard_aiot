@@ -42,6 +42,10 @@ export interface TodayTask {
    * 목표 상세가 업무를 따로 고르지 않고 이 목록에서 고르기 위해 들고 다닌다.
    */
   goalIds: number[];
+  /** 실효 진척(`taskProgress`). 되돌리기가 **원래 값**을 다시 보낼 때 쓴다 (073 §A) */
+  progress?: number;
+  /** 집계 대상 하위 수. 있으면 진척은 하위로 계산된다 — 손 값을 되돌릴 일이 없다 (073 §A) */
+  childCounted?: number;
 }
 
 /** 진행 중으로 세는 상태 — `/api/tasks` 기본 목록과 같은 뜻. */

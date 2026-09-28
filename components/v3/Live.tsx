@@ -21,6 +21,7 @@ import {
 import { Checkbox, type CbState } from "./parts";
 import {
   toastMs, STATUS_PICK, pickLabel, toggled, changedLine, undoneLine, FAIL_LINE,
+  PROGRESS_KEPT_LINE, progressToRestore, canRestoreProgress, clip,
   nextTimeLine, SHORTCUTS, keyAct, moveSel, findItems, FIND_GROUPS, type FindItem,
 } from "@/lib/v3/live";
 import { NINE } from "@/lib/v3/nine";
@@ -31,6 +32,10 @@ export interface LiveTask {
   title: string;
   status: string;
   completedAt?: string | null;
+  /** 실효 진척 — 되돌리기가 **원래 값**을 다시 보낸다 (073 §A) */
+  progress?: number;
+  /** 집계 대상 하위 수 — 있으면 진척은 하위로 계산된다 */
+  childCounted?: number;
 }
 
 /* ══ §F 움직임 — 값은 CSS 한 곳(`--v3-motion`)에 있다 ═══════════════ */
@@ -77,9 +82,11 @@ function typing(el: EventTarget | null): boolean {
 }
 
 export function Live<T extends LiveTask>({
-  tasks, setTasks, goals, onNew, children,
+  tasks, setTasks, goals, onNew, me, children,
 }: {
   tasks: T[] | null;
+  /** 보는 사람의 actor.id — 진행률을 되돌릴 권한을 묻는다 (073 §A-6) */
+  me: number;
   setTasks: (f: (ts: T[] | null) => T[] | null) => void;
   /** ⌘K 의 「목표」 묶음 */
   goals?: { id: number; title: string }[] | null;
@@ -121,40 +128,75 @@ export function Live<T extends LiveTask>({
   /* ── §A-2 낙관적 업데이트 ──────────────────────────────────────── */
   /** 같은 업무의 요청은 **차례로** 보낸다. 되돌리기가 앞 요청을 앞지르면 순서가 뒤집힌다. */
   const lanes = useRef(new Map<number, Promise<unknown>>());
-  const send = useCallback((id: number, status: string): Promise<boolean> => {
+  const send = useCallback((id: number, body: { status: string; progress?: number }): Promise<boolean> => {
     const prev = lanes.current.get(id) ?? Promise.resolve();
     const p = prev.then(() => fetch(`/api/tasks/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(body),
     }).then((r) => r.ok).catch(() => false));
     lanes.current.set(id, p);
     return p;
   }, []);
 
-  const change = useCallback(function change(id: number, next: string, mode: "do" | "undo") {
+  /*
+   * ── 073 §A — 진행률 편집자 ─────────────────────────────────────────
+   * 되돌리기가 진행률을 되돌릴 수 있는지는 **서버와 같은 함수**(`canEditProgress`)로 묻는다.
+   * 편집자 번호는 이미 있는 `/api/meta/selectors` 가 준다 — 새 API 는 없다. 못 받으면 `null`
+   * (= 권한 없음)이고, 그때는 상태만 되돌리고 그렇다고 **말한다**.
+   */
+  const editorId = useRef<number | null>(null);
+  /** 편집자 번호를 받는 중이면 되돌리기가 **기다린다** — 받기 전에 누르면 권한 없음으로 잘못 읽는다 */
+  const editorReady = useRef<Promise<void>>(Promise.resolve());
+  useEffect(() => {
+    editorReady.current = fetch("/api/meta/selectors").then((r) => (r.ok ? r.json() : null)).then((d) => {
+      editorId.current = typeof d?.progressEditorId === "number" ? d.progressEditorId : null;
+    }).catch(() => {});
+  }, []);
+
+  /**
+   * @param restore 되돌리기일 때 — **앞 동작 전의 진행률.** 앞 동작이 진행률을 안 바꿨으면 `null`.
+   */
+  const change = useCallback(function change(
+    id: number, next: string, mode: "do" | "undo", restore: number | null = null,
+  ) {
     const t = (tasksRef.current ?? []).find((x) => x.id === id);
     if (!t || t.status === next) return;
     const prev = t.status;
     const prevDone = t.completedAt ?? null;
+    const prevProgress = t.progress;
     if (!firstStatus.current.has(id)) { firstStatus.current.set(id, prev); bump((n) => n + 1); }
-    // ① 화면을 **먼저** 바꾼다 — 서버를 기다려 멈추지 않는다(§A-2-5)
+    /*
+     * 보낼 것 — 상태 하나, 또는 (되돌리기이고 · 앞 동작이 진행률을 바꿨고 · 되돌릴 권한이 있으면)
+     * 진행률까지. 권한 없이 진행률을 같이 보내면 **요청 전체가 403** 이라 상태도 안 돌아간다.
+     */
+    const withProgress = mode === "undo" && restore !== null && canRestoreProgress(me, editorId.current);
+    const keptProgress = mode === "undo" && restore !== null && !withProgress;
+    const body = withProgress ? { status: next, progress: restore as number } : { status: next };
+    // ① 화면을 **먼저** 바꾼다 — 서버를 기다려 멈추지 않는다(§A-2-5). 완료면 서버가 100 으로 올린다
     setTasks((ts) => ts && ts.map((x) => (x.id === id
-      ? { ...x, status: next, completedAt: next === "done" ? new Date().toISOString() : null } : x)));
+      ? { ...x, status: next, completedAt: next === "done" ? new Date().toISOString() : null,
+          progress: next === "done" ? 100 : withProgress ? (restore as number) : x.progress } : x)));
     const line = mode === "undo" ? undoneLine(next, t.title) : changedLine(next, t.title);
-    const shown = toast(mode === "undo"
-      ? { strong: line.strong, text: line.rest }
-      : { strong: line.strong, text: line.rest,
-          action: { label: "되돌리기", run: () => change(id, prev, "undo") } });
+    // 073 §A-6 — 권한이 없어 진행률은 못 되돌렸으면 **그렇다고 적는다**
+    const shown = toast(keptProgress
+      ? { text: `${PROGRESS_KEPT_LINE} · ${clip(t.title)}` }
+      : mode === "undo"
+        ? { strong: line.strong, text: line.rest }
+        : { strong: line.strong, text: line.rest,
+            action: { label: "되돌리기", run: () => {
+              const restoreTo = progressToRestore(t, next);
+              void editorReady.current.then(() => change(id, prev, "undo", restoreTo));
+            } } });
     // ② 그다음 보낸다
-    void send(id, next).then((ok) => {
+    void send(id, body).then((ok) => {
       if (ok) return;
       // ③ 실패 — **원래대로 되돌리고 알린다.** 조용히 되돌리지 않는다(§A-2-6)
       setTasks((ts) => ts && ts.map((x) => (x.id === id && x.status === next
-        ? { ...x, status: prev, completedAt: prevDone } : x)));
+        ? { ...x, status: prev, completedAt: prevDone, progress: prevProgress } : x)));
       dismiss(shown);
-      toast({ text: FAIL_LINE, action: { label: "다시", run: () => change(id, next, mode) } });
+      toast({ text: FAIL_LINE, action: { label: "다시", run: () => change(id, next, mode, restore) } });
     });
-  }, [send, setTasks, toast, dismiss]);
+  }, [send, setTasks, toast, dismiss, me]);
 
   const toggle = useCallback((id: number) => {
     const t = (tasksRef.current ?? []).find((x) => x.id === id);
