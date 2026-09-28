@@ -32,13 +32,14 @@ import { areaOf, type AreaView } from "@/lib/v3/category";
 import {
   selectRows, serializeListQuery, EMPTY_LIST_QUERY, type ListQuery,
 } from "@/lib/v3/list-query";
-import { STATUS_META } from "@/lib/task-view";
 import { V3_BASE, taskHref } from "@/lib/v3/routes";
 import { notYetHref } from "@/lib/v3/not-yet";
 // 가오픈 카드가 쓰는 것 — **계산은 저기 한 곳에 있다** (051 §A-3).
 import { weeksAndDays, longDateKst } from "@/lib/countdown";
 // 오늘 화면에도 **썸네일이 아니라 개수만** (051 §C-3).
 import { countLinks } from "@/lib/v3/links";
+// 070 — 줄에서 바로 끝내기 · 토스트 · 키보드 · 찾기. **공용 부품이다**(§G-49).
+import { Live, useLive, LiveCheck, StatusChip, QuickActions, ShortcutBar, CountUp } from "./Live";
 
 /** 알림이 가리키는 곳. 종류마다 갈 데가 다르다. */
 function inboxHref(i: InboxItem): string {
@@ -66,9 +67,8 @@ const INBOX_LABEL: Record<string, string> = {
   approval: "승인", mention: "멘션", reply: "답글", handover: "인계",
 };
 
-export default function TodayView({
-  name, today, openAtMs, dday, areas, me,
-}: {
+type Goal = { id: number; title: string; progress: number | null };
+type Props = {
   name: string;
   /** 보는 사람의 `actor.id`. 「내 업무」와 권한 거르기가 쓴다 (066 §D-31). */
   me: number;
@@ -78,14 +78,21 @@ export default function TodayView({
   /** 가오픈까지 남은 날. 대문 카운트다운과 **같은 곳에서 센 값**이다. */
   dday: number;
   areas: AreaView[];
-}) {
+};
+
+/**
+ * 데이터를 들고 **`<Live>` 한 줄로 켠다**(070 §G-50). 업무 목록도 다음 회차에
+ * 같은 한 줄이면 붙는다. 줄의 상태를 바꾸는 것은 `Live` 가 `setTasks` 로 한다 —
+ * 화면이 따로 들고 있는 사본이 없어서, 바꾼 값이 숫자·목록·「오늘 마친 것」에
+ * 한꺼번에 선다.
+ */
+export default function TodayView(props: Props) {
+  const { today } = props;
   const [tasks, setTasks] = useState<TodayTask[] | null>(null);
   const [inbox, setInbox] = useState<InboxItem[] | null>(null);
   /** 분기 목표 — `/api/goals` 가 주는 나무를 펴서 쓴다. **새 API 는 없다.** */
-  const [goals, setGoals] = useState<{ id: number; title: string; progress: number | null }[] | null>(null);
+  const [goals, setGoals] = useState<Goal[] | null>(null);
   const [err, setErr] = useState("");
-  // 오래 밀린 일은 **접혀서** 시작한다. 펼치는 것은 사람이 정한다.
-  const [openStale, setOpenStale] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -119,6 +126,30 @@ export default function TodayView({
     })();
   }, [today]);
 
+  return (
+    <Live tasks={tasks} setTasks={setTasks} goals={goals}>
+      <TodayBody {...props} tasks={tasks} inbox={inbox} goals={goals} err={err} />
+    </Live>
+  );
+}
+
+function TodayBody({
+  name, today, openAtMs, dday, areas, me, tasks, inbox, goals, err,
+}: Props & { tasks: TodayTask[] | null; inbox: InboxItem[] | null; goals: Goal[] | null; err: string }) {
+  // 오래 밀린 일은 **접혀서** 시작한다. 펼치는 것은 사람이 정한다.
+  const [openStale, setOpenStale] = useState(false);
+  /*
+   * ── 070 §B-12 — 체크한 줄이 **목록에서 빠지지 않는다** ─────────────
+   * 목록에 넣을지는 **처음 건드렸을 때의 상태**로 정하고(`listedStatus`),
+   * 줄에 그리는 것은 지금 상태다. 숫자(타일)는 지금 상태로 센다 — 끝낸 일이
+   * 여전히 「기한 지남」으로 세어지면 숫자가 거짓말을 한다.
+   */
+  const live = useLive();
+  const listed = useMemo(() => (tasks && live
+    ? tasks.map((t) => ({ ...t, status: live.listedStatus(t) })) : tasks), [tasks, live]);
+  const byId = useMemo(() => new Map((tasks ?? []).map((t) => [t.id, t])), [tasks]);
+  const now = (t: TodayTask) => byId.get(t.id) ?? t;
+
   /*
    * ── 세 숫자와 「내 업무」 (§D-30 · §D-31 · §D-35) ─────────────────
    *
@@ -141,14 +172,24 @@ export default function TodayView({
   const mineQ: ListQuery = useMemo(
     () => ({ ...EMPTY_LIST_QUERY, status: OPEN_ST, mine: true }), [OPEN_ST]);
   const mineRows = useMemo(
-    () => selectRows(tasks ?? [], mineQ, me, today), [tasks, mineQ, me, today]);
+    () => selectRows(listed ?? [], mineQ, me, today).map(now), [listed, mineQ, me, today, byId]);
   /** §B-4 — 「내 업무」는 업무 목록에 `?mine=1` 을 붙인 자리다. 새 화면이 아니다. */
   const mineHref = `${V3_BASE}/tasks?${serializeListQuery(mineQ)}`;
 
   const view = useMemo(() => {
-    if (!tasks) return null;
-    return { counts: countToday(tasks, today), ...splitToday(tasks, today) };
-  }, [tasks, today]);
+    if (!tasks || !listed) return null;
+    const real = splitToday(tasks, today);
+    const kept = splitToday(listed, today);
+    return {
+      counts: countToday(tasks, today),
+      // 줄 목록은 처음 상태로 모으고 지금 상태로 그린다 · 「오늘 마친 것」은 지금 상태 그대로
+      // `late`(기한으로 정해진다)는 처음 줄의 것을 그대로 쓴다 — 상태를 바꿔도 기한은 그대로다
+      todo: kept.todo.map((t) => ({ ...t, ...now(t), late: t.late })),
+      stale: kept.stale.map((t) => ({ ...t, ...now(t) })), done: real.done,
+      /** 타일의 숫자는 **지금 상태**로 센다 */
+      todoNow: real.todo,
+    };
+  }, [tasks, listed, today, byId]);
 
   const stateOf = (s: string): CbState =>
     s === "done" ? "done" : s === "doing" ? "doing" : s === "review" ? "review" : "todo";
@@ -172,6 +213,8 @@ export default function TodayView({
           {dday > 0 ? `가오픈 D-${dday}` : dday === 0 ? "가오픈 당일" : `가오픈 +${-dday}일`}
         </b>
       </p>
+      {/* 070 §C-28 — 적혀 있지 않은 단축키는 없는 것과 같다 */}
+      <ShortcutBar />
 
       {err && <Card><p className="v3-err">{err}</p></Card>}
 
@@ -207,12 +250,16 @@ export default function TodayView({
           없다 — 축을 늘리는 것은 새 규칙이라 손대지 않았다). 그래서 이 숫자는
           **바로 아래 「오늘 할 일」 카드와 같은 함수**(`splitToday`)에서 온다.
         */}
-        <StatTile n={view?.todo.length ?? 0} label="오늘 할 일"
-                  sub={view ? `진행 ${view.todo.filter((t) => t.status === "doing").length}` +
-                              ` · 검토 ${view.todo.filter((t) => t.status === "review").length}` : undefined} />
-        <StatTile n={late.n} label="기한 지남" late href={late.href}
+        {/* 070 §E-43 — 「오늘 할 일」은 목록의 축에 맞는 조건이 없어 **누르는 것을 안 만든다** */}
+        <StatTile n={view?.todoNow.length ?? 0} label="오늘 할 일"
+                  shown={view ? <CountUp n={view.todoNow.length} /> : 0}
+                  sub={view ? `진행 ${view.todoNow.filter((t) => t.status === "doing").length}` +
+                              ` · 검토 ${view.todoNow.filter((t) => t.status === "review").length}` : undefined} />
+        <StatTile n={late.n} label="기한 지남" late href={late.href} go
+                  shown={view ? <CountUp n={late.n} /> : 0}
                   sub={view ? `${STALE_DAYS}일 넘게 밀린 것 ${view.stale.length}` : undefined} />
-        <StatTile n={week.n} label={`이번 주 마감 (~${shortDate(weekEnd(today))})`} href={week.href}
+        <StatTile n={week.n} label={`이번 주 마감 (~${shortDate(weekEnd(today))})`} href={week.href} go
+                  shown={view ? <CountUp n={week.n} /> : 0}
                   sub={view ? `기한 없음 ${view.counts.noDue}` : undefined} />
       </div>
 
@@ -234,16 +281,20 @@ export default function TodayView({
               {mineRows.slice(0, 5).map((t) => {
                 const a = areaOf(areas, t.areaId);
                 return (
-                  <div className="v3-row" key={t.id}>
+                  <div className={`v3-row${t.status === "done" ? " done" : ""}`} key={t.id}
+                       data-live-row={t.id}>
+                    {/* 070 §B-1 — 체크하면 그 자리에서 완료 · 해제하면 미착수 */}
+                    <LiveCheck task={t} />
                     <span className="v3-row-main">
                       <Link className="v3-row-t" href={taskHref(t.id)}>{t.title}</Link>
                     </span>
                     <span className="v3-row-r">
                       {/* 영역 이름표 · 상태 — 지시서가 적은 셋이다(제목 · 이름표 · 상태) */}
                       {a && <Tag area={a} />}
-                      {/* 상태 낱말은 **한 곳에서** 온다(`STATUS_META`) — 065 §A-2 */}
-                      <span className="v3-due">{STATUS_META[t.status]?.label ?? t.status}</span>
+                      {/* 070 §B-2 — 상태가 **눌리는 칩**이 됐다. 낱말은 칩과 고르개가 한 표에서 */}
+                      <StatusChip task={t} />
                     </span>
+                    <QuickActions task={t} />
                   </div>
                 );
               })}
@@ -298,6 +349,10 @@ export default function TodayView({
               due={shortDue(t.dueDate)}
               late={t.late}
               clip={countLinks(t.description)}
+              check={<LiveCheck task={t} />}
+              chip={<StatusChip task={t} />}
+              tail={<QuickActions task={t} />}
+              rowAttrs={{ "data-live-row": String(t.id) }}
             />
           ))}
 
