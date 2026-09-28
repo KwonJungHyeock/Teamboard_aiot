@@ -1,4 +1,10 @@
+"use client";
+
 // 미션덱 v3 — 기본 부품 (MD-P-2026-042 §A).
+//
+// 066 §C-1 에서 `Menu`(여닫는 고르개)가 들어오면서 이 파일에 처음 상태가
+// 생겼다. 그래서 `"use client"` 를 붙였다 — 여덞 화면 전부가 이미 클라이언트
+// 부품이라 **닿는 범위가 바뀌지 않는다.**
 //
 // ── 규칙 두 개 ──────────────────────────────────────────────────
 //
@@ -10,6 +16,7 @@
 // 파일을 열 개로 쪼개면 무엇이 있는지 보려고 매번 폴더를 훑어야 한다.
 // 늘어나면 그때 쪼갠다.
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import type { AreaView } from "@/lib/v3/category";
 import type { DueTone } from "@/lib/v3/tasks";
 
@@ -94,6 +101,123 @@ export function InputChip({
 }
 
 /* ── Card ────────────────────────────────────────────────────────── */
+/* ── PropRow — 속성 한 줄 (MD-P-2026-066 §E-37 · §E-39) ─────────────
+
+   옛 상세 패널의 `PropertyBlock` 과 **같은 뜻**을 v3 에 둔다. 064 §A 에서
+   거기 고친 것을 여기서 다시 만들지 않기 위해서다.
+
+   ── `valueActs` 가 무엇인가 ─────────────────────────────────────
+
+   대부분의 줄은 **값 전체가 여는 단추**다(누르면 고르개가 펼친다). 그런데
+   상위·하위처럼 **값이 스스로 눌리는** 줄이 있다 — 값이 링크라서 누르면 그
+   업무로 간다. 그 줄에서 값을 단추로 감싸면 **버튼 안 버튼**이 되고(B-15),
+   감싸지 않으면 편집할 자리가 사라진다.
+
+   그래서 064 §A 의 모양을 그대로 쓴다: 값과 편집 손잡이를 **형제**로 두고,
+   손잡이가 값이 안 덮은 자리를 끝까지 덮는다. 눌리는 폭이 줄지 않는다. */
+export function PropRow({
+  label, valueActs, editing, onEdit, children, editor,
+}: {
+  label: string;
+  /** 값이 스스로 눌리는 줄인가 (상위·하위). 형제 모양으로 그린다 */
+  valueActs?: boolean;
+  editing?: boolean;
+  /** 없으면 **읽기 전용 줄**이다 — 누를 수 없는 단추로 부르지 않는다 */
+  onEdit?: () => void;
+  children: React.ReactNode;
+  /** 펼쳤을 때 아래에 서는 고르개 */
+  editor?: React.ReactNode;
+}) {
+  return (
+    <div className="v3-prop" data-k={label}>
+      <span className="v3-prop-k">{label}</span>
+      {onEdit === undefined ? (
+        <span className="v3-prop-v ro">{children}</span>
+      ) : valueActs ? (
+        <span className="v3-prop-v">
+          {children}
+          {/* 값이 안 덮은 자리를 **끝까지** 덮는다. 형제라서 버튼 안 버튼이 아니다 */}
+          <button type="button" className="v3-prop-edit" aria-expanded={editing === true}
+                  aria-label={`${label} 편집`} onClick={onEdit} />
+        </span>
+      ) : (
+        <button type="button" className="v3-prop-v act" aria-expanded={editing === true}
+                onClick={onEdit}>
+          {children}
+        </button>
+      )}
+      {editing && editor !== undefined && <div className="v3-prop-ed">{editor}</div>}
+    </div>
+  );
+}
+
+/* ── Menu — 「가끔 쓰는 것」의 자리 (MD-P-2026-066 §C-1 · §C-16 · §C-17) ──
+
+   §C-16 의 뒷말이 이것이다: 자주 하는 것은 한 번에 닿는 칩으로, **가끔 쓰는
+   것은 골라서.** 영역 일곱 · 사람 다섯 · 기한 넷을 전부 칩으로 깔면 거르개 줄이
+   열여섯 알이 되고, 그러면 지금 무엇이 걸려 있는지를 사람이 셀 수 없다.
+   못 세면 빈 목록이 고장으로 읽힌다.
+
+   §C-17: 사람이 늘어도 **줄의 모양이 안 바뀐다.** 담당을 탭으로 깔면 사람이
+   들어올 때마다 화면이 달라진다.
+
+   여는 단추와 항목들은 **형제**다 — 단추가 목록을 품으면 버튼 안 버튼이 된다
+   (B-15 선례 · 064 §A 와 같은 모양). */
+export function Menu({
+  label, value, children,
+}: { label: string; value?: string | null; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  /*
+   * 밖을 누르면 닫힌다. `mousedown` 으로 듣는 이유: `click` 으로 들으면
+   * 안쪽 항목의 클릭보다 먼저 닫혀서 **고른 값이 안 들어가는** 때가 있다.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", away);
+    window.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      window.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+
+  return (
+    <div className="v3-menu" ref={box}>
+      {/* 걸린 값을 **단추에 적는다.** 안 적으면 접힌 동안 무엇이 걸렸는지가
+          화면에서 사라진다 — 열어 봐야 아는 조건은 없는 조건과 같다. */}
+      <button type="button" className={`v3-mbtn${value ? " on" : ""}`}
+              aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        {label}
+        {value && <b className="v3-mbtn-v">{value}</b>}
+        <span className="v3-mbtn-cv" aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className="v3-mpop" role="group" aria-label={label}>{children}</div>
+      )}
+    </div>
+  );
+}
+
+/** 고르개 한 줄. 눌리는 자리이므로 버튼이고, **골라졌음을 글자로도** 남긴다. */
+export function MenuItem({
+  on, count, children, ...rest
+}: { on?: boolean; count?: number; children: React.ReactNode }
+  & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button {...rest} type="button" aria-pressed={on ? "true" : "false"}
+            className={`v3-mitem${on ? " on" : ""}`}>
+      <span className="v3-mitem-k" aria-hidden="true">{on ? "✓" : ""}</span>
+      <span className="v3-mitem-t">{children}</span>
+      {count !== undefined && <span className="v3-chip-n">{count}</span>}
+    </button>
+  );
+}
+
 export function Card({
   title, sub, children, ...rest
 }: { title?: string; sub?: React.ReactNode; children: React.ReactNode }
@@ -114,13 +238,29 @@ export function Card({
 /* ── StatTile ────────────────────────────────────────────────────
    「기한 없음」만 호박색이다 — 아무 날에도 안 걸려서 마지막까지 안 보이는
    것들이라, 세 숫자 중 그것만 손댈 일이 남아 있다는 뜻이다. */
-export function StatTile({ n, label, warn }: { n: number; label: string; warn?: boolean }) {
-  return (
-    <div className={`v3-stat${warn ? " warn" : ""}`}>
+export function StatTile({
+  n, label, warn, late, sub, href,
+}: {
+  n: number; label: string; warn?: boolean;
+  /** 066 §D-30 — **기한 지남만** 색을 준다. 나머지는 무채색이다 */
+  late?: boolean;
+  /** 숫자 아래 한 줄 (「진행 4 · 검토 2」 같은 것). 없으면 안 그린다 */
+  sub?: string;
+  /** 누르면 **같은 조건의 목록**으로 간다 (§D-35 가 그 값끼리 맞춰 본다) */
+  href?: string;
+}) {
+  const inner = (
+    <>
       <span className="v3-stat-n">{n}</span>
       <span className="v3-stat-l">{label}</span>
-    </div>
+      {sub && <span className="v3-stat-s">{sub}</span>}
+    </>
   );
+  const cls = `v3-stat${warn ? " warn" : ""}${late ? " late" : ""}`;
+  // 누를 수 있는 자리면 링크다. 아니면 그냥 칸이다 — 안 눌리는 것을 링크처럼
+  // 그리지 않는다.
+  return href ? <Link className={`${cls} act`} href={href}>{inner}</Link>
+              : <div className={cls}>{inner}</div>;
 }
 
 /* ── Checkbox — 상태 네 가지 ─────────────────────────────────────

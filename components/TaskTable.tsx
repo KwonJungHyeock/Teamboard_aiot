@@ -13,7 +13,7 @@ import { useCountUp, useExiting, useFlip, useHighlight } from "@/lib/motion";
 import { notifyGoalChain } from "@/lib/goal-chain";
 import { pfill } from "@/lib/progress-bar";
 import { openDueMark } from "@/lib/open-due";
-import { dueUrgency } from "@/lib/task-view";
+import { dueUrgency, STATUS_META } from "@/lib/task-view";
 import { taskBar, ticks, defaultBarRange, type BarRange } from "@/lib/task-bars";
 import { aggregateTasks, countTasks } from "@/lib/progress";
 import { isUnclassifiedArea } from "@/lib/area-policy";
@@ -66,14 +66,12 @@ export const TASK_GROUP_LABEL: Record<TaskGroupKey, string> = {
   project: "프로젝트", priority: "우선순위", due: "기한", none: "묶지 않음",
 };
 
-const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  proposed: { label: "제안", cls: "prop" },
-  todo: { label: "대기", cls: "todo" },
-  doing: { label: "진행", cls: "doing" },
-  review: { label: "리뷰", cls: "review" },
-  done: { label: "완료", cls: "done" },
-  dropped: { label: "중단", cls: "drop" },
-};
+/*
+ * 065 §A-2 — **제 사본을 지웠다.** 상태 이름표는 `lib/task-view.ts` 의
+ * `STATUS_META` 하나에서 나온다. 여기 있던 표는 낱말도 클래스도 그것과 같았는데,
+ * 사본이라 갈릴 수 있었다 — 실제로 `OpenDueView` 가 갈려 있었다(064 §B).
+ * `cls` 로 부르던 값은 `STATUS_META` 에서 `tone` 이라는 이름으로 같은 값을 준다.
+ */
 
 const PRIORITY_LABEL: Record<string, string> = { high: "높음", mid: "보통", low: "낮음" };
 /** 8/24 — 그룹 머리줄의 기간 표기. 연도는 안 쓴다(같은 해다). */
@@ -466,7 +464,7 @@ export default function TaskTable({
           )}
           {grouped.map((t) => {
             const head = groupHeadAt.get(t.id);
-            const status = STATUS_LABEL[t.status] ?? { label: t.status, cls: "todo" };
+            const status = STATUS_META[t.status] ?? { label: t.status, tone: "todo" };
             const kids = childrenOf.get(t.id) ?? [];
             const isChild = (t.parentTaskId ?? null) !== null;
             const openHere = expanded.has(t.id);
@@ -682,7 +680,7 @@ export default function TaskTable({
                     >
                       {INLINE_STATUS.map((s) => (
                         <option key={s} value={s}>
-                          {STATUS_LABEL[s].label}
+                          {STATUS_META[s].label}
                         </option>
                       ))}
                       {/* 현재 값이 인라인 목록 밖이면(예: done→dropped 후 재조회 전) 보존 */}
@@ -691,7 +689,7 @@ export default function TaskTable({
                       )}
                     </select>
                   ) : (
-                    <span className={`st ${status.cls}`}>{status.label}</span>
+                    <span className={`st ${status.tone}`}>{status.label}</span>
                   )}
                 </td>
                 <td className={`due col-due ${dueCls}`}>

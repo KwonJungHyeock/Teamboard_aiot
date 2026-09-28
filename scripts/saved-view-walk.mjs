@@ -11,8 +11,12 @@ import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 import { ignoredWhy } from "./console-ignore.mjs";   // 안 세는 것은 한 파일에 (061 §D-14)
+import { testUser } from "./test-user.mjs";
 
 requireLocalDb("saved-view-walk.mjs");
+
+/* 065 §B-9 — 검사가 쓰는 신분은 손으로 안 적는다. DB 에서 읽는다. */
+const TEST_ME = await testUser();
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-027/saved-view";
@@ -42,9 +46,28 @@ try {
   browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
     args: ["--no-proxy-server", "--no-sandbox"] });
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 } });
-  await ctx.addCookies([{ name: "tb_session", value: tok({ id:1, actorId:1, name:"권정혁", role:"lead", email:"l@l" }), domain: new URL(BASE).hostname, path: "/" }]);
+  await ctx.addCookies([{ name: "tb_session", value: tok(TEST_ME), domain: new URL(BASE).hostname, path: "/" }]);
   const page = await ctx.newPage();
-  const errs = []; page.on("pageerror", (e) => errs.push(e.message));
+  /*
+   * 065 §A-1 — **이 검사기가 스스로 만든 404 는 따로 센다.**
+   *
+   * 「남의 뷰는 못 고친다」를 확인하려고 일부러 남의 id 로 PATCH·DELETE 를 보낸다.
+   * 서버가 404 로 거절하는 것이 그 검사의 **정답**이고, 그때 브라우저가 적는
+   * 「Failed to load resource … 404」는 고장이 아니다.
+   *
+   * **무시 목록(console-ignore)에는 안 넣는다.** 그 파일의 규칙이 이미 그렇게
+   * 적혀 있다 — 검사기가 스스로 만든 오류는 어느 칸에도 안 넣는다. 넣으면
+   * 다른 검사기에서 난 **진짜 404** 까지 같이 눈감는다. 집안에 답이 있으면
+   * 두 번째 답을 만들지 않는다(§G 064).
+   * v3-bulk ③짝 · v3-links ⑧짝 · v3-new ⑪짝 · block-walk 과 같은 방법이다.
+   */
+  const wanted = [];
+  const errs = [];
+  const take = (t) => {
+    if (/Failed to load resource.*\b404\b/.test(t)) { wanted.push(t); return; }
+    errs.push(t);
+  };
+  page.on("pageerror", (e) => take(e.message));
   const ignoredLines = [];
   // 059 §G — 경고까지 센다. 「오류」만 세면 하이드레이션 문제를 못 본다.
   // 061 §D-14 — 다만 **무시 목록**(scripts/console-ignore.mjs)에 있는 것은 뺀다.
@@ -54,7 +77,7 @@ try {
     const line = `[${t}] ` + m.text().slice(0, 160);
     const skip = ignoredWhy(line);
     if (skip) { ignoredLines.push(`${line.slice(0, 60)} — ${skip}`); return; }
-    errs.push(line); });
+    take(line); });
 
   const step = async (id, note) => { await shot(page, { path: `${OUT}/${id}.png` }); rows.push({ id, note }); console.log(`  ▸ ${id.padEnd(18)} ${note}`); };
 
@@ -126,6 +149,12 @@ try {
    * 초록 밑에 경고가 쌓여 있었다. 무시 목록(console-ignore)에 걸린 것은
    * 빠지고, 남은 것은 **빨개진다.** 빨개진 것을 고치는 것은 다른 회차다.
    */
+  /*
+   * 짝 — 그 404 가 **실제로 났는지** 센다. 0이면 남의 뷰를 한 번도 안 건드린
+   * 것이고, 그러면 위 「콘솔 0건」은 아무것도 안 잰 값이다(§G 053).
+   */
+  chk("콘솔짝-우리가-만든-404", wanted.length > 0,
+      `일부러 만든 404 ${wanted.length}건 (1건 이상이라야 위 줄이 뜻을 가진다)`);
   chk("콘솔오류·경고", errs.length === 0,
       `${errs.length}건${errs.length ? " — " + errs[0].slice(0, 110) : ""}`);
   console.log(`\nJS 오류 ${errs.length}건${errs.length ? ": " + errs[0].slice(0,90) : ""}`);

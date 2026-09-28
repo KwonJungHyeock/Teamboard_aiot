@@ -177,7 +177,8 @@ try {
   const want = Number((await cell.innerText()).trim());
   const cellUrl = await cell.getAttribute("href");
   await cell.click();
-  await page.locator(".v3-filters").waitFor({ timeout: 9000 });
+  // 066 §C-1 — 거르개 상자(`.v3-filters`)가 차례 고정의 한 줄(`.v3-fbar`)이 됐다.
+  await page.locator(".v3-fbar").waitFor({ timeout: 9000 });
   await page.waitForTimeout(900);
   const got = await page.locator(".v3-row").count();
   const chipTxt = (await page.locator(".v3-active").innerText().catch(() => "")).replace(/\s+/g, " ");

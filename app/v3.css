@@ -230,6 +230,27 @@
 .v3-stat .v3-stat-l { display: block; margin-top: 2px; font-size: 13px; color: var(--v3-ink-2); }
 /* 「기한 없음」만 호박색 — 아무 날에도 안 걸려서 마지막까지 안 보이는 것들이다 */
 .v3-stat.warn .v3-stat-n { color: var(--v3-warn); }
+/* 066 §D-30 — 숫자 아래 보조 한 줄. 「진행 4 · 검토 2」 */
+.v3-stat .v3-stat-s { display: block; margin-top: 4px; font-size: 12px; color: var(--v3-ink-3); }
+/* **기한 지남만 색을 준다.** 나머지는 무채색이다.
+   지시서는 「(진행색)」이라고 적었는데 v3 팔레트에 진행색 토큰이 없고,
+   지남은 이미 코랄(`--v3-late`)로 정해져 있다(042 §A 의 상태 셋) —
+   목록의 기한 글자·체크가 전부 그 색이다. 그래서 그 색을 쓴다. */
+.v3-stat.late .v3-stat-n { color: var(--v3-late); }
+/* 누를 수 있는 칸 — 같은 조건의 목록으로 간다 */
+.v3-stat.act { display: block; text-decoration: none; color: inherit; }
+.v3-stat.act:hover { border-color: var(--v3-ink-3); }
+
+/* 066 §D-31·32 — 아래 두 칸. 왼쪽 「내 업무」 · 오른쪽 「분기 목표」 */
+.v3-two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--v3-gap); }
+@media (max-width: 860px) { .v3-two { grid-template-columns: 1fr; } }
+/* 목표 한 줄 — 이름 + 진척 막대. **막대 값은 서버가 센 것**이다 */
+.v3-goalrow { padding: 9px 0; border-bottom: 1px solid var(--v3-line); }
+.v3-goalrow:last-child { border-bottom: 0; }
+.v3-goalrow-h { display: flex; align-items: baseline; gap: 8px; }
+.v3-goalrow-t { flex: 1 1 auto; min-width: 0; font-size: 14px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.v3-goalrow-n { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--v3-ink-2); }
 
 /* ── 051 §A-3 가오픈 카드 ────────────────────────────────────────
    통계 타일과 같은 줄 맨 왼쪽. **파란 채움** — 이 줄에서 유일하게 색이 찬 칸이라
@@ -339,6 +360,137 @@
   color: var(--v3-ink); }
 .v3-search::placeholder { color: var(--v3-ink-3); }
 .v3-search:focus { outline: none; border-color: var(--v3-rail); }
+
+/* ── 066 §C-1 거르개 줄 — **차례가 고정이다** ──────────────────────
+       [◉내 항목] | [전체][진행][검토][완료] | [영역▾][담당▾][기한▾]
+
+   한 줄이다. 좁아지면 감기지만 **차례는 안 바뀐다** — 차례가 뜻이기 때문이다
+   (자주 하는 것이 왼쪽, 가끔 쓰는 것이 오른쪽).
+
+   051 §B 의 `.v3-filters`(축을 줄로 눕힌 상자)는 **그대로 둔다** — 팀 현황이
+   아직 쓴다. 지우면 그 화면의 거르개가 같이 무너진다. */
+.v3-fbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 0 0 var(--v3-gap); padding: 12px 14px; background: var(--v3-card);
+  border: 1px solid var(--v3-line); border-radius: var(--v3-radius); }
+/* 묶음 사이의 선. 「내 항목」이 **혼자 떨어져 있다**는 것을 눈으로 만든다 */
+.v3-fbar-div { width: 1px; height: 20px; background: var(--v3-line-2); }
+.v3-fbar-gap { flex: 1 1 8px; }
+.v3-fbar .v3-search { flex: 0 1 200px; width: auto; min-width: 120px; height: 34px; }
+.v3-csv { height: 34px; padding: 0 14px; font-size: 13px; }
+
+/* 상태 넷 — **탭**이다(하나만 골린다). 알약 네 개가 아니라 한 덩어리로 보이게
+   테두리를 한 번만 두른다. 여러 개를 고르는 자리였으면 칩이어야 한다. */
+.v3-tabs { display: inline-flex; border: 1px solid var(--v3-line-2);
+  border-radius: var(--v3-radius-pill); overflow: hidden; }
+.v3-tab { height: 34px; padding: 0 14px; border: 0; background: var(--v3-card);
+  color: var(--v3-ink-2); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.v3-tab + .v3-tab { border-left: 1px solid var(--v3-line-2); }
+.v3-tab:hover { color: var(--v3-ink); }
+.v3-tab.on { background: var(--v3-ink); color: #fff; }
+
+/* ── 066 §C-1 ▾ 고르개 — 「가끔 쓰는 것」 ──────────────────────────
+   접힌 단추는 `.v3-ichip` 의 세 결을 그대로 따른다(046 §A): 값 없음은 점선,
+   값 있음은 연한 바탕. **값을 단추에 적는다** — 열어 봐야 아는 조건은 없는
+   조건과 같다. */
+.v3-menu { position: relative; display: inline-flex; }
+.v3-mbtn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px;
+  border-radius: var(--v3-radius-pill); border: 1px dashed var(--v3-line-2);
+  background: var(--v3-card); color: var(--v3-ink-3); font: inherit; font-size: 13px;
+  font-weight: 600; cursor: pointer; }
+.v3-mbtn:hover { border-color: var(--v3-ink-3); color: var(--v3-ink-2); }
+.v3-mbtn.on { border-style: solid; border-color: transparent;
+  background: var(--v3-ichip-bg); color: var(--v3-ink); }
+/* 걸린 값 — 길면 자른다. 이름 다섯 개가 줄을 밀어내면 차례가 무너진다 */
+.v3-mbtn-v { max-width: 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-mbtn-cv { font-size: 10px; line-height: 1; color: var(--v3-ink-3); }
+.v3-mbtn.on .v3-mbtn-cv { color: var(--v3-ink-2); }
+
+.v3-mpop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20;
+  min-width: 208px; max-height: 320px; overflow: auto; padding: 6px;
+  background: var(--v3-card); border: 1px solid var(--v3-line-2);
+  border-radius: var(--v3-radius-s); box-shadow: 0 12px 28px -14px rgba(16, 24, 40, .34); }
+.v3-mitem { display: flex; align-items: center; gap: 8px; width: 100%; height: 32px;
+  padding: 0 8px; border: 0; border-radius: var(--v3-radius-s); background: none;
+  color: var(--v3-ink-2); font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+.v3-mitem:hover { background: var(--v3-ichip-bg); color: var(--v3-ink); }
+/* ✓ 자리는 골라지지 않아도 **폭을 차지한다** — 안 그러면 고를 때마다 글자가 밀린다 */
+.v3-mitem-k { flex: 0 0 12px; font-size: 12px; color: var(--v3-ink); }
+.v3-mitem-t { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-mitem.on { color: var(--v3-ink); font-weight: 600; }
+
+/* ── 066 §E-37 속성 줄 — 상세의 일곱 ──────────────────────────────
+   왼쪽에 이름, 오른쪽에 값. 값 자리가 **누르는 자리**다.
+
+   §E-39 — 상위·하위는 값이 스스로 눌리므로(링크) 값과 손잡이를 **형제**로 둔다.
+   064 §A 에서 옛 패널에 한 것과 같은 모양이다: 손잡이가 값이 안 덮은 자리를
+   끝까지 덮어서, 눌리는 폭이 줄지 않는다. */
+.v3-prop { display: flex; flex-wrap: wrap; align-items: flex-start;
+  gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--v3-line); }
+.v3-prop:last-child { border-bottom: 0; }
+.v3-prop-k { flex: 0 0 96px; padding-top: 3px; font-size: 13px; color: var(--v3-ink-2); }
+/* 값 — 줄의 남은 자리를 다 쓴다. 좁으면 줄바꿈해서 아래로 내려간다 */
+.v3-prop-v { display: flex; flex: 1 1 200px; align-items: center; gap: 6px;
+  min-width: 0; padding: 3px 6px; border: 0; border-radius: var(--v3-radius-s);
+  background: none; font: inherit; font-size: 13px; color: var(--v3-ink); text-align: left; }
+.v3-prop-v.act { cursor: pointer; }
+.v3-prop-v.act:hover, .v3-prop-v:has(.v3-prop-edit:hover) { background: var(--v3-ichip-bg); }
+/* 읽기 전용 — 누를 수 없으니 **손 모양도 안 준다.** 회색으로 내린다 */
+.v3-prop-v.ro { color: var(--v3-ink-2); }
+/* 값이 비었을 때. 「＋」로 부르되 값과 같은 자리를 차지한다 */
+.v3-prop-v .empty { color: var(--v3-ink-3); }
+/* 편집 손잡이 — 값이 안 덮은 자리를 **끝까지** 덮는다. 보이지는 않는다 */
+.v3-prop-edit { flex: 1 1 auto; min-width: 0; align-self: stretch; margin-left: -6px;
+  border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+.v3-prop-ed { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin: 4px 0 2px; padding: 8px 10px; background: var(--v3-bg);
+  border: 1px solid var(--v3-line); border-radius: var(--v3-radius-s); font-size: 13px; }
+.v3-prop-ed select, .v3-prop-ed input[type="date"] { height: 30px; font: inherit; font-size: 13px; }
+.v3-prop-ed label { color: var(--v3-ink-2); }
+
+/* ── 067 §C 구성원 줄 ────────────────────────────────────────────
+   한 줄에 다섯 — 이름 · 이메일 · 역할 · 관리자 권한 · 활성.
+   좁아지면 감긴다. 못 누르는 자리 밑에는 **왜인지** 한 줄이 선다. */
+.v3-mem { display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--v3-line); }
+.v3-mem:last-child { border-bottom: 0; }
+.v3-mem.off { opacity: .55; }
+.v3-mem-role { height: 30px; font: inherit; font-size: 13px; }
+.v3-mem-grant { display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--v3-ink-2); }
+.v3-mem-grant input { width: 15px; height: 15px; accent-color: var(--v3-rail); }
+.v3-mem-fixed { font-size: 12px; color: var(--v3-ink-3); }
+.v3-mem-act { height: 30px; padding: 0 12px; font-size: 13px; }
+/* 못 누르는 이유 — 줄 전체를 차지한다. 옆에 붙이면 잘린다 */
+.v3-mem-why { flex: 1 1 100%; margin: 2px 0 0; font-size: 12px; color: var(--v3-warn); }
+
+/* ── 067 §B 목표 줄 — 이름 · 기간 · **진척 막대** · 업무 수 · 담당 ────
+   막대를 줄 안에 둔다. 따로 칸을 빼면 목록이 표가 되고, 표가 되면 한 줄에
+   들어가는 것이 늘어난다. */
+.v3-goal { text-decoration: none; color: inherit; }
+.v3-goal:hover .v3-row-t { text-decoration: underline; }
+.v3-goal-bar { display: flex; align-items: center; gap: 8px; flex: 0 0 180px; }
+.v3-goal-bar .v3-bar { flex: 1 1 auto; }
+.v3-goal-pct { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--v3-ink-2);
+  min-width: 34px; text-align: right; }
+@media (max-width: 720px) { .v3-goal-bar { flex: 0 0 96px; } }
+
+/* ── 067 §0-4 레일 세 묶음 ────────────────────────────────────────
+   묶음 제목은 **작은 글자**다. 항목과 같은 크기면 제목이 항목으로 읽힌다. */
+.v3-railg { display: flex; flex-direction: column; }
+.v3-railg + .v3-railg { margin-top: 14px; }
+.v3-railg-t { padding: 0 12px 4px; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  color: rgba(255, 255, 255, .45); }
+/* 자물쇠 항목 — **지우지 않고 남긴다.** 흐리게 두되 누를 수는 있다(막음 화면으로) */
+.v3-navlink.lock { color: rgba(255, 255, 255, .55); }
+.v3-navlink.lock:hover { color: rgba(255, 255, 255, .78); }
+
+/* 066 §B-8 — 자물쇠. **지우지 않고 남긴다** — 지우면 없어진 줄 알고,
+   그냥 두면 404 를 만난다. 작게, 글자 옆에 */
+.v3-lock { margin-left: 5px; font-size: 10px; opacity: .75; }
+
+/* 보기 방식 — 조건이 아니다. 거르개 줄과 갈라 둔다 */
+.v3-vbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: -6px 0 var(--v3-gap); }
 
 /* 걸린 조건 — **× 가 붙은 칩**으로 나열한다. 조건이 어디 숨어 있으면
    빈 목록이 고장으로 읽힌다. */

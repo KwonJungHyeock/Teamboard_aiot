@@ -119,17 +119,33 @@ try {
   for (const label of ["상위 업무", "차단"]) {
     await open();
     const row = rowOf(label);
-    const box = await row.locator(".prop-edit").boundingBox();
+    /*
+     * 065 — **절대 px 로 묶지 않는다.**
+     * 063 의 294px·279px 를 그대로 기준으로 뒀더니, 검사가 만드는 업무의 **번호
+     * 자릿수**가 달라지자(#35 → #2136) 값 링크 폭이 변해 2px 이 모자랐다.
+     * 데이터에 따라 움직이는 수를 합격선으로 쓰면 언젠가 흔들린다(§G 062 · 064 §D).
+     *
+     * 물어야 할 것은 「**값이 안 덮은 자리를 손잡이가 다 덮는가**」다.
+     * 그건 관계라서 데이터와 무관하다. 063 의 값은 참고로 같이 적는다.
+     */
+    const geo = await row.locator(".prop-v").evaluate((el) => {
+      const wrap = el.getBoundingClientRect();
+      const link = el.querySelector(".prop-link")?.getBoundingClientRect();
+      const edit = el.querySelector(".prop-edit")?.getBoundingClientRect();
+      return { wrap: wrap.width, link: link?.width ?? 0, edit: edit?.width ?? 0 };
+    });
     await row.locator(".prop-edit").click({ timeout: 5000 });
     await page.waitForTimeout(700);
-    edit[label] = { pops: await pops(), w: box ? Math.round(box.width) : 0, want: WIDTH_063[label] };
+    edit[label] = { pops: await pops(), w: Math.round(geo.edit),
+                    rest: Math.round(geo.wrap - geo.link), want: WIDTH_063[label] };
   }
   chk("②-편집-자리는-열린다",
       Object.values(edit).every((r) => r.pops === 1),
       Object.entries(edit).map(([k, v]) => `「${k}」 편집기 ${v.pops}개`).join(" · "));
-  chk("②짝-손잡이-폭이-그대로",
-      Object.values(edit).every((r) => r.w >= r.want - 1),
-      Object.entries(edit).map(([k, v]) => `「${k}」 ${v.w}px (063 측정 ${v.want}px)`).join(" · ") +
+  chk("②짝-값이-안-덮은-자리를-다-덮는다",
+      Object.values(edit).every((r) => r.w >= r.rest - 1),
+      Object.entries(edit).map(([k, v]) =>
+        `「${k}」 손잡이 ${v.w}px / 값이 안 덮은 폭 ${v.rest}px (063 측정 ${v.want}px)`).join(" · ") +
       ` — 좁아지면 고친 게 아니라 사람 손이 가던 자리를 옮긴 것이다`);
 
   /* ── ③ 자판 ─────────────────────────────────────────────── */

@@ -14,16 +14,32 @@
 // `payload.description` 으로 받는다(4000자에서 자른다). 이름만 다르므로
 // 칸은 그대로 짓고 **보내는 이름을 실재하는 것으로** 맞췄다.
 //
-// ── project 를 안 고른다 ────────────────────────────────────────
+// ── 셋이 들어왔다 (MD-P-2026-066 §E-2) ─────────────────────────
 //
-// 이번 등록 흐름에 프로젝트는 없다. `POST /api/tasks` 는 `projectId` 를
-// 요구하지 않는다(안 보내면 null). `area_id` 는 NOT NULL 인데 **카테고리가
-// 그걸 채운다** — 그래서 카테고리가 필수다.
+// **프로젝트 · 목표 · 우선순위.** 045 에서는 없었다(「이번 등록 흐름에
+// 프로젝트는 없다」). 065 §E 의 재고 조사가 옛 모달의 「고급」 여섯 줄 중 이 셋이
+// v3 에 없다고 셌고, 066 §E-40 이 셋을 넣으라고 했다.
+//
+// **필수는 여전히 둘이다**(§E-41) — 제목과 영역. 셋은 전부 선택이다.
+// 「넣을 수 있게 하는 것이지 넣어야 하게 만드는 게 아니다.」
+//
+// 공개 범위·특이사항은 **안 넣는다**(§E-40). `area_id` 는 NOT NULL 인데
+// 카테고리가 그걸 채운다 — 그래서 카테고리가 필수다.
+//
+// ── 영역·프로젝트 규칙은 **상세와 같은 파일에서** 온다 (§E-45) ───
+//
+// `lib/area-project.ts`. 두 화면이 각자 판단하면 언젠가 갈리고, 갈리는 쪽이
+// DB 트리거까지 내려가면 사람이 받는 것은 영문 예외가 실린 500 이다.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, InputChip, Button } from "./parts";
 import type { AreaView } from "@/lib/v3/category";
 import { taskHref } from "@/lib/v3/routes";
+import { PRIORITY_CHOICES } from "@/lib/v3/detail";
+import {
+  projectsForArea, clearsProject, PROJECT_CLEARED, PICK_AREA_FIRST,
+  type ProjectPick,
+} from "@/lib/area-project";
 
 interface Person { id: number; name: string }
 
@@ -49,11 +65,45 @@ export default function NewTaskView({
    */
   const [assigneeId, setAssigneeId] = useState<string>(String(me.id));
   const [dueDate, setDueDate] = useState("");
+  /* ── 066 §E-40 의 셋. 전부 **선택**이다 ─────────────────────────── */
+  const [projectId, setProjectId] = useState<number | null>(null);
+  const [goalIds, setGoalIds] = useState<number[]>([]);
+  /** 기본은 「보통」 — API 의 기본값과 같은 값이다(안 보내면 `mid`). */
+  const [priority, setPriority] = useState<string>("mid");
+  const [projects, setProjects] = useState<ProjectPick[]>([]);
+  const [goals, setGoals] = useState<{ id: number; title: string }[]>([]);
+  /** 영역을 바꿔서 프로젝트를 비웠다는 한 줄 (§E-43). 조용히 비우지 않는다. */
+  const [cleared, setCleared] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const titleRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { titleRef.current?.focus(); }, []);
+
+  /* 고를 재료 — `/api/meta/selectors` 하나. **새 API 는 없다.** */
+  useEffect(() => {
+    void (async () => {
+      const r = await fetch("/api/meta/selectors").catch(() => null);
+      if (!r || !r.ok) return;
+      const d = await r.json().catch(() => ({}));
+      setProjects((d.projects ?? []).map((x: { id: number; name: string; areaId?: number; area_id?: number; type?: string }) => ({
+        id: x.id, name: x.name, areaId: (x.areaId ?? x.area_id) as number, type: x.type })));
+      const gs = [...(d.linkGoals ?? []), ...(d.monthGoals ?? [])] as { id: number; title: string }[];
+      const seen = new Set<number>();
+      setGoals(gs.filter((g) => (seen.has(g.id) ? false : (seen.add(g.id), true)))
+                 .map((g) => ({ id: g.id, title: g.title })));
+    })();
+  }, []);
+
+  /**
+   * 영역을 고른다. **프로젝트가 안 맞으면 비우고 한 줄 적는다** (§E-43).
+   * 규칙은 `lib/area-project.ts` — 상세와 같은 파일이다(§E-45).
+   */
+  const pickArea = (next: number) => {
+    if (clearsProject(projects, next, projectId)) { setProjectId(null); setCleared(PROJECT_CLEARED); }
+    else setCleared("");
+    setAreaId(next);
+  };
 
   const toggle = (k: string) =>
     setOpen((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n; });
@@ -78,6 +128,11 @@ export default function NewTaskView({
         description: note,
         assigneeId: Number(assigneeId),
         dueDate: dueDate === "" ? undefined : dueDate,
+        // 066 §E-40 — 안 고른 것은 **안 보낸다.** null 을 보내면 「비우기」가 되고,
+        // 그건 「안 골랐다」와 다른 말이다.
+        projectId: projectId ?? undefined,
+        priority,
+        goalIds: goalIds.length > 0 ? goalIds : undefined,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -90,7 +145,7 @@ export default function NewTaskView({
     if (!data.id) { setErr("저장은 됐는데 업무 번호를 못 받았습니다. 「업무」에서 확인해 주세요."); return; }
     // 목적지는 한 곳에서 낸다(§G). C-4 가 생기면 `taskHref` 한 줄만 바뀐다.
     router.push(taskHref(data.id));
-  }, [ready, busy, title, areaId, note, assigneeId, dueDate, router]);
+  }, [ready, busy, title, areaId, note, assigneeId, dueDate, projectId, priority, goalIds, router]);
 
   // ⌘Enter / Ctrl+Enter 로 저장.
   const onKey = (e: React.KeyboardEvent) => {
@@ -123,7 +178,7 @@ export default function NewTaskView({
               type="button"
               className={`v3-catbtn ${a.tone}${areaId === a.id ? " on" : ""}`}
               aria-pressed={areaId === a.id}
-              onClick={() => setAreaId(a.id)}
+              onClick={() => pickArea(a.id)}
             >
               {a.name}
             </button>
@@ -171,6 +226,85 @@ export default function NewTaskView({
             <label htmlFor="v3-due">기한</label>
             <input id="v3-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             {dueDate && <button type="button" className="v3-clear" onClick={() => setDueDate("")}>지우기</button>}
+          </div>
+        )}
+
+        {/*
+          ── 066 §E-40 의 셋 — 프로젝트 · 목표 · 우선순위 ────────────────
+          접힌 점선 칩이다. **안 열면 안 보내진다** — 필수는 여전히 제목과 영역
+          둘뿐이고(§E-41), 이 셋은 「넣을 수 있게」 하는 자리다.
+        */}
+        <div className="v3-chips">
+          <InputChip filled={projectId !== null} open={open.has("project")}
+                     onClick={() => toggle("project")}>
+            {projectId === null ? "＋ 프로젝트"
+              : `프로젝트 · ${projects.find((p) => p.id === projectId)?.name ?? `#${projectId}`}`}
+          </InputChip>
+          <InputChip filled={goalIds.length > 0} open={open.has("goal")}
+                     onClick={() => toggle("goal")}>
+            {goalIds.length === 0 ? "＋ 목표" : `목표 · ${goalIds.length}개`}
+          </InputChip>
+          <InputChip filled open={open.has("prio")} onClick={() => toggle("prio")}>
+            {`우선순위 · ${PRIORITY_CHOICES.find((c) => c.value === priority)?.label ?? priority}`}
+          </InputChip>
+        </div>
+
+        {open.has("project") && (
+          <div className="v3-newrow">
+            <label htmlFor="v3-pj">프로젝트</label>
+            {(() => {
+              const pick = projectsForArea(projects, areaId);
+              if (areaId === null) return <span className="v3-newwhy">{PICK_AREA_FIRST}</span>;
+              if (pick.length === 0) return <span className="v3-newwhy">이 영역에는 프로젝트가 없습니다.</span>;
+              return (
+                <>
+                  <select id="v3-pj" value={projectId ?? ""}
+                          onChange={(e) => setProjectId(e.target.value === "" ? null : Number(e.target.value))}>
+                    <option value="">— 없음</option>
+                    {pick.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                  {/* §E-42 — 고를 수 있게 내놓고 저장에서 막지 않는다.
+                      안 맞는 프로젝트는 **애초에 목록에 없다.** */}
+                  <span className="v3-newwhy">고른 영역의 프로젝트만 나옵니다</span>
+                </>
+              );
+            })()}
+          </div>
+        )}
+        {/* 영역을 바꿔서 비웠으면 **여기 적혀 있다**(§E-43). 조용히 비우지 않는다 */}
+        {cleared && <p className="v3-why v3-newwhy-l">{cleared}</p>}
+
+        {open.has("goal") && (
+          <div className="v3-newrow">
+            <label>목표</label>
+            {goals.length === 0 ? <span className="v3-newwhy">연결할 분기·월 목표가 없습니다.</span> : (
+              <div className="v3-chips">
+                {goals.map((g) => {
+                  const on = goalIds.includes(g.id);
+                  return (
+                    <InputChip key={g.id} filled={on}
+                               onClick={() => setGoalIds(on ? goalIds.filter((x) => x !== g.id) : [...goalIds, g.id])}>
+                      {on ? `✓ ${g.title}` : g.title}
+                    </InputChip>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {open.has("prio") && (
+          <div className="v3-newrow">
+            <label>우선순위</label>
+            <div className="v3-chips">
+              {PRIORITY_CHOICES.map((c) => (
+                <InputChip key={c.value} filled={priority === c.value}
+                           onClick={() => setPriority(c.value)}>
+                  {c.label}
+                </InputChip>
+              ))}
+            </div>
+            <span className="v3-newwhy">안 고르면 「보통」으로 저장됩니다</span>
           </div>
         )}
 

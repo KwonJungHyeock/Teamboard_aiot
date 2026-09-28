@@ -17,6 +17,10 @@ import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
+import { testUser } from "./test-user.mjs";
+
+/* 065 §B-9 — 검사가 쓰는 신분은 손으로 안 적는다. DB 에서 읽는다. */
+const TEST_ME = await testUser();
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const ALLOW_PATH = process.env.ALLOW ?? "docs/design/density-allow.json";
@@ -53,7 +57,7 @@ const browser = await chromium.launch({
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 } });
 await ctx.addCookies([{
   name: "tb_session",
-  value: tok({ id: 1, actorId: 1, name: "권정혁", role: "lead", email: "l@l" }),
+  value: tok(TEST_ME),
   domain: new URL(BASE).hostname, path: "/",
 }]);
 const page = await ctx.newPage();
@@ -282,10 +286,14 @@ try {
     console.log(`\n── 자리가 없어진 허용 항목 (지울 것) ──`);
     for (const a of gone) console.log(`  ${a.key}`);
   }
-  if (napping.length) {
-    console.log(`\n── 오늘 안 나온 허용 항목 (클래스는 소스에 있다 — 안 지운다) ──`);
-    for (const a of napping) console.log(`  ${a.key}`);
-  }
+  /*
+   * 065 §0 — **개수를 매 실행에 찍는다.** 064 §A-2 의 무시 목록과 같은 이유다:
+   * 안 보이게 빼면 그 통이 조용히 자라도 아무도 모른다. 0이어도 찍는다 —
+   * 「0건」이 보여야 「3건」이 늘었을 때 눈에 띈다.
+   */
+  console.log(`\n오늘 안 나온 허용 항목 ${napping.length}건` +
+              ` (클래스가 소스에 있어 안 지운다) · 자리가 없어진 것 ${gone.length}건`);
+  for (const a of napping) console.log(`  · ${a.key}`);
 
   process.exit(open.length || gone.length ? 1 : 0);
 } finally {

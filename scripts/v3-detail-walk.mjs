@@ -36,6 +36,12 @@
 //
 // ⑯의 조건은 **만들어서** 만든다 — 같은 날 기한 업무 넷을 넣는다.
 //
+// ── 068 §C-2 — 캘린더가 잠겨 있는 동안 ──────────────────────────
+// ⑭~⑱짝 여섯과 ⑪의 C-5 한 발(모두 일곱)은 **건너뛰고, 건너뛴 수를 매 판 찍는다**
+// (「캘린더 건너뜀 7개 — 캘린더는 가오픈 뒤(자물쇠)」). 잠겼는지는 뿌리가 막을 때
+// 쓰는 `isNine` 과 서버가 실제로 내려놓는 자리 **둘 다**로 본다 — 캘린더가 `NINE`
+// 에 들어가는 날 이 검사기는 손대지 않아도 다시 일곱을 잰다.
+//
 // ⚠ | head 로 파이프하지 말 것. SIGPIPE 로 finally 정리가 죽는다.
 import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
@@ -81,6 +87,7 @@ try {
   execFileSync(path.join(REPO, "node_modules", ".bin", "tsc"),
     [path.join(REPO, "lib", "open-due.ts"), path.join(REPO, "lib", "v3", "calendar.ts"),
      path.join(REPO, "lib", "v3", "routes.ts"), path.join(REPO, "lib", "v3", "detail.ts"),
+     path.join(REPO, "lib", "v3", "nine.ts"),
      "--outDir", TMP, "--rootDir", path.join(REPO, "lib"), "--module", "commonjs",
      "--moduleResolution", "node", "--target", "es2022", "--skipLibCheck", "--esModuleInterop"],
     { stdio: "inherit" });
@@ -89,6 +96,7 @@ try {
   const { taskHref, v3Destination } = req(path.join(TMP, "v3", "routes.js"));
   const { CELL_MAX, monthGrid, parseMonth, shiftMonth } = req(path.join(TMP, "v3", "calendar.js"));
   const { STATUS_CHOICES } = req(path.join(TMP, "v3", "detail.js"));
+  const { isNine } = req(path.join(TMP, "v3", "nine.js"));
 
   // ── 짝조건 — 규칙 자체가 뜻을 갖는지 값으로 먼저 본다 ────────────
   //   · `taskHref` 가 **새 상세**를 가리켜야 ⑪·⑫가 뜻을 갖는다
@@ -183,10 +191,47 @@ try {
       `area ${areas.length}개 · 가오픈 ${openAt} (제품에게 물었다) · 오늘(KST) ${today}` +
       ` · 몰아넣는 날 ${pileDay}`);
 
+  /*
+   * ── 캘린더 자물쇠 (068 §C-2) ─────────────────────────────────────
+   *
+   * 067 §0-2 에서 캘린더가 「가오픈 뒤」로 갔다. `/v3/calendar` 는 막음 화면으로
+   * 가고, 아래 §C 여섯과 C-5 한 발은 **잴 화면이 없다.** 그대로 두면 매번 빨강이다.
+   *
+   * 잠겼는지는 **뿌리가 막을 때 쓰는 그 함수**(`isNine`)에게 묻는다. 검사기에
+   * 「캘린더는 잠겼다」를 적어 두면 자물쇠가 풀려도 검사가 안 돌아온다 —
+   * 이 방식이면 `NINE` 에 캘린더 한 줄이 들어가는 날 **저절로** 다시 돈다.
+   *
+   * 규칙만 믿지 않는다 — 서버가 **실제로** 막음 화면에 내려놓는지 같이 본다.
+   * 둘이 다르면(규칙은 잠갔는데 화면이 열린다 · 규칙은 열었는데 막힌다)
+   * 건너뛰지 않고 빨강이다. 건너뛰는 것은 **둘 다 잠갔다고 할 때만**이다.
+   */
+  const CAL_PATH = "/v3/calendar";
+  const calRuleLocked = !isNine(CAL_PATH);
+  await page.goto(`${BASE}${CAL_PATH}`, { waitUntil: "networkidle" });
+  const calLanded = new URL(page.url());
+  const calServerLocked = calLanded.pathname === "/v3/not-yet";
+  chk("0-캘린더-자물쇠-규칙과-서버가-같다", calRuleLocked === calServerLocked,
+      `isNine("${CAL_PATH}")=${!calRuleLocked} · 서버 → ${calLanded.pathname}${calLanded.search}`);
+  const calLocked = calRuleLocked && calServerLocked;
+  /** 잠겨서 건너뛴 단언 수. **매 판 찍는다** — 조용히 빠지면 빠진 줄 모른다. */
+  let calSkipped = 0;
+  const CAL_REASON = "캘린더는 가오픈 뒤(자물쇠)";
+  const skipCal = (ids) => {
+    calSkipped += ids.length;
+    for (const id of ids) console.log(`SKIP ${id.padEnd(28)} ${CAL_REASON}`);
+  };
+
   // ══ §A 칩 두 종류 ═══════════════════════════════════════════════
-  await page.goto(`${BASE}/v3/tasks`, { waitUntil: "networkidle" });
+  /*
+   * 066 §C-1 에서 **거르개 줄이 바뀌었다.** 영역 칩 줄이 「영역 ▾」 안으로
+   * 들어가서, 이 화면의 `.v3-chip` 은 이제 「◉ 내 항목」 하나다.
+   *
+   * 재는 것은 그대로다 — **거르개 칩은 검정 채움**(046 §A: 입력 칩과 다른
+   * 물건이다). 그래서 눌린 거르개 칩을 하나 만들어 놓고 잰다: `?mine=1`.
+   */
+  await page.goto(`${BASE}/v3/tasks?mine=1`, { waitUntil: "networkidle" });
   await page.locator(".v3-chip").first().waitFor({ timeout: 8000 });
-  // ① 거르개는 검정 채움 그대로 — 「전체」가 눌려 있다.
+  // ① 거르개는 검정 채움 그대로 — 「내 항목」이 눌려 있다.
   const filterOn = page.locator('.v3-chip[aria-pressed="true"]').first();
   const filterBg = await bg(filterOn);
   chk("①-거르개-칩은-검정-채움", filterBg === "rgb(22, 32, 58)",
@@ -429,11 +474,13 @@ try {
     await page.goto(`${BASE}/v3/tasks`, { waitUntil: "networkidle" });
     await page.locator(".v3-row-t").filter({ hasText: "상세로 여는 업무" }).first().click();
   }));
-  // C-5 캘린더의 알약
-  hops.push(await arrived("C-5 캘린더", async () => {
-    await page.goto(`${BASE}/v3/calendar`, { waitUntil: "networkidle" });
-    await page.locator(".v3-pill").filter({ hasText: "상세로 여는 업무" }).first().click();
-  }));
+  // C-5 캘린더의 알약 — 잠겨 있으면 밟을 알약이 없다(068 §C-2)
+  if (!calLocked) {
+    hops.push(await arrived("C-5 캘린더", async () => {
+      await page.goto(`${BASE}/v3/calendar`, { waitUntil: "networkidle" });
+      await page.locator(".v3-pill").filter({ hasText: "상세로 여는 업무" }).first().click();
+    }));
+  }
   // C-1 오늘 — 기한을 오늘로 되돌려야 「오늘 할 일」에 선다. 조건을 먼저 만든다.
   await sql(`UPDATE task SET due_date = $2::date WHERE id = $1`, [subject, today]);
   hops.push(await arrived("C-1 오늘", async () => {
@@ -441,8 +488,12 @@ try {
     await page.locator(".v3-row-t").filter({ hasText: "상세로 여는 업무" }).first().click();
   }));
   // 061 §E-17(나) — 셋을 다 밟아야 한다. 하나라도 못 밟았으면 통과가 아니다.
-  chk("⑪-C1·C2·C5-가-새-상세로", hops.length === 3 && hops.every((h) => h.ok),
+  // 캘린더가 잠겼으면 **둘**이다 — C-5 는 이 단언에서 빼고 건너뜀으로 따로 센다.
+  const hopsWant = calLocked ? 2 : 3;
+  chk(calLocked ? "⑪-C1·C2-가-새-상세로" : "⑪-C1·C2·C5-가-새-상세로",
+      hops.length === hopsWant && hops.every((h) => h.ok),
       hops.map((h) => `${h.label} → ${h.where} ${h.ok ? "도착" : "**못 감**"}`).join(" · "));
+  if (calLocked) skipCal(["⑪-C5-캘린더에서-새-상세로"]);
 
   // ── ⑫ 옛 상세 주소가 그 업무의 새 상세로 ───────────────────────
   const legacy = await arrived("옛 주소", async () => {
@@ -462,88 +513,96 @@ try {
   await setSwitch(true);
 
   // ══ §C 캘린더 ══════════════════════════════════════════════════
-  await sql(`UPDATE task SET due_date = $2::date WHERE id = $1`, [subject, pileDay]);
-  await page.goto(`${BASE}/v3/calendar`, { waitUntil: "networkidle" });
-  await page.locator(".v3-cal-d").first().waitFor({ timeout: 9000 });
-  await page.locator(".v3-pill").first().waitFor({ timeout: 9000 });
+  // 잠겨 있으면 아래 여섯(⑭~⑱짝)은 잴 화면이 없다 — 건너뛰고 **센다**(068 §C-2).
+  // `isNine` 이 캘린더를 들이는 날 이 조건이 거짓이 되어 저절로 다시 돈다.
+  if (calLocked) {
+    skipCal(["⑭-기한-칸에-선다", "⑮-오늘-파란-동그라미-·-가오픈-글자", "⑯-한-칸-셋-넘으면-＋n",
+             "⑰-달-이동이-주소에", "⑱-네-숫자가-API-와-같다", "⑱짝-두-「기한-없음」이-맞춰진다"]);
+  } else {
+    await sql(`UPDATE task SET due_date = $2::date WHERE id = $1`, [subject, pileDay]);
+    await page.goto(`${BASE}/v3/calendar`, { waitUntil: "networkidle" });
+    await page.locator(".v3-cal-d").first().waitFor({ timeout: 9000 });
+    await page.locator(".v3-pill").first().waitFor({ timeout: 9000 });
 
-  /** 그 날짜의 칸. 앞뒤 달에서 딸려 온 같은 숫자와 안 헷갈리게 `.out` 을 뺀다. */
-  const cellOf = (date) =>
-    page.locator(`.v3-cal-d:not(.out)`).filter({ has: page.locator(".v3-cal-dn", { hasText: new RegExp(`^${Number(date.slice(8))}$`) }) }).first();
+    /** 그 날짜의 칸. 앞뒤 달에서 딸려 온 같은 숫자와 안 헷갈리게 `.out` 을 뺀다. */
+    const cellOf = (date) =>
+      page.locator(`.v3-cal-d:not(.out)`).filter({ has: page.locator(".v3-cal-dn", { hasText: new RegExp(`^${Number(date.slice(8))}$`) }) }).first();
 
-  const pileCell = cellOf(pileDay);
-  const pillTexts = await pileCell.locator(".v3-pill").allInnerTexts();
-  chk("⑭-기한-칸에-선다", pillTexts.some((t) => t.includes("상세로 여는 업무")),
-      `${pileDay} 칸의 알약 [${pillTexts.map((t) => t.slice(0, 12)).join(" · ")}]`);
+    const pileCell = cellOf(pileDay);
+    const pillTexts = await pileCell.locator(".v3-pill").allInnerTexts();
+    chk("⑭-기한-칸에-선다", pillTexts.some((t) => t.includes("상세로 여는 업무")),
+        `${pileDay} 칸의 알약 [${pillTexts.map((t) => t.slice(0, 12)).join(" · ")}]`);
 
-  // ⑮ 오늘 파란 동그라미 · 가오픈 글자
-  const todayCell = page.locator(".v3-cal-d.today").first();
-  const dnBg = await bg(todayCell.locator(".v3-cal-dn"));
-  const todayN = (await todayCell.locator(".v3-cal-dn").innerText()).trim();
-  // 가오픈일이 이 달이 아니면 그 달로 넘겨서 본다 — 없다고 넘어가지 않는다.
-  const openYm = kst(openAtMs).slice(0, 7);
-  const openDayN = Number(kst(openAtMs).slice(8));
-  await page.goto(`${BASE}/v3/calendar?m=${openYm}`, { waitUntil: "networkidle" });
-  await page.locator(".v3-cal-d").first().waitFor({ timeout: 9000 });
-  const openCell = page.locator(".v3-cal-d.open").first();
-  const openLabel = (await openCell.locator(".v3-cal-open").innerText().catch(() => "")).trim();
-  const openCellN = (await openCell.locator(".v3-cal-dn").innerText().catch(() => "")).trim();
-  chk("⑮-오늘-파란-동그라미-·-가오픈-글자",
-      dnBg === "rgb(47, 95, 232)" && todayN === String(Number(today.slice(8)))
-      && openLabel === "가오픈" && openCellN === String(openDayN),
-      `오늘 ${todayN}일 배경 ${dnBg} (= --v3-rail) · 가오픈 ${openYm}-${openCellN} "${openLabel}"`);
+    // ⑮ 오늘 파란 동그라미 · 가오픈 글자
+    const todayCell = page.locator(".v3-cal-d.today").first();
+    const dnBg = await bg(todayCell.locator(".v3-cal-dn"));
+    const todayN = (await todayCell.locator(".v3-cal-dn").innerText()).trim();
+    // 가오픈일이 이 달이 아니면 그 달로 넘겨서 본다 — 없다고 넘어가지 않는다.
+    const openYm = kst(openAtMs).slice(0, 7);
+    const openDayN = Number(kst(openAtMs).slice(8));
+    await page.goto(`${BASE}/v3/calendar?m=${openYm}`, { waitUntil: "networkidle" });
+    await page.locator(".v3-cal-d").first().waitFor({ timeout: 9000 });
+    const openCell = page.locator(".v3-cal-d.open").first();
+    const openLabel = (await openCell.locator(".v3-cal-open").innerText().catch(() => "")).trim();
+    const openCellN = (await openCell.locator(".v3-cal-dn").innerText().catch(() => "")).trim();
+    chk("⑮-오늘-파란-동그라미-·-가오픈-글자",
+        dnBg === "rgb(47, 95, 232)" && todayN === String(Number(today.slice(8)))
+        && openLabel === "가오픈" && openCellN === String(openDayN),
+        `오늘 ${todayN}일 배경 ${dnBg} (= --v3-rail) · 가오픈 ${openYm}-${openCellN} "${openLabel}"`);
 
-  // ⑯ ＋n 으로 접히고 눌러서 펼쳐진다
-  await page.goto(`${BASE}/v3/calendar`, { waitUntil: "networkidle" });
-  await page.locator(".v3-pill").first().waitFor({ timeout: 9000 });
-  const pile2 = cellOf(pileDay);
-  const before = await pile2.locator(".v3-pill:not(.more)").count();
-  const moreTxt = (await pile2.locator(".v3-pill.more").innerText().catch(() => "")).trim();
-  await pile2.locator(".v3-pill.more").click();
-  await page.waitForTimeout(300);
-  const after = await pile2.locator(".v3-pill:not(.more)").count();
-  chk("⑯-한-칸-셋-넘으면-＋n",
-      before === 3 && /^＋\d+$/.test(moreTxt) && after === before + Number(moreTxt.slice(1)),
-      `접힘 ${before}개 + "${moreTxt}" → 펼침 ${after}개 (그 날 기한 ${PILE + 1}건 넣었다)`);
+    // ⑯ ＋n 으로 접히고 눌러서 펼쳐진다
+    await page.goto(`${BASE}/v3/calendar`, { waitUntil: "networkidle" });
+    await page.locator(".v3-pill").first().waitFor({ timeout: 9000 });
+    const pile2 = cellOf(pileDay);
+    const before = await pile2.locator(".v3-pill:not(.more)").count();
+    const moreTxt = (await pile2.locator(".v3-pill.more").innerText().catch(() => "")).trim();
+    await pile2.locator(".v3-pill.more").click();
+    await page.waitForTimeout(300);
+    const after = await pile2.locator(".v3-pill:not(.more)").count();
+    chk("⑯-한-칸-셋-넘으면-＋n",
+        before === 3 && /^＋\d+$/.test(moreTxt) && after === before + Number(moreTxt.slice(1)),
+        `접힘 ${before}개 + "${moreTxt}" → 펼침 ${after}개 (그 날 기한 ${PILE + 1}건 넣었다)`);
 
-  // ⑰ 달 이동이 주소에
-  const thisYm = today.slice(0, 7);
-  await page.locator(".v3-calbar button").filter({ hasText: "다음달" }).click();
-  await page.waitForTimeout(500);
-  const nextUrl = new URL(page.url());
-  const shown = (await page.locator(".v3-calm").innerText()).trim();
-  chk("⑰-달-이동이-주소에", nextUrl.searchParams.get("m") !== null && nextUrl.searchParams.get("m") !== thisYm,
-      `?m=${nextUrl.searchParams.get("m")} · 화면 "${shown}" (이번 달 ${thisYm} 은 주소에 안 적는다)`);
+    // ⑰ 달 이동이 주소에
+    const thisYm = today.slice(0, 7);
+    await page.locator(".v3-calbar button").filter({ hasText: "다음달" }).click();
+    await page.waitForTimeout(500);
+    const nextUrl = new URL(page.url());
+    const shown = (await page.locator(".v3-calm").innerText()).trim();
+    chk("⑰-달-이동이-주소에", nextUrl.searchParams.get("m") !== null && nextUrl.searchParams.get("m") !== thisYm,
+        `?m=${nextUrl.searchParams.get("m")} · 화면 "${shown}" (이번 달 ${thisYm} 은 주소에 안 적는다)`);
 
-  // ⑱ 네 숫자가 API 와 같다
-  await page.goto(`${BASE}/v3/calendar`, { waitUntil: "networkidle" });
-  await page.locator(".v3-odstrip").waitFor({ timeout: 9000 });
-  const strip = await page.locator(".v3-odstrip .v3-stat-n").allInnerTexts();
-  const api = await page.evaluate(async () => (await (await fetch("/api/tasks/open-due")).json()).tally);
-  chk("⑱-네-숫자가-API-와-같다",
-      strip.map(Number).join(",") === [api.before, api.after, api.none, api.excludedDone].join(","),
-      `화면 [${strip.join(", ")}] · API [${api.before}, ${api.after}, ${api.none}, ${api.excludedDone}]`);
+    // ⑱ 네 숫자가 API 와 같다
+    await page.goto(`${BASE}/v3/calendar`, { waitUntil: "networkidle" });
+    await page.locator(".v3-odstrip").waitFor({ timeout: 9000 });
+    const strip = await page.locator(".v3-odstrip .v3-stat-n").allInnerTexts();
+    const api = await page.evaluate(async () => (await (await fetch("/api/tasks/open-due")).json()).tally);
+    chk("⑱-네-숫자가-API-와-같다",
+        strip.map(Number).join(",") === [api.before, api.after, api.none, api.excludedDone].join(","),
+        `화면 [${strip.join(", ")}] · API [${api.before}, ${api.after}, ${api.none}, ${api.excludedDone}]`);
 
-  /*
-   * ⑱ 짝 — **두 「기한 없음」이 화면에서 맞춰진다.**
-   *
-   * 위 네 숫자는 완료를 빼고 세고(`tallyOpenDue`), 달력이 그리는 재료
-   * (`/api/tasks`)에는 완료가 들어 있다. 그래서 처음 화면에 「기한 없는 3건」과
-   * 「기한 없음 2」가 나란히 떴다 — 둘 다 맞는데 읽는 사람은 고장으로 읽는다.
-   * 화면이 그 차이를 **스스로 말하는지**를 잰다. 값으로 확인한다.
-   */
-  const apiTasks = await page.evaluate(async () => (await (await fetch("/api/tasks")).json()).tasks);
-  const split = { total: 0, open: 0 };
-  for (const t of apiTasks) if (!t.dueDate) { split.total += 1; if (t.status !== "done") split.open += 1; }
-  const lede = (await page.locator(".v3-lede").first().innerText()).replace(/\s+/g, " ");
-  const reconciled = split.total === split.open
-    ? lede.includes(`${split.total}건`)
-    : lede.includes(`${split.total}건`) && lede.includes(`${split.open}건`);
-  chk("⑱짝-두-「기한-없음」이-맞춰진다",
-      reconciled && split.open === api.none,
-      `달력 재료 기한없음 ${split.total}건(안 끝난 것 ${split.open}건) · 네 숫자의 기한 없음 ${api.none}` +
-      ` · 안내줄 "${lede.slice(0, 90)}"`);
-  await shot(page, { path: `${OUT}/v3-calendar.png`, fullPage: true });
+    /*
+     * ⑱ 짝 — **두 「기한 없음」이 화면에서 맞춰진다.**
+     *
+     * 위 네 숫자는 완료를 빼고 세고(`tallyOpenDue`), 달력이 그리는 재료
+     * (`/api/tasks`)에는 완료가 들어 있다. 그래서 처음 화면에 「기한 없는 3건」과
+     * 「기한 없음 2」가 나란히 떴다 — 둘 다 맞는데 읽는 사람은 고장으로 읽는다.
+     * 화면이 그 차이를 **스스로 말하는지**를 잰다. 값으로 확인한다.
+     */
+    const apiTasks = await page.evaluate(async () => (await (await fetch("/api/tasks")).json()).tasks);
+    const split = { total: 0, open: 0 };
+    for (const t of apiTasks) if (!t.dueDate) { split.total += 1; if (t.status !== "done") split.open += 1; }
+    const lede = (await page.locator(".v3-lede").first().innerText()).replace(/\s+/g, " ");
+    const reconciled = split.total === split.open
+      ? lede.includes(`${split.total}건`)
+      : lede.includes(`${split.total}건`) && lede.includes(`${split.open}건`);
+    chk("⑱짝-두-「기한-없음」이-맞춰진다",
+        reconciled && split.open === api.none,
+        `달력 재료 기한없음 ${split.total}건(안 끝난 것 ${split.open}건) · 네 숫자의 기한 없음 ${api.none}` +
+        ` · 안내줄 "${lede.slice(0, 90)}"`);
+    await shot(page, { path: `${OUT}/v3-calendar.png`, fullPage: true });
+  }
+  console.log(`캘린더 건너뜀 ${calSkipped}개 — ${calSkipped ? CAL_REASON : "잠겨 있지 않다 · 전부 쟀다"}`);
 
   /*
    * ── ⑳ 버튼 안 버튼이 없다 (059 §B ⑥) ──────────────────────────
@@ -579,7 +638,7 @@ try {
       ` (이 검사기가 일부러 만든 400·403 ${rejected.length}건은 따로 셌다)`);
   await ctx.close();
 
-  console.log(`\n${pass}/${pass + fail} 통과`);
+  console.log(`\n${pass}/${pass + fail} 통과 · 건너뜀 ${calSkipped} (${calSkipped ? CAL_REASON : "없음"})`);
   process.exitCode = fail ? 1 : 0;
 } catch (e) {
   console.error("검사 중 예외:", String(e && e.stack ? e.stack : e));

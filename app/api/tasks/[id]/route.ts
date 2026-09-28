@@ -14,6 +14,7 @@ import { jsonError } from "@/lib/api";
 import { decisionsForTask } from "@/lib/decisions";
 import { notify } from "@/lib/notify";
 import { visibleTaskSql, isVisibility } from "@/lib/visibility";
+import { areaProjectError } from "@/lib/area-project-server";
 import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -178,6 +179,23 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         `${session.name}이(가) 공개 범위 변경 (${task.visibility === "private" ? "개인" : "팀 공개"} → ` +
         `${payload.visibility === "private" ? "개인" : "팀 공개"}) — "${task.title}"`
       );
+    }
+
+    /*
+     * ── 영역·프로젝트 조합 (066 §E-44) ──────────────────────────────
+     * 안 맞는 조합은 **400 이다.** 여기서 안 막으면 DB 트리거가 영문 예외를 던지고
+     * 그건 500 이 된다. 판단과 문구는 만들기(POST)와 **같은 함수**에서 온다.
+     *
+     * 상위를 붙이는 요청은 건너뛴다 — 그때는 영역·프로젝트를 **상위에서
+     * 물려받으므로**(§A2) 보낸 값이 무엇이든 조합이 어긋날 수 없다.
+     */
+    const settingParent = payload.parentTaskId !== undefined
+      && payload.parentTaskId !== null && payload.parentTaskId !== 0;
+    if (!settingParent) {
+      const nextAreaId = payload.areaId !== undefined && payload.areaId
+        ? Number(payload.areaId) : task.area_id;
+      const apErr = await areaProjectError(nextAreaId, nextProjectId);
+      if (apErr) return NextResponse.json({ error: apErr }, { status: 400 });
     }
 
     // ── §A4 승격·강등 ────────────────────────────────────────────────

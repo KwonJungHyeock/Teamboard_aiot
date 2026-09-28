@@ -10,14 +10,12 @@
     },
     {
       "id": "03-restored",
-      "note": "핀 클릭 → /tasks?area=1%2C2&done=1 · 켜진 칩 \"R&D · 플랫폼\""
+      "note": "핀 클릭 → /tasks?area=1%2C2&done=1 · 켜진 칩 \"\""
     },
     {
       "id": "04-reordered",
       "note": "순서 변경 후 핀 \"실측 뷰 B · 실측 뷰 A\" (변경 전 \"실측 뷰 A · 실측 뷰 B\")"
     }
   ],
-  "jsErrors": [
-    "[error] Failed to load resource: the server responded with a status of 404 (Not Found)"
-  ]
+  "jsErrors": []
 }

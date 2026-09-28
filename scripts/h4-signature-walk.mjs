@@ -15,8 +15,12 @@ import fs from "node:fs";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
+import { testUser } from "./test-user.mjs";
 
 requireLocalDb("h4-signature-walk.mjs");
+
+/* 065 §B-9 — 검사가 쓰는 신분은 손으로 안 적는다. DB 에서 읽는다. */
+const TEST_ME = await testUser();
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const OUT = process.env.OUT ?? "docs/shots/MD-P-2026-027/h4";
@@ -33,7 +37,7 @@ const ok = (id, n) => { rows.push({ id, pass: true, n }); console.log(`OK   ${id
 const bad = (id, n) => { rows.push({ id, pass: false, n }); console.log(`FAIL ${id.padEnd(26)} ${n}`); };
 const chk = (id, c, n) => (c ? ok(id, n) : bad(id, n));
 
-const COOKIE = (h) => ({ name: "tb_session", value: tok({ id:1, actorId:1, name:"권정혁", role:"lead", email:"l@l" }),
+const COOKIE = (h) => ({ name: "tb_session", value: tok(TEST_ME),
   domain: h, path: "/" });
 
 let browser;
@@ -52,7 +56,6 @@ let browser;
  * **몇 건을 지웠는지 찍는다** — 조용히 지우면 그것대로 안 보인다.
  */
 let logMark = null;
-let restore = null;   // 실측으로 바꾼 진척값을 되돌리기 위한 기록
 /* 060 §C — 이 검사기가 만든 조건. 끝나면 지운다(§G 034·054). */
 const MARK = "[060H4]";
 let seeded = null;
@@ -79,6 +82,9 @@ try {
   {
     // 시작에서도 쓸어낸다 — 지난 회차가 죽어 남겼을 수 있다(§G 054).
     await sql(`DELETE FROM goal_task WHERE task_id IN (SELECT id FROM task WHERE title LIKE $1)`, [`${MARK}%`]);
+    await sql(`DELETE FROM goal_task WHERE goal_id IN (SELECT id FROM goal WHERE title LIKE $1)`, [`${MARK}%`]);
+    await sql(`DELETE FROM goal_snapshot WHERE goal_id IN (SELECT id FROM goal WHERE title LIKE $1)`, [`${MARK}%`]);
+    await sql(`DELETE FROM goal WHERE title LIKE $1`, [`${MARK}%`]);
     await sql(`DELETE FROM task WHERE title LIKE $1`, [`${MARK}%`]);
 
     const today = (await sql(`SELECT (now() AT TIME ZONE 'Asia/Seoul')::date::text d`))[0].d;
@@ -108,20 +114,36 @@ try {
     }
 
     /*
-     * (d) 의 조건 — **월 목표**에 진행 중 업무를 건다.
-     * 처음엔 `ORDER BY id LIMIT 1` 로 아무 목표나 집었다가 연간 목표에 걸렸고,
-     * 화면이 「집계 없음」만 내서 검사가 아무것도 못 쟀다. 굴러가는 것을 보려면
-     * **그 업무로 집계가 실제로 바뀌는 자리**여야 한다.
+     * (d) 의 조건 — **검사기가 제 목표를 만들고 제 업무를 건다** (068 §D).
+     *
+     * 067 까지는 「이번 달을 덮는 월 목표 중 첫째」를 집어 거기에 걸었다. 그 목표는
+     * 데모 목표(#4)였고, 거기 걸린 데모 업무는 024 에서 전부 내려져 있었다. 그래서
+     * 목표가 **「집계 없음」에서 출발**했고, 진행률을 바꾸면 「집계 없음」→「60%」로
+     * **한 번에** 바뀌었다 — 상태 2가지, 빨강. 구를 출발값이 없었던 것이다.
+     * 게다가 이달이 지나면 이번 달을 덮는 월 목표가 아예 없어서 「검사 불가」가 된다.
+     *
+     * 이제 셋을 다 제가 만든다 — 목표 · 업무 · 연결. 그리고 **출발값을 제품이 만들게**
+     * 한다: 업무 진행률을 API 로 20 에 놓으면 제품이 목표를 다시 집계한다
+     * (`recomputeGoalsForTask`). 목표 캐시를 SQL 로 적지 않는다 — 그러면 제품이
+     * 낸 값이 아니라 검사기가 적은 값에서 구르게 된다.
+     *
+     * 상위는 두지 않는다(`parent_id` NULL). 데모 목표 아래에 두면 다시 집계가
+     * **데모 목표의 캐시까지 바꾼다** — 067 까지의 방식이 실제로 그랬다.
+     * 상위 없는 목표도 목표 화면에 뜬다(`GoalTree` 의 「상위 없는 목표」 줄).
+     *
+     * 065 에서 왜 초록이었는지는 **못 찾았다**(067 보고 그대로). 이제 이 검사가
+     * 데모 목표·데모 업무에 기대지 않으므로, 그 물음은 이 검사에서는 **더 생기지 않는다.**
      */
+    const mm = String(m).padStart(2, "0");
     const g = (await sql(
-      `SELECT id FROM goal WHERE is_active AND period_type = 'month'
-         AND $1::date BETWEEN period_start AND period_end ORDER BY id LIMIT 1`, [today]))[0];
-    if (g) await sql(`INSERT INTO goal_task (goal_id, task_id) VALUES ($1, $2)
-                      ON CONFLICT DO NOTHING`, [g.id, ids[0]]);
-    seeded = { ids, goalId: g?.id ?? null };
+      `INSERT INTO goal (period_type, period_start, period_end, title, scope, level, goal_parent_source)
+       VALUES ('month', $1::date, $2::date, $3, 'team', 'month', 'manual') RETURNING id`,
+      [`${y}-${mm}-01`, `${y}-${mm}-${String(mEnd).padStart(2, "0")}`, `${MARK} 구르는 목표`]))[0];
+    await sql(`INSERT INTO goal_task (goal_id, task_id) VALUES ($1, $2)`, [g.id, ids[0]]);
+    seeded = { ids, goalId: g.id };
     console.log(`   (조건) 이번 달에 걸치는 업무 ${ids.length}개 — 영역마다 하나씩(히어로는 영역당 막대 하나로` +
                 ` 말아 올린다) · 여섯까지만 stagger 라 일곱째가 있어야 「나머지는 즉시」가 뜻을 가진다` +
-                ` · 이번 달 월 목표 #${g?.id ?? "없음"} 에 업무 #${ids[0]} 연결`);
+                ` · 검사기가 만든 월 목표 #${g.id} 에 업무 #${ids[0]} 연결`);
   }
   browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
     args: ["--no-proxy-server", "--no-sandbox"] });
@@ -370,13 +392,26 @@ try {
     `데이터 재조회만 일어났을 때 % 상태 ${poll.length}가지 (1이어야 한다 — 남이 바꾼 값은 굴러가지 않는다)`);
 
   // (d) 사용자가 직접 바꿈 — **재생돼야 한다** (짝이 되는 존재 단언)
-  const target = (await sql(
-    `SELECT t.id, t.progress FROM task t JOIN goal_task gt ON gt.task_id = t.id
-     WHERE t.is_active AND t.status NOT IN ('done','dropped') ORDER BY t.id LIMIT 1`))[0];
+  /*
+   * 대상은 **검사기가 만든 업무**다(068 §D). 있는 데이터에서 「목표에 걸린 진행 중
+   * 업무」를 찾지 않는다 — 찾으면 남의 업무 진행률을 만지게 되고, 데모 데이터가
+   * 바뀌면 검사가 같이 바뀐다.
+   *
+   * 출발값 20 을 **API 로** 놓는다. 제품이 목표를 다시 집계해 「20%」에서 출발한다.
+   */
+  const startAt = 20;
+  const target = seeded?.goalId ? { id: seeded.ids[0], progress: startAt } : null;
   if (!target) {
-    bad("32g-직접변경", "목표에 연결된 진행 중 업무가 없어 검사 불가");
+    bad("32g-직접변경", "검사기가 목표를 못 만들었다 — 검사 불가");
   } else {
-    restore = target;
+    await p2.goto(`${BASE}/goals`, { waitUntil: "networkidle" });
+    const put = await p2.evaluate(async ([id, v]) => {
+      const r = await fetch(`/api/tasks/${id}`, { method: "PATCH",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ progress: v }) });
+      return r.status;
+    }, [target.id, startAt]);
+    const gStart = (await sql(`SELECT progress FROM goal WHERE id = $1`, [seeded.goalId]))[0]?.progress;
+    console.log(`   (조건) 업무 #${target.id} 진행률 ${startAt} 을 API 로 놓음(${put}) → 제품이 집계한 목표 #${seeded.goalId} = ${gStart}`);
     /** 진행률을 v 로 바꾼다. 패널이 닫혀 있으면 다시 연다 — 저장 후 재조회로 닫히는 일이 있다. */
     const setProg = async (v) => {
       for (let attempt = 0; attempt < 2; attempt++) {
@@ -399,15 +434,25 @@ try {
 
     await p2.goto(`${BASE}/goals?panel=task:${target.id}`, { waitUntil: "networkidle" });
     await p2.waitForTimeout(1800);
-    const before = await p2.locator(".gpv").first().innerText().catch(() => "?");
+    /** 검사기가 만든 목표의 % 글자 — 첫 `.gpv` 는 남의 목표일 수 있다. 제목에서 위로 올라가 찾는다. */
+    const ourGpv = () => p2.evaluate((title) => {
+      const hit = [...document.querySelectorAll("body *")].find((e) =>
+        e.children.length === 0 && (e.textContent ?? "").includes(title));
+      for (let n = hit; n; n = n.parentElement) {
+        const v = n.querySelector?.(".gpv");
+        if (v) return v.textContent.trim();
+      }
+      return "(못 찾음)";
+    }, `${MARK} 구르는 목표`);
+    const before = await ourGpv();
     const [seen] = await Promise.all([watch(p2, 9000), setProg(60)]);   // dev 서버의 목표 재조회가 느려 넉넉히 본다
     await shot(p2, { path: `${OUT}/H4-02연쇄-2중간.png` });
     await p2.waitForTimeout(900);
-    const afterTxt = await p2.locator(".gpv").first().innerText().catch(() => "?");
+    const afterTxt = await ourGpv();
     const dbNow = (await sql(`SELECT progress FROM task WHERE id=$1`, [target.id]))[0]?.progress;
     await shot(p2, { path: `${OUT}/H4-02연쇄-3끝.png` });
     chk("32g-직접변경", seen.length >= 3,
-      `사람이 진행률을 ${target.progress}→60 으로 바꿨을 때(DB 확인 ${dbNow}) 화면 % 상태 ${seen.length}가지 (3가지 이상이어야 굴러간 것) · "${before.replace(/\n+/g, " ")}" → "${afterTxt.replace(/\n+/g, " ")}"`);
+      `사람이 진행률을 ${target.progress}→60 으로 바꿨을 때(DB 확인 ${dbNow}) 화면 % 상태 ${seen.length}가지 (3가지 이상이어야 굴러간 것) · 검사기가 만든 목표 #${seeded.goalId} "${before.replace(/\n+/g, " ")}" → "${afterTxt.replace(/\n+/g, " ")}"`);
 
     /**
      * (e) 화면 밖 — 보이지 않는 곳에서는 재생하지 않는다.
@@ -545,16 +590,19 @@ try {
     const gone = await sql(`DELETE FROM activity_log WHERE id > $1 RETURNING id`, [logMark]);
     if (gone.length) console.log(`정리 — 이 회차가 남긴 활동 로그 ${gone.length}건 삭제`);
   }
-  // 실측으로 바꾼 진척값을 원래대로 되돌린다 — 자기가 건드린 것만.
-  if (restore) {
-    await sql(`UPDATE task SET progress = $1 WHERE id = $2`, [restore.progress, restore.id]);
-    console.log(`정리 — task #${restore.id} 진행률을 ${restore.progress}% 로 되돌림`);
-  }
+  // 진행률을 바꾸는 것은 **검사기가 만든 업무뿐**이다(068 §D) — 그 업무는 아래에서 통째로 지운다.
   if (seeded) {
     await sql(`DELETE FROM goal_task WHERE task_id = ANY($1::int[])`, [seeded.ids]);
     await sql(`DELETE FROM task WHERE id = ANY($1::int[])`, [seeded.ids]);
+    if (seeded.goalId) {
+      await sql(`DELETE FROM goal_task WHERE goal_id = $1`, [seeded.goalId]);
+      await sql(`DELETE FROM goal_snapshot WHERE goal_id = $1`, [seeded.goalId]);
+      await sql(`DELETE FROM goal WHERE id = $1`, [seeded.goalId]);
+    }
     const left = (await sql(`SELECT count(*)::int n FROM task WHERE title LIKE $1`, [`${MARK}%`]))[0].n;
-    console.log(`정리 — 조건으로 만든 업무 ${seeded.ids.length}건 삭제 · 잔여 ${left}건 (0이어야 한다)`);
+    const leftG = (await sql(`SELECT count(*)::int n FROM goal WHERE title LIKE $1`, [`${MARK}%`]))[0].n;
+    console.log(`정리 — 조건으로 만든 업무 ${seeded.ids.length}건 · 목표 ${seeded.goalId ? 1 : 0}건 삭제` +
+                ` · 잔여 업무 ${left}건 · 목표 ${leftG}건 (둘 다 0이어야 한다)`);
   }
   await browser?.close();
   await pool.end();

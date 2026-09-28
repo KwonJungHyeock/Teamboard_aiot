@@ -10,6 +10,7 @@ import EmptyState from "./EmptyState";
 import SectionEmpty from "./SectionEmpty";
 import Skeleton from "./Skeleton";
 import ErrorNote from "./ErrorNote";
+import { STATUS_META } from "@/lib/task-view";
 
 interface ListItem {
   id: number; title: string; status: string; area_id: number | null; area_name: string | null;
@@ -27,9 +28,10 @@ interface Detail {
 }
 interface SelTask { id: number; title: string; areaName?: string; status: string }
 
-const STATUS_LABEL: Record<string, string> = {
-  proposed: "제안", todo: "대기", doing: "진행", review: "리뷰", done: "완료", dropped: "중단",
-};
+/*
+ * 065 §A-2 — **제 사본을 지웠다.** 낱말은 `STATUS_META` 와 같았지만 사본이라
+ * 갈릴 수 있었다(064 §B 에서 `OpenDueView` 가 실제로 갈려 있었다).
+ */
 
 function relTime(iso: string): string {
   const t = new Date(iso).getTime();
@@ -249,7 +251,7 @@ export default function HandoverView({ user }: { user: SessionUser }) {
                           <label key={t.id} className="ho-task-pick">
                             <input type="checkbox" checked={draft.taskIds.includes(t.id)} onChange={() => toggleTask(t.id)} />
                             <span>{t.title}</span>
-                            <em>{STATUS_LABEL[t.status] ?? t.status}</em>
+                            <em>{STATUS_META[t.status]?.label ?? t.status}</em>
                           </label>
                         ))}
                       </div>
@@ -293,7 +295,7 @@ export default function HandoverView({ user }: { user: SessionUser }) {
                       <div className="ho-task-h">
                         <b>{t.title}</b>
                         <span className="ho-task-m">
-                          {STATUS_LABEL[t.status] ?? t.status}
+                          {STATUS_META[t.status]?.label ?? t.status}
                           {t.dueDate ? ` · 기한 ${t.dueDate}` : ""}
                           {t.projectName ? ` · ${t.projectName}` : ` · ${t.areaName}`}
                         </span>

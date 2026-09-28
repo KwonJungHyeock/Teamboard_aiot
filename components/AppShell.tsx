@@ -5,6 +5,7 @@ import { getLiveSession } from "@/lib/auth";
 import { headers } from "next/headers";
 import { getUiV3 } from "@/lib/v3/switch";
 import { v3Destination } from "@/lib/v3/routes";
+import { notYetForOld, notYetHref } from "@/lib/v3/not-yet";
 import { PATH_HEADER } from "@/middleware";
 import { hasLead } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
@@ -73,7 +74,17 @@ export default async function AppShell({
    * 그대로 뜬다. 없는 곳으로 보내는 것보다 옛 화면이 낫다.
    */
   if (uiV3) {
-    const to = v3Destination(headers().get(PATH_HEADER) ?? "");
+    const here = headers().get(PATH_HEADER) ?? "";
+    /*
+     * 066 §B-9 — **주소로 직접 들어와도 막는다.** 레일에서 빼는 것만으로는
+     * 안 막힌다. 목록은 `lib/v3/not-yet.ts` 한 곳에 있고, 067 에서 줄을 지우면
+     * 이 길도 함께 풀린다.
+     *
+     * 짝표(`v3Destination`)보다 **먼저** 본다 — 막힌 것이 먼저다.
+     */
+    const blocked = notYetForOld(here);
+    if (blocked) redirect(notYetHref(blocked.key));
+    const to = v3Destination(here);
     if (to) redirect(to);
   }
   return (

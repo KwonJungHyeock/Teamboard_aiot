@@ -61,11 +61,15 @@ try {
   mkdirSync(TMP, { recursive: true });
   execFileSync(path.join(REPO, "node_modules", ".bin", "tsc"),
     [path.join(REPO, "lib", "v3", "today.ts"), path.join(REPO, "lib", "countdown.ts"),
+     path.join(REPO, "lib", "v3", "nine.ts"), path.join(REPO, "lib", "v3", "routes.ts"),
      "--outDir", TMP, "--rootDir", path.join(REPO, "lib"), "--module", "commonjs", "--moduleResolution", "node",
      "--target", "es2022", "--skipLibCheck", "--esModuleInterop"], { stdio: "inherit" });
   const req = createRequire(path.join(TMP, "noop.cjs"));
   const { countToday, splitToday, daysLate, STALE_DAYS } = req(path.join(TMP, "v3", "today.js"));
   const { dDay } = req(path.join(TMP, "countdown.js"));
+  // 067 §0-4 — 레일 이름은 **제품에게 묻는다.** 손으로 적은 이름 목록은 레일이
+  // 세 묶음으로 바뀐 날 이 줄을 떨어뜨렸다(옛 이름 「오늘」·「업무」를 찾았다).
+  const { RAIL } = req(path.join(TMP, "v3", "nine.js"));
 
   const swRow = (await sql(`SELECT value FROM config WHERE key = $1`, [KEY]))[0];
   swBefore = swRow === undefined ? null : swRow.value;
@@ -140,9 +144,12 @@ try {
   const railNames = (await page.locator(".v3 .v3-rail .v3-navlink").allInnerTexts())
     .map((t) => t.trim());
   const h1 = (await page.locator(".v3-h1").innerText().catch(() => "")).trim();
-  chk("②-켜면-오늘에-도착한다",
+  // 이 사람에게 보여야 할 레일 이름 — 관리자라 등급으로 가리는 것이 없다.
+  const wantRail = RAIL.flatMap((g) => g.items.map((i) => i.label));
+  const railClean = railNames.map((t) => t.replace(/🔒/g, "").trim());
+  chk("②-켜면-대시보드에-도착한다",
       new URL(page.url()).pathname === "/v3"
-      && ["오늘", "업무", "새 업무", "캘린더"].every((w) => railNames.includes(w))
+      && wantRail.every((w) => railClean.includes(w))
       && /안녕하세요/.test(h1),
       `→ ${new URL(page.url()).pathname} (${res?.status()}) · 레일 [${railNames.join(" · ")}] · "${h1}"`);
 
@@ -157,14 +164,27 @@ try {
        FROM task t LEFT JOIN actor ac ON ac.id = t.assignee_id
       WHERE t.is_active = true AND t.status <> 'proposed'
         AND (t.visibility = 'team' OR t.created_by = $1)`, [me.id]);
-  const want = countToday(rows, today);
+  /*
+   * 066 §D-30 — 위 칸 셋이 **오늘 할 일 · 기한 지남 · 이번 주 마감**으로 바뀌었다
+   * (전에는 진행 중 · 이번 주 마감 · 기한 없음). 묻는 것은 그대로 — 화면의 숫자가
+   * **DB 에서 직접 센 값**과 같은가.
+   *   오늘 할 일   = 아래 카드와 같은 함수(`splitToday`)의 todo
+   *   기한 지남    = 안 끝난 것(todo·doing·review) 중 기한 < 오늘 — **여기서 직접 센다**
+   *   이번 주 마감 = 안 끝난 것 중 오늘 ≤ 기한 ≤ 이번 주 일요일(`countToday` 의 thisWeek)
+   */
+  const OPEN = new Set(["todo", "doing", "review"]);
+  const want = {
+    todo: splitToday(rows, today).todo.length,
+    late: rows.filter((r) => OPEN.has(r.status) && r.dueDate !== null && r.dueDate < today).length,
+    week: countToday(rows, today).thisWeek,
+  };
   const stat = page.locator(".v3-stat");
   const seen = [];
   for (let i = 0; i < await stat.count(); i++) {
     seen.push(Number((await stat.nth(i).locator(".v3-stat-n").innerText()).trim()));
   }
-  chk("③-숫자-셋이-직접-센-값", seen.join(",") === [want.doing, want.thisWeek, want.noDue].join(","),
-      `화면 [${seen}] · 직접 [${want.doing},${want.thisWeek},${want.noDue}]`);
+  chk("③-숫자-셋이-직접-센-값", seen.join(",") === [want.todo, want.late, want.week].join(","),
+      `화면 [${seen}] · 직접 [${want.todo},${want.late},${want.week}] (오늘 할 일 · 기한 지남 · 이번 주 마감)`);
 
   // ④ 오늘 할 일 — 오늘 마감 + 지남 7일 이내
   const lists = splitToday(rows, today);

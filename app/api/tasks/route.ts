@@ -10,6 +10,7 @@ import { logActivity } from "@/lib/activity";
 import { jsonError } from "@/lib/api";
 import { kstToday } from "@/lib/home";
 import { visibleTaskSql, isVisibility } from "@/lib/visibility";
+import { areaProjectError } from "@/lib/area-project-server";
 import { countableSql, doneSql, taskProgress } from "@/lib/progress";
 
 export const runtime = "nodejs";
@@ -34,6 +35,12 @@ export interface TaskListRow {
   areaId: number;
   areaName: string;
   workType: string;
+  /**
+   * 개인 업무의 주인 (066 §C-2). 쿼리가 이미 남의 개인 업무를 빼지만,
+   * 목록과 CSV 가 **같은 함수**로 한 번 더 묻을 수 있게 칸을 내보낸다.
+   * 이름(`createdByName`)만 있으면 동명이인에서 판정이 흔들린다.
+   */
+  createdById: number | null;
   startDate: string | null;
   dueDate: string | null;
   goalIds: number[];
@@ -170,6 +177,7 @@ export async function GET(request: Request) {
       goal_ids: number[] | null;
       progress: number;
       created_by_name: string | null;
+      created_by: number | null;
       blocked: boolean;
       blocked_reason: string | null;
       blocked_by: number | null;
@@ -190,7 +198,7 @@ export async function GET(request: Request) {
               t.start_date::text, t.due_date::text,
               array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
               t.progress,
-              c.display_name AS created_by_name,
+              c.display_name AS created_by_name, t.created_by,
               t.blocked, t.blocked_reason, t.blocked_by, t.visibility, t.resolution,
               t.parent_task_id, t.sort_order,
               (SELECT count(*)::int FROM task ck
@@ -284,6 +292,7 @@ export async function GET(request: Request) {
       blockedBy: r.blocked_by,
       visibility: r.visibility,
       createdByName: r.created_by_name,
+      createdById: r.created_by,
       parentTaskId: r.parent_task_id,
       sortOrder: r.sort_order,
       childCount: r.child_count,
@@ -385,6 +394,15 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    /*
+     * ── 영역·프로젝트 조합 (066 §E-44) ──────────────────────────────
+     * 안 맞는 조합은 **400 이다.** 여기서 안 막으면 DB 트리거가 막고, 그때
+     * 사람이 받는 것은 영문 예외가 실린 500 이다. 판단과 문구는 한 곳에서 온다
+     * (`lib/area-project.ts`) — 고치기(PATCH)도 같은 함수를 부른다.
+     */
+    const apErr = await areaProjectError(areaId, projectId);
+    if (apErr) return NextResponse.json({ error: apErr }, { status: 400 });
 
     const task = await queryOne<{ id: number }>(
       // goal_source 를 **명시**한다. 컬럼 기본값은 아직 'inherited' 이고(§A5 — 컬럼은 안 건드린다),

@@ -32,11 +32,13 @@ export default async function V3Tasks() {
     ),
   ]);
 
+  // `me` — 보는 사람의 actor id. 「내 항목」과 권한 거르기가 이 번호를 쓴다 (066 §C).
   // `useSearchParams` 는 Suspense 경계를 요구한다 — 거른 조건이 전부 주소에 담기므로.
   return (
     <Suspense fallback={<p className="v3-loading">불러오는 중…</p>}>
       <TasksView
         today={kstToday()}
+        me={live.user.id}
         areas={resolveAreas(areaRows)}
         people={people.map((p) => ({ id: p.id, name: p.display_name }))}
       />

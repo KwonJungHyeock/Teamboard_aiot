@@ -38,6 +38,7 @@ export default async function V3Today() {
   return (
     <TodayView
       name={live.user.name}
+      me={live.user.id}
       today={today}
       openAtMs={openAtMs}
       dday={dDay(openAtMs, Date.now())}

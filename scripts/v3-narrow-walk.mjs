@@ -97,11 +97,16 @@ try {
   const shell = readFileSync(path.join(REPO, "components/v3/Shell.tsx"), "utf-8");
   const railTags = (shell.match(/className=\{?`?v3-rail[^-]/g) ?? []).length
     + (shell.match(/className=\{`v3-rail\$/g) ?? []).length;
-  const navMaps = (shell.match(/NAV\.map\(/g) ?? []).length;
+  /*
+   * 067 §0-4 에서 레일이 **세 묶음**이 됐다. 항목은 `lib/v3/nine.ts` 의 `RAIL`
+   * 한 곳에서 오고, 셸은 그것을 **한 자리에서** 그린다(`RAIL.map`). 묻는 것은
+   * 그대로다 — 좁은 화면용 메뉴를 따로 만들지 않았는가.
+   */
+  const navMaps = (shell.match(/RAIL\.map\(/g) ?? []).length;
   chk("①-3-레일-마크업이-하나다",
-      (shell.match(/<nav /g) ?? []).length === 1 && navMaps === 2,
-      `<nav> ${(shell.match(/<nav /g) ?? []).length}개 · NAV.map 자리 ${navMaps}개` +
-      ` (NAV 와 LEAD_NAV 각각 한 번씩 — 좁은 화면용 메뉴를 따로 안 만들었다)`);
+      (shell.match(/<nav /g) ?? []).length === 1 && navMaps === 1,
+      `<nav> ${(shell.match(/<nav /g) ?? []).length}개 · RAIL.map 자리 ${navMaps}개` +
+      ` (세 묶음을 한 자리에서 그린다 — 좁은 화면용 메뉴를 따로 안 만들었다)`);
 
   // ══ 넓은 화면 지문을 **먼저** 뜬다 ══════════════════════════════
   //
@@ -194,13 +199,19 @@ try {
   // ── ①-8 화면을 옮기면 닫힌다 ─────────────────────────────────
   await ph.p.locator(".v3-burger").click();
   await ph.p.waitForTimeout(300);
-  await ph.p.locator(".v3-rail .v3-navlink", { hasText: "캘린더" }).click();
-  await ph.p.waitForURL(/\/v3\/calendar/, { timeout: 9000 });
+  /*
+   * 067 §0-4 — 캘린더는 이제 **자물쇠**다(막음 화면으로 간다). 재는 것은
+   * 「화면을 옮기면 서랍이 닫힌다」이지 캘린더가 아니므로, **열려 있는 항목**
+   * 하나로 옮긴다 — **팀**. (지금 서 있는 곳이 업무 목록이라, 그걸 누르면 주소가
+   * 안 바뀌어 「옮긴」 것이 아니다. 처음에 그렇게 골랐다가 빨개졌다.)
+   */
+  await ph.p.locator(".v3-rail .v3-navlink", { hasText: /^팀$/ }).click();
+  await ph.p.waitForURL(/\/v3\/team/, { timeout: 9000 });
   await ph.p.waitForTimeout(400);
   const moved = await railState();
   chk("①-8-화면을-옮기면-닫힌다",
       !moved.shown && moved.scrim === 0 && moved.bodyOverflow === shut.bodyOverflow,
-      `캘린더로 간 뒤 — 레일 보임 ${moved.shown} · 덮개 ${moved.scrim}개 ·` +
+      `팀으로 간 뒤 — 레일 보임 ${moved.shown} · 덮개 ${moved.scrim}개 ·` +
       ` body overflow-y ${moved.bodyOverflow} (열린 채 덮여 있으면 아무것도 안 눌린다)`);
 
   await shot(ph.p, { path: `${OUT}/1-390-닫힘.png` });

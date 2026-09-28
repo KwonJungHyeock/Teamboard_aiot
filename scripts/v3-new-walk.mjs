@@ -104,12 +104,24 @@ try {
         && areas.every((a) => catNames.includes(a.name)),
       `칸 ${nCat}개 · area ${areas.length}개 [${catNames.join(" · ")}]`);
 
-  // ── ⑦ project 고르는 칸이 없다 ─────────────────────────────────
+  /*
+   * ── ⑦ 셋이 있다 — 프로젝트 · 목표 · 우선순위 (066 §E-40) ────────
+   *
+   * **이 줄은 뒤집혔다.** 045 에서는 「project 칸이 **없다**」를 확인했다
+   * (그때 지시서가 「이번 등록 흐름에 프로젝트는 없다」였다). 065 §E 의 재고
+   * 조사가 옛 모달의 「고급」 여섯 줄 중 셋이 v3 에 없다고 셌고,
+   * **066 §E-40 이 셋을 넣으라고 했다.** 지시서가 정본이다.
+   *
+   * 필수는 여전히 둘이다(§E-41) — 그건 아래 ② 가 본다.
+   */
   const body = await page.locator(".v3-card").innerText();
-  const projSel = await page.locator("select, input").evaluateAll((els) =>
-    els.filter((e) => /project|프로젝트/i.test(e.id + e.className + (e.getAttribute("aria-label") ?? ""))).length);
-  chk("⑦-project-칸이-없다", !body.includes("프로젝트") && projSel === 0,
-      `화면 글에 「프로젝트」 없음 · 관련 입력 ${projSel}개`);
+  const three = ["프로젝트", "목표", "우선순위"].filter((k) => body.includes(k));
+  chk("⑦-셋이-있다-(프로젝트·목표·우선순위)", three.length === 3,
+      `화면 글에 [${three.join(" · ")}] (셋이라야 한다)`);
+  // 안 넣기로 한 둘은 **없어야 한다**(§E-40) — 공개 범위 · 특이사항.
+  const notYet = ["공개 범위", "특이사항"].filter((k) => body.includes(k));
+  chk("⑦짝-안-넣은-둘은-없다", notYet.length === 0,
+      `공개 범위 · 특이사항 — ${notYet.length === 0 ? "없다" : `**있다: ${notYet.join(",")}**`}`);
 
   // ── ② 카테고리 안 고르면 저장 못 한다 · 이유가 보인다 ───────────
   await page.locator(".v3-title-in").fill(`${MARK} 제목만`);

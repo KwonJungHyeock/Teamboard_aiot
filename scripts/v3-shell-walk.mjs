@@ -207,14 +207,23 @@ try {
       badges.map((t) => t.trim()).join("|") === want.join("|"),
       `화면 [${badges.map((t) => t.trim()).join(" · ")}] · lib/types 가 내는 것 [${want.join(" · ")}]`);
 
-  // ── ⑦ 설정 링크의 조건 = 그 화면의 조건 (§G 038) ───────────────
-  const leadNow = hasLead(me.role);
-  const settingsLink = await page.locator('.v3-acct-l[href="/settings"]').count();
+  /*
+   * ── ⑦ 설정 링크 — **등급과 상관없이 자물쇠다** ─────────────────
+   *
+   * 051 에서는 「설정 링크의 조건 = 그 화면의 조건(hasLead)」을 쟀다.
+   * 066 §B-11 이 설정을 **가오픈 뒤로** 미뤘고 067 §0-5 가 그 판단을 승인했다 —
+   * 지금 막는 이유는 등급이 아니라 **아직 안 만든 것**이다. 그래서 묻는 것이
+   * 바뀐다: 팀장이든 팀원이든 **막음 화면으로 가는 자물쇠 링크 하나**인가.
+   * 등급으로 가르는 흐린 칸(`.off`)은 **없어야** 한다 — 남아 있으면 등급
+   * 때문에 막힌 것으로 읽힌다(053 §B-31).
+   */
+  const settingsLock = await page.locator('.v3-acct-l[href="/v3/not-yet?k=settings"] .v3-lock').count();
+  const settingsOld = await page.locator('.v3-acct-l[href="/settings"]').count();
   const settingsOff = await page.locator(".v3-acct-l.off").count();
-  chk("⑦-설정-링크가-화면과-같은-조건",
-      leadNow ? (settingsLink === 1 && settingsOff === 0) : (settingsLink === 0 && settingsOff === 1),
-      `hasLead(${me.role}) = ${leadNow} · 눌리는 설정 ${settingsLink}개 · 흐린 설정 ${settingsOff}개` +
-      ` — app/settings/page.tsx 도 hasLead 로 막는다`);
+  chk("⑦-설정은-누구에게나-자물쇠",
+      settingsLock === 1 && settingsOld === 0 && settingsOff === 0,
+      `자물쇠 설정 ${settingsLock}개 · 옛 /settings 링크 ${settingsOld}개 · 등급으로 흐린 칸 ${settingsOff}개` +
+      ` (hasLead(${me.role}) = ${hasLead(me.role)} 와 상관없다)`);
 
   // ── ⑧⑨ 가오픈 카드 ────────────────────────────────────────────
   await page.goto(`${BASE}/v3`, { waitUntil: "networkidle" });
