@@ -44,12 +44,28 @@ const BASE = "http://127.0.0.1:3000";
 const PROBE = process.argv.includes("--probe");
 
 /**
- * 몇 개마다 새로 띄우나 — **068 §B-4 에서 재서 정했다.** 짐작한 값이 아니다.
- * 근거는 `docs/068-전량실행기.md` 의 재는 판 표다.
+ * 몇 개마다 새로 띄우나 — **16. 재서 정했다**(072 §D-14). 짐작한 값이 아니다.
+ *
+ * 071 재는 판(서버 하나로 72개): `/login` 이 1~16번째 동안 중앙 66~69ms(최대 113ms)였고
+ * **17번째 묶음부터 중앙 145ms 로 두 배**가 됐다. 같은 자리에서 서버 메모리가 2.3GB 를
+ * 넘었다. 느려지기 **시작하는 자리 바로 앞**에서 끊는다. 근거 표는 `docs/068-전량실행기.md`.
  */
-const EVERY = Number(process.env.SUITE_EVERY ?? 0) || null;   // 재기 전에는 비워 둔다
-/** `/login` 이 이보다 느리면 그 판은 「못 쟀다」. 근거는 같은 문서. */
-const SLOW_MS = Number(process.env.SUITE_LOGIN_MS ?? 1500);
+const EVERY = Number(process.env.SUITE_EVERY ?? 16) || null;
+/**
+ * `/login` 이 이보다 느리면 그 판은 「못 쟀다」 — **250ms.** 빠른 구간(1~16번째)의
+ * 최대 113ms 의 두 배 남짓이다. 16개마다 새로 띄우면 여기까지 올라갈 일이 없어야 하고,
+ * 올라갔다면 그 서버는 이미 다른 상태다. 067 의 5초는 이보다 스무 배 위였다.
+ */
+const SLOW_MS = Number(process.env.SUITE_LOGIN_MS ?? 250);
+/**
+ * 검사기 하나의 시한 (071 §D-24) — **600초.** 넘으면 「못 쟀다(시간 초과)」 — 빨강이 아니다.
+ * 끝까지 못 간 검사는 「안 된다」를 말한 것이 아니다.
+ *
+ * 071 재는 판에서 가장 긴 둘이 `v3-switch-walk` 490초 · `area-project-walk` 467초였다
+ * (둘 다 느려진 서버 위에서 잰 값이다). 가장 긴 것에 두 할쯤 얹어 600초. 임시값 900초는
+ * 사실상 시한이 없는 것과 같았다(072 §D-15).
+ */
+const LIMIT_MS = Number(process.env.SUITE_LIMIT_MS ?? 0) || 600_000;
 const ONLY = (process.env.SUITE_ONLY ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 const OUT = process.env.SUITE_OUT ?? path.join(os.tmpdir(), "teamboard-suite");
 fs.mkdirSync(OUT, { recursive: true });
@@ -230,12 +246,13 @@ function runOne(file) {
     const t0 = Date.now();
     let out = "";
     const child = spawn(process.execPath, [path.join("scripts", file)], { cwd: REPO, env });
-    const kill = setTimeout(() => child.kill("SIGKILL"), 700_000);
+    let timedOut = false;
+    const kill = setTimeout(() => { timedOut = true; child.kill("SIGKILL"); }, LIMIT_MS);
     child.stdout.on("data", (d) => { out += d; });
     child.stderr.on("data", (d) => { out += d; });
     child.on("close", (code) => {
       clearTimeout(kill);
-      resolve({ code: code ?? 124, out, secs: Math.round((Date.now() - t0) / 1000) });
+      resolve({ code: code ?? 124, out, timedOut, secs: Math.round((Date.now() - t0) / 1000) });
     });
   });
 }
@@ -247,7 +264,22 @@ const t0 = Date.now();
 let sinceStart = 0;
 restarts.push({ at: 0, ...(await startServer("0")) });
 
+/*
+ * **멈추라고 하면 도는 검사기가 끝난 뒤에 멈춘다.** 069 에서 실행기를 바로 죽였더니
+ * 도는 검사기(h4)의 출력 관이 끊겨 정리 전에 죽었고, 로컬 DB 에 업무 7 · 목표 1 이
+ * 남았다. 검사기는 끝까지 돌게 두고, 다음 것을 안 띄운다.
+ */
+let stopping = false;
+for (const sig of ["SIGTERM", "SIGINT"]) {
+  process.on(sig, () => {
+    if (stopping) return;
+    stopping = true;
+    console.log(`\n멈춤 요청(${sig}) — 지금 도는 검사기가 끝나면 멈춘다`);
+  });
+}
+
 for (let i = 0; i < checkers.length; i++) {
+  if (stopping) break;
   const file = checkers[i];
   const name = file.replace(/\.mjs$/, "");
   if (!PROBE && EVERY && sinceStart >= EVERY) {
@@ -264,15 +296,27 @@ for (let i = 0; i < checkers.length; i++) {
    * 초록은 느린 서버에서도 초록이다(단언이 다 통과했다). 거짓 빨강만 가른다.
    */
   const sick = Math.max(before, after) > SLOW_MS;
-  const verdict = !red ? "초록" : sick ? "못 쟀다" : "빨강";
-  const row = { i: i + 1, name, verdict, code: r.code, fails, secs: r.secs,
+  /*
+   * 「못 쟀다」는 둘이다 — **시간 초과**(071 §D-24)와 **느려짐**(068 §B-6).
+   * 시간 초과는 초록일 수가 없다: 끝나지 않았으니 단언을 다 돌지 못했다.
+   */
+  const verdict = r.timedOut ? "못 쟀다" : !red ? "초록" : sick ? "못 쟀다" : "빨강";
+  const reason = r.timedOut ? `시간 초과(${Math.round(LIMIT_MS / 1000)}초)` : verdict === "못 쟀다" ? "느려짐" : null;
+  /*
+   * **검사기 출력을 남긴다** (071 §D-26). 070 에서는 안 남겨서 `v3-detail-walk` 의
+   * 「캘린더 건너뜀 7개」가 실제로 찍혔는지 못 봤다 — 안 보이는 건너뛰기는 조용한
+   * 건너뛰기이고, 그게 068 §C-2 가 막으려던 것이다.
+   */
+  fs.mkdirSync(path.join(OUT, "logs"), { recursive: true });
+  fs.writeFileSync(path.join(OUT, "logs", `${name}.txt`), r.out);
+  const row = { i: i + 1, name, verdict, reason, code: r.code, fails, secs: r.secs,
                 beforeMs: before, afterMs: after, rss: rssMb(),
                 first: (r.out.match(/^\s*FAIL.*$/m)?.[0] ?? (r.code ? (r.out.match(/(예외|넘어졌다|Error)[^\n]*/)?.[0] ?? "") : "")).slice(0, 180) };
   rows.push(row);
   sinceStart += 1;
   console.log(`${String(row.i).padStart(2)} ${verdict.padEnd(4)} ${name.padEnd(28)} ${String(r.secs).padStart(4)}s` +
               `  login ${before === Infinity ? "∞" : before}→${after === Infinity ? "∞" : after}ms  rss ${row.rss ?? "?"}MB` +
-              `${red ? `  │ ${row.first}` : ""}`);
+              `${reason ? `  │ ${reason}` : ""}${red ? `  │ ${row.first}` : ""}`);
   // 못 쟀으면 **바로** 새로 띄운다. 느린 서버로 다음 것까지 재면 못 쟀다가 번진다.
   if (!PROBE && sick) { restarts.push({ at: i + 1, reason: "느려짐", ...(await startServer(`sick${i}`)) }); sinceStart = 0; }
 }
@@ -291,6 +335,7 @@ console.log(`\n합계 ${rows.length} · 초록 ${summary.green} · 빨강 ${summ
             ` · 새로 띄움 ${restarts.length}번(평균 ${Math.round(restarts.reduce((s, r) => s + r.up + r.warm, 0) / restarts.length / 1000)}초)` +
             ` · 전량 ${Math.floor(total / 60)}분 ${total % 60}초`);
 console.log(`빨강: ${rows.filter((r) => r.verdict === "빨강").map((r) => r.name).join(" · ") || "없음"}`);
-console.log(`못 쟀다: ${rows.filter((r) => r.verdict === "못 쟀다").map((r) => r.name).join(" · ") || "없음"}`);
+console.log(`못 쟀다: ${rows.filter((r) => r.verdict === "못 쟀다").map((r) => `${r.name}(${r.reason})`).join(" · ") || "없음"}`);
+console.log(`검사기 출력: ${path.join(OUT, "logs")}/<이름>.txt`);
 console.log(`은퇴(안 돌렸다): ${summary.retired.join(" · ") || "없음"}`);
 console.log(`결과 파일: ${path.join(OUT, `suite-${PROBE ? "probe" : "normal"}.json`)}`);

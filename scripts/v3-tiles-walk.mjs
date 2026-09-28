@@ -8,7 +8,11 @@
 //   §B-17 타일 넷과 영역 막대의 숫자가 **각각 목록과 같은 id 집합**이다. 건수로 비교하지 않는다.
 //         · 누르는 타일 셋 · 막대 줄 전부 — 눌러서 간 목록의 id 집합 = 제품 규칙(`lib/v3/dash.ts`)의 집합
 //         · 「이번 달 완료」 — 누르는 곳이 없으므로 **DB 에 따로 물은 집합**과 맞춘다
-//   §B-11 조건을 못 만드는 타일(이번 달 완료)은 **안 눌린다** — 링크가 아니다
+//   §B-11 → 072 §C  넷 다 **눌린다** — 「이번 달 완료」도 `?st=done&fin=month` 목록으로 간다
+//         · 그 목록 = 규칙 = **DB 에 따로 물은 집합** (셋이 같은 id 집합)
+//         · KST 달 경계 — 1일 00:30(KST) 에 마친 것은 **든다** · 지난달 말일 23:30(KST) 은 **안 든다**
+//         · 「걸린 조건」 줄에 「완료 · 이번 달」이 서고 × 로 풀린다 · 거르개 줄(▾)에는 고르는 자리가 없다
+//         · CSV 도 같은 id 집합
 //   §B-18 증감을 못 재는 타일 셋에는 증감이 **안 붙는다** · 이번 달 완료의 증감은 DB 로 센 값과 같다
 //   §B-19 0 인 영역의 줄이 **남아 있다** — 흐린 글자 · 빈 막대
 //   §B-10 기한 지남만 테두리 · 바탕 · 숫자가 지남 색, 나머지 셋은 무채색
@@ -88,6 +92,15 @@ try {
   await mk(`${MARK} 이번 달 완료 1`, "done", "now()");
   await mk(`${MARK} 이번 달 완료 2`, "done", "now()");
   await mk(`${MARK} 지난달 완료`, "done", `((date_trunc('month', now() AT TIME ZONE 'Asia/Seoul') - interval '1 month') AT TIME ZONE 'Asia/Seoul')`);
+  /*
+   * 072 §C — **KST 달 경계.** UTC 로 자르면 9시간이 어긋나는 자리다.
+   *   · 이 달 1일 00:30 KST = UTC 로는 **지난달** 말일 15:30 → 이 달로 **들어야** 한다
+   *   · 지난달 말일 23:30 KST = UTC 로도 지난달 → 이 달에 **안 들어야** 한다
+   */
+  const edgeIn = await mk(`${MARK} 경계 1일 00시반`, "done",
+    `((date_trunc('month', now() AT TIME ZONE 'Asia/Seoul') + interval '30 minutes') AT TIME ZONE 'Asia/Seoul')`);
+  const edgeOut = await mk(`${MARK} 경계 지난달 23시반`, "done",
+    `((date_trunc('month', now() AT TIME ZONE 'Asia/Seoul') - interval '30 minutes') AT TIME ZONE 'Asia/Seoul')`);
   const zeroArea = (await sql(
     `INSERT INTO area (name, sort_order, is_active) VALUES ($1, 999, true) RETURNING id`,
     [`${MARK} 빈 영역`]))[0].id;
@@ -143,27 +156,56 @@ try {
   for (let i = 0; i < rule.length; i += 1) {
     const r = rule[i], v = tileView[i];
     const want = new Set(r.ids);
-    if (r.href === null) {
-      // 누르는 곳이 없다 — DB 에 **따로** 물은 집합과 맞춘다(같은 규칙을 SQL 로 다시 적은 것)
+    await open();
+    await page.locator(".v3-stats .v3-stat").nth(i).click();
+    const got = await listIds();
+    let ok = same(want, got) && v.n === want.size && v.link;
+    let how = "목록";
+    if (r.key === "done") {
+      // 072 §C — 목록에 더해 **DB 에 따로 물은 집합**과도 맞춘다(같은 규칙을 SQL 로 다시 적은 것)
       const db = new Set((await sql(
         `SELECT id FROM task WHERE is_active AND status = 'done'
             AND (visibility = 'team' OR created_by = $1)
             AND to_char(completed_at AT TIME ZONE 'Asia/Seoul', 'YYYY-MM') = $2`, [me.id, today.slice(0, 7)])).map((x) => x.id));
-      res.push({ label: r.label, n: v.n, got: db, want, ok: same(want, db) && v.n === want.size && !v.link, how: "DB" });
-    } else {
-      await open();
-      await page.locator(".v3-stats .v3-stat").nth(i).click();
-      const got = await listIds();
-      res.push({ label: r.label, n: v.n, got, want, ok: same(want, got) && v.n === want.size && v.link, how: "목록" });
+      ok = ok && same(want, db);
+      how = `목록 ${fmt(got)} · DB`;
+      res.push({ label: r.label, n: v.n, got: db, want, ok, how });
+      continue;
     }
+    res.push({ label: r.label, n: v.n, got, want, ok, how });
   }
   chk("B-17-타일-넷-id-집합", res.every((x) => x.ok),
       res.map((x) => `${x.label}: 숫자 ${x.n} · 규칙 ${fmt(x.want)} · ${x.how} ${fmt(x.got)} ${x.ok ? "같다" : "**다르다**"}`).join(" / "));
   // 공집합끼리의 비교는 아무것도 안 잰다 — 넷 다 **하나 이상**을 센 판이어야 위 줄이 뜻을 갖는다
   chk("B-17짝-넷-다-비어-있지-않다", res.every((x) => x.want.size > 0),
       res.map((x) => `${x.label} ${x.want.size}`).join(" · "));
-  chk("B-11-못-만드는-타일은-안-눌린다", tileView[3] && !tileView[3].link && tileView.slice(0, 3).every((t) => t.link),
-      tileView.map((t) => `${t.label} ${t.link ? "링크" : "칸"}`).join(" · "));
+  chk("C-11-넷-다-눌린다", tileView.length === 4 && tileView.every((t) => t.link)
+      && /fin=month/.test(tileView[3].href ?? "") && /st=done/.test(tileView[3].href ?? ""),
+      tileView.map((t) => `${t.label} ${t.link ? "링크" : "칸"}`).join(" · ") + ` · 이번 달 완료 → ${tileView[3]?.href}`);
+  const doneRule = new Set(rule[3].ids);
+  chk("C-9-KST-달-경계", doneRule.has(edgeIn) && !doneRule.has(edgeOut),
+      `1일 00:30 KST #${edgeIn} ${doneRule.has(edgeIn) ? "든다" : "**안 든다**"} · 지난달 23:30 KST #${edgeOut} ${doneRule.has(edgeOut) ? "**든다**" : "안 든다"}`);
+
+  // ── 072 §C-10 — 「걸린 조건」에는 서고, 거르개 줄(▾)에는 고르는 자리가 없다 · CSV 도 같다 ──
+  await open();
+  await page.locator(".v3-stats .v3-stat").nth(3).click();
+  const doneList = await listIds();
+  const active = await page.locator(".v3-active .v3-acx").allInnerTexts();
+  const fbar = (await page.locator(".v3-fbar").innerText().catch(() => "")).replace(/\s+/g, " ");
+  const csv = await page.evaluate(async (href) => {
+    const q = href.split("?")[1] ?? "";
+    const t = await (await fetch(`/api/tasks/csv?${q}`)).text();
+    return t.replace(/^\uFEFF/, "").split(/\r?\n/).slice(1).map((l) => Number(l.split(",")[0])).filter(Boolean);
+  }, tileView[3].href);
+  const finChip = page.locator(".v3-active .v3-acx").filter({ hasText: "완료 · 이번 달" });
+  const hasChip = await finChip.count() === 1;
+  await finChip.first().click().catch(() => {});
+  await page.waitForTimeout(700);
+  const afterUrl = new URL(page.url()).search;
+  chk("C-10-주소로만-걸리고-보인다",
+      hasChip && !/이번 달/.test(fbar) && !/fin=/.test(afterUrl) && same(new Set(csv), doneList),
+      `걸린 조건 [${active.map((t) => t.replace("×", "").trim()).join(" · ")}] · 거르개 줄에 「이번 달」 ${/이번 달/.test(fbar) ? "**있다**" : "없다"}` +
+      ` · × 뒤 주소 ${afterUrl || "(빈)"} · CSV ${fmt(new Set(csv))} ${same(new Set(csv), doneList) ? "= 목록" : "**≠ 목록**"}`);
 
   // ── 증감 ────────────────────────────────────────────────────────
   const [{ now: nowN, prev: prevN }] = await sql(

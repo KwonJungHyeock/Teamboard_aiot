@@ -43,7 +43,8 @@ const tile = async (page, label) => {
   const el = page.locator(".v3-stat").filter({ hasText: label }).first();
   if (!(await el.count())) return null;
   return el.evaluate((e) => ({
-    n: Number((e.querySelector(".v3-stat-n")?.textContent ?? "").replace(/\D/g, "")),
+    // 070 §F-47 — 숫자가 세어 올라가는 중일 수 있다. 값은 `data-n` 에서 읽는다
+    n: Number(e.querySelector(".v3-stat-n")?.getAttribute("data-n") ?? NaN),
     sub: (e.querySelector(".v3-stat-s")?.textContent ?? "").trim(),
     href: e.getAttribute("href"),
     color: getComputedStyle(e.querySelector(".v3-stat-n")).color,
@@ -89,20 +90,28 @@ try {
   await page.goto(`${BASE}/v3`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1200);
 
-  // ── ① 위 칸 셋 · 기한 지남만 색 (§D-30) ────────────────────────
-  const todo = await tile(page, "오늘 할 일");
+  /*
+   * ── ① 위 칸 넷 · 기한 지남만 색 (071 §B-8 · §B-10) ────────────────
+   * 066 §D-30 의 셋(오늘 할 일 · 기한 지남 · 이번 주 마감)이 071 에서 넷(진행 중 ·
+   * 기한 지남 · 이번 주 마감 · 이번 달 완료)이 됐다. 「오늘 할 일」 칸은 **되살리지
+   * 않는다**(072 §B) — 같은 이름의 카드가 아래에 있다. 카드는 ④ 가 본다.
+   */
+  const doing = await tile(page, "진행 중");
   const late = await tile(page, "기한 지남");
   const week = await tile(page, "이번 주 마감");
-  chk("①-위-칸-셋이-있다", todo !== null && late !== null && week !== null,
-      `오늘 할 일 ${todo?.n} · 기한 지남 ${late?.n} · 이번 주 마감 ${week?.n}`);
+  const doneM = await tile(page, "이번 달 완료");
+  const noTodoTile = await page.locator(".v3-stats .v3-stat").filter({ hasText: "오늘 할 일" }).count();
+  chk("①-위-칸-넷이-있다", doing !== null && late !== null && week !== null && doneM !== null && noTodoTile === 0,
+      `진행 중 ${doing?.n} · 기한 지남 ${late?.n} · 이번 주 마감 ${week?.n} · 이번 달 완료 ${doneM?.n}` +
+      ` · 「오늘 할 일」 칸 ${noTodoTile}개(0 이어야 — 072 §B)`);
   /*
    * **색은 계산된 값으로 본다** — 클래스 이름으로 보면 CSS 가 안 먹어도 통과한다.
    * 무채색은 `--v3-ink`(#16203A) = rgb(22, 32, 58) 이다.
    */
   const GREY = "rgb(22, 32, 58)";
   chk("①짝-기한-지남만-색이다",
-      late?.color !== GREY && todo?.color === GREY && week?.color === GREY,
-      `기한 지남 ${late?.color} · 오늘 할 일 ${todo?.color} · 이번 주 마감 ${week?.color} (무채색 ${GREY})`);
+      late?.color !== GREY && [doing, week, doneM].every((t) => t?.color === GREY),
+      `기한 지남 ${late?.color} · 진행 중 ${doing?.color} · 이번 주 마감 ${week?.color} · 이번 달 완료 ${doneM?.color} (무채색 ${GREY})`);
 
   /** 그 칸을 **눌러서** 도착한 목록의 행 수를 센다. 주소를 직접 치면 「같은 조건으로
       가는가」가 안 증명된다. */
@@ -125,14 +134,18 @@ try {
   chk("③-이번-주-마감-=-목록", week.n === weekList.n && week.n > 0,
       `칸 ${week.n} · 목록 ${weekList.n} · 주소 ${decodeURIComponent(weekList.url)}`);
 
-  // ── ④ 오늘 할 일 = 아래 카드 (같은 함수를 지난다) ───────────────
+  /*
+   * ── ④ 「오늘 할 일」 카드 — 제목 옆 건수 태그가 그 일을 한다 (072 §B-8) ──
+   * 칸이 빠졌으니 건수는 카드 제목 옆 「n건」이 말한다. 그 n 이 카드의 줄 수와 같은가.
+   */
   await page.goto(`${BASE}/v3`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1100);
   const card = page.locator(".v3-card").filter({ has: page.locator("h2", { hasText: "오늘 할 일" }) }).first();
-  const cardRows = await card.locator(".v3-row").count();
+  const cardRows = await card.locator(".v3-row:not(.v3-stale-r)").count();
   const cardSub = (await card.locator(".v3-sub").first().textContent()) ?? "";
-  chk("④-오늘-할-일-=-그-카드", todo.n === cardRows && todo.n > 0,
-      `칸 ${todo.n} · 카드 ${cardRows}행 · 카드 보조 "${cardSub.trim().slice(0, 30)}"`);
+  const tagN = Number(cardSub.match(/^(\d+)건/)?.[1] ?? NaN);
+  chk("④-오늘-할-일-건수-태그-=-카드", tagN === cardRows && cardRows > 0,
+      `제목 옆 "${cardSub.trim().slice(0, 30)}" · 카드 ${cardRows}행`);
 
   // ── ⑤ 내 업무 다섯 줄 · 「내 업무」는 ?mine=1 (§D-31 · §B-4) ─────
   const mine = page.locator(".v3-card").filter({ has: page.locator("h2", { hasText: "내 업무" }) }).first();

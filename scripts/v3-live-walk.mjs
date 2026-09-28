@@ -59,6 +59,14 @@ const KEY = "ui_v3_enabled";
 const MARK = "[070검사]";
 
 let browser, swBefore = null, beforeCount = null;
+/*
+ * ── 072 §D — **남의 업무를 바꾸지 않는다. 바꿨으면 되돌리고 빨강이다** ──────────
+ * 070 판은 §F 에서 「화면 첫 줄」의 체크를, §C 에서 「다섯째 줄」의 X 를 눌렀다. 그 줄은
+ * **사람의 업무**였고, 되돌리기가 빗나간 한 판(071 재는 판 05:56)에서 #33 이 완료로 남았다.
+ * 오늘 하루 사람 업무 넷(#33 · #34 · #35 · #44)의 활동 기록에 상태 변경 27줄이 쌓였다.
+ * 이제 누르는 줄은 전부 `[070검사]` 줄이다. 그래도 새면 잡도록 **시작 전 모습**을 떠 둔다.
+ */
+let realBefore = null, logMark = null;
 try {
   /* ── 제품의 규칙을 그대로 부른다 ─────────────────────────────── */
   rmSync(TMP, { recursive: true, force: true });
@@ -78,6 +86,10 @@ try {
              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [KEY]);
   await sql(`DELETE FROM task WHERE title LIKE $1`, [`${MARK}%`]);
   beforeCount = 0;
+  realBefore = new Map((await sql(
+    `SELECT id, status, completed_at::text c, resolution, progress FROM task WHERE title NOT LIKE $1`, [`${MARK}%`]))
+    .map((r) => [r.id, JSON.stringify([r.status, r.c, r.resolution, r.progress])]));
+  logMark = (await sql(`SELECT coalesce(max(id), 0) AS m FROM activity_log`))[0].m;
 
   const me = await testUser("admin");
   const area = (await sql(`SELECT id FROM area WHERE is_active ORDER BY sort_order, id LIMIT 1`))[0].id;
@@ -329,20 +341,30 @@ try {
                return !!r && r.top >= 0 && r.bottom <= innerHeight; })() };
   });
   chk("C-31-J-다섯-번-다섯째-줄", selInfo.at === 4 && selInfo.inView, `줄 ${selInfo.n}개 중 ${selInfo.at + 1}번째 · 화면 안 ${selInfo.inView}`);
-  const xBefore = await statusOf(selInfo.id);
+  /*
+   * X 는 **검사기가 만든 줄에서만** 누른다(072 §D). 다섯째 줄은 사람의 업무일 수 있다.
+   * J·K 로 제 줄까지 옮겨 간 뒤 누른다 — 옮기는 것도 키보드로 한다.
+   */
+  const ownAt = await page.evaluate((id) => [...document.querySelectorAll("[data-live-row]")]
+    .findIndex((r) => r.getAttribute("data-live-row") === String(id)), ids[1]);
+  for (let k = selInfo.at; k < ownAt; k += 1) await page.keyboard.press("j");
+  for (let k = selInfo.at; k > ownAt; k -= 1) await page.keyboard.press("k");
+  const xId = await page.evaluate(() => Number(document.querySelector("[data-live-row][data-sel='1']")?.getAttribute("data-live-row")));
+  const xBefore = await statusOf(xId);
   await page.keyboard.press("x");
-  const xAfter = await dbWait(selInfo.id, xBefore === "done" ? "todo" : "done");
+  const xAfter = await dbWait(xId, xBefore === "done" ? "todo" : "done");
   await page.keyboard.press("x");
-  const xBack = await dbWait(selInfo.id, xBefore === "done" ? "done" : "todo");
-  chk("C-31-X-상태가-바뀐다", xAfter !== xBefore && xBack === (xBefore === "done" ? "done" : "todo"),
-      `#${selInfo.id} ${xBefore} → X → ${xAfter} → X → ${xBack}`);
+  const xBack = await dbWait(xId, xBefore === "done" ? "done" : "todo");
+  chk("C-31-X-상태가-바뀐다", xId === ids[1] && xAfter !== xBefore && xBack === (xBefore === "done" ? "done" : "todo"),
+      `J·K 로 제 줄 #${xId}(${ownAt + 1}번째)까지 → ${xBefore} → X → ${xAfter} → X → ${xBack}`);
   await page.keyboard.press("e");
   const eOpen = await page.locator(".v3-stpick").isVisible().catch(() => false);
   await page.keyboard.press("Escape");
   const eClosed = await page.locator(".v3-stpick").count() === 0;
   await page.keyboard.press("k");
   const kAt = await page.evaluate(() => [...document.querySelectorAll("[data-live-row]")].findIndex((r) => r.getAttribute("data-sel") === "1"));
-  chk("C-25-E·Esc·K", eOpen && eClosed && kAt === 3, `E → 고르개 ${eOpen} · Esc → 닫힘 ${eClosed} · K → ${kAt + 1}번째`);
+  chk("C-25-E·Esc·K", eOpen && eClosed && kAt === Math.max(0, ownAt - 1),
+      `E → 고르개 ${eOpen} · Esc → 닫힘 ${eClosed} · K → ${kAt + 1}번째(${ownAt + 1}번째의 하나 위)`);
   // C-30 입력칸 안의 j 는 글자다
   await page.evaluate(() => { const i = document.createElement("input"); i.id = "__t"; document.querySelector(".v3-live").prepend(i); });
   await page.locator("#__t").focus();
@@ -426,7 +448,13 @@ try {
     await t.click();
     await page.waitForURL(/\/v3\/tasks/, { timeout: 10000 });
     await page.waitForLoadState("networkidle");
-    await sleep(500);
+    /*
+     * 목록이 **다 그려진 뒤에** 읽는다 — 줄이 섰거나 빈 목록 안내가 섰을 때.
+     * 071 재는 판에서 「이번 주 마감 규칙 3 · 목록 0」이 한 번 나왔다. 목록이 아직
+     * 「불러오는 중」일 때 읽은 것이다 — v3-tiles-walk 에서 먼저 찾은 것과 같은 자리.
+     */
+    await page.locator(".v3-row a.v3-row-t, .v3-empty").first().waitFor({ timeout: 15000 }).catch(() => {});
+    await sleep(300);
     const got = new Set(await page.evaluate(() => [...document.querySelectorAll(".v3-row a.v3-row-t")]
       .map((a) => Number((a.getAttribute("href") ?? "").match(/\/v3\/tasks\/(\d+)/)?.[1])).filter(Boolean)));
     const same = want.size === got.size && [...want].every((x) => got.has(x));
@@ -456,7 +484,8 @@ try {
   const off = await sample(pR);
   const mid = (r) => r.seen.filter((v) => v !== "0" && v !== r.final).length;
   await pR.locator("[data-live-row]").first().waitFor();
-  await pR.locator("[data-live-row] .v3-cb").first().click();
+  // 제 줄에서만 누른다(072 §D) — 070 판은 첫 줄(사람의 업무 #33)을 눌렀다
+  await pR.locator(`[data-live-row="${ids[0]}"] .v3-cb`).first().click();
   const anim = await pR.locator(".v3-toast").last().evaluate((t) => getComputedStyle(t).animationName).catch(() => "?");
   const trans = await pR.locator(".v3-quick").first().evaluate((t) => getComputedStyle(t).transitionDuration).catch(() => "?");
   const undoR = pR.locator(".v3-toast button", { hasText: "되돌리기" }).last();
@@ -478,6 +507,22 @@ try {
   process.exitCode = 1;
 } finally {
   await pool.query(`DELETE FROM activity_log WHERE task_id IN (SELECT id FROM task WHERE title LIKE $1)`, [`${MARK}%`]).catch(() => {});
+  // 072 §D 안전망 — 사람의 업무가 시작 전과 다르면 **되돌리고 빨강**이다. 이 회차가 남긴 기록도 지운다
+  if (realBefore) {
+    try {
+      const now = await pool.query(`SELECT id, status, completed_at::text c, resolution, progress FROM task WHERE title NOT LIKE $1`, [`${MARK}%`]);
+      const moved = now.rows.filter((r) => realBefore.has(r.id) && realBefore.get(r.id) !== JSON.stringify([r.status, r.c, r.resolution, r.progress]));
+      for (const r of moved) {
+        const [st, c, res, pr] = JSON.parse(realBefore.get(r.id));
+        await pool.query(`UPDATE task SET status = $2, completed_at = $3::timestamptz, resolution = $4, progress = $5 WHERE id = $1`,
+          [r.id, st, c, res, pr]);
+      }
+      const logs = await pool.query(`DELETE FROM activity_log WHERE id > $1 RETURNING task_id`, [logMark]);
+      console.log(`남의 업무 확인 — 시작 전과 다른 것 ${moved.length}건${moved.length ? ` **[${moved.map((r) => `#${r.id}`).join(",")}] 되돌렸다**` : ""}` +
+                  ` · 이 회차의 활동 기록 ${logs.rowCount}줄 지움`);
+      if (moved.length) process.exitCode = 1;
+    } catch (e) { console.error("남의 업무 확인 실패 —", e.message); process.exitCode = 1; }
+  }
   await pool.query(`DELETE FROM notification WHERE ref_type = 'task' AND ref_id IN (SELECT id FROM task WHERE title LIKE $1)`, [`${MARK}%`]).catch(() => {});
   await pool.query(`DELETE FROM task WHERE title LIKE $1`, [`${MARK}%`]).catch((e) => console.error("업무 정리 실패", e.message));
   try {

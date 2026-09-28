@@ -130,7 +130,7 @@ export default function TasksView({
 
   const setQuery = useCallback((next: {
     cat?: Set<number>; who?: Set<number>; status?: Set<string>; due?: DueSel; q?: string;
-    mine?: boolean; sort?: SortKey; done?: boolean;
+    mine?: boolean; sort?: SortKey; done?: boolean; fin?: boolean;
   }) => {
     const p = new URLSearchParams(wrote.current ?? spStr);
     /** 빈 값은 주소에서 **뺀다.** 기본값을 적으면 「돌아온 자리」가 둘이 된다. */
@@ -148,6 +148,8 @@ export default function TasksView({
     if (next.mine !== undefined) { if (next.mine) p.set("mine", "1"); else p.delete("mine"); }
     if (next.sort !== undefined) put("sort", next.sort === "due" ? "" : next.sort);
     if (next.done !== undefined) { if (next.done) p.set("done", "1"); else p.delete("done"); }
+    // 072 §C — 「완료 · 이번 달」은 **푸는 것만** 여기서 한다. 거는 자리는 거르개 줄에 없다
+    if (next.fin === false) p.delete("fin");
     wrote.current = p.toString();
     router.replace(p.toString() ? `?${p}` : "?", { scroll: false });
   }, [router, spStr, STATUS_VALUES]);
@@ -159,12 +161,13 @@ export default function TasksView({
     else if (c.axis === "status") { const n = new Set(query.status); n.delete(c.value as string); setQuery({ status: n }); }
     else if (c.axis === "due") setQuery({ due: "all" });
     else if (c.axis === "mine") setQuery({ mine: false });
+    else if (c.axis === "fin") setQuery({ fin: false });
     else setQuery({ q: "" });
   }, [query, setQuery]);
 
   /** 다섯을 한 번에 푼다. 정렬·완료 펼침은 **조건이 아니라 보기 방식**이라 안 건드린다. */
   const clearAll = useCallback(() => {
-    setQuery({ cat: new Set(), who: new Set(), status: new Set(), due: "all", q: "", mine: false });
+    setQuery({ cat: new Set(), who: new Set(), status: new Set(), due: "all", q: "", mine: false, fin: false });
   }, [setQuery]);
 
   useEffect(() => {

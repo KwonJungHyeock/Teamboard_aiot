@@ -34,6 +34,7 @@ import {
   applyFilters, activeChips, isDueSel, GROUPS,
   type Query, type DueSel, type TaskRow, type ChipView,
 } from "./tasks";
+import { kstDate } from "./today";
 
 /** 주소에 쓰는 이름. **한 곳에 모아 둔다** — 화면과 CSV 가 같은 글자를 읽는다. */
 export const KEYS = {
@@ -41,19 +42,30 @@ export const KEYS = {
   /** §B-4 — 「내 업무」는 이 값이 붙은 업무 목록이다. 새 화면이 아니다. */
   mine: "mine",
   sort: "sort", done: "done",
+  /** 072 §C — 완료 시각이 이 달 안. 값은 `month` 하나뿐이다 */
+  fin: "fin",
 } as const;
 
 /** 상태 축이 받는 값 넷. `GROUPS` 에서 나온다 — 여기 손으로 적지 않는다. */
 export const STATUS_VALUES: readonly string[] = GROUPS.map((g) => g.statuses[0] as string);
 
-/** 조건 한 벌 = 축 다섯(`Query`) + 「내 항목」. */
+/** 조건 한 벌 = 축 다섯(`Query`) + 「내 항목」 + 「완료 시각이 이 달」. */
 export interface ListQuery extends Query {
   /** 담당 축에 **나**를 더한다. */
   mine: boolean;
+  /**
+   * **완료 시각(KST)이 이 달 안** (072 §C). 대시보드 「이번 달 완료」 타일이 가는 길이다.
+   *
+   * 거르개 줄(▾ 고르개들)에는 이 조건을 고르는 자리를 **안 만든다**(§C-10) —
+   * 주소(`?fin=month`)로만 걸린다. 다만 걸려 있으면 「걸린 조건」 줄에는 선다 —
+   * 이 목록의 규칙이 「조건이 어디 숨어 있으면 빈 목록이 고장으로 읽힌다」이기 때문이다.
+   * 기간은 **이 달 하나뿐**이다(§C-13). 지난달·분기는 필요해지면 그때.
+   */
+  finMonth: boolean;
 }
 
 export const EMPTY_LIST_QUERY: ListQuery = {
-  cat: new Set(), who: new Set(), status: new Set(), due: "all", q: "", mine: false,
+  cat: new Set(), who: new Set(), status: new Set(), due: "all", q: "", mine: false, finMonth: false,
 };
 
 /** 주소의 `1,2,3` → 번호 집합. 이상한 값은 조용히 버린다 — 주소는 사람이 손으로 고친다. */
@@ -82,6 +94,7 @@ export function parseListQuery(sp: Getter): ListQuery {
     due: isDueSel(sp.get(KEYS.due)) ? (sp.get(KEYS.due) as DueSel) : "all",
     q: sp.get(KEYS.q) ?? "",
     mine: sp.get(KEYS.mine) === "1",
+    finMonth: sp.get(KEYS.fin) === "month",
   };
 }
 
@@ -102,13 +115,14 @@ export function serializeListQuery(q: ListQuery): string {
   if (q.due !== "all") p.set(KEYS.due, String(q.due));
   if (q.q.trim()) p.set(KEYS.q, q.q.trim());
   if (q.mine) p.set(KEYS.mine, "1");
+  if (q.finMonth) p.set(KEYS.fin, "month");
   return p.toString();
 }
 
 /** 아무것도 안 걸렸는가. 빈 화면 문구가 **두 갈래로 갈리는 기준**이다(§C-25). */
 export function isEmptyListQuery(q: ListQuery): boolean {
   return q.cat.size === 0 && q.who.size === 0 && q.status.size === 0
-    && q.due === "all" && q.q.trim() === "" && !q.mine;
+    && q.due === "all" && q.q.trim() === "" && !q.mine && !q.finMonth;
 }
 
 /* ══ 권한 — **여기 안에 있다** (§C-20) ══════════════════════════════ */
@@ -156,7 +170,11 @@ export function selectRows<T extends SelectableRow>(
   rows: readonly T[], q: ListQuery, viewerId: number, today: string,
 ): T[] {
   const allowed = rows.filter((r) => visibleTo(r, viewerId));
-  return applyFilters(allowed, { ...q, who: effectiveWho(q, viewerId) }, today) as T[];
+  const hit = applyFilters(allowed, { ...q, who: effectiveWho(q, viewerId) }, today) as T[];
+  if (!q.finMonth) return hit;
+  // 072 §C — 완료 시각을 **KST 달력으로** 읽는다(UTC 로 자르면 9시간이 어긋난다 — `kstDate`)
+  const ym = today.slice(0, 7);
+  return hit.filter((r) => (kstDate(r.completedAt) ?? "").slice(0, 7) === ym);
 }
 
 /**
@@ -171,7 +189,9 @@ export function listChips(
   people: { id: number; name: string }[],
 ): ChipView[] {
   const rest = activeChips(q, areas, people);
-  return q.mine ? [{ axis: "mine", value: null, label: "내 항목" }, ...rest] : rest;
+  // 072 §C — 주소로만 걸리는 조건도 **걸려 있으면 보인다**. 숨은 조건은 빈 목록을 고장으로 읽게 한다
+  const fin: ChipView[] = q.finMonth ? [{ axis: "fin", value: null, label: "완료 · 이번 달" }] : [];
+  return q.mine ? [{ axis: "mine", value: null, label: "내 항목" }, ...rest, ...fin] : [...rest, ...fin];
 }
 
 /**
