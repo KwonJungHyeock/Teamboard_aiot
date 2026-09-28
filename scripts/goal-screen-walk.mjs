@@ -99,7 +99,17 @@ try {
        VALUES ($1, '', $2, 1, 1, 'doing', $3::date, 'mid', 'human', 'team', 'team', 'manual', true)
        RETURNING id`, [`${B3} 연결된 업무`, areaId, mEnd]))[0].id;
     await sql(`INSERT INTO goal_task (goal_id, task_id) VALUES ($1, $2)`, [gid, tid]);
-    b3 = { gid, tid };
+    /*
+     * 076 §A — 슬라이더로 끌 **제 업무**(목표에 안 건다). 075 까지는 「활성·미완료 첫 업무」 —
+     * 사람의 업무 — 의 진행률을 끌었고, 그 업무가 걸린 목표의 저장된 진척이 틀린 채 남았다.
+     * 목표에 걸면 진척 재계산이 사람의 분기 목표까지 올라가므로 **안 건다.**
+     */
+    const sid = (await sql(
+      `INSERT INTO task (title, description, area_id, assignee_id, created_by, status, due_date, progress,
+                         priority, origin, work_type, visibility, goal_source, is_active)
+       VALUES ($1, '', $2, 1, 1, 'doing', $3::date, 0, 'mid', 'human', 'team', 'team', 'manual', true)
+       RETURNING id`, [`${B3} 슬라이더 업무`, areaId, mEnd]))[0].id;
+    b3 = { gid, tid, sid };
     console.log(`   (조건) 분기 목표 #${qg.id} 밑에 이번 달 월 목표 #${gid} + 거기 걸린 업무 #${tid}` +
                 ` — B3 이 찾을 것을 만들어 둔다`);
   }
@@ -204,7 +214,8 @@ try {
     `현재 월 행 ${nowDot}개 · 배경 ${nowBg} (칠하지 않는다 — 점 하나로만 표시)`);
 
   // ══ §C1 패널 560px · 슬라이더가 실제로 잡히는가 ═══════════════════
-  const g = (await sql(`SELECT id FROM goal WHERE is_active AND period_type='month' ORDER BY id LIMIT 1`))[0];
+  // 076 §A — 패널을 열고 제목을 고쳐 볼 목표도 **제 월 목표**(B3)다. 075 까지는 첫 월 목표(사람 것)였다
+  const g = { id: b3.gid };
   await page.goto(`${BASE}/goals?panel=goal:${g.id}`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1500);
   const pBox = await box(".gdp");
@@ -214,8 +225,7 @@ try {
 
   // §C1 — 넓어진 패널에서 진행률 슬라이더가 **마우스로 실제로 끌리는가**.
   // 값이 바뀌는 것까지 봐야 한다. 존재만 확인하면 "있지만 안 잡히는" 상태를 통과시킨다.
-  const t = (await sql(
-    `SELECT id, progress FROM task WHERE is_active AND status NOT IN ('done','dropped') ORDER BY id LIMIT 1`))[0];
+  const t = (await sql(`SELECT id, progress FROM task WHERE id = $1`, [b3.sid]))[0];
   sliderRestore = { id: t.id, progress: t.progress };
   await page.goto(`${BASE}/tasks?panel=task:${t.id}`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1600);
@@ -365,6 +375,10 @@ try {
     await sql(`DELETE FROM goal_task WHERE goal_id = $1`, [b3.gid]);
     await sql(`DELETE FROM goal WHERE id = $1`, [b3.gid]);
     await sql(`DELETE FROM task WHERE id = $1`, [b3.tid]);
+    if (b3.sid) {
+      await sql(`DELETE FROM activity_log WHERE task_id = $1`, [b3.sid]);
+      await sql(`DELETE FROM task WHERE id = $1`, [b3.sid]);
+    }
     const left = (await sql(`SELECT count(*)::int n FROM goal WHERE title LIKE $1`, [`${B3}%`]))[0].n;
     console.log(`정리 — B3 조건(월 목표 #${b3.gid} · 업무 #${b3.tid}) 삭제 · 잔여 ${left}건 (0이어야 한다)`);
   }
