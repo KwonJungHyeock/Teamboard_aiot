@@ -76,6 +76,25 @@ for (const line of fs.readFileSync(path.join(REPO, ".env.local"), "utf8").split(
   if (m && env[m[1]] === undefined) env[m[1]] = m[2];
 }
 
+/*
+ * ── 알려진 빨강 — **왜 빨간지 매 판 적는다** (073 §D-21) ───────────────
+ *
+ * 빨강이 둘뿐이면 이제 「왜 빨간지」가 매 판 보여야 한다 — 그래야 새 빨강이 섞였을 때
+ * 바로 안다. 이름만 맞춰 보지 않는다: **어느 줄로 빨간지**(`line`)까지 맞춘다. 같은
+ * 검사기가 **다른 줄로** 빨개지면 그건 알려진 빨강이 아니라 새 빨강이다.
+ * 이 목록에서 줄을 지우는 날은 그 빨강이 고쳐진 날이다.
+ */
+const KNOWN_RED = {
+  "component-reuse-audit": {
+    line: /FAIL ③두벌금지/,
+    why: "에이전트 사용량 화면(AgentUsage)·가오픈 기한(OpenDueView)의 표가 허용 목록 밖 — 에이전트 철거에 묶였다(071 §D-27 · BACKLOG)",
+  },
+  "member-boundary": {
+    line: /FAIL combo-new-project/,
+    why: "combo-new-project 가 팀장에게도 안 보여 단언이 죽어 있다(062 §F · BACKLOG 「살아 있지만 죽은 단언」)",
+  },
+};
+
 /* ── 검사기 고르기 ─────────────────────────────────────────────── */
 const IS_CHECKER = /(-walk|-audit|-probe)\.mjs$|^repro-.*\.mjs$|^member-boundary\.mjs$/;
 let checkers = fs.readdirSync(path.join(REPO, "scripts")).filter((f) => IS_CHECKER.test(f)).sort();
@@ -327,6 +346,7 @@ const count = (v) => rows.filter((r) => r.verdict === v).length;
 const summary = {
   mode: PROBE ? "probe" : "normal", every: EVERY, slowMs: SLOW_MS, total, checkers: rows.length,
   retired: retired.map((f) => f.replace(/\.mjs$/, "")),
+  knownRed: Object.keys(KNOWN_RED),
   green: count("초록"), red: count("빨강"), unmeasured: count("못 쟀다"),
   restarts: restarts.map((r) => ({ at: r.at, reason: r.reason ?? "정기", upMs: r.up, warmMs: r.warm })),
 };
@@ -335,6 +355,14 @@ console.log(`\n합계 ${rows.length} · 초록 ${summary.green} · 빨강 ${summ
             ` · 새로 띄움 ${restarts.length}번(평균 ${Math.round(restarts.reduce((s, r) => s + r.up + r.warm, 0) / restarts.length / 1000)}초)` +
             ` · 전량 ${Math.floor(total / 60)}분 ${total % 60}초`);
 console.log(`빨강: ${rows.filter((r) => r.verdict === "빨강").map((r) => r.name).join(" · ") || "없음"}`);
+// 073 §D-21 — 빨강마다 **왜** 빨간지 한 줄. 알려진 것이 아니면 「새 빨강」이라고 적는다
+for (const r of rows.filter((x) => x.verdict === "빨강")) {
+  const k = KNOWN_RED[r.name];
+  const log = fs.readFileSync(path.join(OUT, "logs", `${r.name}.txt`), "utf8");
+  if (k && k.line.test(log) && (log.match(/^\s*FAIL/gm) ?? []).length === 1) console.log(`  알려진 빨강 · ${r.name} — ${k.why}`);
+  else if (k) console.log(`  **알려진 검사기인데 다른 줄로 빨갛다** · ${r.name} — ${r.first || "(FAIL 줄 없음 · 예외)"}`);
+  else console.log(`  **새 빨강** · ${r.name} — ${r.first || "(FAIL 줄 없음 · 예외)"}`);
+}
 console.log(`못 쟀다: ${rows.filter((r) => r.verdict === "못 쟀다").map((r) => `${r.name}(${r.reason})`).join(" · ") || "없음"}`);
 console.log(`검사기 출력: ${path.join(OUT, "logs")}/<이름>.txt`);
 console.log(`은퇴(안 돌렸다): ${summary.retired.join(" · ") || "없음"}`);
