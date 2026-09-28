@@ -19,7 +19,7 @@ import Link from "next/link";
 import { Card, StatTile, ListRow, Empty, Tag, Avatar } from "./parts";
 import type { CbState } from "./parts";
 import {
-  countToday, splitToday, childLine, shortDue, inboxItems, weekEnd, shortDate,
+  countToday, splitToday, childLine, shortDue, inboxItems,
   staleLine, STALE_DAYS,
   type TodayTask, type InboxItem,
 } from "@/lib/v3/today";
@@ -39,6 +39,8 @@ import { weeksAndDays, longDateKst } from "@/lib/countdown";
 // 오늘 화면에도 **썸네일이 아니라 개수만** (051 §C-3).
 import { countLinks } from "@/lib/v3/links";
 // 070 — 줄에서 바로 끝내기 · 토스트 · 키보드 · 찾기. **공용 부품이다**(§G-49).
+// 071 §B — 타일 넷 · 영역 막대. **목록과 같은 함수에서** 센다
+import { dashTiles, areaBars, deltaLine } from "@/lib/v3/dash";
 import { Live, useLive, LiveCheck, StatusChip, QuickActions, ShortcutBar, CountUp } from "./Live";
 
 /** 알림이 가리키는 곳. 종류마다 갈 데가 다르다. */
@@ -161,13 +163,13 @@ function TodayBody({
    * 업무**가 섞여서, 손댈 일이 아닌 것이 손댈 일로 세어진다.
    */
   const OPEN_ST = useMemo(() => new Set(["todo", "doing", "review"]), []);
-  const countOf = (due: "late" | "soon"): { n: number; href: string } => {
-    const q: ListQuery = { ...EMPTY_LIST_QUERY, status: OPEN_ST, due };
-    const n = selectRows(tasks ?? [], q, me, today).length;
-    return { n, href: `${V3_BASE}/tasks?${serializeListQuery(q)}` };
-  };
-  const late = countOf("late");
-  const week = countOf("soon");
+  /*
+   * 071 §B-8 — 타일 넷과 영역 막대는 `lib/v3/dash.ts` 가 센다. 넷 다 **지금 상태**로
+   * 센다(방금 체크한 업무가 여전히 「기한 지남」에 세어지면 숫자가 거짓말을 한다).
+   */
+  const tiles = useMemo(() => (tasks ? dashTiles(tasks, me, today) : null), [tasks, me, today]);
+  const bars = useMemo(() => (tasks ? areaBars(tasks, areas, me, today) : null), [tasks, areas, me, today]);
+  const barMax = bars ? Math.max(0, ...bars.map((b) => b.ids.length)) : 0;
   /** 내가 담당인, 아직 안 끝난 것 — **다섯 줄만.** 나머지는 「내 업무」에서 본다 */
   const mineQ: ListQuery = useMemo(
     () => ({ ...EMPTY_LIST_QUERY, status: OPEN_ST, mine: true }), [OPEN_ST]);
@@ -186,8 +188,6 @@ function TodayBody({
       // `late`(기한으로 정해진다)는 처음 줄의 것을 그대로 쓴다 — 상태를 바꿔도 기한은 그대로다
       todo: kept.todo.map((t) => ({ ...t, ...now(t), late: t.late })),
       stale: kept.stale.map((t) => ({ ...t, ...now(t) })), done: real.done,
-      /** 타일의 숫자는 **지금 상태**로 센다 */
-      todoNow: real.todo,
     };
   }, [tasks, listed, today, byId]);
 
@@ -239,28 +239,29 @@ function TodayBody({
           {left && <span className="v3-open-left">{left.text}</span>}
         </div>
         {/*
-          ── 위 칸 셋 (066 §D-30) ────────────────────────────────────
-          오늘 할 일 · 기한 지남 · 이번 주 마감.
-          **기한 지남만 색을 준다.** 나머지는 무채색이다.
+          ── 위 칸 넷 (071 §B-8) ────────────────────────────────────
+          진행 중 · 기한 지남 · 이번 주 마감 · 이번 달 완료.
+          **기한 지남만 지남 색이다**(테두리 · 바탕 · 숫자, §B-10). 나머지 셋은 무채색 —
+          고쳐야 할 것 하나만 눈에 띈다.
 
-          숫자를 여기서 새로 세지 않는다 — 뒤의 둘은 목록 화면과 **같은 함수**를
-          지나고(`selectRows`), 누르면 그 조건 그대로의 목록으로 간다(§D-35).
+          숫자는 `dashTiles` 가 목록과 **같은 함수**(`selectRows`)로 센다. 누르면 그 조건
+          그대로의 목록으로 간다. 「이번 달 완료」는 목록에 완료 시각 축이 없어 조건을
+          못 만드므로 **누르는 것을 안 만든다**(070 §E-43).
 
-          「오늘 할 일」은 목록의 기한 축에 딱 맞는 값이 없다(축에 「오늘」이
-          없다 — 축을 늘리는 것은 새 규칙이라 손대지 않았다). 그래서 이 숫자는
-          **바로 아래 「오늘 할 일」 카드와 같은 함수**(`splitToday`)에서 온다.
+          증감은 **잴 수 있는 타일에만** 붙는다(§B-9) — 지금은 「이번 달 완료」 하나다.
+          나머지 셋의 옛 값은 DB 에 없다. 지어내지 않는다.
+
+          070 까지 첫 칸이던 「오늘 할 일」은 071 §B-8 의 넷에 없어 자리를 내줬다.
+          같은 이름의 카드가 아래에 그대로 있다.
         */}
-        {/* 070 §E-43 — 「오늘 할 일」은 목록의 축에 맞는 조건이 없어 **누르는 것을 안 만든다** */}
-        <StatTile n={view?.todoNow.length ?? 0} label="오늘 할 일"
-                  shown={view ? <CountUp n={view.todoNow.length} /> : 0}
-                  sub={view ? `진행 ${view.todoNow.filter((t) => t.status === "doing").length}` +
-                              ` · 검토 ${view.todoNow.filter((t) => t.status === "review").length}` : undefined} />
-        <StatTile n={late.n} label="기한 지남" late href={late.href} go
-                  shown={view ? <CountUp n={late.n} /> : 0}
-                  sub={view ? `${STALE_DAYS}일 넘게 밀린 것 ${view.stale.length}` : undefined} />
-        <StatTile n={week.n} label={`이번 주 마감 (~${shortDate(weekEnd(today))})`} href={week.href} go
-                  shown={view ? <CountUp n={week.n} /> : 0}
-                  sub={view ? `기한 없음 ${view.counts.noDue}` : undefined} />
+        {(tiles ?? []).map((t) => (
+          <StatTile key={t.key} n={t.ids.length} label={t.label} late={t.key === "late"}
+                    href={t.href ?? undefined} go={t.href !== null}
+                    shown={<CountUp n={t.ids.length} />}
+                    sub={t.delta ? deltaLine(t.delta)
+                      : t.key === "late" && view ? `${STALE_DAYS}일 넘게 밀린 것 ${view.stale.length}`
+                      : t.key === "soon" && view ? `기한 없음 ${view.counts.noDue}` : undefined} />
+        ))}
       </div>
 
       {/*
@@ -304,6 +305,8 @@ function TodayBody({
             </>)}
         </Card>
 
+        {/* 오른쪽 칸은 둘을 쌓는다 — 분기 목표 · 영역별 남은 업무(071 §B-2) */}
+        <div className="v3-stack">
         <Card title="분기 목표" sub={goals ? `${goals.length}개` : undefined}>
           {goals === null ? <p className="v3-loading">불러오는 중…</p>
             : goals.length === 0 ? (
@@ -324,6 +327,29 @@ function TodayBody({
               </div>
             ))}
         </Card>
+
+        {/*
+          ── 영역별 남은 업무 (071 §B-2) ─────────────────────────────
+          **막대 색은 하나**(강조색)다 — 재는 것은 「어느 영역이 많은가」이지 「어느
+          영역인가」가 아니다. 영역 색을 쓰면 색이 영역 이름을 한 번 더 말할 뿐이다.
+          범례가 없다 — 제목이 이미 무엇인지 말한다.
+          **0 인 영역도 줄이 남는다**(§B-14). 흐리게, 막대는 빈 채로 — 없어진 게 아니라 0 이다.
+          줄을 누르면 그 영역 + 안 끝난 셋이 걸린 목록 — 막대가 센 것과 **같은 조건**이다.
+        */}
+        <Card title="영역별 남은 업무"
+              sub={bars ? `안 끝난 업무 ${new Set(bars.flatMap((b) => b.ids)).size}건` : undefined}>
+          {!bars ? <p className="v3-loading">불러오는 중…</p> : bars.map((b) => (
+            <Link key={b.areaId} className={`v3-abar${b.ids.length === 0 ? " zero" : ""}`}
+                  href={b.href} data-area={b.areaId} data-n={b.ids.length}>
+              <span className="v3-abar-l">{b.name}</span>
+              <span className="v3-bar" role="img" aria-label={`${b.name} 남은 업무 ${b.ids.length}건`}>
+                <span style={{ width: `${barMax > 0 ? (b.ids.length / barMax) * 100 : 0}%` }} />
+              </span>
+              <span className="v3-abar-n">{b.ids.length}</span>
+            </Link>
+          ))}
+        </Card>
+        </div>
       </div>
 
       <Card title="오늘 할 일" sub={view ? `${view.todo.length}건 · 오늘 마감이거나 ${STALE_DAYS}일 이내로 지난 것` : undefined}>

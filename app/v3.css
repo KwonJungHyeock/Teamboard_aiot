@@ -1175,3 +1175,25 @@
 @media (max-width: 767.98px) {
   .v3 .v3-quick { display: none; }
 }
+
+/* ══ 071 §B — 타일 넷 · 영역별 남은 업무 ══════════════════════════════
+   새 토큰 없음. 있는 값만 쓴다. */
+/* §B-10 — **기한 지남만** 테두리 · 바탕 · 숫자가 지남 색. 올려도 테두리가 회색으로 안 바뀐다 */
+.v3-stat.late { border-color: var(--v3-late); background: var(--v3-late-bg); }
+.v3-stat.late.act:hover { border-color: var(--v3-late); }
+
+/* 오른쪽 칸 — 카드 둘을 쌓는다(사이는 `.v3-card + .v3-card` 가 준다).
+   `.v3-col` 은 팀 화면의 열 카드가 이미 쓰는 이름이라 쓰지 않는다 — 처음에 그 이름을 써서
+   카드 안에 카드가 그려졌다(071 캡처로 찾았다). */
+.v3-stack { min-width: 0; }
+
+/* §B-2 — 이름(오른쪽 정렬) · 막대 · 건수. 막대 색은 **하나**(강조색) */
+.v3-abar { display: grid; grid-template-columns: 88px minmax(0, 1fr) 28px; align-items: center;
+  gap: 10px; padding: 6px 0; color: var(--v3-ink); text-decoration: none; font-size: 13px; }
+.v3-abar-l { text-align: right; color: var(--v3-ink-2); white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; }
+.v3-abar:hover .v3-abar-l { color: var(--v3-ink); text-decoration: underline; }
+.v3-abar .v3-bar span { background: var(--v3-rail); }
+.v3-abar-n { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* §B-14 — 0 은 없어진 게 아니다. 줄을 남기고 흐리게, 막대는 빈 채로 */
+.v3-abar.zero .v3-abar-l, .v3-abar.zero .v3-abar-n { color: var(--v3-ink-3); font-weight: 400; }
