@@ -1055,3 +1055,123 @@
   .v3 .v3-calbar { flex-wrap: wrap; row-gap: 8px; }
   .v3 .v3-calbar .v3-btn, .v3 .v3-calbar .v3-calm, .v3 .v3-calbar .v3-sub { white-space: nowrap; }
 }
+
+/* ══ 070 — 줄에서 바로 끝내기 · 토스트 · 키보드 · 찾기 · 움직임 ════════════
+   **토큰을 새로 만들지 않는다**(070 변하지 않는 것). 색 · 간격 · 모서리 · 그림자 ·
+   글자 크기는 전부 위에 있는 값을 가져다 쓴다. 새로 생긴 값은 하나 —
+   `--v3-motion`(0.13초, §F-45). 전환은 전부 이 값에서 가져온다. */
+.v3 { --v3-motion: .13s; }
+
+/* §F-46·48 — **움직임을 줄여 달라는 사람에게는 전부 끈다. 조건은 여기 한 곳뿐이다.**
+   JS 는 `prefers-reduced-motion` 을 따로 묻지 않고 `--v3-motion` 이 0 인지만 본다
+   (`motionOn()`) — 숫자 세어 올리기 · 부드러운 스크롤이 여기서 같이 꺼진다. */
+@media (prefers-reduced-motion: reduce) {
+  .v3 { --v3-motion: 0s; scroll-behavior: auto; }
+  .v3 *, .v3 *::before, .v3 *::after {
+    animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+/* §C-29 — 탭으로 옮길 때만 파란 테두리. 마우스로 누를 때는 안 뜬다 */
+.v3-live :focus-visible { outline: 2px solid var(--v3-rail); outline-offset: 2px; }
+.v3-live :focus:not(:focus-visible) { outline: none; }
+
+/* §C-27 — 고른 줄. `data-sel` 은 키보드와 마우스가 같이 쓴다 */
+.v3-live [data-live-row][data-sel="1"] { background: var(--v3-bg); }
+/* §B-12 — 바꾼 줄: 제목 취소선(위 `.v3-row.done` 이 이미 긋는다) · 줄 전체 0.42 */
+.v3-live [data-live-row] { transition: opacity var(--v3-motion); }
+.v3-live [data-live-row].done { opacity: .42; }
+
+/* §B-2 상태 칩 — 버튼. 마우스를 올렸을 때만 ⌄ (§B-17) */
+.v3-stchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px;
+  border: 1px solid var(--v3-line-2); border-radius: var(--v3-radius-pill);
+  background: var(--v3-card); color: var(--v3-ink-2); font: inherit; font-size: 12px;
+  font-weight: 600; cursor: pointer; white-space: nowrap; }
+.v3-stchip:hover { border-color: var(--v3-ink-3); color: var(--v3-ink); }
+.v3-stchip-cv { display: none; font-size: 11px; line-height: 1; }
+.v3-stchip:hover .v3-stchip-cv, .v3-stchip[aria-expanded="true"] .v3-stchip-cv { display: inline; }
+.v3-stdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--v3-ink-3); flex: 0 0 8px; }
+.s-doing .v3-stdot { background: var(--v3-rail); }
+.s-review .v3-stdot { background: var(--v3-warn); }
+.s-done .v3-stdot { background: var(--v3-done); }
+
+.v3-stpick { position: fixed; z-index: 60; min-width: 148px; padding: 4px;
+  background: var(--v3-card); border: 1px solid var(--v3-line-2);
+  border-radius: var(--v3-radius-s); box-shadow: var(--v3-shadow);
+  animation: v3-pop var(--v3-motion) ease-out; }
+.v3-stpick-i { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px;
+  border: 0; border-radius: 8px; background: none; color: var(--v3-ink); font: inherit;
+  font-size: 13px; text-align: left; cursor: pointer; }
+.v3-stpick-i:hover, .v3-stpick-i:focus-visible { background: var(--v3-bg); }
+.v3-stpick-k { margin-left: auto; color: var(--v3-rail); font-weight: 700; }
+
+/* §B-3 빠른 동작 — **열을 하나 더 둔다**(84px). 평소 0, 줄에 올리거나 골랐을 때만 */
+.v3-quick { flex: 0 0 84px; width: 84px; display: flex; justify-content: flex-end; gap: 2px;
+  opacity: 0; transition: opacity var(--v3-motion); }
+.v3-live [data-live-row]:hover .v3-quick,
+.v3-live [data-live-row][data-sel="1"] .v3-quick,
+.v3-quick:focus-within { opacity: 1; }
+.v3-quick-b { width: 26px; height: 26px; padding: 0; display: inline-flex; align-items: center;
+  justify-content: center; border: 0; border-radius: 8px; background: none;
+  color: var(--v3-ink-2); cursor: pointer; }
+.v3-quick-b:hover { background: var(--v3-bg); color: var(--v3-ink); }
+.v3-quick-b svg { width: 15px; height: 15px; }
+
+/* §C-28 — 단축키 칩. 화면 머리 아래 */
+.v3-keys { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: -6px 0 18px;
+  font-size: 12px; color: var(--v3-ink-3); }
+.v3-key { display: inline-flex; align-items: center; gap: 4px; }
+.v3-keys kbd, .v3-find-foot kbd { display: inline-block; min-width: 18px; padding: 0 5px;
+  border: 1px solid var(--v3-line-2); border-radius: 6px; background: var(--v3-card);
+  font: inherit; font-size: 11px; line-height: 18px; text-align: center; color: var(--v3-ink-2); }
+
+/* §A-1 토스트 — 아래 가운데. 여럿이면 위로 쌓인다(새것이 맨 아래) */
+.v3-toasts { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 70;
+  display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+.v3-toast { display: flex; align-items: center; gap: 14px; max-width: min(560px, 92vw);
+  padding: 10px 12px 10px 16px; border-radius: var(--v3-radius-s); background: var(--v3-ink);
+  color: #fff; font-size: 13px; box-shadow: var(--v3-shadow); pointer-events: auto;
+  animation: v3-pop var(--v3-motion) ease-out; }
+.v3-toast-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v3-toast-t b { font-weight: 700; }
+.v3-toast-b { flex: 0 0 auto; padding: 4px 10px; border: 0; border-radius: 8px;
+  background: rgba(255, 255, 255, .14); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.v3-toast-b:hover { background: rgba(255, 255, 255, .24); }
+@keyframes v3-pop { from { opacity: 0; transform: translateY(4px); } }
+
+/* §D ⌘K — 가운데 위(14%) 한 칸. 뒤는 어둡게 + 살짝 흐리게 */
+.v3-find-scrim { position: fixed; inset: 0; z-index: 80; background: rgba(16, 24, 40, .44);
+  backdrop-filter: blur(2px); animation: v3-fade var(--v3-motion) ease-out; }
+.v3-find { position: absolute; left: 50%; top: 14vh; transform: translateX(-50%);
+  width: min(560px, 92vw); background: var(--v3-card); border-radius: var(--v3-radius);
+  box-shadow: var(--v3-shadow); overflow: hidden; }
+.v3-find-in { display: block; width: 100%; box-sizing: border-box; padding: 16px 20px; border: 0;
+  border-bottom: 1px solid var(--v3-line); font: inherit; font-size: var(--v3-text);
+  color: var(--v3-ink); background: none; }
+.v3-find-in:focus { outline: none; }
+.v3-find-list { max-height: 50vh; overflow-y: auto; padding: 6px; }
+.v3-find-g + .v3-find-g { margin-top: 4px; }
+.v3-find-gt { display: block; padding: 6px 12px 4px; font-size: 12px; color: var(--v3-ink-3); }
+.v3-find-i { display: block; width: 100%; padding: 8px 12px; border: 0; border-radius: 8px;
+  background: none; color: var(--v3-ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.v3-find-i[aria-selected="true"] { background: var(--v3-bg); }
+.v3-find-i.create { font-weight: 600; }
+.v3-find-none { margin: 0; padding: 12px; font-size: 13px; color: var(--v3-ink-3); }
+.v3-find-foot { margin: 0; padding: 10px 16px; border-top: 1px solid var(--v3-line);
+  font-size: 12px; color: var(--v3-ink-3); }
+@keyframes v3-fade { from { opacity: 0; } }
+
+/* §E-42 — 누르는 타일: 올리면 오른쪽 위 「목록 →」 · 카드가 1px 뜬다 */
+.v3-live .v3-stat.act { position: relative;
+  transition: transform var(--v3-motion), border-color var(--v3-motion); }
+.v3-live .v3-stat.act:hover { transform: translateY(-1px); }
+.v3-stat-go { position: absolute; top: 12px; right: 14px; font-size: 12px; color: var(--v3-ink-2);
+  opacity: 0; transition: opacity var(--v3-motion); }
+.v3-stat.act:hover .v3-stat-go, .v3-stat.act:focus-visible .v3-stat-go { opacity: 1; }
+
+/* 070 §B-3 — 768px 미만에는 빠른 동작 열을 **안 둔다.** 여기서는 줄이 두 줄로 접히고
+   (`.v3-row` flex-wrap), 안 보이는 84px 열이 줄마다 빈 셋째 줄을 만들었다. 터치에는
+   「올리면 나타난다」도 없다. 세 자리가 무엇을 여는지 정해지는 회차에 여기 자리를 다시 정한다. */
+@media (max-width: 767.98px) {
+  .v3 .v3-quick { display: none; }
+}

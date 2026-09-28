@@ -239,7 +239,7 @@ export function Card({
    「기한 없음」만 호박색이다 — 아무 날에도 안 걸려서 마지막까지 안 보이는
    것들이라, 세 숫자 중 그것만 손댈 일이 남아 있다는 뜻이다. */
 export function StatTile({
-  n, label, warn, late, sub, href,
+  n, label, warn, late, sub, href, shown, go,
 }: {
   n: number; label: string; warn?: boolean;
   /** 066 §D-30 — **기한 지남만** 색을 준다. 나머지는 무채색이다 */
@@ -248,10 +248,15 @@ export function StatTile({
   sub?: string;
   /** 누르면 **같은 조건의 목록**으로 간다 (§D-35 가 그 값끼리 맞춰 본다) */
   href?: string;
+  /** 070 §F-47 — 숫자 자리에 대신 그릴 것(세어 올리기). 값은 여전히 `n` 이다 */
+  shown?: React.ReactNode;
+  /** 070 §E-42 — 올리면 오른쪽 위에 「목록 →」. 누를 수 있는 칸에서만 선다 */
+  go?: boolean;
 }) {
   const inner = (
     <>
-      <span className="v3-stat-n">{n}</span>
+      {href && go && <span className="v3-stat-go" aria-hidden="true">목록 →</span>}
+      <span className="v3-stat-n" data-n={n}>{shown ?? n}</span>
       <span className="v3-stat-l">{label}</span>
       {sub && <span className="v3-stat-s">{sub}</span>}
     </>
@@ -339,7 +344,7 @@ export function Clip({ n }: { n: number }) {
    하위가 있을 때만 제목 아래 한 줄이 붙는다. */
 export function ListRow({
   href, title, sub, state, assignee, due, late, dueTone, clip, onToggle,
-  selected, onSelect,
+  selected, onSelect, check, chip, tail, rowAttrs,
 }: {
   href: string;
   title: string;
@@ -363,6 +368,19 @@ export function ListRow({
    */
   selected?: boolean;
   onSelect?: () => void;
+  /*
+   * ── 070 §B 자리 셋 — 안 주면 이 행은 예전 그대로다 ──────────────
+   * 부품을 여기서 직접 부르지 않고 **자리로 받는다.** `Live.tsx` 가 이 파일의
+   * `Checkbox` 를 쓰므로, 여기서 그쪽을 부르면 두 파일이 서로를 부른다.
+   */
+  /** 상태 네모 대신 그릴 것 (눌리는 체크) */
+  check?: React.ReactNode;
+  /** 기한 앞에 서는 상태 칩 */
+  chip?: React.ReactNode;
+  /** 줄 끝 열 (빠른 동작 84px) */
+  tail?: React.ReactNode;
+  /** 줄에 붙일 표식 (`data-live-row`) */
+  rowAttrs?: Record<string, string>;
 }) {
   /*
    * `x` 로도 고른다(지시 §B). 행 안에서 키를 받되 **입력 칸에서는 안 걸린다** —
@@ -380,7 +398,7 @@ export function ListRow({
   };
   return (
     <div className={`v3-row${late ? " late" : ""}${state === "done" ? " done" : ""}${selected ? " picked" : ""}`}
-         onKeyDown={onSelect ? key : undefined}>
+         onKeyDown={onSelect ? key : undefined} {...rowAttrs}>
       {onSelect && (
         /* 상태 네모(`.v3-cb`)와 **다르게 생겨야 한다.** 하나는 「이 업무가 어떤
            상태인가」, 하나는 「내가 이것을 골랐는가」다. 한 모양이 둘을 말하면
@@ -388,7 +406,7 @@ export function ListRow({
         <input type="checkbox" className="v3-pick" checked={selected ?? false}
                onChange={onSelect} aria-label={`${title} 고르기`} />
       )}
-      <Checkbox state={state} onToggle={onToggle} disabled={!onToggle} />
+      {check ?? <Checkbox state={state} onToggle={onToggle} disabled={!onToggle} />}
       <span className="v3-row-main">
         <Link className="v3-row-t" href={href}>{title}</Link>
         {sub && <span className="v3-row-sub">{sub}</span>}
@@ -396,8 +414,10 @@ export function ListRow({
       <span className="v3-row-r">
         <Clip n={clip ?? 0} />
         <Avatar name={assignee} />
+        {chip}
         <DueText due={due} late={late} tone={dueTone} />
       </span>
+      {tail}
     </div>
   );
 }
