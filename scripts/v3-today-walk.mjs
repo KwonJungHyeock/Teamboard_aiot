@@ -160,11 +160,20 @@ try {
   const rows = await sql(
     `SELECT t.id, t.title, t.status, t.due_date::text AS "dueDate",
             ac.display_name AS "assigneeName", t.area_id AS "areaId",
-            t.completed_at::text AS "completedAt", t.parent_task_id AS "parentTaskId"
+            t.completed_at::text AS "completedAt", t.parent_task_id AS "parentTaskId",
+            to_char(t.completed_at AT TIME ZONE 'Asia/Seoul', 'YYYY-MM') AS "doneYm"
        FROM task t LEFT JOIN actor ac ON ac.id = t.assignee_id
       WHERE t.is_active = true AND t.status <> 'proposed'
         AND (t.visibility = 'team' OR t.created_by = $1)`, [me.id]);
   /*
+   * 071 §B-8 — 위 칸이 **넷**이 됐다: 진행 중 · 기한 지남 · 이번 주 마감 · 이번 달 완료.
+   * 묻는 것은 그대로 — 화면의 숫자가 **DB 에서 직접 센 값**과 같은가.
+   *   진행 중     = status 가 doing 인 것
+   *   기한 지남   = 안 끝난 셋 중 기한 < 오늘
+   *   이번 주 마감 = 안 끝난 셋 중 오늘 ≤ 기한 ≤ 이번 주 일요일(`countToday` 의 thisWeek)
+   *   이번 달 완료 = done 이고 완료 시각(KST)이 이번 달 — **SQL 이 센 달**과 맞춘다
+   *
+   * 아래는 066 때의 설명이다(그때는 셋이었다):
    * 066 §D-30 — 위 칸 셋이 **오늘 할 일 · 기한 지남 · 이번 주 마감**으로 바뀌었다
    * (전에는 진행 중 · 이번 주 마감 · 기한 없음). 묻는 것은 그대로 — 화면의 숫자가
    * **DB 에서 직접 센 값**과 같은가.
@@ -174,17 +183,16 @@ try {
    */
   const OPEN = new Set(["todo", "doing", "review"]);
   const want = {
-    todo: splitToday(rows, today).todo.length,
+    doing: rows.filter((r) => r.status === "doing").length,
     late: rows.filter((r) => OPEN.has(r.status) && r.dueDate !== null && r.dueDate < today).length,
     week: countToday(rows, today).thisWeek,
+    doneM: rows.filter((r) => r.status === "done" && r.doneYm === today.slice(0, 7)).length,
   };
-  const stat = page.locator(".v3-stat");
-  const seen = [];
-  for (let i = 0; i < await stat.count(); i++) {
-    seen.push(Number((await stat.nth(i).locator(".v3-stat-n").innerText()).trim()));
-  }
-  chk("③-숫자-셋이-직접-센-값", seen.join(",") === [want.todo, want.late, want.week].join(","),
-      `화면 [${seen}] · 직접 [${want.todo},${want.late},${want.week}] (오늘 할 일 · 기한 지남 · 이번 주 마감)`);
+  // 가오픈 칸(`.v3-open`)은 숫자 칸이 아니다. 숫자 칸만 — 세어 올라가는 중일 수 있어 `data-n` 을 읽는다
+  const seen = await page.locator(".v3-stats .v3-stat .v3-stat-n").evaluateAll(
+    (els) => els.map((e) => Number(e.getAttribute("data-n"))));
+  chk("③-숫자-넷이-직접-센-값", seen.join(",") === [want.doing, want.late, want.week, want.doneM].join(","),
+      `화면 [${seen}] · 직접 [${want.doing},${want.late},${want.week},${want.doneM}] (진행 중 · 기한 지남 · 이번 주 마감 · 이번 달 완료)`);
 
   // ④ 오늘 할 일 — 오늘 마감 + 지남 7일 이내
   const lists = splitToday(rows, today);

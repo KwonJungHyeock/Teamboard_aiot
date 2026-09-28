@@ -48,6 +48,16 @@ try {
 
   const title = `${MARK} 목표 PATCH 실패 확인`;
   await page.locator(".ntm-title").fill(title);
+  /*
+   * 목표 칸은 **「고급」 안에 있다**(032 §B — 등록 모달 네 칸 + 고급 접힘). 이 검사기는
+   * 그 전에 쓰여서 고급을 안 열고 목표 칸을 찾았고, 032 뒤로 **한 번도 끝까지 못 갔다.**
+   * 옛 전량 실행기는 이 파일을 돌리지 않아서(064~067 기록에 0번) 안 보였다 —
+   * 068 의 새 실행기가 처음 돌리면서 드러났다(072 §D). 사람이 하는 대로 고급을 먼저 연다.
+   */
+  if (await page.locator(".ntm-side").count() === 0) {
+    await page.getByRole("button", { name: /^고급/ }).first().click();
+    await page.locator(".ntm-side").waitFor({ timeout: 5000 });
+  }
   // 목표 하나 체크
   await page.locator('.ntm-side .prop-row:has(.prop-l:text-is("목표")) .prop-v').click();
   await page.waitForTimeout(400);

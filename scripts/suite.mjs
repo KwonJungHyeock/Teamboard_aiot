@@ -44,17 +44,28 @@ const BASE = "http://127.0.0.1:3000";
 const PROBE = process.argv.includes("--probe");
 
 /**
- * 몇 개마다 새로 띄우나 — **068 §B-4 에서 재서 정했다.** 짐작한 값이 아니다.
- * 근거는 `docs/068-전량실행기.md` 의 재는 판 표다.
+ * 몇 개마다 새로 띄우나 — **16. 재서 정했다**(072 §D-14). 짐작한 값이 아니다.
+ *
+ * 071 재는 판(서버 하나로 72개): `/login` 이 1~16번째 동안 중앙 66~69ms(최대 113ms)였고
+ * **17번째 묶음부터 중앙 145ms 로 두 배**가 됐다. 같은 자리에서 서버 메모리가 2.3GB 를
+ * 넘었다. 느려지기 **시작하는 자리 바로 앞**에서 끊는다. 근거 표는 `docs/068-전량실행기.md`.
  */
-const EVERY = Number(process.env.SUITE_EVERY ?? 0) || null;   // 재기 전에는 비워 둔다
-/** `/login` 이 이보다 느리면 그 판은 「못 쟀다」. 근거는 같은 문서. */
-const SLOW_MS = Number(process.env.SUITE_LOGIN_MS ?? 1500);
+const EVERY = Number(process.env.SUITE_EVERY ?? 16) || null;
 /**
- * 검사기 하나의 시한 (071 §D-24). 넘으면 **「못 쟀다(시간 초과)」** — 빨강이 아니다.
- * 끝까지 못 간 검사는 「안 된다」를 말한 것이 아니다. 값의 근거는 문서의 재는 판 표.
+ * `/login` 이 이보다 느리면 그 판은 「못 쟀다」 — **250ms.** 빠른 구간(1~16번째)의
+ * 최대 113ms 의 두 배 남짓이다. 16개마다 새로 띄우면 여기까지 올라갈 일이 없어야 하고,
+ * 올라갔다면 그 서버는 이미 다른 상태다. 067 의 5초는 이보다 스무 배 위였다.
  */
-const LIMIT_MS = Number(process.env.SUITE_LIMIT_MS ?? 0) || 900_000;
+const SLOW_MS = Number(process.env.SUITE_LOGIN_MS ?? 250);
+/**
+ * 검사기 하나의 시한 (071 §D-24) — **600초.** 넘으면 「못 쟀다(시간 초과)」 — 빨강이 아니다.
+ * 끝까지 못 간 검사는 「안 된다」를 말한 것이 아니다.
+ *
+ * 071 재는 판에서 가장 긴 둘이 `v3-switch-walk` 490초 · `area-project-walk` 467초였다
+ * (둘 다 느려진 서버 위에서 잰 값이다). 가장 긴 것에 두 할쯤 얹어 600초. 임시값 900초는
+ * 사실상 시한이 없는 것과 같았다(072 §D-15).
+ */
+const LIMIT_MS = Number(process.env.SUITE_LIMIT_MS ?? 0) || 600_000;
 const ONLY = (process.env.SUITE_ONLY ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 const OUT = process.env.SUITE_OUT ?? path.join(os.tmpdir(), "teamboard-suite");
 fs.mkdirSync(OUT, { recursive: true });

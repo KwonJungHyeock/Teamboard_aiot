@@ -84,6 +84,7 @@ try {
     await sql(`DELETE FROM goal_task WHERE task_id IN (SELECT id FROM task WHERE title LIKE $1)`, [`${MARK}%`]);
     await sql(`DELETE FROM goal_task WHERE goal_id IN (SELECT id FROM goal WHERE title LIKE $1)`, [`${MARK}%`]);
     await sql(`DELETE FROM goal_snapshot WHERE goal_id IN (SELECT id FROM goal WHERE title LIKE $1)`, [`${MARK}%`]);
+    await sql(`UPDATE goal SET parent_id = NULL WHERE title LIKE $1`, [`${MARK}%`]);
     await sql(`DELETE FROM goal WHERE title LIKE $1`, [`${MARK}%`]);
     await sql(`DELETE FROM task WHERE title LIKE $1`, [`${MARK}%`]);
 
@@ -134,13 +135,28 @@ try {
      * 065 에서 왜 초록이었는지는 **못 찾았다**(067 보고 그대로). 이제 이 검사가
      * 데모 목표·데모 업무에 기대지 않으므로, 그 물음은 이 검사에서는 **더 생기지 않는다.**
      */
+    /*
+     * ── 072 §D — 사슬도 제가 만든다: 연간 → 분기 → 월 ──────────────────
+     * 32g-화면밖은 **화면 밖에서 값이 바뀌는 목표**가 있어야 뜻을 갖는다. 그 자리는
+     * 사슬의 위쪽(연간·분기)이다 — 월 목표 업무가 바뀌면 다시 집계가 위로 올라간다
+     * (`recomputeGoalChain`). 071 재는 판에서 상위 없는 월 목표 하나만 두었더니
+     * 「화면 밖 4개 중 값이 바뀐 것 0」으로 **조건을 못 만들었다.** 데모 사슬 밑에 걸면
+     * 데모 목표 캐시를 바꾸게 되므로(위 설명), 사슬 셋을 전부 제 것으로 만든다.
+     */
     const mm = String(m).padStart(2, "0");
-    const g = (await sql(
-      `INSERT INTO goal (period_type, period_start, period_end, title, scope, level, goal_parent_source)
-       VALUES ('month', $1::date, $2::date, $3, 'team', 'month', 'manual') RETURNING id`,
-      [`${y}-${mm}-01`, `${y}-${mm}-${String(mEnd).padStart(2, "0")}`, `${MARK} 구르는 목표`]))[0];
+    const q0 = Math.floor((m - 1) / 3) * 3 + 1;
+    const qEnd = new Date(Date.UTC(y, q0 + 2, 0)).getUTCDate();
+    const mkGoal = async (type, start, end, title, parent) => (await sql(
+      `INSERT INTO goal (period_type, period_start, period_end, title, scope, level, goal_parent_source, parent_id)
+       VALUES ($1, $2::date, $3::date, $4, 'team', $5, 'manual', $6) RETURNING id`,
+      [type, start, end, title, type === "year" ? "annual" : type, parent]))[0].id;
+    const gYear = await mkGoal("year", `${y}-01-01`, `${y}-12-31`, `${MARK} 구르는 연간`, null);
+    const gQuarter = await mkGoal("quarter", `${y}-${String(q0).padStart(2, "0")}-01`,
+      `${y}-${String(q0 + 2).padStart(2, "0")}-${qEnd}`, `${MARK} 구르는 분기`, gYear);
+    const g = { id: await mkGoal("month", `${y}-${mm}-01`, `${y}-${mm}-${String(mEnd).padStart(2, "0")}`,
+      `${MARK} 구르는 목표`, gQuarter) };
     await sql(`INSERT INTO goal_task (goal_id, task_id) VALUES ($1, $2)`, [g.id, ids[0]]);
-    seeded = { ids, goalId: g.id };
+    seeded = { ids, goalId: g.id, chain: [g.id, gQuarter, gYear] };
     console.log(`   (조건) 이번 달에 걸치는 업무 ${ids.length}개 — 영역마다 하나씩(히어로는 영역당 막대 하나로` +
                 ` 말아 올린다) · 여섯까지만 stagger 라 일곱째가 있어야 「나머지는 즉시」가 뜻을 가진다` +
                 ` · 검사기가 만든 월 목표 #${g.id} 에 업무 #${ids[0]} 연결`);
@@ -469,8 +485,25 @@ try {
     const VP = p2.viewportSize();
     await p2.setViewportSize({ width: VP.width, height: 360 });
     await p2.waitForTimeout(200);
-    await p2.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await p2.waitForTimeout(500);
+    /*
+     * 072 §D — **검사기가 만든 사슬이 화면 밖에 있게** 둔다. 예전에는 바닥으로 내렸다 —
+     * 값이 바뀌는 데모 사슬이 위쪽에 있었기 때문이다. 이제 바뀌는 것은 제 사슬이고,
+     * 그 자리는 목록 순서에 달렸다(071 판에서는 아래쪽이라 바닥에서 **화면 안**이었다 —
+     * 「화면 안 [1,17,17]」). 그래서 위 · 바닥 중 제 사슬이 안 보이는 쪽을 고른다.
+     * 둘 다 보이면 조건을 못 만든 것이다 — 아래 `off` 가 비어 「미검사」로 떨어진다.
+     */
+    const oursVisible = () => p2.evaluate((mark) => [...document.querySelectorAll(".gpv")].some((v) => {
+      let n = v; for (let k = 0; k < 6 && n; k += 1) { if ((n.textContent ?? "").includes(mark)) break; n = n.parentElement; }
+      if (!n || !(n.textContent ?? "").includes(mark)) return false;
+      const r = v.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight;
+    }), MARK);
+    await p2.evaluate(() => window.scrollTo(0, 0));
+    await p2.waitForTimeout(400);
+    if (await oursVisible()) {
+      await p2.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await p2.waitForTimeout(400);
+    }
+    console.log(`   (조건) 뷰포트 360px · 제 사슬이 화면 ${await oursVisible() ? "**안**(못 만듦)" : "밖"}`);
     const offCount = await p2.evaluate(() =>
       [...document.querySelectorAll(".gpv")]
         .filter((e) => { const r = e.getBoundingClientRect(); return !(r.bottom > 0 && r.top < window.innerHeight); }).length);
@@ -595,13 +628,15 @@ try {
     await sql(`DELETE FROM goal_task WHERE task_id = ANY($1::int[])`, [seeded.ids]);
     await sql(`DELETE FROM task WHERE id = ANY($1::int[])`, [seeded.ids]);
     if (seeded.goalId) {
-      await sql(`DELETE FROM goal_task WHERE goal_id = $1`, [seeded.goalId]);
-      await sql(`DELETE FROM goal_snapshot WHERE goal_id = $1`, [seeded.goalId]);
-      await sql(`DELETE FROM goal WHERE id = $1`, [seeded.goalId]);
+      const chain = seeded.chain ?? [seeded.goalId];
+      await sql(`DELETE FROM goal_task WHERE goal_id = ANY($1::int[])`, [chain]);
+      await sql(`DELETE FROM goal_snapshot WHERE goal_id = ANY($1::int[])`, [chain]);
+      await sql(`UPDATE goal SET parent_id = NULL WHERE id = ANY($1::int[])`, [chain]);
+      await sql(`DELETE FROM goal WHERE id = ANY($1::int[])`, [chain]);
     }
     const left = (await sql(`SELECT count(*)::int n FROM task WHERE title LIKE $1`, [`${MARK}%`]))[0].n;
     const leftG = (await sql(`SELECT count(*)::int n FROM goal WHERE title LIKE $1`, [`${MARK}%`]))[0].n;
-    console.log(`정리 — 조건으로 만든 업무 ${seeded.ids.length}건 · 목표 ${seeded.goalId ? 1 : 0}건 삭제` +
+    console.log(`정리 — 조건으로 만든 업무 ${seeded.ids.length}건 · 목표 ${(seeded.chain ?? [seeded.goalId]).filter(Boolean).length}건 삭제` +
                 ` · 잔여 업무 ${left}건 · 목표 ${leftG}건 (둘 다 0이어야 한다)`);
   }
   await browser?.close();
