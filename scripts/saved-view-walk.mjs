@@ -12,6 +12,7 @@ import { requireLocalDb } from "./local-only.mjs";
 import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 import { ignoredWhy } from "./console-ignore.mjs";   // 안 세는 것은 한 파일에 (061 §D-14)
 import { testUser } from "./test-user.mjs";
+import { peopleSnapshot, peopleDiff } from "./people-guard.mjs";   // 074 §C-19 — 사람 줄 대조
 
 requireLocalDb("saved-view-walk.mjs");
 
@@ -42,7 +43,20 @@ fs.mkdirSync(OUT, { recursive: true });
 const rows = [];
 const NAMES = ["실측 뷰 A", "실측 뷰 B"];
 let browser;
+/*
+ * ── 074 §C — **제 줄만** 쓰고 **제 줄만** 지운다 ────────────────────────
+ * 073 §B 가 센 「높음」 둘이 여기 있었다.
+ *   · 「내 뷰 삭제」가 사람(#1)의 **가장 오래된** 저장한 보기를 골라 지웠다 — 물리 삭제다
+ *   · 순서 바꾸기가 **모든 사람의** 보기 중 앞의 둘을 골랐다
+ * 이제 둘 다 이 검사기가 이번 판에 만든 「실측 뷰 A · B」만 고른다. 시작할 때의 최대 id 를
+ * 적어 두고, 지울 때도 그 뒤에 생긴 제 이름의 줄만 지운다.
+ */
+let svMark = null;
+let peopleGuard = null;
 try {
+  // 074 §C-19 — **시작 전 모습**을 떠 둔다. 끝날 때 사람 줄이 같은지 대조한다(072 §G)
+  peopleGuard = await peopleSnapshot(pool);
+  svMark = (await sql(`SELECT coalesce(max(id), 0) AS m FROM saved_view`))[0].m;
   browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
     args: ["--no-proxy-server", "--no-sandbox"] });
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 } });
@@ -106,7 +120,11 @@ try {
   await step("03-restored", `핀 클릭 → ${url.pathname}${url.search} · 켜진 칩 "${back.join(" · ")}"`);
 
   // ③ 순서 변경 (드래그는 API 로 검증 — HTML5 DnD 는 합성 이벤트로 신뢰도가 낮다)
-  const before = await sql(`SELECT id, name, sort_order FROM saved_view WHERE target='tasks' ORDER BY sort_order`);
+  const before = await sql(
+    `SELECT id, name, sort_order FROM saved_view
+      WHERE target = 'tasks' AND owner_actor_id = $1 AND name = ANY($2::text[]) AND id > $3
+      ORDER BY sort_order`, [TEST_ME.id, NAMES, svMark]);
+  if (before.length < 2) throw new Error(`제 뷰 둘이 안 만들어졌다(${before.length}) — 남의 뷰로 순서를 재지 않는다`);
   const flipped = [before[1].id, before[0].id];
   await page.evaluate(async (order) => {
     await fetch("/api/saved-views", { method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -119,7 +137,11 @@ try {
 
   // ④ 경계 — 지시 28 형식. 부재 단언 하나에 짝이 되는 존재 단언을 붙인다.
   //    "남의 뷰가 안 지워진다"만 확인하면 삭제 자체가 고장 나도 통과한다.
-  const [mine] = await sql(`SELECT id, name FROM saved_view WHERE owner_actor_id=1 AND target='tasks' ORDER BY id LIMIT 1`);
+  const [mine] = await sql(
+    `SELECT id, name FROM saved_view
+      WHERE owner_actor_id = $1 AND target = 'tasks' AND name = ANY($2::text[]) AND id > $3
+      ORDER BY id LIMIT 1`, [TEST_ME.id, NAMES, svMark]);
+  if (!mine) throw new Error("지울 제 뷰가 없다 — 남의 뷰를 지우지 않는다");
   const [foreign] = await sql(
     `INSERT INTO saved_view (owner_actor_id, name, target, filters, sort_order)
      VALUES (3, '남의 뷰 (실측)', 'tasks', '{}', 99) RETURNING id`);
@@ -161,8 +183,16 @@ try {
   fs.writeFileSync(`${OUT}/steps.json`, JSON.stringify({ rows, jsErrors: errs }, null, 2));
 } finally {
   if (browser) await browser.close();
-  const n = await sql(`DELETE FROM saved_view WHERE name = ANY($1::text[]) RETURNING id`, [[...NAMES, "남의 뷰 (실측)", "가로챈 이름"]]);
+  // 이번 판에 생긴 제 이름의 줄만(`id > svMark`). 시작 표를 못 적었으면 **안 지운다**
+  const n = svMark === null ? [] : await sql(
+    `DELETE FROM saved_view WHERE id > $2 AND name = ANY($1::text[]) RETURNING id`,
+    [[...NAMES, "남의 뷰 (실측)", "가로챈 이름"], svMark]);
   const left = (await sql(`SELECT count(*)::int n FROM saved_view`))[0].n;
   console.log(`정리 — 실측 뷰 ${n.length}건 삭제 · 남은 저장된 뷰 ${left}건`);
+  if (peopleGuard) {
+    const diff = await peopleDiff(pool, peopleGuard).catch((e) => [`대조 실패 — ${e.message}`]);
+    console.log(`사람 줄 대조 — 시작 전과 다른 것 ${diff.length}건${diff.length ? ` **[${diff.slice(0, 6).join(" · ")}]**` : ""}`);
+    if (diff.length) process.exitCode = 1;
+  }
   await pool.end();
 }

@@ -21,6 +21,7 @@ import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { peopleSnapshot, peopleDiff } from "./people-guard.mjs";   // 074 §C-19 — 사람 줄 대조
 
 requireLocalDb("quick-create-walk.mjs");
 
@@ -43,7 +44,17 @@ const t = (c, id, n) => (c ? ok(id, n) : bad(id, n));
 
 let browser;
 let goalShot = null;
+/**
+ * 074 §C — 「안내 봤음」은 **검사가 로그인한 그 계정 하나만** 바꾸고, 끝나면 되돌린다.
+ * 073 까지는 `onboarded_at IS NULL` 인 **모든 계정**을 「봤음」으로 바꿨다 — 사람이 아직
+ * 안 본 첫 실행 안내가 조용히 사라졌다. `undefined` 는 「안 건드렸다」다.
+ */
+let onboardedWas;
+let onboardedWho = null;
+let peopleGuard = null;
 try {
+  // 074 §C-19 — **시작 전 모습**을 떠 둔다. 끝날 때 사람 줄이 같은지 대조한다(072 §G)
+  peopleGuard = await peopleSnapshot(pool);
   const lead = await one(`SELECT a.id, a.display_name FROM actor a JOIN account c ON c.actor_id = a.id
                            WHERE a.type='human' AND a.is_active ORDER BY a.id LIMIT 1`);
   if (!lead) throw new Error("사람 계정이 없다 — 시드부터 하라");
@@ -100,7 +111,12 @@ try {
 
   // FirstRun 은 **서버 상태**(account.onboarded_at)로 뜬다. 화면을 눌러 닫으려 하기
   // 전에 그 상태가 어디서 오는지 본다 — 클릭만으로는 계속 다시 떴다.
-  await pool.query(`UPDATE account SET onboarded_at = now() WHERE onboarded_at IS NULL`);
+  onboardedWho = lead.id;
+  // **비어 있을 때만** 채우고, 채웠을 때만 되돌린다. 값이 있던 계정을 다시 적으면 JS 의 Date 가
+  // 마이크로초를 잘라서 값이 바뀐다 — 074 사람 줄 대조가 그렇게 잡았다(「account #1 바뀜」).
+  const filled = await pool.query(
+    `UPDATE account SET onboarded_at = now() WHERE actor_id = $1 AND onboarded_at IS NULL RETURNING actor_id`, [lead.id]);
+  onboardedWas = filled.rowCount ? null : undefined;
 
   const openModal = async () => {
     await page.goto(`${BASE}/tasks?panel=task:new`, { waitUntil: "domcontentloaded" });
@@ -267,6 +283,13 @@ try {
   } catch (e) {
     console.error("뒷정리 실패:", String(e && e.message ? e.message : e));
   }
+  // 074 §C — 「안내 봤음」을 **그 계정의 시작 전 값**으로 되돌린다
+  if (onboardedWas === null && onboardedWho !== null) {
+    await pool.query(`UPDATE account SET onboarded_at = NULL WHERE actor_id = $1`, [onboardedWho]).catch(() => {});
+    const back = (await sql(`SELECT onboarded_at FROM account WHERE actor_id = $1`, [onboardedWho]))[0]?.onboarded_at ?? null;
+    console.log(`정리 — 계정 #${onboardedWho} 안내 상태 ${back === null ? "시작 전과 같음(안 봄)" : "**다름**"}`);
+    if (back !== null) process.exitCode = 1;
+  }
   // 목표 활성 상태를 **시작 전 지문 그대로** 되돌린다.
   let goalBack = "(안 건드림)";
   if (goalShot) {
@@ -282,5 +305,10 @@ try {
   const left = await one(`SELECT count(*)::int n FROM task WHERE title = $1`, [TITLE]).catch(() => null);
   console.log(`뒷정리 확인 — [검사] 업무 ${left?.n ?? "?"} (0이어야 한다) · 목표 활성 ${goalBack}`);
   if (left && left.n !== 0) process.exitCode = 1;
+  if (peopleGuard) {
+    const diff = await peopleDiff(pool, peopleGuard).catch((e) => [`대조 실패 — ${e.message}`]);
+    console.log(`사람 줄 대조 — 시작 전과 다른 것 ${diff.length}건${diff.length ? ` **[${diff.slice(0, 6).join(" · ")}]**` : ""}`);
+    if (diff.length) process.exitCode = 1;
+  }
   await pool.end().catch(() => {});
 }

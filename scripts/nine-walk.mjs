@@ -63,7 +63,11 @@ try {
   await sql(`INSERT INTO config (key, value) VALUES ($1, to_jsonb(true))
              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [KEY]);
 
-  chk("0조건-아홉이-아홉이다", NINE.length === 9,
+  /*
+   * 074 §A-8 — **열 번째**가 더해졌다: 새 화면 스위치(`/v3/switch`). 끄는 길이 없는 스위치는
+   * 켤 수 없어서 가오픈 필수에 넣었다. 아홉 + 하나 = 열. 목록은 여전히 제품에게 묻는다.
+   */
+  chk("0조건-아홉이-아홉이다", NINE.length === 10 && NINE.some((s) => s.key === "switch"),
       `${NINE.map((s) => `${s.n}${s.label}`).join(" · ")}`);
 
   // 상세(3번)는 **업무 하나가 있어야** 열린다. 조건을 만든다.
@@ -106,8 +110,8 @@ try {
     const ok = r.status === 200 && r.path !== "/v3/not-yet";
     (ok ? opened : shut).push(`${s.n}${s.label}${ok ? "" : `(${r.status} ${r.path})`}`);
   }
-  chk("①-아홉이-열린다", opened.length === 9,
-      `열림 ${opened.length}/9 [${opened.join(" · ")}]` +
+  chk("①-아홉이-열린다", opened.length === NINE.length,
+      `열림 ${opened.length}/${NINE.length} [${opened.join(" · ")}]` +
       `${shut.length ? ` · **막힘 ${shut.length}** [${shut.join(" · ")}]` : ""}`);
 
   // ── ② 아홉 밖의 v3 주소는 **전부** 막음 화면 (§0-2 · §A-1) ─────

@@ -16,6 +16,7 @@ import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 import { testUser } from "./test-user.mjs";
+import { peopleSnapshot, peopleDiff } from "./people-guard.mjs";   // 074 §C-19 — 사람 줄 대조
 
 requireLocalDb("h4-signature-walk.mjs");
 
@@ -59,7 +60,10 @@ let logMark = null;
 /* 060 §C — 이 검사기가 만든 조건. 끝나면 지운다(§G 034·054). */
 const MARK = "[060H4]";
 let seeded = null;
+let peopleGuard = null;
 try {
+  // 074 §C-19 — **시작 전 모습**을 떠 둔다. 끝날 때 사람 줄이 같은지 대조한다(072 §G)
+  peopleGuard = await peopleSnapshot(pool);
   // 지금까지의 로그 최대 id — 이 뒤에 생긴 것이 **이 회차가 만든 것**이다.
   logMark = (await sql(`SELECT coalesce(max(id), 0) AS m FROM activity_log`))[0].m;
 
@@ -620,8 +624,16 @@ try {
   fs.writeFileSync(`${OUT}/h4.json`, JSON.stringify(rows, null, 2));
 } finally {
   if (logMark !== null) {
-    const gone = await sql(`DELETE FROM activity_log WHERE id > $1 RETURNING id`, [logMark]);
-    if (gone.length) console.log(`정리 — 이 회차가 남긴 활동 로그 ${gone.length}건 삭제`);
+    /*
+     * 074 §C — **제가 만든 기록만** 지운다. 073 까지는 「시작 뒤에 생긴 기록 전부」를 지워서
+     * 도는 동안 **사람이 남긴 기록까지** 지웠다. 고를 수 있는 것만 고르고, 못 고르면 안 지운다
+     * (072 에서 업무 없는 기록 76줄을 지우지 않고 센 것과 같은 판단).
+     */
+    const gone = await sql(
+      `DELETE FROM activity_log WHERE id > $1
+          AND (task_id = ANY($2::int[]) OR position($3 in message) > 0) RETURNING id`,
+      [logMark, seeded?.ids ?? [], MARK]);
+    if (gone.length) console.log(`정리 — 이 회차가 제 업무·목표에 남긴 활동 로그 ${gone.length}건 삭제`);
   }
   // 진행률을 바꾸는 것은 **검사기가 만든 업무뿐**이다(068 §D) — 그 업무는 아래에서 통째로 지운다.
   if (seeded) {
@@ -640,5 +652,10 @@ try {
                 ` · 잔여 업무 ${left}건 · 목표 ${leftG}건 (둘 다 0이어야 한다)`);
   }
   await browser?.close();
+  if (peopleGuard) {
+    const diff = await peopleDiff(pool, peopleGuard).catch((e) => [`대조 실패 — ${e.message}`]);
+    console.log(`사람 줄 대조 — 시작 전과 다른 것 ${diff.length}건${diff.length ? ` **[${diff.slice(0, 6).join(" · ")}]**` : ""}`);
+    if (diff.length) process.exitCode = 1;
+  }
   await pool.end();
 }

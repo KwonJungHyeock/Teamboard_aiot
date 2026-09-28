@@ -42,7 +42,17 @@ export const NINE: NineScreen[] = [
   { n: 7, key: "team",    label: "팀",        path: `${V3_BASE}/team` },
   { n: 8, key: "members", label: "구성원",    path: `${V3_BASE}/members` },
   { n: 9, key: "me",      label: "내 정보",   path: `${V3_BASE}/me` },
+  /*
+   * ── 열 번째 (074 §A-8) — 새 화면 스위치 ─────────────────────────
+   * 아홉에 없던 자리다. 스위치를 켜면 옛 「설정」이 막음 화면 뒤로 가서 **화면으로는
+   * 끌 수 없었다**(073 §C). 끄는 길이 없는 스위치는 켤 수 없다 — 그래서 가오픈 필수에 더한다.
+   * 관리자만 보이고 부른다(`admin` · 규약 6-3).
+   */
+  { n: 10, key: "switch", label: "새 화면 스위치", path: `${V3_BASE}/switch` },
 ];
+
+/** 새 화면 스위치 자리. **스위치가 꺼져 있어도** 관리자에게는 열린다(`app/v3/layout.tsx`) */
+export const SWITCH_PATH = `${V3_BASE}/switch`;
 
 /**
  * 막음 화면 자신은 **아홉이 아니지만 열려 있어야 한다.** 안 그러면 막힌 사람을
@@ -118,6 +128,8 @@ export const RAIL: RailGroup[] = [
       { label: "구성원", href: `${V3_BASE}/members`, admin: true },
       { label: "영역", lock: "areas" },
       { label: "내 정보", href: `${V3_BASE}/me` },
+      // 074 §A — 끄는 자리 · 켜는 자리. **관리자만** 보이고 부른다
+      { label: "새 화면 스위치", href: SWITCH_PATH, admin: true },
     ],
   },
 ];

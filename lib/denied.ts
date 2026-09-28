@@ -28,7 +28,7 @@ export const DENIED_HREF = "/";
 
 /** 주소에 실리는 이름. 무엇을 막았는지를 가리킨다. */
 export type DeniedKey =
-  | "members" | "agent-usage" | "settings" | "status" | "open-due" | "stats" | "v3-off";
+  | "members" | "agent-usage" | "settings" | "status" | "open-due" | "stats" | "v3-off" | "v3-switch";
 
 /**
  * 왜 못 보는지. **한 문장이다.**
@@ -45,6 +45,7 @@ export const DENIED_REASON: Record<DeniedKey, string> = {
   "stats": "집계는 팀장부터 볼 수 있습니다.",
   // 등급 문제가 아니다 — 그래서 등급 이야기를 안 한다.
   "v3-off": "새 화면은 아직 꺼져 있습니다. 관리자가 설정에서 켤 수 있습니다.",
+  "v3-switch": "새 화면 스위치는 관리자만 볼 수 있습니다.",
 };
 
 /** 주소에 이유를 싣는 이름. 한 낱말로 고정해서 양쪽이 같은 것을 본다. */

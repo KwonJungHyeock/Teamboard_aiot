@@ -13,7 +13,8 @@ import { redirect } from "next/navigation";
 import { getLiveSession } from "@/lib/auth";
 import { getUiV3 } from "@/lib/v3/switch";
 import { deniedHref } from "@/lib/denied";
-import { isNine } from "@/lib/v3/nine";
+import { isNine, SWITCH_PATH } from "@/lib/v3/nine";
+import { isAdmin } from "@/lib/types";
 import { V3_BASE } from "@/lib/v3/routes";
 import { notYetHref, notYetOf } from "@/lib/v3/not-yet";
 import { PATH_HEADER } from "@/middleware";
@@ -28,7 +29,19 @@ export default async function V3Layout({ children }: { children: React.ReactNode
   const live = await getLiveSession();
   if (!live) redirect("/api/auth/logout?reason=inactive");
   // 등급이 아니라 **스위치**가 막은 것이다 — 이유 문구도 그렇게 말한다.
-  if (!(await getUiV3())) redirect(deniedHref("v3-off"));
+  if (!(await getUiV3())) {
+    /*
+     * 074 §A-7 — **켜는 자리도 끄는 자리와 같은 곳이다.** 꺼져 있어도 관리자는
+     * 스위치 화면 **하나만** 연다. 그것도 레일 없이 연다 — 꺼진 동안 레일의 다른 곳은
+     * 전부 막혀 있어서, 레일을 그리면 누를 수 없는 문이 열 개 선다.
+     * 관리자가 아니거나 다른 주소면 예전 그대로 막는다.
+     */
+    const here0 = (headers().get(PATH_HEADER) ?? "").split("?")[0].replace(/\/+$/, "");
+    if (here0 === SWITCH_PATH && isAdmin(live.user)) {
+      return <div className="v3 v3-bare"><main className="v3-main">{children}</main></div>;
+    }
+    redirect(deniedHref("v3-off"));
+  }
   /*
    * ── 067 §0-2 — **아홉 밖의 v3 주소는 전부 막음 화면으로 간다** ────
    *
