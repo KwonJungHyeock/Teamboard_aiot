@@ -129,7 +129,7 @@ export default function TodayView(props: Props) {
   }, [today]);
 
   return (
-    <Live tasks={tasks} setTasks={setTasks} goals={goals}>
+    <Live tasks={tasks} setTasks={setTasks} goals={goals} me={props.me}>
       <TodayBody {...props} tasks={tasks} inbox={inbox} goals={goals} err={err} />
     </Live>
   );
