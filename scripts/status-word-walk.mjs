@@ -36,6 +36,7 @@ import path from "node:path";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { ignoredWhy } from "./console-ignore.mjs";
+import { peopleSnapshot, peopleDiff } from "./people-guard.mjs";   // 074 §C-19 — 사람 줄 대조
 
 requireLocalDb("status-word-walk.mjs");
 
@@ -72,7 +73,16 @@ const SCREENS = [
 const KEY = "ui_v3_enabled";
 const MARK = "[071검사]";
 let browser, madeHandover = false, swBefore, swTouched = false;
+/**
+ * 074 §C — 문서를 만들기 **직전의** 최대 id. 지울 때 이 뒤에 생긴 것만 본다.
+ * 073 까지는 제목이 「새 인수인계 문서」(제품 기본 제목)인 문서를 **전부** 지웠다 —
+ * 사람이 제목을 안 바꾼 채 둔 문서까지. 못 적었으면(`null`) **안 지운다.**
+ */
+let hoMark = null, hoAuthor = null;
+let peopleGuard = null;
 try {
+  // 074 §C-19 — **시작 전 모습**을 떠 둔다. 끝날 때 사람 줄이 같은지 대조한다(072 §G)
+  peopleGuard = await peopleSnapshot(pool);
   rmSync(TMP, { recursive: true, force: true });
   mkdirSync(TMP, { recursive: true });
   execFileSync(path.join(REPO, "node_modules", ".bin", "tsc"),
@@ -108,6 +118,8 @@ try {
     await page.locator(".frn-skip").first().click({ timeout: 1500 }).catch(() => {});
     await page.waitForTimeout(900);
     if (s.setup) {
+      hoMark = (await sql(`SELECT coalesce(max(id), 0) AS m FROM handover`))[0].m;
+      hoAuthor = me.id;
       await page.getByRole("button", { name: "＋ 새 인수인계" }).first().click({ timeout: 6000 });
       await page.waitForSelector(".ho-task-pick, .ho-task-m", { timeout: 10000 })
         // 빈 catch 는 없는 실패를 만든다(§G 051) — 못 만들었으면 적고 넘어간다.
@@ -205,15 +217,25 @@ try {
   }
   // 만든 문서를 지운다. 제목은 제품이 정한 것(`새 인수인계 문서`)이라 그 이름으로 고른다.
   if (madeHandover) {
-    const ids = (await pool.query(`SELECT id FROM handover WHERE title = $1`, ["새 인수인계 문서"])).rows.map((r) => r.id);
+    const ids = hoMark === null ? [] : (await pool.query(
+      `SELECT id FROM handover WHERE title = $1 AND id > $2 AND author_id = $3`,
+      ["새 인수인계 문서", hoMark, hoAuthor])).rows.map((r) => r.id);
     if (ids.length) {
       await pool.query(`DELETE FROM handover_task WHERE handover_id = ANY($1::int[])`, [ids]).catch(() => {});
       await pool.query(`DELETE FROM handover WHERE id = ANY($1::int[])`, [ids]);
     }
-    const left = (await pool.query(`SELECT count(*)::int n FROM handover`)).rows[0].n;
-    console.log(`뒷정리 — 인수인계 ${ids.length}건 지움 · 남은 것 ${left}건 (0이어야 한다)`);
+    // 남은 것은 **이번 판에 만든 것**만 센다 — 사람의 인수인계는 원래 있어도 된다
+    const left = hoMark === null ? 0 : (await pool.query(
+      `SELECT count(*)::int n FROM handover WHERE id > $1 AND author_id = $2`, [hoMark, hoAuthor])).rows[0].n;
+    console.log(`뒷정리 — 이번 판에 만든 인수인계 ${ids.length}건 지움 · 남은 것 ${left}건 (0이어야 한다)`);
+    if (left !== 0) process.exitCode = 1;
   }
   rmSync(TMP, { recursive: true, force: true });
   await browser?.close();
+  if (peopleGuard) {
+    const diff = await peopleDiff(pool, peopleGuard).catch((e) => [`대조 실패 — ${e.message}`]);
+    console.log(`사람 줄 대조 — 시작 전과 다른 것 ${diff.length}건${diff.length ? ` **[${diff.slice(0, 6).join(" · ")}]**` : ""}`);
+    if (diff.length) process.exitCode = 1;
+  }
   await pool.end();
 }

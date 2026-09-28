@@ -17,6 +17,7 @@ import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import pg from "pg";
 import { testUser } from "./test-user.mjs";
+import { peopleSnapshot, peopleDiff } from "./people-guard.mjs";   // 074 §C-19 — 사람 줄 대조
 
 /* 065 §B-9 — 검사가 쓰는 신분은 손으로 안 적는다. DB 에서 읽는다. */
 const TEST_ME = await testUser();
@@ -61,8 +62,16 @@ let logMark = null;
 
 async function cleanup() {
   if (logMark !== null) {
-    const gone = await q(`DELETE FROM activity_log WHERE id > $1 RETURNING id`, [logMark]);
-    if (gone.length) console.log(`정리 — 이 회차가 남긴 활동 로그 ${gone.length}건 삭제`);
+  /*
+   * 074 §C — **제가 만든 기록만** 지운다. 073 까지는 「시작 뒤에 생긴 기록 전부」를 지워서
+   * 도는 동안 **사람이 남긴 기록까지** 지웠다. 고를 수 있는 것만 고르고, 못 고르면 안 지운다
+   * (072 에서 업무 없는 기록 76줄을 지우지 않고 센 것과 같은 판단).
+   */
+    // 제가 발급한 계정 이름(「ZZ-신규」) 이 든 줄 · 그 계정이 남긴 줄
+    const gone = await q(
+      `DELETE FROM activity_log WHERE id > $1 AND (position('ZZ-신규' in message) > 0 OR user_id = $2) RETURNING id`,
+      [logMark, newId ?? -1]);
+    if (gone.length) console.log(`정리 — 이 회차가 제 계정에 대해 남긴 활동 로그 ${gone.length}건 삭제`);
   }
   if (!newId) return;
   await q(`DELETE FROM agent_config WHERE actor_id IN (SELECT id FROM actor WHERE owner_actor_id = $1)`, [newId]);
@@ -74,7 +83,10 @@ async function cleanup() {
   console.log(`\n정리 — 계정 #${newId}${agentId ? ` · 에이전트 #${agentId}` : ""} 삭제`);
 }
 
+let peopleGuard = null;
 try {
+  // 074 §C-19 — **시작 전 모습**을 떠 둔다. 끝날 때 사람 줄이 같은지 대조한다(072 §G)
+  peopleGuard = await peopleSnapshot(pool);
   // ── 0. 진짜 발급 경로로 계정을 만든다 ────────────────────────
   logMark = (await q(`SELECT coalesce(max(id), 0) AS m FROM activity_log`))[0].m;
   await q(`DELETE FROM account WHERE email = $1`, [EMAIL]);   // 이전 회차 잔여물
@@ -276,6 +288,11 @@ try {
 } finally {
   await cleanup().catch((e) => console.error("정리 실패:", e.message));
   await browser.close();
+  if (peopleGuard) {
+    const diff = await peopleDiff(pool, peopleGuard).catch((e) => [`대조 실패 — ${e.message}`]);
+    console.log(`사람 줄 대조 — 시작 전과 다른 것 ${diff.length}건${diff.length ? ` **[${diff.slice(0, 6).join(" · ")}]**` : ""}`);
+    if (diff.length) process.exitCode = 1;
+  }
   await pool.end();
 }
 

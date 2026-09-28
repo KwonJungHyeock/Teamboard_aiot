@@ -517,7 +517,10 @@ try {
         await pool.query(`UPDATE task SET status = $2, completed_at = $3::timestamptz, resolution = $4, progress = $5 WHERE id = $1`,
           [r.id, st, c, res, pr]);
       }
-      const logs = await pool.query(`DELETE FROM activity_log WHERE id > $1 RETURNING task_id`, [logMark]);
+      // 074 §C — 지우는 것은 **이 검사기가 바꿨다가 되돌린 사람 업무**의 이번 판 기록뿐이다.
+      // 그 밖의 기록은 사람이 남긴 것일 수 있어 **안 지운다**(고를 수 없으면 안 지운다)
+      const logs = await pool.query(`DELETE FROM activity_log WHERE id > $1 AND task_id = ANY($2::int[]) RETURNING id`,
+        [logMark, moved.map((r) => r.id)]);
       console.log(`남의 업무 확인 — 시작 전과 다른 것 ${moved.length}건${moved.length ? ` **[${moved.map((r) => `#${r.id}`).join(",")}] 되돌렸다**` : ""}` +
                   ` · 이 회차의 활동 기록 ${logs.rowCount}줄 지움`);
       if (moved.length) process.exitCode = 1;

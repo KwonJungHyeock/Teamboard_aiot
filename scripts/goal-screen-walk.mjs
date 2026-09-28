@@ -11,6 +11,7 @@ import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 import { testUser } from "./test-user.mjs";
+import { peopleSnapshot, peopleDiff } from "./people-guard.mjs";   // 074 §C-19 — 사람 줄 대조
 
 requireLocalDb("goal-screen-walk.mjs");
 
@@ -53,7 +54,10 @@ let sliderRestore = null;
 /* 060 §C — B3 의 조건으로 만든 것. 끝나면 지운다(§G 034). */
 const B3 = "[060B3]";
 let b3 = null;
+let peopleGuard = null;
 try {
+  // 074 §C-19 — **시작 전 모습**을 떠 둔다. 끝날 때 사람 줄이 같은지 대조한다(072 §G)
+  peopleGuard = await peopleSnapshot(pool);
   // 지금까지의 로그 최대 id — 이 뒤에 생긴 것이 **이 회차가 만든 것**이다.
   logMark = (await sql(`SELECT coalesce(max(id), 0) AS m FROM activity_log`))[0].m;
 
@@ -332,8 +336,20 @@ try {
   fs.writeFileSync(`${OUT}/walk.json`, JSON.stringify(rows, null, 2));
 } finally {
   if (logMark !== null) {
-    const gone = await sql(`DELETE FROM activity_log WHERE id > $1 RETURNING id`, [logMark]);
-    if (gone.length) console.log(`정리 — 이 회차가 남긴 활동 로그 ${gone.length}건 삭제`);
+    /*
+     * 074 §C — **제가 만든 기록만** 지운다. 073 까지는 「시작 뒤에 생긴 기록 전부」를 지워서
+     * 도는 동안 **사람이 남긴 기록까지** 지웠다. 고를 수 있는 것만 고르고, 못 고르면 안 지운다
+     * (072 에서 업무 없는 기록 76줄을 지우지 않고 센 것과 같은 판단).
+     */
+    // 제 표식(「[편집실측]」 · 「[실패실측]」 · B3 제목) · 제가 만든 업무 · 제가 민 진행률 슬라이더의 한 줄
+    const gone = await sql(
+      `DELETE FROM activity_log WHERE id > $1
+          AND (position('실측]' in message) > 0 OR position($2 in message) > 0
+               OR task_id = ANY($3::int[])
+               OR (task_id = $4 AND message LIKE '%진행률 변경%'))
+        RETURNING id`,
+      [logMark, B3, b3 ? [b3.tid] : [], sliderRestore?.id ?? -1]);
+    if (gone.length) console.log(`정리 — 이 회차가 남긴 제 활동 로그 ${gone.length}건 삭제`);
   }
   if (restore) {
     await sql(`UPDATE goal SET title = $1 WHERE id = $2`, [restore.title, restore.id]);
@@ -343,7 +359,8 @@ try {
     await sql(`UPDATE task SET progress = $1 WHERE id = $2`, [sliderRestore.progress, sliderRestore.id]);
     console.log(`정리 — task #${sliderRestore.id} 진행률을 ${sliderRestore.progress}% 로 되돌림`);
   }
-  await sql(`DELETE FROM activity_log WHERE message LIKE '%실측%'`);
+  // 074 §C — 예전엔 여기서 「실측」이 든 기록을 **기간 없이 전부** 지웠다(사람 글에 그 낱말이 있어도).
+  // 위에서 이번 판 · 제 표식으로 골라 지웠으므로 뺐다.
   if (b3) {
     await sql(`DELETE FROM goal_task WHERE goal_id = $1`, [b3.gid]);
     await sql(`DELETE FROM goal WHERE id = $1`, [b3.gid]);
@@ -352,5 +369,10 @@ try {
     console.log(`정리 — B3 조건(월 목표 #${b3.gid} · 업무 #${b3.tid}) 삭제 · 잔여 ${left}건 (0이어야 한다)`);
   }
   await browser?.close();
+  if (peopleGuard) {
+    const diff = await peopleDiff(pool, peopleGuard).catch((e) => [`대조 실패 — ${e.message}`]);
+    console.log(`사람 줄 대조 — 시작 전과 다른 것 ${diff.length}건${diff.length ? ` **[${diff.slice(0, 6).join(" · ")}]**` : ""}`);
+    if (diff.length) process.exitCode = 1;
+  }
   await pool.end();
 }
