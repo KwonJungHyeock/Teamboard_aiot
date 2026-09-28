@@ -19,6 +19,7 @@ import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
+import { peopleSnapshot, peopleDiff } from "./people-guard.mjs";   // 076 §A — 사람 줄 대조
 
 requireLocalDb("goal-link-level-walk.mjs");
 
@@ -38,8 +39,9 @@ const ok = (id, n) => { rows.push({ id, pass: true, n }); console.log(`OK   ${id
 const bad = (id, n) => { rows.push({ id, pass: false, n }); console.log(`FAIL ${id.padEnd(10)} ${n}`); };
 const note = (id, n) => { rows.push({ id, pass: null, n }); console.log(`측정 ${id.padEnd(10)} ${n}`); };
 
-let browser, madeGoalId = null, madeTaskId = null;
+let browser, madeGoalId = null, madeTaskId = null, ownQId = null, guard = null;
 try {
+  guard = await peopleSnapshot(pool);
   const lead = await one(`SELECT id, display_name, email FROM actor a JOIN account c ON c.actor_id = a.id
                            WHERE a.type='human' AND a.is_active ORDER BY a.id LIMIT 1`);
   if (!lead) throw new Error("사람 계정이 없다 — 시드부터 하라");
@@ -58,6 +60,17 @@ try {
              date_trunc('quarter', current_date) - interval '1 day',
              '[검사] 지난 분기 목표', 'auto', 0, $1, true) RETURNING id, title`, [lead.id]);
   madeGoalId = pastQ.id;
+
+  /*
+   * 076 §A — §1F 가 연결했다 뗄 **제 분기 목표**(이번 분기 · 부모 없음). 075 까지는 사람의 분기 목표
+   * (qGoal)에 제 업무를 걸었다 뗐고, 그때마다 그 목표의 저장된 진척이 다시 계산돼 바뀐 채 남았다.
+   * 부모를 안 달아 재계산이 사람의 연간 목표로 올라가지 않게 한다. qGoal 은 §1A 후보 읽기에만 쓴다.
+   */
+  const ownQ = await one(
+    `INSERT INTO goal (period_type, period_start, period_end, title, progress_mode, progress, owner_actor_id, is_demo)
+     VALUES ('quarter', date_trunc('quarter', current_date), date_trunc('quarter', current_date) + interval '3 months' - interval '1 day',
+             '[검사] 이번 분기 제 목표', 'auto', 0, $1, true) RETURNING id, title`, [lead.id]);
+  ownQId = ownQ.id;
 
   // 연결할 업무 — 아직 어떤 목표에도 안 붙은, 진척이 있는 것 하나를 새로 만든다.
   const t = await one(
@@ -155,15 +168,15 @@ try {
   // 시드는 goal.progress 를 0 으로 **박아 넣는다** — 한 번도 재계산된 적이 없는 값이다.
   // 그 0 을 before 로 쓰면 "연결이 값을 움직였다"와 "처음으로 계산됐다"가 섞인다.
   // 그래서 **연결한 상태와 연결을 뗀 상태**를 잰다. 둘 다 같은 재계산 경로를 지난 값이다.
-  if (qGoal) {
-    const r1 = await link([qGoal.id]);
-    const withLink = await prog(qGoal.id);
+  {
+    const r1 = await link([ownQ.id]);
+    const withLink = await prog(ownQ.id);
     const r2 = await link([]);
-    const without = await prog(qGoal.id);
+    const without = await prog(ownQ.id);
     if (!r1.ok() || !r2.ok()) bad("§1F", `연결 PATCH 실패 HTTP ${r1.status()}/${r2.status()}`);
     else if (withLink.counted === without.counted && withLink.progress === without.progress)
-      bad("§1F", `연결해도 값이 그대로다 — "${qGoal.title}" ${fmt(without)}`);
-    else ok("§1F", `"${qGoal.title}" 연결 없음 ${fmt(without)} → 연결 후 ${fmt(withLink)} (붙인 업무: 진행 40% 1건)`);
+      bad("§1F", `연결해도 값이 그대로다 — "${ownQ.title}" ${fmt(without)}`);
+    else ok("§1F", `"${ownQ.title}" 연결 없음 ${fmt(without)} → 연결 후 ${fmt(withLink)} (붙인 업무: 진행 40% 1건)`);
   }
 
   // §1G 지난 기간 목표에 연결 — 값이 어떻게 되는가
@@ -197,9 +210,14 @@ try {
     await tidy("activity_log", `DELETE FROM activity_log WHERE task_id=$1`, [madeTaskId]);
     await tidy("task", `DELETE FROM task WHERE id=$1`, [madeTaskId]);
   }
-  if (madeGoalId) {
-    await tidy("goal_task(goal)", `DELETE FROM goal_task WHERE goal_id=$1`, [madeGoalId]);
-    await tidy("goal", `DELETE FROM goal WHERE id=$1`, [madeGoalId]);
+  for (const gid of [madeGoalId, ownQId].filter(Boolean)) {
+    await tidy("goal_task(goal)", `DELETE FROM goal_task WHERE goal_id=$1`, [gid]);
+    await tidy("goal", `DELETE FROM goal WHERE id=$1`, [gid]);
+  }
+  if (guard) {
+    const diff = await peopleDiff(pool, guard).catch((e) => [`대조 실패 — ${e.message}`]);
+    console.log(`사람 줄 대조 — 시작 전과 다른 것 ${diff.length}건${diff.length ? ` [${diff.slice(0, 5).join(" · ")}]` : ""}`);
+    if (diff.length) rows.push({ id: "사람줄", pass: false, n: diff.join(" · ") });
   }
   try { await pool.end(); } catch { /* 이미 닫혔다 — 종료 경로라 더 할 일이 없다 */ }
   const f = rows.filter((r) => r.pass === false).length;

@@ -248,8 +248,19 @@ try {
   chk("E③-조건 지우기는 전부 푼다", clearedRows > 1,
     `행 ${clearedRows} — 하나만 풀면 또 0건일 수 있다`);
 
-  // ② — 좁힌 것이 하나도 없는데 0건. **데이터를 비워서 재고 되돌린다.**
-  const hidden = await q(`UPDATE task SET is_active = false WHERE is_active = true RETURNING id`);
+  // ② — 좁힌 것이 하나도 없는데 0건.
+  //
+  // 076 §A — **데이터를 비우지 않는다.** 075 까지는 모든 사람의 업무를 잠시 끄고(is_active=false)
+  // 쟀다가 다시 켰다 — 도는 동안 사람이 만든 · 끈 업무가 섞이고, 도중에 죽으면 모두의 업무가
+  // 꺼진 채 남는다. 이제는 **목록 응답만 비워서** 화면이 「진짜 비었을 때」 무엇을 말하는지 잰다.
+  // 잃는 것: 「DB 가 비면 서버가 빈 목록을 준다」는 이 줄이 안 잰다(서버 쪽은 조건 없는 SELECT 다).
+  const isList = (u) => u.pathname === "/api/tasks";   // 목록만. /api/tasks/:id 는 그대로
+  const emptyRoute = async (route) => {
+    const res = await route.fetch();
+    const body = await res.json().catch(() => ({}));
+    await route.fulfill({ response: res, json: { ...body, tasks: [], inbox: [] } });
+  };
+  await page.route(isList, emptyRoute);
   try {
     await page.goto(`${BASE}/tasks?assignee=all`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector('select[aria-label="정렬 기준"]', { timeout: 15000 });
@@ -258,10 +269,9 @@ try {
     chk("E②-진짜 비었을 때만 「없어요」",
       /^아직 업무가 없어요/.test(t2) && /첫 업무/.test(h2)
         && !a2.some((s) => /전체 담당|조건 지우기/.test(s)),
-      `"${t2}" / "${h2}" / [${a2.join("] [")}] — 넓힐 것이 없으니 넓히는 버튼도 없다`);
+      `"${t2}" / "${h2}" / [${a2.join("] [")}] — 넓힐 것이 없으니 넓히는 버튼도 없다 (목록 응답만 비움 · DB 안 건드림)`);
   } finally {
-    await q(`UPDATE task SET is_active = true WHERE id = ANY($1::int[])`, [hidden.map((r) => r.id)]);
-    console.log(`   (되돌림 — 업무 ${hidden.length}건 다시 활성)`);
+    await page.unroute(isList, emptyRoute);
   }
 
   chk("N-요청은 한 번", firstReqs.length === 1, `${firstReqs.length}회`);

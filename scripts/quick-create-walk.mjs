@@ -43,7 +43,7 @@ const bad = (id, n) => { fail++; console.log(`FAIL ${id.padEnd(16)} ${n}`); };
 const t = (c, id, n) => (c ? ok(id, n) : bad(id, n));
 
 let browser;
-let goalShot = null;
+let ownGoal = null;
 /**
  * 074 §C — 「안내 봤음」은 **검사가 로그인한 그 계정 하나만** 바꾸고, 끝나면 되돌린다.
  * 073 까지는 `onboarded_at IS NULL` 인 **모든 계정**을 「봤음」으로 바꿨다 — 사람이 아직
@@ -103,11 +103,14 @@ try {
   // 를 한 번 받아 두므로, **그 뒤에 DB 를 바꾸면 화면은 모른다.**
   // 검사기가 옳은 화면을 결함으로 읽은 것이다.
   // **조건은 관측보다 먼저 만든다.**
-  goalShot = (await sql(`SELECT id, is_active FROM goal ORDER BY id`))
-    .map((r) => `${r.id}:${r.is_active}`).join(" ");
-  const someGoal = await one(
-    `SELECT id FROM goal WHERE period_type IN ('quarter','month') ORDER BY id LIMIT 1`);
-  if (someGoal) await pool.query(`UPDATE goal SET is_active = true WHERE id = $1`, [someGoal.id]);
+  //
+  // 076 §A — 조건은 **제 월 목표 하나를 만들어서** 세운다. 075 까지는 사람의 보관된 분기·월 목표를
+  // 잠시 켰다가, 끝에 **모든 목표의** 활성을 시작 전 지문으로 다시 적었다 — 도는 동안 사람이 켜고
+  // 끈 것까지 덮는다. 부모를 안 달아 어느 사람 목표에도 매이지 않는다.
+  ownGoal = await one(
+    `INSERT INTO goal (period_type, period_start, period_end, title, progress_mode, progress, owner_actor_id, is_demo)
+     VALUES ('month', date_trunc('month', current_date), date_trunc('month', current_date) + interval '1 month' - interval '1 day',
+             '[검사] 빠른 만들기 제 월 목표', 'auto', 0, $1, true) RETURNING id`, [lead.id]);
 
   // FirstRun 은 **서버 상태**(account.onboarded_at)로 뜬다. 화면을 눌러 닫으려 하기
   // 전에 그 상태가 어디서 오는지 본다 — 클릭만으로는 계속 다시 떴다.
@@ -224,8 +227,7 @@ try {
   //   바로 **목록이 늘 비어 있던 것**이다. 비어 있는 것끼리 맞춰 놓고
   //   「통과」라고 적으면 그 결함이 돌아와도 모른다.
   //
-  //   그래서 분기·월 목표 하나를 **활성으로 만들어 놓고** 잰다. 뒷정리에서
-  //   시작 전 지문 그대로 되돌린다(§G — 절대값이 아니라 시작 전 상태와 대조).
+  //   그래서 분기·월 목표 하나를 **제 것으로 만들어 놓고** 잰다(076 §A). 뒷정리에서 그 하나만 지운다.
   const wantGoals = Number((await one(
     `SELECT count(*)::int n FROM goal WHERE is_active AND period_type IN ('quarter','month')`)).n);
   await page.locator(".ntm-adv").click();
@@ -290,20 +292,17 @@ try {
     console.log(`정리 — 계정 #${onboardedWho} 안내 상태 ${back === null ? "시작 전과 같음(안 봄)" : "**다름**"}`);
     if (back !== null) process.exitCode = 1;
   }
-  // 목표 활성 상태를 **시작 전 지문 그대로** 되돌린다.
-  let goalBack = "(안 건드림)";
-  if (goalShot) {
-    for (const pair of goalShot.split(" ")) {
-      const [id, act] = pair.split(":");
-      await pool.query(`UPDATE goal SET is_active = $1 WHERE id = $2`, [act === "true", Number(id)]).catch(() => {});
-    }
-    const now = (await sql(`SELECT id, is_active FROM goal ORDER BY id`))
-      .map((r) => `${r.id}:${r.is_active}`).join(" ");
-    goalBack = now === goalShot ? "시작 전과 같음" : `**다름** ${now}`;
-    if (now !== goalShot) process.exitCode = 1;
+  // 제 월 목표만 지운다 (076 §A — 사람 목표의 활성은 적지 않는다)
+  let goalBack = "(안 만듦)";
+  if (ownGoal) {
+    await pool.query(`DELETE FROM goal_task WHERE goal_id = $1`, [ownGoal.id]).catch(() => {});
+    await pool.query(`DELETE FROM goal WHERE id = $1`, [ownGoal.id]).catch(() => {});
+    const still = (await sql(`SELECT count(*)::int n FROM goal WHERE id = $1`, [ownGoal.id]))[0].n;
+    goalBack = still === 0 ? `제 목표 #${ownGoal.id} 지움` : `**제 목표 #${ownGoal.id} 남음**`;
+    if (still) process.exitCode = 1;
   }
   const left = await one(`SELECT count(*)::int n FROM task WHERE title = $1`, [TITLE]).catch(() => null);
-  console.log(`뒷정리 확인 — [검사] 업무 ${left?.n ?? "?"} (0이어야 한다) · 목표 활성 ${goalBack}`);
+  console.log(`뒷정리 확인 — [검사] 업무 ${left?.n ?? "?"} (0이어야 한다) · ${goalBack}`);
   if (left && left.n !== 0) process.exitCode = 1;
   if (peopleGuard) {
     const diff = await peopleDiff(pool, peopleGuard).catch((e) => [`대조 실패 — ${e.message}`]);

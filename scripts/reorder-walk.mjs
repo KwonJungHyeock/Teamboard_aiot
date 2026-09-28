@@ -17,6 +17,7 @@ import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { shot } from "./shot.mjs";   // 캡처는 SHOT=1 일 때만 (057 §0)
 import { testUser } from "./test-user.mjs";
+import { peopleSnapshot, peopleDiff } from "./people-guard.mjs";   // 076 §A — 사람 줄 대조
 
 requireLocalDb("reorder-walk.mjs");
 
@@ -42,8 +43,20 @@ const chk = (id, c, n) => (c ? ok(id, n) : bad(id, n));
 const MARK = "MD028순서";
 let browser;
 const made = { taskIds: [] };
+let guard = null;
 
+/*
+ * 076 §A — **모든 순서 바꾸기를 제 상위 업무 밑에서 한다.**
+ *
+ * 순서 저장(POST /api/tasks/reorder)은 **같은 상위의 형제 전체**에 1..N 을 다시 매기고
+ * updated_at 을 적는다(제품 동작 — 안 바꿨다). 075 까지는 맨 위(상위 없음)에서 바꿨으므로
+ * 한 번 돌 때마다 **사람의 맨 위 업무 전부**의 sort_order · updated_at 이 적혔다.
+ * 이제는 제 뿌리 둘(Z · Y) 밑의 제 하위끼리만 바꾼다 — 형제가 전부 제 것이다.
+ *   Z ─ P1 · P2 · P3   (순서 · 새로고침 · 키보드 · 필터)
+ *   Y ─ K1 · K2        (상위 섞기 거절 · 같은 상위 안 · 하위는 상위를 따라온다)
+ */
 try {
+  guard = await peopleSnapshot(pool);
   browser = await chromium.launch({
     executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
     args: ["--no-proxy-server", "--no-sandbox"] });
@@ -64,16 +77,18 @@ try {
     made.taskIds.push(r.id);
     return r.id;
   };
-  const P1 = await mk("가");
-  const P2 = await mk("나");
-  const P3 = await mk("다");
-  const K1 = await mk("가-1", P1);
-  const K2 = await mk("가-2", P1);
+  const Z = await mk("뿌리");
+  const P1 = await mk("가", Z);
+  const P2 = await mk("나", Z);
+  const P3 = await mk("다", Z);
+  const Y = await mk("라");
+  const K1 = await mk("라-1", Y);
+  const K2 = await mk("라-2", Y);
 
   // ── 새 업무는 맨 뒤에 붙는다 (C-a 후속 조치) ─────────────────────
   const created = await sql(
-    `SELECT id, sort_order FROM task WHERE id = ANY($1::int[]) AND parent_task_id IS NULL ORDER BY sort_order`,
-    [[P1, P2, P3]]);
+    `SELECT id, sort_order FROM task WHERE id = ANY($1::int[]) AND parent_task_id = $2 ORDER BY sort_order`,
+    [[P1, P2, P3], Z]);
   chk("C-a 새업무는맨뒤",
     created.map((r) => r.id).join() === [P1, P2, P3].join()
       && created.every((r) => r.sort_order > 0)
@@ -97,7 +112,7 @@ try {
     `"직접 정한 순서" 로 바꾸니 핸들 ${gripOn}개 · 안내 ${hintGone}개`);
 
   // 핸들은 hover/포커스에서만 보인다 — 존재하지만 그려지지 않는다.
-  const gripEl = page.locator("tbody tr", { hasText: `${MARK} 가` }).first().locator(".dgrip");
+  const gripEl = page.locator("tbody tr", { hasText: `${MARK} 뿌리` }).first().locator(".dgrip");
   const gripIdle = await gripEl.evaluate((el) => {
     const cs = getComputedStyle(el);
     return { opacity: cs.opacity, display: cs.display };
@@ -114,45 +129,53 @@ try {
     `평상시 opacity=${gripIdle.opacity} display=${gripIdle.display}(none 이면 안 된다) · ` +
     `포커스 후 opacity=${gripFocused.opacity} · 실제로 포커스됨=${gripFocused.isActive}`);
 
+  /** 뿌리를 펼친다 — 하위는 펼쳐야 그려진다 */
+  const openRoot = async (name) => {
+    const cv = page.locator("tbody tr", { hasText: `${MARK} ${name}` }).first().locator(".sub-cv");
+    await cv.waitFor({ timeout: 15000 });
+    await cv.click();
+    await page.waitForTimeout(700);
+  };
+
   // ── §C 순서 바꾸기 — API 로 저장하고 새로고침해도 남는가 ─────────
-  await api("post", "/api/tasks/reorder", { parentTaskId: null, orderedIds: [P3, P1, P2] });
+  await api("post", "/api/tasks/reorder", { parentTaskId: Z, orderedIds: [P3, P1, P2] });
   const afterMove = await sql(
     `SELECT id FROM task WHERE id = ANY($1::int[]) ORDER BY sort_order, id`, [[P1, P2, P3]]);
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(1600);
+  await openRoot("뿌리");
   const rowText = async () =>
     (await page.locator("tbody tr").allInnerTexts()).map((x) => x.replace(/\s+/g, " ").trim());
-  const onScreen = (await rowText()).filter((x) => x.includes(MARK) && !x.includes(`${MARK} 가-`));
+  const onScreen = (await rowText()).filter((x) => ["가", "나", "다"].some((n) => x.includes(`${MARK} ${n}`)));
+  if (onScreen.length < 3) console.log(`   (화면 행) ${(await rowText()).filter((x) => x.includes(MARK)).join(" / ") || "(제 행 없음)"}`);
   chk("C-새로고침해도유지",
     afterMove.map((r) => r.id).join() === [P3, P1, P2].join()
-      && onScreen[0].includes("다") && onScreen[1].includes("가") && onScreen[2].includes("나"),
+      && onScreen.length === 3
+      && onScreen[0].includes(`${MARK} 다`) && onScreen[1].includes(`${MARK} 가`) && onScreen[2].includes(`${MARK} 나`),
     `DB 순서 ${afterMove.map((r) => `#${r.id}`).join(" → ")} · ` +
     `새로고침 후 화면 [${onScreen.join(" / ")}]`);
 
   // ── §C3 부모가 다르면 거절한다 ───────────────────────────────────
-  const cross = await api("post", "/api/tasks/reorder", { parentTaskId: null, orderedIds: [P1, K1] });
+  const cross = await api("post", "/api/tasks/reorder", { parentTaskId: Z, orderedIds: [P1, K1] });
   const crossBody = await cross.json().catch(() => ({}));
   chk("C3-부모섞으면거절", cross.status() === 400 && (crossBody.error ?? "").includes("같은 상위"),
     `HTTP ${cross.status()} · "${crossBody.error ?? "(없음)"}"`);
 
   // 짝이 되는 존재 단언 — 같은 상위 안의 하위끼리는 통한다.
-  const inner = await api("post", "/api/tasks/reorder", { parentTaskId: P1, orderedIds: [K2, K1] });
-  const kids = await sql(`SELECT id FROM task WHERE parent_task_id = $1 ORDER BY sort_order, id`, [P1]);
+  const inner = await api("post", "/api/tasks/reorder", { parentTaskId: Y, orderedIds: [K2, K1] });
+  const kids = await sql(`SELECT id FROM task WHERE parent_task_id = $1 ORDER BY sort_order, id`, [Y]);
   chk("C3-같은상위안에선통한다", inner.ok() && kids.map((r) => r.id).join() === [K2, K1].join(),
     `HTTP ${inner.status()} · 하위 순서 ${kids.map((r) => `#${r.id}`).join(" → ")} (K2=#${K2} 가 앞)`);
 
   // ── C-b 상위와 하위가 같은 평면에서 섞이지 않는다 ────────────────
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(1600);
-  const caret = page.locator("tbody tr", { hasText: `${MARK} 가` }).first().locator(".sub-cv");
-  await caret.waitFor({ timeout: 15000 });
-  await caret.click();
-  await page.waitForTimeout(700);
+  await openRoot("라");
   const order = (await rowText()).filter((x) => x.includes(MARK));
-  const iParent = order.findIndex((x) => x.includes(`${MARK} 가`) && !x.includes(`${MARK} 가-`));
-  const iK1 = order.findIndex((x) => x.includes(`${MARK} 가-1`));
-  const iK2 = order.findIndex((x) => x.includes(`${MARK} 가-2`));
-  const iOther = order.findIndex((x) => x.includes(`${MARK} 나`) || x.includes(`${MARK} 다`));
+  const iParent = order.findIndex((x) => x.includes(`${MARK} 라`) && !x.includes(`${MARK} 라-`));
+  const iK1 = order.findIndex((x) => x.includes(`${MARK} 라-1`));
+  const iK2 = order.findIndex((x) => x.includes(`${MARK} 라-2`));
+  const iOther = order.findIndex((x) => x.includes(`${MARK} 뿌리`));
   await shot(page, { path: `${OUT}/Cb-계층유지.png` });
   chk("C-b 하위는상위를따라온다",
     iParent >= 0 && iK1 > iParent && iK2 > iParent
@@ -165,6 +188,7 @@ try {
   // 드래그만 되는 기능은 접근성 이전에 트랙패드에서 불편하다 (§C2).
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(1600);
+  await openRoot("뿌리");
   const before = (await sql(
     `SELECT id FROM task WHERE id = ANY($1::int[]) ORDER BY sort_order, id`, [[P1, P2, P3]]))
     .map((r) => r.id);
@@ -187,7 +211,7 @@ try {
     `SELECT id, sort_order FROM task WHERE id = ANY($1::int[]) ORDER BY sort_order, id`, [ids]);
   const full0 = (await seq([P1, P2, P3])).map((r) => r.id);
   const visible = full0.filter((x) => x !== P2);              // P2 는 필터에 걸려 안 보인다고 친다
-  await api("post", "/api/tasks/reorder", { parentTaskId: null, orderedIds: [...visible].reverse() });
+  await api("post", "/api/tasks/reorder", { parentTaskId: Z, orderedIds: [...visible].reverse() });
   const full1 = (await seq([P1, P2, P3])).map((r) => r.id);
   const p2Before = full0.indexOf(P2), p2After = full1.indexOf(P2);
   chk("C3-필터걸려도전역순서유지",
@@ -226,5 +250,10 @@ try {
   await sql(`DELETE FROM activity_log WHERE message LIKE $1`, [`%${MARK}%`]);
   console.log(`정리 — 업무 ${made.taskIds.length}건 삭제`);
   await browser?.close();
+  if (guard) {
+    const diff = await peopleDiff(pool, guard).catch((e) => [`대조 실패 — ${e.message}`]);
+    console.log(`사람 줄 대조 — 시작 전과 다른 것 ${diff.length}건${diff.length ? ` [${diff.slice(0, 5).join(" · ")}]` : ""}`);
+    if (diff.length) process.exitCode = 1;
+  }
   await pool.end();
 }

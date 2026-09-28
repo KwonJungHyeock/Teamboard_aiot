@@ -17,6 +17,7 @@ import pg from "pg";
 import { requireLocalDb } from "./local-only.mjs";
 import { ignoredWhy } from "./console-ignore.mjs";
 import { testUser } from "./test-user.mjs";
+import { peopleSnapshot, peopleDiff } from "./people-guard.mjs";   // 076 §A — 사람 줄 대조
 
 requireLocalDb("prop-seven-walk.mjs");
 
@@ -45,8 +46,9 @@ const propValue = async (page, label) => {
   return (await row.locator(".v3-prop-v").first().textContent() ?? "").trim();
 };
 
-let browser, swBefore = null, made = [], beforeCount = null;
+let browser, swBefore = null, made = [], beforeCount = null, ownGoal = null, guard = null;
 try {
+  guard = await peopleSnapshot(pool);
   const swRow = (await sql(`SELECT value FROM config WHERE key = $1`, [KEY]))[0];
   swBefore = swRow === undefined ? null : swRow.value;
   await sql(`INSERT INTO config (key, value) VALUES ($1, to_jsonb(true))
@@ -78,6 +80,11 @@ try {
   const subject = await mk("속성 일곱", A.id);
   const parent = await mk("상위가 될 업무", A.id);
   made = [subject, parent];
+  // 076 §A — ② 목표 줄이 걸 **제 월 목표**. 화면이 후보를 열 때 읽으므로 먼저 만든다
+  ownGoal = (await sql(
+    `INSERT INTO goal (period_type, period_start, period_end, title, progress_mode, progress, owner_actor_id, is_demo)
+     VALUES ('month', date_trunc('month', $1::date), date_trunc('month', $1::date) + interval '1 month' - interval '1 day',
+             $2, 'auto', 0, $3, true) RETURNING id, title`, [today, `${MARK} 제 월 목표`, ME.id]))[0];
   console.log(`   (조건) 주인공 #${subject} · 상위감 #${parent} · 영역 A="${A.name}"(${A.id}) B="${B.name}"(${B.id})`);
 
   browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
@@ -160,17 +167,13 @@ try {
     async () => { const p = (await sql(`SELECT project_id FROM task WHERE id=$1`, [subject]))[0].project_id;
       return { ok: p === aProjects[0].id, note: `DB project_id=${p} (고른 것 ${aProjects[0].id} "${aProjects[0].name}")` }; });
 
-  // 목표
-  const goalCand = (await sql(
-    `SELECT id, title FROM goal WHERE is_active AND period_type IN ('quarter','month') ORDER BY id LIMIT 1`))[0];
-  if (goalCand) {
-    await saveAndReopen(subject, "목표",
-      () => page.locator(".v3-prop-ed .v3-ichip").first().click(),
-      async () => { const n = (await sql(`SELECT count(*)::int n FROM goal_task WHERE task_id=$1`, [subject]))[0].n;
-        return { ok: n > 0, note: `DB goal_task ${n}건` }; });
-  } else {
-    chk("②-목표-가-남는다", false, "연결할 분기·월 목표가 DB 에 없다 — 조건을 못 만들었다");
-  }
+  // 목표 — 076 §A: **제 월 목표**의 칩을 누른다. 075 까지는 첫 칩(사람의 목표)을 눌러 제 업무를
+  // 걸었고, 그 목표의 저장된 진척이 다시 계산된 뒤 연결만 SQL 로 떼여 틀린 값으로 남았다.
+  // 부모를 안 달아 재계산이 사람의 분기 · 연간 목표로 올라가지 않게 한다.
+  await saveAndReopen(subject, "목표",
+    () => page.locator(".v3-prop-ed .v3-ichip", { hasText: ownGoal.title }).first().click(),
+    async () => { const ids = (await sql(`SELECT goal_id FROM goal_task WHERE task_id=$1`, [subject])).map((r) => r.goal_id);
+      return { ok: ids.length === 1 && ids[0] === ownGoal.id, note: `DB goal_task [${ids.join(",")}] (제 목표 #${ownGoal.id})` }; });
 
   // 상위 업무 — 그리고 그 뒤 **상위 쪽 「하위 업무」**가 주인공을 담는다
   await saveAndReopen(subject, "상위 업무",
@@ -294,7 +297,10 @@ try {
   for (const id of made) await pool.query(`UPDATE task SET parent_task_id = NULL WHERE id = $1`, [id]).catch(() => {});
   for (const id of made) await pool.query(`DELETE FROM activity_log WHERE task_id = $1`, [id]).catch(() => {});
   for (const id of made) await pool.query(`DELETE FROM task WHERE id = $1`, [id]).catch(() => {});
-  await pool.query(`DELETE FROM task WHERE title LIKE $1`, [`${MARK}%`]).catch(() => {});
+  if (ownGoal) {
+    await pool.query(`DELETE FROM goal_task WHERE goal_id = $1`, [ownGoal.id]).catch(() => {});
+    await pool.query(`DELETE FROM goal WHERE id = $1`, [ownGoal.id]).catch(() => {});
+  }
   try {
     if (swBefore === null) await pool.query(`DELETE FROM config WHERE key = $1`, [KEY]);
     else await pool.query(`INSERT INTO config (key, value) VALUES ($1, to_jsonb($2::boolean))
@@ -307,6 +313,11 @@ try {
                 ` (시작 전 ${swBefore === null ? "(행 없음)" : JSON.stringify(swBefore)})` +
                 ` · ${MARK} 업무 ${left}건 (시작 전 ${beforeCount})${ok ? "" : " **다르다**"}`);
     if (!ok) process.exitCode = 1;
+    if (guard) {
+      const diff = await peopleDiff(pool, guard).catch((e) => [`대조 실패 — ${e.message}`]);
+      console.log(`사람 줄 대조 — 시작 전과 다른 것 ${diff.length}건${diff.length ? ` [${diff.slice(0, 5).join(" · ")}]` : ""}`);
+      if (diff.length) { fail += 1; process.exitCode = 1; }
+    }
   } catch (e) {
     console.error("뒷정리 실패 —", e.message);
     process.exitCode = 1;

@@ -10,6 +10,7 @@ import { chromium } from "playwright";
 import { createHmac } from "node:crypto";
 import pg from "pg";
 import { testUser } from "./test-user.mjs";
+import { peopleSnapshot, peopleDiff } from "./people-guard.mjs";   // 076 §A — 사람 줄 대조
 
 /* 065 §B-9 — 검사가 쓰는 신분은 손으로 안 적는다. DB 에서 읽는다. */
 const TEST_ME = await testUser();
@@ -70,7 +71,7 @@ const readDue = (sel) => page.evaluate((s) => {
 }, sel);
 
 /** 보는 사람. 쿠키와 **같은 사람**이라야 「내 담당」 기본 거르개 안에 조건을 만들 수 있다. */
-const VIEWER = 1;
+const VIEWER = TEST_ME.id;
 
 /**
  * 담당 거르개를 「전체」로 돌린다.
@@ -99,7 +100,8 @@ async function clearAssignee(page) {
   }
 }
 
-const touched = [];
+const made = [];
+const guard = await peopleSnapshot(pool);
 try {
   // ── H-1 구성원 이름 ───────────────────────────────────────────────
   await page.goto(`${BASE}/members`, { waitUntil: "networkidle" });
@@ -147,20 +149,17 @@ try {
    * ② **「보통」도 만든다.** D-8 이상은 데이터에 있으려니 하고 안 만들었다.
    *    실데이터의 기한이 전부 지나면서 그 등급이 사라졌다 (§G 035).
    */
-  const rows = (await pool.query(
-    `SELECT id, due_date FROM task
-      WHERE is_active AND parent_task_id IS NULL AND status <> 'done'
-        AND assignee_id = $1
-      ORDER BY id LIMIT 3`, [VIEWER]
-  )).rows;
-  if (rows.length < 3) {
-    console.error(`보는 사람(actor ${VIEWER}) 담당 업무가 ${rows.length}건이다 — 3건이 있어야 세 등급을 만든다.`);
-    process.exit(1);
-  }
-  touched.push(...rows);
-  await pool.query(`UPDATE task SET due_date = CURRENT_DATE + 3 WHERE id = $1`, [rows[0].id]);   // 임박
-  await pool.query(`UPDATE task SET due_date = CURRENT_DATE - 5 WHERE id = $1`, [rows[1].id]);   // 지연
-  await pool.query(`UPDATE task SET due_date = CURRENT_DATE + 30 WHERE id = $1`, [rows[2].id]);  // 보통
+  /*
+   * ③ 076 §A — **제 업무 셋을 만들어** 기한을 준다. 075 까지는 보는 사람의 열린 업무 첫 셋(사람의
+   *    업무)의 기한을 바꿨다가 되돌렸다 — 도는 동안 그 사람이 기한을 고치면 덮였다.
+   */
+  const area = (await pool.query(`SELECT id FROM area WHERE is_active ORDER BY sort_order, id LIMIT 1`)).rows[0].id;
+  const mk = async (label, days) => (await pool.query(
+    `INSERT INTO task (title, status, due_date, area_id, visibility, work_type, created_by, assignee_id, priority)
+     VALUES ($1, 'todo', CURRENT_DATE + $2::int, $3, 'team', 'team', $4, $4, 'mid') RETURNING id`,
+    [`[031검사] 기한 ${label}`, days, area, VIEWER])).rows[0].id;
+  const rows = [{ id: await mk("임박", 3) }, { id: await mk("지연", -5) }, { id: await mk("보통", 30) }];
+  made.push(...rows.map((r) => r.id));
   console.log(`   (조건) 임박 #${rows[0].id} · 지연 #${rows[1].id} · 보통 #${rows[2].id}` +
               ` — 전부 actor ${VIEWER} 담당이라 기본 거르개 안에 있다`);
 
@@ -213,10 +212,15 @@ try {
   chk("JS 오류 없음", jsErrors.length === 0, `${jsErrors.length}건${jsErrors[0] ? " — " + jsErrors[0].slice(0, 80) : ""}`);
 } finally {
   await browser.close();
-  for (const r of touched) {
-    await pool.query(`UPDATE task SET due_date = $2 WHERE id = $1`, [r.id, r.due_date]);
+  if (made.length) {
+    await pool.query(`DELETE FROM activity_log WHERE task_id = ANY($1::int[])`, [made]).catch(() => {});
+    const r = await pool.query(`DELETE FROM task WHERE id = ANY($1::int[])`, [made]);
+    console.log(`\n정리 — 제 업무 ${r.rowCount}/${made.length}건 지움`);
+    if (r.rowCount !== made.length) fail++;
   }
-  if (touched.length) console.log(`\n정리 — 기한 ${touched.length}건 원래 값으로 되돌림`);
+  const diff = await peopleDiff(pool, guard).catch((e) => [`대조 실패 — ${e.message}`]);
+  console.log(`사람 줄 대조 — 시작 전과 다른 것 ${diff.length}건${diff.length ? ` [${diff.slice(0, 5).join(" · ")}]` : ""}`);
+  if (diff.length) fail++;
   await pool.end();
 }
 

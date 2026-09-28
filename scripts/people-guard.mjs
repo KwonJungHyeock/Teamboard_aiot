@@ -5,7 +5,7 @@
 // 다르고, 여기서 일괄로 덮으면 도는 동안 사람이 바꾼 것까지 덮는다.
 //
 // 보는 것 — 073 §B 가 센 「높음」 넷과 기록 다섯이 건드리던 자리:
-//   업무(상태 · 진행률 · 완료 시각 · 사유 · 기한 · 활성 · 제목) · 목표(제목 · 활성) ·
+//   업무(상태 · 진행률 · 완료 시각 · 사유 · 기한 · 활성 · 제목 · 순서 · 고친 시각) · 목표(제목 · 활성 · 진척) ·
 //   저장한 보기(있음 · 이름 · 순서) · 인수인계(있음) · 계정(역할 · 관리자 권한 · 안내 봤음)
 //
 // 「제 줄」은 **이번 판에 생긴 줄**(시작 때의 최대 id 보다 큰 것)이다. 이름 표식으로 고르지
@@ -21,8 +21,14 @@
 //   if (diff.length) process.exitCode = 1;
 
 const TABLES = {
-  task: `SELECT id, concat_ws('|', status, progress, completed_at::text, resolution, due_date::text, is_active, title) v FROM task`,
-  goal: `SELECT id, concat_ws('|', title, is_active) v FROM goal`,
+  // 076 §A — 순서(sort_order)와 고친 시각(updated_at)도 본다. 순서 저장은 형제 전체에 번호를 다시
+  // 매기고 고친 시각을 적는다 — 값이 같아도 고친 시각은 남으므로 「누가 적었는가」까지 잡힌다
+  task: `SELECT id, concat_ws('|', status, progress, completed_at::text, resolution, due_date::text, is_active, title,
+                              sort_order, updated_at::text) v FROM task`,
+  // 076 §A — 진척(저장값)도 본다. 목표 연결을 재는 검사가 사람의 분기 목표 진척을 다시 계산해
+  // 바꿔 두던 자리다. 읽기는 재계산하지 않으므로(lib/goals.ts) 바뀌었으면 누가 연결·진척을 건드린 것이다.
+  // 재계산은 값이 같아도 고친 시각(updated_at)을 적는다 — 그래서 그것도 본다
+  goal: `SELECT id, concat_ws('|', title, is_active, progress, progress_auto, updated_at::text) v FROM goal`,
   saved_view: `SELECT id, concat_ws('|', name, sort_order) v FROM saved_view`,
   handover: `SELECT id, '있음' v FROM handover`,
   account: `SELECT actor_id AS id, concat_ws('|', role, admin_grant, onboarded_at::text) v FROM account`,
