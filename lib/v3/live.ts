@@ -3,6 +3,7 @@
 // 화면 부품(`components/v3/Live.tsx`)은 이 파일을 부른다. 규칙을 부품 안에 두면
 // 검사기가 같은 함수를 못 불러서 「화면이 자기가 그린 것을 그렸다」밖에 못 잰다
 // (043 부터의 방식). **이 파일은 순수하다** — `fetch` 도 DOM 도 없다.
+import { STATUS_META } from "../task-view";
 
 /* ══ §A-1 토스트 ═══════════════════════════════════════════════════ */
 
@@ -19,22 +20,21 @@ export function toastMs(hasButton: boolean): number {
 /* ══ §B-2 상태 고르개 ══════════════════════════════════════════════ */
 
 /**
- * 고르개의 네 줄. **낱말은 070 §B-14 가 정본이다** — 미착수 · 진행 · 검토 · 완료.
+ * 고르개의 네 줄. **낱말은 여기 적지 않는다** — `STATUS_META` 에서 가져온다
+ * (071 §A · 065 §A-2). 070 에서는 지시서 낱말(미착수 · 검토)을 여기 따로 적었고,
+ * 그래서 이 화면만 다른 화면들(대기 · 리뷰)과 낱말 둘이 갈렸다.
  *
- * `STATUS_META`(대기 · 진행 · 리뷰 · 완료)와 낱말이 둘 다르다. 지시서가 정본이라
- * 여기는 지시서 낱말을 쓰고, 어느 쪽으로 모을지는 보고에 물었다(070 보고 §B).
- * 칩에 적히는 글자도 **이 표에서** 온다 — 칩과 고르개가 다른 말을 하면 안 된다.
+ * 한 낱말인 것이 어느 낱말인가보다 중요하다(071 §A-5). 여기 남는 것은 **차례**뿐이다.
+ * 칩에 적히는 글자도 이 표에서 온다 — 칩과 고르개가 다른 말을 하면 안 된다.
  */
-export const STATUS_PICK = [
-  { key: "todo", label: "미착수" },
-  { key: "doing", label: "진행" },
-  { key: "review", label: "검토" },
-  { key: "done", label: "완료" },
-] as const;
-export type PickStatus = (typeof STATUS_PICK)[number]["key"];
+const PICK_KEYS = ["todo", "doing", "review", "done"] as const;
+export type PickStatus = (typeof PICK_KEYS)[number];
+export const STATUS_PICK: readonly { key: PickStatus; label: string }[] =
+  PICK_KEYS.map((key) => ({ key, label: STATUS_META[key].label }));
 
 export function pickLabel(status: string): string {
-  return STATUS_PICK.find((s) => s.key === status)?.label ?? status;
+  // 제안 · 중단처럼 고르개에 없는 상태도 **같은 표**의 낱말로 그린다
+  return STATUS_META[status]?.label ?? status;
 }
 export function isPickStatus(s: string): s is PickStatus {
   return STATUS_PICK.some((p) => p.key === s);

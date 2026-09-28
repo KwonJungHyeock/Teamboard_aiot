@@ -15,12 +15,16 @@
 //   ① 세 화면의 **상태 칸 낱말**이 전부 제품의 `STATUS_META` 안에 있다
 //   ①짝 세 화면 다 낱말을 하나 이상 읽었다 (빈 화면이면 ①은 공짜로 참이다)
 //   ② 갈렸던 낱말(「할 일」·「검토」)이 세 화면 어디에도 없다
+//   ④ (071 §A-7) 대시보드의 **상태 칩** 낱말이 전부 `STATUS_META` 안에 있다
+//   ⑤ (071 §A-7) **고르개 넷**이 `STATUS_META` 의 대기 · 진행 · 리뷰 · 완료와 차례까지 같다
+//      — 070 에서 이 두 자리만 「미착수 · 검토」로 갈렸다
 //
 // 기준값은 **제품에서 가져온다** — `lib/task-view.ts` 를 컴파일해서 부른다.
 // 검사기가 이름표를 옮겨 적으면 둘이 갈릴 때 검사기가 틀린 쪽을 정답으로 삼는다.
 //
 // **로컬 전용** · /handover 는 문서가 없으면 업무를 안 그려서 **하나 만들고 지운다**.
-// 나머지 둘은 읽기만 한다.
+// 나머지 둘은 읽기만 한다. 대시보드(④⑤)는 스위치를 켜야 열리므로 **켰다가 되돌리고**,
+// 칩이 서도록 `[071검사]` 업무 둘을 만들었다가 지운다.
 //
 // ⚠ | head 로 파이프하지 말 것.
 import { chromium } from "playwright";
@@ -65,7 +69,9 @@ const SCREENS = [
   { path: "/handover", cell: ".ho-task-m, .ho-task-pick em", setup: true },
 ];
 
-let browser, madeHandover = false;
+const KEY = "ui_v3_enabled";
+const MARK = "[071검사]";
+let browser, madeHandover = false, swBefore, swTouched = false;
 try {
   rmSync(TMP, { recursive: true, force: true });
   mkdirSync(TMP, { recursive: true });
@@ -141,11 +147,62 @@ try {
   chk("②-갈렸던-낱말이-없다", split.length === 0,
       split.length === 0 ? `「${SPLIT_WORDS.join("」·「")}」 세 화면 본문에 0번`
         : `${split.length}건 — [${split.join(" · ")}]`);
+  /* ── ④⑤ 대시보드 — 칩과 고르개 (071 §A-7) ─────────────────────── */
+  const swRow = (await sql(`SELECT value FROM config WHERE key = $1`, [KEY]))[0];
+  swBefore = swRow === undefined ? null : swRow.value;
+  swTouched = true;
+  await sql(`INSERT INTO config (key, value) VALUES ($1, to_jsonb(true))
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [KEY]);
+  const area = (await sql(`SELECT id FROM area WHERE is_active ORDER BY sort_order, id LIMIT 1`))[0].id;
+  const today = (await sql(`SELECT (now() AT TIME ZONE 'Asia/Seoul')::date::text d`))[0].d;
+  for (const st of ["todo", "review"]) {
+    await sql(`INSERT INTO task (title, description, area_id, assignee_id, created_by, status, due_date,
+                                 priority, origin, work_type, visibility, goal_source, is_active)
+               VALUES ($1, '', $2, $3, $3, $4, $5::date, 'mid', 'human', 'team', 'team', 'manual', true)`,
+              [`${MARK} 낱말 ${st}`, area, me.id, st, today]);
+  }
+  const dash = await ctx.newPage();
+  dash.on("console", (m) => { const k = m.type();
+    if (k !== "error" && k !== "warning") return;
+    const line = `[${k}] ${m.text().slice(0, 160)}`;
+    if (!ignoredWhy(line)) errs.push(line); });
+  await dash.goto(`${BASE}/v3`, { waitUntil: "networkidle" });
+  await dash.locator("[data-live-chip]").first().waitFor({ timeout: 15000 });
+  // ⌄ 는 올렸을 때만 서는 표시라 낱말에서 뺀다
+  const chipWords = [...new Set((await dash.locator("[data-live-chip]").allInnerTexts())
+    .map((t) => t.replace("⌄", "").trim()).filter(Boolean))];
+  await dash.locator("[data-live-row]").filter({ hasText: `${MARK} 낱말 review` }).first()
+    .locator("[data-live-chip]").click();
+  await dash.locator(".v3-stpick").waitFor({ timeout: 5000 });
+  const pickWords = (await dash.locator(".v3-stpick [role=option]").allInnerTexts())
+    .map((t) => t.replace("✓", "").trim());
+  await dash.keyboard.press("Escape");
+  await dash.close();
+  const WANT = ["todo", "doing", "review", "done"].map((k) => STATUS_META[k].label);
+  console.log(`  /v3          칩 낱말 [${chipWords.join(" · ")}] · 고르개 [${pickWords.join(" · ")}]`);
+  const chipStray = chipWords.filter((w) => !CANON.includes(w));
+  chk("④-대시보드-칩-낱말", chipWords.length > 0 && chipStray.length === 0,
+      chipStray.length === 0 ? `${chipWords.length}가지 전부 STATUS_META 안` : `밖 [${chipStray.join(" · ")}]`);
+  chk("⑤-고르개-넷이-같은-낱말", pickWords.join("|") === WANT.join("|")
+      && !pickWords.some((w) => SPLIT_WORDS.includes(w)),
+      `고르개 [${pickWords.join(" · ")}] · STATUS_META [${WANT.join(" · ")}]`);
+
   chk("③-콘솔오류", errs.length === 0, `${errs.length}건${errs.length ? ` [${errs[0]}]` : ""}`);
 
   console.log(`\n${pass}/${pass + fail} 통과`);
   process.exitCode = fail === 0 ? 0 : 1;
 } finally {
+  await pool.query(`DELETE FROM activity_log WHERE task_id IN (SELECT id FROM task WHERE title LIKE $1)`, [`${MARK}%`]).catch(() => {});
+  await pool.query(`DELETE FROM task WHERE title LIKE $1`, [`${MARK}%`]).catch((e) => console.error("업무 정리 실패", e.message));
+  if (swTouched) {
+    if (swBefore === null) await pool.query(`DELETE FROM config WHERE key = $1`, [KEY]);
+    else await pool.query(`UPDATE config SET value = $2::jsonb WHERE key = $1`, [KEY, JSON.stringify(swBefore)]);
+    const now = (await pool.query(`SELECT value FROM config WHERE key = $1`, [KEY])).rows[0];
+    const left = (await pool.query(`SELECT count(*)::int n FROM task WHERE title LIKE $1`, [`${MARK}%`])).rows[0].n;
+    console.log(`뒷정리 — 스위치 ${now === undefined ? "(행 없음)" : JSON.stringify(now.value)}` +
+                ` (시작 전 ${swBefore === null ? "(행 없음)" : JSON.stringify(swBefore)}) · ${MARK} 업무 ${left}건 (0이어야 한다)`);
+    if (JSON.stringify(now === undefined ? null : now.value) !== JSON.stringify(swBefore) || left !== 0) process.exitCode = 1;
+  }
   // 만든 문서를 지운다. 제목은 제품이 정한 것(`새 인수인계 문서`)이라 그 이름으로 고른다.
   if (madeHandover) {
     const ids = (await pool.query(`SELECT id FROM handover WHERE title = $1`, ["새 인수인계 문서"])).rows.map((r) => r.id);
