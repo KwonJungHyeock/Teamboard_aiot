@@ -238,7 +238,7 @@ export function applyFilters(tasks: TaskRow[], q: Query, today: string): TaskRow
 /** 화면 위에 나열할 조건 칩 하나. `axis` 와 `value` 로 **그것만** 풀 수 있다. */
 export interface ChipView {
   /** `mine` 은 담당 축의 값 하나다(066 §C-16) — 칩 줄에서는 따로 선다. */
-  axis: "cat" | "who" | "status" | "due" | "q" | "mine";
+  axis: "cat" | "who" | "status" | "due" | "q" | "mine" | "fin";
   /** 축 안에서 지울 값. 축 전체를 지우는 칩(기한·검색)은 `null`. */
   value: number | string | null;
   label: string;

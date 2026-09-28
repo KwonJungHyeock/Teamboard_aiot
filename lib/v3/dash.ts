@@ -49,13 +49,17 @@ function shiftMonthDay(date: string, by: number): string {
 }
 
 /**
- * 이번 달에 마친 업무 — `status = done` 이고 완료 시각(KST)이 **이번 달**.
- * 권한은 `selectRows` 가 거른다(남의 개인 업무를 세지 않는다).
+ * 「이번 달 완료」의 조건 — `status = done` · **완료 시각이 이 달**(072 §C · `finMonth`).
+ * 071 에는 목록에 이 축이 없어 타일을 안 눌리게 했다. 072 에서 축을 하나 냈다.
+ */
+export const DONE_MONTH_QUERY: ListQuery = { ...EMPTY_LIST_QUERY, status: new Set(["done"]), finMonth: true };
+
+/**
+ * 이번 달에 마친 업무. **목록과 같은 조건**(`DONE_MONTH_QUERY`)을 `selectRows` 에 넣는다 —
+ * 타일이 따로 세면 타일과 목록이 갈린다. 권한도 거기서 걸러진다.
  */
 export function doneInMonth<T extends Row>(rows: readonly T[], viewerId: number, today: string): T[] {
-  const done = selectRows(rows, { ...EMPTY_LIST_QUERY, status: new Set(["done"]) }, viewerId, today);
-  const ym = today.slice(0, 7);
-  return done.filter((t) => (kstDate(t.completedAt ?? null) ?? "").slice(0, 7) === ym);
+  return selectRows(rows, DONE_MONTH_QUERY, viewerId, today);
 }
 
 /**
@@ -64,10 +68,10 @@ export function doneInMonth<T extends Row>(rows: readonly T[], viewerId: number,
  *   진행 중       status = doing                          → 목록 ?st=doing
  *   기한 지남     안 끝난 셋 · 기한 < 오늘                 → 목록 ?st=…&due=late   (그대로)
  *   이번 주 마감  안 끝난 셋 · 오늘 ≤ 기한 ≤ 이번 주 끝     → 목록 ?st=…&due=soon   (그대로)
- *   이번 달 완료  done · 완료 시각이 이번 달               → **목록 없음**
+ *   이번 달 완료  done · 완료 시각이 이번 달               → 목록 ?st=done&fin=month
  *
- * 「이번 달 완료」는 목록에 완료 시각 축이 없어서 조건을 못 만든다 — **누르지 않는다.**
- * 축을 늘리는 것은 목록 화면의 새 규칙이라 여기서 하지 않는다.
+ * 071 에서는 「이번 달 완료」가 목록에 완료 시각 축이 없어 **안 눌렸다**. 072 §C 에서
+ * 축(`finMonth`)을 승인받아 냈다 — 이제 넷 다 누르면 그 조건 그대로의 목록이 열린다.
  *
  * ── 증감 (§B-9) — **잴 수 있는 것에만** ────────────────────────────
  *
@@ -100,7 +104,8 @@ export function dashTiles<T extends Row>(rows: readonly T[], viewerId: number, t
       return d !== null && d.slice(0, 7) === prevYm && d <= prevDay;
     });
   const done: DashTile = {
-    key: "done", label: "이번 달 완료", ids: now.map((r) => r.id), href: null, query: null,
+    key: "done", label: "이번 달 완료", ids: now.map((r) => r.id),
+    href: listHref(DONE_MONTH_QUERY), query: DONE_MONTH_QUERY,
     delta: { n: now.length - prev.length, basis: "지난달 같은 기간 대비" },
   };
   return [doing, late, soon, done];
