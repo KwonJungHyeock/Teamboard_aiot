@@ -101,8 +101,39 @@ async function listMigrationFiles(): Promise<string[]> {
     .sort(); // 0001_, 0002_ … 파일명 오름차순 = 적용 순서
 }
 
+/**
+ * 잠금 없이 이력을 읽는다 — **적용할 것이 있는가**만 보려고.
+ * 표가 아직 없으면(러너가 한 번도 안 돈 DB) `null` — 전부 적용할 것으로 본다.
+ */
+async function readDoneUnlocked(pool: Pool): Promise<Set<string> | null> {
+  try {
+    const { rows } = await pool.query<{ filename: string }>("SELECT filename FROM schema_migrations");
+    return new Set(rows.map((r) => r.filename));
+  } catch (err) {
+    if ((err as { code?: string })?.code === "42P01") return null; // undefined_table
+    throw err;
+  }
+}
+
 export async function runMigrations(pool: Pool): Promise<MigrateResult> {
   const files = await listMigrationFiles();
+  /*
+   * ── 적용할 파일이 없으면 **잠금을 잡지 않는다** (MD-P-2026-078 §A) ──
+   *
+   * 예전 순서는 「잠금 → 이력 읽기 → 풀기」였고, 적용할 파일이 없는 날에도 콜드
+   * 스타트마다 잠금을 잡았다. 다른 세션이 이 잠금을 쥐고 있으면 `pg_advisory_lock` 이
+   * 시한 없이 기다렸고, 그 프로세스의 query() 전부가 이 약속 하나를 기다려 504 가 됐다
+   * (077 §C 재현 3).
+   *
+   * 이제 **이력을 먼저 읽는다.** 다 적용돼 있으면 여기서 끝 — 잠금도 전용 연결도 없다.
+   * 적용할 것이 있을 때만 아래로 내려가 잠금을 잡고, **잡은 뒤 이력을 다시 읽는다**
+   * (두 번 읽기) — 그 사이 다른 인스턴스가 먼저 적용했으면 그것은 건너뛴다.
+   */
+  const doneFirst = await readDoneUnlocked(pool);
+  if (doneFirst && files.every((f) => doneFirst.has(f))) {
+    return { applied: [], alreadyDone: doneFirst.size, missing: [] };
+  }
+
   const client = await pool.connect();
   const applied: string[] = [];
   /*
@@ -121,6 +152,7 @@ export async function runMigrations(pool: Pool): Promise<MigrateResult> {
   client.on("notice", onNotice);
   try {
     // 크로스 인스턴스 직렬화 — 락을 못 잡으면 대기(동시 배포 시 한쪽만 적용).
+    // 078 §A — 여기까지 오는 것은 **적용할 파일이 있을 때뿐**이다. 아래 이력 읽기가 두 번째 읽기다.
     await client.query("SELECT pg_advisory_lock($1)", [LOCK_KEY]);
 
     await client.query(
