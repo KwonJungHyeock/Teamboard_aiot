@@ -182,8 +182,15 @@ try {
   const dueColor = await row.locator(".v3-due").evaluate((el) => getComputedStyle(el).color).catch(() => "");
   const avNone = await row.locator(".v3-av.none").count();
   chk("⑤-목록에-그-카테고리로-뜬다", seen === 1, `?cat=${areas[0].id} 에서 ${seen}행`);
+  // 디자인 점검 2026-10-08 — 색을 hex 로 적지 않고 **토큰에서** 읽는다(대비 때문에 토큰 값이 바뀌었다)
+  const tokenRgb = (name) => page.evaluate((n) => {
+    const el = document.createElement("i"); el.style.color = `var(${n})`;
+    (document.querySelector(".v3") ?? document.body).appendChild(el);
+    const c = getComputedStyle(el).color; el.remove(); return c;
+  }, name);
+  const muted = await tokenRgb("--v3-ink-2");   // 정보 글자는 ink-2(대비 4.5 이상). 전에는 ink-3(2.5:1)
   chk("⑥-기한-없음이-회색",
-      dueTxt === "기한 없음" && dueColor === "rgb(154, 164, 184)",
+      dueTxt === "기한 없음" && dueColor === muted,
       `기한 "${dueTxt}" ${dueColor}`);
   /*
    * ⑥짝 — **담당 없는 업무를 이 API 로는 만들 수 없다.**

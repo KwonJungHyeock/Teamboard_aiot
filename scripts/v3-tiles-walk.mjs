@@ -226,7 +226,13 @@ try {
 
   // ── 지남 색은 하나만 ────────────────────────────────────────────
   const lateT = tileView.find((t) => t.late), others = tileView.filter((t) => !t.late);
-  const LATE = "rgb(224, 82, 79)", LATE_BG = "rgb(253, 237, 236)";
+  // 디자인 점검 2026-10-08 — 색을 hex 로 적지 않고 **토큰에서** 읽는다(대비 때문에 토큰 값이 바뀌었다)
+  const tokenRgb = (name) => page.evaluate((n) => {
+    const el = document.createElement("i"); el.style.color = `var(${n})`;
+    (document.querySelector(".v3") ?? document.body).appendChild(el);
+    const c = getComputedStyle(el).color; el.remove(); return c;
+  }, name);
+  const LATE = await tokenRgb("--v3-late"), LATE_BG = await tokenRgb("--v3-late-bg");
   chk("B-10-기한-지남만-지남-색", lateT && lateT.border === LATE && lateT.bg === LATE_BG && lateT.color === LATE
       && others.every((t) => t.border !== LATE && t.bg === "rgb(255, 255, 255)" && t.color !== LATE),
       `기한 지남 테두리 ${lateT?.border} · 바탕 ${lateT?.bg} · 숫자 ${lateT?.color} / 나머지 바탕 ` +
@@ -240,7 +246,7 @@ try {
     color: getComputedStyle(b.querySelector(".v3-abar-n")).color,
     fillBg: getComputedStyle(b.querySelector(".v3-bar span")).backgroundColor })));
   const zero = barView.find((b) => b.area === zeroArea);
-  chk("B-19-0-인-영역도-줄이-남는다", !!zero && zero.zero && zero.n === 0 && zero.fill === 0 && zero.color === "rgb(154, 164, 184)",
+  chk("B-19-0-인-영역도-줄이-남는다", !!zero && zero.zero && zero.n === 0 && zero.fill === 0 && zero.color === (await tokenRgb("--v3-ink-2")),
       zero ? `「${zero.name}」 ${zero.n}건 · 흐림 ${zero.zero} (${zero.color}) · 막대 ${zero.fill}px` : "**줄이 없다**");
   chk("B-13-막대-색은-하나", new Set(barView.filter((b) => b.n > 0).map((b) => b.fillBg)).size === 1,
       `채운 막대 색 [${[...new Set(barView.filter((b) => b.n > 0).map((b) => b.fillBg))].join(" · ")}] (영역 색이 아니다)`);

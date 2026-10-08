@@ -134,7 +134,7 @@ try {
     return "칸";
   }));
   const meaningful = order.filter((o) => o !== "칸");
-  const want = ["내항목", "상태탭:전체|진행|검토|완료", "메뉴:영역", "메뉴:담당", "메뉴:기한", "찾기", "CSV"];
+  const want = ["내항목", "상태탭:전체|진행 중|검토 중|완료" /* 디자인 점검 2026-10-08 — 목록 묶음 낱말 */, "메뉴:영역", "메뉴:담당", "메뉴:기한", "찾기", "CSV"];
   chk("①-거르개-줄-차례-고정", JSON.stringify(meaningful) === JSON.stringify(want),
       `${meaningful.join(" · ")}`);
 

@@ -144,7 +144,7 @@ try {
   const searchN = await page.locator(".v3-search").count();
   const banned = await page.locator(".v3-fbar").innerText();
   chk("⑤-축이-넷-+-검색뿐",
-      axes.join("|") === "영역|담당|기한" && tabs.join("|") === "전체|진행|검토|완료"
+      axes.join("|") === "영역|담당|기한" && tabs.join("|") === "전체|진행 중|검토 중|완료" /* 디자인 점검 2026-10-08 — 목록 묶음 낱말 */
       && searchN === 1 && !/우선순위|프로젝트|생성일/.test(banned),
       `▾ [${axes.join(" · ")}] · 상태 탭 [${tabs.join(" ")}] + 검색 ${searchN}칸` +
       ` · 금지어 ${/우선순위|프로젝트|생성일/.test(banned) ? "**있음**" : "없음"}`);
