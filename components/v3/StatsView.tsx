@@ -195,7 +195,10 @@ export default function StatsView({
         말하고, 어긋났을 때 어느 쪽이 새는지가 안 보인다.
       */}
       {tasks !== null && (
-        <p className={`v3-recon${bothOk ? "" : " bad"}`}>
+        // 디자인 점검 2026-10-08 — 맞을 때는 숨긴다(DOM 에는 남긴다 — 검사기가 읽는다).
+        // 어긋날 때만 보인다: 맞는다는 말이 늘 떠 있으면 사람에게는 소음이고, 정작
+        // 어긋났을 때 눈에 안 띈다.
+        <p className={`v3-recon${bothOk ? "" : " bad"}`} hidden={bothOk}>
           {/* 별표를 쓰지 않는다 — 여기는 마크다운이 아니라 글자 그대로 찍힌다. */}
           {bothOk ? "합이 맞습니다 — " : "합이 안 맞습니다 — "}
           기한이 {monthLabel(ym)}인 {period.length}건
@@ -222,19 +225,16 @@ export default function StatsView({
           {/* 클래스가 `.v3-recon` 이 아니다. 위의 표 합 줄과 **다른 말을 하는 줄**이라
               이름을 나눈다 — 한 이름이 두 문장을 가리키면 가리키는 쪽이 어느 것을
               말하는지 알 수 없다(§G 047). 실제로 052 검사기가 여기서 걸렸다. */}
-          <p className={`v3-recon-bar${barOk.ok ? "" : " bad"}`}>
+          <p className={`v3-recon-bar${barOk.ok ? "" : " bad"}`} hidden={barOk.ok}>
             {barOk.ok ? "막대 합이 맞습니다 — " : "막대 합이 안 맞습니다 — "}
             네 상태 <b>{barOk.sum}</b>건
             {out.n > 0 && <> · 네 상태 밖 {out.n}건 뺌({out.statuses.join(", ")})</>}
             {" / 기한이 "}{monthLabel(ym)}{"인 "}<b>{period.length}</b>건
             {!barOk.ok && " — 세다가 빠뜨린 것이 있습니다."}
           </p>
-          <p className="v3-why">
-            {/* 색을 값에 따라 안 바꾸는 이유를 적는다 — 안 적으면 「왜 다 파랑이지」가 된다. */}
-            고리 색은 셋 다 같습니다. 「몇 %부터 좋음」의 기준이 아직 없어서
-            색으로 말하지 않습니다.
-            {fetchedAt !== null && <> · 마지막 갱신 {clockKst(fetchedAt)}</>}
-          </p>
+          {/* 고리 색이 셋 다 같은 이유(「몇 %부터 좋음」 기준이 아직 없다)는 화면에 적지 않는다 —
+              설계 근거라 사용자에게는 소음이다(디자인 점검 2026-10-08). 갱신 시각만 남긴다. */}
+          {fetchedAt !== null && <p className="v3-why">마지막 갱신 {clockKst(fetchedAt)}</p>}
         </Card>
       )}
 
@@ -275,10 +275,8 @@ export default function StatsView({
             <div className="v3-stat"><span className="v3-stat-n">{tally.excludedDone}</span>
               <span className="v3-stat-l">완료 (세 갈래에서 뺌)</span></div>
           </div>
-          <p className="v3-why">
-            041 의 가오픈 기한 집계를 그대로 가져온 숫자입니다. 여기서 다시 세지 않습니다 —
-            두 곳에서 세면 언젠가 갈라집니다.
-          </p>
+          {/* 041 의 가오픈 기한 집계를 그대로 가져온 숫자다 — 여기서 다시 세지 않는다.
+              그 근거는 코드에만 둔다(디자인 점검 2026-10-08). */}
         </>) : (
           <p className="v3-leak">가오픈 기준 집계를 못 봤습니다 — {tallyWhy || "불러오는 중…"}</p>
         )}

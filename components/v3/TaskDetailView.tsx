@@ -291,7 +291,7 @@ export default function TaskDetailView({
         저장은 여기서도 **한 칸씩**이다(§G) — 일곱을 「저장」 하나로 묶으면
         어느 칸이 왜 거절됐는지 알 수 없다. 칸마다 증거 한 줄이 붙는다.
       */}
-      <Card title="속성" sub="일곱">
+      <Card title="속성">
         {/* ① 영역 — 바꾸면 프로젝트가 안 맞을 수 있다. 그때는 **함께** 비운다.
             따로 보내면 첫 요청이 안 맞는 조합이라 400 을 맞는다(§E-44). */}
         <PropRow label="영역" editing={open.has("area")} onEdit={() => toggle("area")}
@@ -475,7 +475,7 @@ export default function TaskDetailView({
             </select>
             {/* 「안 정함」을 안 내는 이유 — 없는 선택지는 왜 없는지가 안 보인다.
                 (API 는 `assigneeId: null` 을 받지만 v3 에 비우는 자리는 두지 않는다.) */}
-            <span className="v3-newwhy">담당을 비우는 자리는 두지 않았습니다</span>
+            <span className="v3-newwhy">담당은 비울 수 없습니다</span>
           </div>
         )}
         {open.has("assignee") && <Note field="assigneeId" hint="고르면 바로 저장됩니다." />}
@@ -557,7 +557,7 @@ export default function TaskDetailView({
       <Card title="활동" sub={`${activity.length}건`}>
         {activity.length === 0 ? (
           <Empty title="아직 활동이 없어요"
-                 why="상태·담당·진척·목표 연결이 바뀌면 여기 쌓입니다. 제목과 기록 수정은 잡음이라 안 남깁니다." />
+                 why="상태·담당·진척·목표 연결이 바뀌면 여기 쌓입니다." />
         ) : activity.map((a) => (
           <p className={`v3-act ${a.level}`} key={a.id}>
             <span className="v3-act-t">{stamp(a.created_at)}</span>

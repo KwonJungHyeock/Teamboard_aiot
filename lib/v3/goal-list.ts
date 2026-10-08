@@ -68,7 +68,7 @@ export function quarters(rows: readonly GoalRow[]): string[] {
 
 /* ══ 거르개 셋 (§B-9) ═════════════════════════════════════════════ */
 
-/** `all` 은 「진행중·끝난 것」 둘 다. 탭의 「전체」 자리가 아니라 **기본값**이다. */
+/** `all` 은 「진행 중·끝난 것」 둘 다. 탭의 「전체」 자리가 아니라 **기본값**이다. */
 export type GoalState = "all" | "open" | "ended";
 
 export interface GoalQuery {
@@ -104,7 +104,7 @@ export function selectGoals(
 export function goalChips(q: GoalQuery): string[] {
   const out: string[] = [];
   if (q.mine) out.push("내 항목");
-  if (q.state === "open") out.push("진행중");
+  if (q.state === "open") out.push("진행 중");
   if (q.state === "ended") out.push("끝난 것");
   if (q.quarter) out.push(`분기 · ${q.quarter}`);
   return out;

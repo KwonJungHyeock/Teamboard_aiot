@@ -141,7 +141,7 @@ export default function TeamView({
       <h1 className="v3-h1">팀 현황</h1>
       <p className="v3-lede">
         {tasks === null ? "불러오는 중…"
-          : `${cols.length}열 · 진행 중 ${tally.sum}건${nothing ? "" : ` · 조건 ${chips.length}개로 거름`}`}
+          : `팀원 ${cols.length}명 · 진행 중 ${tally.sum}건${nothing ? "" : ` · 조건 ${chips.length}개로 거름`}`}
         {" — 완료는 안 보입니다."}
       </p>
 

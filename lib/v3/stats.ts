@@ -256,25 +256,26 @@ export function ringDash(pct: number, radius: number): { dash: number; circumfer
  * 그리고 **색만으로 구분하지 않는다**: 조각마다 숫자를 직접 적고 사이를 띄운다.
  */
 export const DIST_SEGMENTS = [
-  { key: "doing", label: "진행 중", status: "doing", color: "#C97A0E", ink: "#16203A" },
-  { key: "review", label: "검토 중", status: "review", color: "#2F6FED", ink: "#FFFFFF" },
-  { key: "done", label: "완료", status: "done", color: "#2E9E5B", ink: "#16203A" },
-  { key: "todo", label: "아직 시작 안 함", status: "todo", color: "#9AA4B8", ink: "#16203A" },
+  // 디자인 점검 2026-10-08 P1 — 색은 `app/v3.css` 의 상태 토큰을 부른다. 여기 hex 를 적지 않는다.
+  // 전에는 진행=호박 · 검토=파랑으로 체크박스 · 상태 점과 **반대**였다.
+  { key: "doing", label: "진행 중", status: "doing", color: "var(--v3-st-doing)", ink: "var(--v3-st-doing-ink)" },
+  { key: "review", label: "검토 중", status: "review", color: "var(--v3-st-review)", ink: "var(--v3-st-review-ink)" },
+  { key: "done", label: "완료", status: "done", color: "var(--v3-st-done)", ink: "var(--v3-st-done-ink)" },
+  { key: "todo", label: "아직 시작 안 함", status: "todo", color: "var(--v3-st-todo)", ink: "var(--v3-st-todo-ink)" },
 ] as const;
 
 /*
  * ── 글자색은 **바탕마다 다르다** ────────────────────────────────
  *
- * 바탕 넷은 지시서 값 그대로다. 그런데 넷에 흰 글자를 얹었더니 회색(#9AA4B8)
- * 위에서 대비가 2.5:1 밖에 안 나왔다 — **숫자가 안 읽히면 「색만으로 구분하지
- * 않는다」가 무너진다.** 숫자를 적어 둔 뜻이 없어진다.
- *
- * 그래서 바탕별로 더 잘 읽히는 쪽을 골랐다(계산값, 흰색 / 진한 글자):
- *   #C97A0E  3.4 / 6.3  → 진한 글자
- *   #2F6FED  4.6 / 4.6  → 흰 글자 (파랑 위는 흰 쪽이 눈에 편하다)
- *   #2E9E5B  3.4 / 4.8  → 진한 글자
- *   #9AA4B8  2.5 / 6.5  → 진한 글자
- * **바탕색은 하나도 안 바꿨다.**
+ * 바탕 넷과 그 위 글자색은 `app/v3.css` 의 상태 토큰(`--v3-st-*` · `--v3-st-*-ink`)이
+ * 정한다. 회색 바탕에 흰 글자를 얹으면 대비가 2.5:1 밖에 안 나온다 — **숫자가 안
+ * 읽히면 「색만으로 구분하지 않는다」가 무너진다.** 그래서 바탕마다 더 잘 읽히는 쪽을
+ * 골랐다(계산값, 흰색 / 진한 글자 #16203A):
+ *   진행 #2F5FE8  5.4 / 3.9  → 흰 글자
+ *   검토 #E39A1E  2.4 / 6.8  → 진한 글자
+ *   완료 #23804A  4.9 / 3.4  → 흰 글자
+ *   대기 #9AA4B8  2.5 / 6.5  → 진한 글자
+ * (디자인 점검 2026-10-08 — 전에는 진행 · 검토 색이 체크박스와 반대였다)
  */
 
 export interface Segment {

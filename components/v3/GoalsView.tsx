@@ -23,7 +23,7 @@ import { V3_BASE } from "@/lib/v3/routes";
 
 const STATE_TABS = [
   { v: "all", label: "전체" },
-  { v: "open", label: "진행중" },
+  { v: "open", label: "진행 중" },
   { v: "ended", label: "끝난 것" },
 ] as const;
 
@@ -75,7 +75,7 @@ export default function GoalsView({ me }: { me: number }) {
       {err && <Card><p className="v3-err">{err}</p></Card>}
 
       {/* 거르개 셋 — 업무 목록의 차례와 **같은 결**이다(066 §C-15).
-          [◉내 항목] | [전체][진행중][끝난 것] | [분기▾] */}
+          [◉내 항목] | [전체][진행 중][끝난 것] | [분기▾] */}
       <div className="v3-fbar" role="group" aria-label="거르개">
         <Chip on={query.mine} onClick={() => setQuery({ mine: !query.mine })}>◉ 내 항목</Chip>
         <span className="v3-fbar-div" aria-hidden="true" />

@@ -163,6 +163,7 @@ export default function NewTaskView({
           ref={titleRef}
           className="v3-title-in"
           rows={1}
+          aria-label="제목"
           placeholder="무엇을 할 일인가요?"
           value={title}
           onChange={(e) => setTitle(e.target.value)}

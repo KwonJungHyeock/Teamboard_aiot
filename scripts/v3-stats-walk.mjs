@@ -136,19 +136,22 @@ try {
   await page.goto(`${BASE}/v3/stats`, { waitUntil: "networkidle" });
   await page.locator(".v3-tbl").first().waitFor({ timeout: 9000 });
 
-  // ── ① 합이 맞고, 화면이 그 식을 적는다 ────────────────────────
+  // ── ① 합이 맞고, 그 식이 DOM 에 있다 ──────────────────────────
+  // 디자인 점검 2026-10-08 — 맞을 때는 줄을 **숨긴다**(어긋날 때만 보인다). 식은 DOM 에 남아
+  // 여기서 읽는다(숨은 요소의 innerText 는 textContent 다). 숨어 있는지도 함께 잰다.
   const recon = (await page.locator(".v3-recon").innerText()).replace(/\s+/g, " ");
+  const reconHidden = await page.locator(".v3-recon").isHidden();
   const foot = async (i) =>
     (await page.locator(".v3-tbl").nth(i).locator("tfoot td").allInnerTexts()).map((t) => Number(t.trim()));
   const catFoot = await foot(0);
   const whoFoot = await foot(1);
   const catTotal = catFoot[catFoot.length - 1];
   const whoTotal = whoFoot[whoFoot.length - 1];
-  chk("①-합이-맞고-식이-보인다",
+  chk("①-합이-맞고-맞을-땐-숨는다",
       catTotal === periodN - droppedN && whoTotal === catTotal
-      && recon.startsWith("합이 맞습니다") && recon.includes(String(catTotal)),
+      && recon.startsWith("합이 맞습니다") && recon.includes(String(catTotal)) && reconHidden,
       `기간 ${periodN}건 − 네 상태 밖 ${droppedN}건 = ${periodN - droppedN}` +
-      ` · 카테고리표 ${catTotal} · 담당자표 ${whoTotal} · 화면 "${recon.slice(0, 110)}"`);
+      ` · 카테고리표 ${catTotal} · 담당자표 ${whoTotal} · 숨김 ${reconHidden} · DOM "${recon.slice(0, 110)}"`);
 
   // ── ⑥ 프로젝트별 표가 없다 ────────────────────────────────────
   // 개수로 단언하지 않는다 (§G 052) — 카드가 하나 늘면(056 「완료율」) 개수가

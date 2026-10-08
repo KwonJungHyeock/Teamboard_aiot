@@ -198,11 +198,16 @@ try {
     text: (e.textContent ?? "").trim(),
     gap: getComputedStyle(e.parentElement).gap,
   })));
-  const wantColors = DIST_SEGMENTS.map((s) => s.color.toLowerCase());
-  chk("④-막대-색이-지시서-값-그대로",
+  // 디자인 점검 2026-10-08 — 막대 색은 상태 토큰(`--v3-st-*`)을 부른다. 기대값도 토큰에서 읽는다
+  const tokenNames = DIST_SEGMENTS.map((s) => (s.color.match(/var\((--[^)]+)\)/) ?? [])[1]);
+  const wantColors = (await page.evaluate((names) => {
+    const cs = getComputedStyle(document.querySelector(".v3"));
+    return names.map((n) => (n ? cs.getPropertyValue(n).trim() : ""));
+  }, tokenNames)).map((v) => (v.startsWith("#") ? v : toHex(v)).toLowerCase());
+  chk("④-막대-색이-상태-토큰-그대로",
       // 061 §E-17(나) — 조각이 0개면 색을 하나도 안 잰 것이다.
       shown.length > 0 && shown.every((s) => wantColors.includes(toHex(s.bg))),
-      `그려진 바탕 [${shown.map((s) => toHex(s.bg)).join(", ")}] · 지시서 [${wantColors.join(", ")}]`);
+      `그려진 바탕 [${shown.map((s) => toHex(s.bg)).join(", ")}] · 상태 토큰 [${wantColors.join(", ")}]`);
 
   const worst = shown.map((s) => contrast(toHex(s.bg), toHex(s.ink)));
   chk("⑤-조각마다-숫자-·-읽힌다",
@@ -226,10 +231,12 @@ try {
   // ── ⑦ 막대 합을 화면이 스스로 말한다 ─────────────────────────
   // `.last()` 로 집지 않는다 — 표 합 줄과 막대 합 줄은 **이름이 다르다.**
   // 순서로 집으면 줄이 하나 더 늘 때 조용히 엉뚱한 줄을 읽는다.
+  // 디자인 점검 2026-10-08 — 맞을 때는 숨기고 어긋날 때만 보인다. 식은 DOM 에서 읽는다
   const recon = (await page.locator(".v3-recon-bar").innerText()).replace(/\s+/g, " ");
-  chk("⑦-막대-합을-화면이-말한다",
-      recon.startsWith("막대 합이 맞습니다") && recon.includes(String(monthDist.total)),
-      `"${recon.slice(0, 100)}"`);
+  const reconHidden = await page.locator(".v3-recon-bar").isHidden();
+  chk("⑦-막대-합이-맞고-맞을-땐-숨는다",
+      recon.startsWith("막대 합이 맞습니다") && recon.includes(String(monthDist.total)) && reconHidden,
+      `숨김 ${reconHidden} · DOM "${recon.slice(0, 100)}"`);
 
   // ── ⑧ 「마지막 갱신」이 서버 시각 ──────────────────────────────
   const srv = await page.evaluate(async () => (await fetch("/api/tasks")).headers.get("date"));

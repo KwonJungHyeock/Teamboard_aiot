@@ -4,6 +4,7 @@
 // 검사기가 같은 함수를 못 불러서 「화면이 자기가 그린 것을 그렸다」밖에 못 잰다
 // (043 부터의 방식). **이 파일은 순수하다** — `fetch` 도 DOM 도 없다.
 import { STATUS_META } from "../task-view";
+import { GROUPS } from "./tasks";
 import { canEditProgress } from "../progress-permission";
 
 /* ══ §A-1 토스트 ═══════════════════════════════════════════════════ */
@@ -21,21 +22,25 @@ export function toastMs(hasButton: boolean): number {
 /* ══ §B-2 상태 고르개 ══════════════════════════════════════════════ */
 
 /**
- * 고르개의 네 줄. **낱말은 여기 적지 않는다** — `STATUS_META` 에서 가져온다
- * (071 §A · 065 §A-2). 070 에서는 지시서 낱말(미착수 · 검토)을 여기 따로 적었고,
- * 그래서 이 화면만 다른 화면들(대기 · 리뷰)과 낱말 둘이 갈렸다.
+ * 고르개의 네 줄. **낱말은 여기 적지 않는다** — 새 화면의 목록 · 상세가 쓰는
+ * `GROUPS`(진행 중 · 검토 중 · 아직 시작 안 함 · 완료)에서 가져온다.
+ *
+ * 071 §A 에서는 `STATUS_META`(진행 · 리뷰 · 대기)로 모았는데, 그 사이 목록과 상세는
+ * `GROUPS` 를 써서 **새 화면 안에서** 낱말이 두 벌이 됐다(디자인 점검 2026-10-08 P1).
+ * 옛 화면은 `STATUS_META` 를 그대로 쓴다 — 이번 범위는 새 화면뿐이다.
  *
  * 한 낱말인 것이 어느 낱말인가보다 중요하다(071 §A-5). 여기 남는 것은 **차례**뿐이다.
  * 칩에 적히는 글자도 이 표에서 온다 — 칩과 고르개가 다른 말을 하면 안 된다.
  */
 const PICK_KEYS = ["todo", "doing", "review", "done"] as const;
 export type PickStatus = (typeof PICK_KEYS)[number];
+const GROUP_LABEL: Record<string, string> = Object.fromEntries(GROUPS.map((g) => [g.key, g.label]));
 export const STATUS_PICK: readonly { key: PickStatus; label: string }[] =
-  PICK_KEYS.map((key) => ({ key, label: STATUS_META[key].label }));
+  PICK_KEYS.map((key) => ({ key, label: GROUP_LABEL[key] }));
 
 export function pickLabel(status: string): string {
-  // 제안 · 중단처럼 고르개에 없는 상태도 **같은 표**의 낱말로 그린다
-  return STATUS_META[status]?.label ?? status;
+  // 제안 · 중단처럼 목록 묶음에 없는 상태는 옛 표의 낱말로 그린다
+  return GROUP_LABEL[status] ?? STATUS_META[status]?.label ?? status;
 }
 export function isPickStatus(s: string): s is PickStatus {
   return STATUS_PICK.some((p) => p.key === s);

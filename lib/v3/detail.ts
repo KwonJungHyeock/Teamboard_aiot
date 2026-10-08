@@ -121,7 +121,7 @@ export function progressWhy(t: Pick<DetailTask,
   if (t.rolledUpFromChildren) {
     return `하위 ${t.childCounted}개 중 ${t.childDone}개 완료로 계산됩니다. 손으로는 안 바뀝니다.`;
   }
-  return "진척은 지정된 한 사람만 손으로 바꿉니다. 이 화면에는 칸이 없습니다.";
+  return "진척은 지정된 한 사람만 바꿀 수 있습니다.";
 }
 
 /**
@@ -200,7 +200,7 @@ export function periodText(startDate: string | null, dueDate: string | null): st
  * 둘 중 하나만 상속 규칙(§A2)을 지나면 값이 갈린다.
  */
 export const CHILD_EDIT_WHY =
-  "하위는 그 업무의 「상위 업무」에서 정합니다. 여기서 더하거나 떼는 자리는 두지 않았습니다.";
+  "하위 업무는 그 업무의 「상위 업무」 칸에서 정합니다.";
 
 /** 저장할 값이 있는가 — **안 바뀐 값은 안 보낸다.** 보내면 활동 로그가 더러워진다. */
 export function changed(before: string | number | null, after: string | number | null): boolean {

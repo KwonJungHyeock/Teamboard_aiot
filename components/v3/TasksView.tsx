@@ -55,7 +55,7 @@ interface Person { id: number; name: string }
 /**
  * 상태 탭 넷 — **지시서 §C-15 의 차례 그대로다.**
  *
- * `[전체][진행][검토][완료]`. 「전체」는 상태 축을 비우는 것이고 나머지는 하나씩
+ * `[전체][진행 중][검토 중][완료]`. 낱말은 목록 묶음(`GROUPS`)과 같다(디자인 점검 2026-10-08). 「전체」는 상태 축을 비우는 것이고 나머지는 하나씩
  * 고른다. **탭이라 하나만** 골린다 — 여러 개를 고르는 자리였으면 칩이어야 한다.
  *
  * 주소의 모양(`st=doing,review`)은 그대로 둔다. 옛 링크가 여럿을 담고 있으면
@@ -63,8 +63,8 @@ interface Person { id: number; name: string }
  */
 const STATUS_TABS = [
   { v: null, label: "전체" },
-  { v: "doing", label: "진행" },
-  { v: "review", label: "검토" },
+  { v: "doing", label: "진행 중" },
+  { v: "review", label: "검토 중" },
   { v: "done", label: "완료" },
 ] as const;
 
@@ -517,9 +517,10 @@ export default function TasksView({
           0건이라고 믿지 않고 세어서, 샐 때만 말한다. */}
       {tasks !== null && (leak.noArea > 0 || leak.unknownArea > 0) && (
         <p className="v3-leak">
-          카테고리가 없는 업무 {leak.noArea}건
-          {leak.unknownArea > 0 && ` · 모르는 카테고리 ${leak.unknownArea}건`}
-          {" — 칩 숫자의 합에 안 들어갑니다."}
+          {leak.noArea > 0 && `카테고리가 정해지지 않은 업무 ${leak.noArea}건`}
+          {leak.noArea > 0 && leak.unknownArea > 0 && " · "}
+          {leak.unknownArea > 0 && `알 수 없는 카테고리의 업무 ${leak.unknownArea}건`}
+          {"은 위 카테고리 숫자에 들어가지 않습니다."}
         </p>
       )}
 
