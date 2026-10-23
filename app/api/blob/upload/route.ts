@@ -3,13 +3,13 @@
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { jsonError } from "@/lib/api";
-import { blobEnabled, blobAuthMode, putPrivate, MAX_UPLOAD_BYTES, ALLOWED_TYPES, type BlobScopeKind } from "@/lib/blob";
+import { blobEnabled, blobAuthMode, putPrivate, MAX_UPLOAD_BYTES, ALLOWED_TYPES, WORKLOG_MAX_BYTES, WORKLOG_TYPES, type BlobScopeKind } from "@/lib/blob";
 import { canWriteBlob } from "@/lib/blob-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const KINDS: BlobScopeKind[] = ["project", "task", "review", "signal"];
+const KINDS: BlobScopeKind[] = ["project", "task", "review", "signal", "worklog"];
 
 export async function POST(request: Request) {
   try {
@@ -31,16 +31,22 @@ export async function POST(request: Request) {
     if (!(await canWriteBlob({ kind, id }, session.id))) return new NextResponse(null, { status: 404 });
 
     const contentType = (request.headers.get("content-type") ?? "").split(";")[0].trim();
-    if (!ALLOWED_TYPES[contentType]) {
+    // 업무기록만 문서까지 받는다 — 나머지 자리는 예전 그대로 이미지만(014 §A).
+    const worklog = kind === "worklog";
+    const types = worklog ? WORKLOG_TYPES : ALLOWED_TYPES;
+    const max = worklog ? WORKLOG_MAX_BYTES : MAX_UPLOAD_BYTES;
+    if (!types[contentType]) {
       return NextResponse.json(
-        { error: "png · jpg · webp · gif 만 올릴 수 있습니다." },
+        { error: worklog
+            ? "이미지 · PDF · 한글 · 오피스 문서 · zip · txt 만 올릴 수 있습니다."
+            : "png · jpg · webp · gif 만 올릴 수 있습니다." },
         { status: 415 }
       );
     }
     const buf = Buffer.from(await request.arrayBuffer());
     if (buf.byteLength === 0) return NextResponse.json({ error: "빈 파일입니다." }, { status: 400 });
-    if (buf.byteLength > MAX_UPLOAD_BYTES) {
-      return NextResponse.json({ error: "10MB 이하만 올릴 수 있습니다." }, { status: 413 });
+    if (buf.byteLength > max) {
+      return NextResponse.json({ error: `${Math.round(max / 1024 / 1024)}MB 이하만 올릴 수 있습니다.` }, { status: 413 });
     }
 
     const name = url.searchParams.get("name") ?? "image";

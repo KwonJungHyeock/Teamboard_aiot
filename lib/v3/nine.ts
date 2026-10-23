@@ -49,6 +49,12 @@ export const NINE: NineScreen[] = [
    * 관리자만 보이고 부른다(`admin` · 규약 6-3).
    */
   { n: 10, key: "switch", label: "새 화면 스위치", path: `${V3_BASE}/switch` },
+  /*
+   * ── 열한 번째 (2026-10 업무기록) — 내 기록 ───────────────────────
+   * 각자 한 줄씩 적는 업무기록(0037). 옛 화면에 짝이 없다 — 「메모」(notes)와
+   * 다른 것이다: 메모는 문서이고, 기록은 한 일의 줄이다.
+   */
+  { n: 11, key: "log", label: "내 기록", path: `${V3_BASE}/log` },
 ];
 
 /** 새 화면 스위치 자리. **스위치가 꺼져 있어도** 관리자에게는 열린다(`app/v3/layout.tsx`) */
@@ -105,6 +111,7 @@ export const RAIL: RailGroup[] = [
       { label: "대시보드", href: `${V3_BASE}` },
       // 「내 업무」는 새 화면이 아니라 **업무 목록의 한 조건**이다 (066 §B-4).
       { label: "내 업무", href: `${V3_BASE}/tasks?mine=1` },
+      { label: "내 기록", href: `${V3_BASE}/log` },
       // 캘린더는 주 보기가 없어 반쪽이고, 옛 화면으로 내보내면 §A-2 가 깨진다.
       { label: "캘린더", lock: "calendar" },
     ],

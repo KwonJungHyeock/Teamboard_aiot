@@ -58,6 +58,10 @@ export async function canReadBlob(scope: BlobScope, pathname: string, viewerId: 
       );
       return !!row;
     }
+    case "worklog":
+      // 업무기록 첨부는 **쓴 사람만** 읽는다. 폴더 이름이 곧 주인이다(lib/blob.ts).
+      // 아직 기록에 안 붙은 파일(올리고 저장하기 전 미리보기)도 읽혀야 해서 줄을 묻지 않는다.
+      return scope.id === viewerId;
     case "review": {
       // 리뷰 항목의 전/후 이미지 또는 그 항목에 달린 코멘트 이미지.
       const row = await queryOne<{ ok: number }>(
@@ -101,6 +105,8 @@ export async function canWriteBlob(scope: BlobScope, viewerId: number): Promise<
       );
       return !!row;
     }
+    case "worklog":
+      return scope.id === viewerId;   // 제 폴더에만 올린다
     case "review": {
       const row = await queryOne<{ ok: number }>(
         `SELECT 1 AS ok FROM review_session WHERE id = $1 AND is_active = true`, [scope.id]

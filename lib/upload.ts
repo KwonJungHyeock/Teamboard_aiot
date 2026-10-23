@@ -7,7 +7,7 @@ export interface UploadedImage {
   contentType: string;
 }
 
-export type UploadScope = { kind: "project" | "task" | "review" | "signal"; id: number };
+export type UploadScope = { kind: "project" | "task" | "review" | "signal" | "worklog"; id: number };
 
 export async function uploadImage(file: File, scope: UploadScope): Promise<UploadedImage> {
   const qs = new URLSearchParams({ kind: scope.kind, id: String(scope.id), name: file.name || "image" });
