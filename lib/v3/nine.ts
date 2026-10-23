@@ -60,6 +60,12 @@ export const NINE: NineScreen[] = [
    * (지시: 「팀 전체 같은 화면」). 그래서 lead/admin 표시를 달지 않는다.
    */
   { n: 12, key: "control", label: "관제", path: `${V3_BASE}/control` },
+  /*
+   * ── 열세 번째 (2026-10 회의실 · 0038) — 회의실 ─────────────────────
+   * 영상은 Jitsi, 안건 · 링크 · 결정 · 할 일과 회의록은 우리 표에. 팀 전체가 같은 회의를 본다.
+   * `/v3/room/12` 처럼 회의 번호가 붙으므로 prefix 다.
+   */
+  { n: 13, key: "room", label: "회의실", path: `${V3_BASE}/room`, prefix: true },
 ];
 
 /** 새 화면 스위치 자리. **스위치가 꺼져 있어도** 관리자에게는 열린다(`app/v3/layout.tsx`) */
@@ -120,7 +126,7 @@ export interface RailGroup { title: string; items: RailItem[] }
  *   · 대시보드 · 팀 · 집계 → 관제가 대신하고, 관제 머리의 작은 링크로 간다
  *   · 내 정보 · 구성원 · 새 화면 스위치 → 아래 계정 블록(`ACCOUNT_LINKS`)
  *   · 캘린더 · 프로젝트 · 영역 · 설정(자물쇠) → 아직 없는 화면이라 뺐다
- * 회의실만 자물쇠로 남긴다 — 다음 차례라 자리를 보여 둔다.
+ * 회의실은 자물쇠로 자리만 보여 두다가 2026-10 회의실(0038)에서 열었다.
  */
 export const RAIL: RailGroup[] = [
   {
@@ -132,7 +138,7 @@ export const RAIL: RailGroup[] = [
       { label: "내 기록", href: `${V3_BASE}/log` },
       { label: "업무 목록", href: `${V3_BASE}/tasks` },
       { label: "목표", href: `${V3_BASE}/goals` },
-      { label: "회의실", lock: "huddle" },
+      { label: "회의실", href: `${V3_BASE}/room` },
     ],
   },
 ];

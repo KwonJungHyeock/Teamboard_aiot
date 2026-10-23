@@ -60,8 +60,6 @@ export const NOT_YET: NotYetScreen[] = [
     what: "에이전트가 제안한 업무를 승인하거나 반려하는 자리입니다." },
   { key: "activity", label: "활동", old: "/activity",
     what: "누가 무엇을 바꿨는지 쌓이는 자리입니다." },
-  { key: "huddle", label: "허들룸", old: "/huddle",
-    what: "함께 보며 리뷰하는 자리입니다." },
   { key: "reports", label: "보고", old: "/reports",
     what: "성과 리포트와 승인 보고서를 만드는 자리입니다." },
   { key: "handover", label: "인수인계", old: "/handover",

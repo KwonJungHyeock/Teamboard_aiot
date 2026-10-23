@@ -154,6 +154,7 @@ a.v3-ctl-brow:hover { background: rgba(255, 255, 255, .05); }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .v3-ctl-mn i { color: var(--v3-ink-2); }
 .v3-ctl-mn a:hover { text-decoration: underline; }
+.v3-ctl-mn a.v3-ctl-mt { color: var(--v3-rail); font-weight: 600; }   /* 회의 중 — 회의실로 (0038) */
 .v3-ctl-mn small { font-size: 12px; color: var(--v3-ink-2); }
 
 /* ── 방금 일어난 일 — 흐르는 띠 ─────────────────────────────────── */
