@@ -41,7 +41,7 @@ import { V3_BASE } from "@/lib/v3/routes";
  * 목록은 한 파일에 있다(`lib/v3/not-yet.ts`) — 067 에서 푸는 일이 한 줄 지우기다.
  */
 import { notYetHref } from "@/lib/v3/not-yet";
-import { RAIL, nineOf } from "@/lib/v3/nine";
+import { RAIL, ACCOUNT_LINKS, nineOf } from "@/lib/v3/nine";
 import { roleLabel, showsAdminGrantBadge, hasLead, isAdmin } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import DeniedNote from "../DeniedNote";
@@ -205,12 +205,13 @@ export default function V3Shell({ user, space: space0 = false, children }:
             if (items.length === 0) return null;
             return (
               <div className="v3-railg" key={g.title}>
-                <span className="v3-railg-t">{g.title}</span>
+                {/* 2026-10 — 묶음이 하나가 되며 제목이 없어졌다. 없으면 그리지 않는다. */}
+                {g.title && <span className="v3-railg-t">{g.title}</span>}
                 {items.map((i) => (i.lock ? (
                   /* 자물쇠는 **지우지 않고 남긴다**(066 §B-8) — 지우면 없어진 줄
                      알고, 그냥 두면 404 를 만난다. 목적지는 막음 화면이다. */
                   <Link key={i.label} className="v3-navlink lock" href={notYetHref(i.lock)}>
-                    {i.label}<span className="v3-lock" aria-label="아직 안 엽니다">🔒</span>
+                    {i.label}<span className="v3-lock soon" aria-label="아직 안 엽니다">곧</span>
                   </Link>
                 ) : (
                   <Link key={i.label} className="v3-navlink" href={i.href as string}
@@ -261,9 +262,11 @@ export default function V3Shell({ user, space: space0 = false, children }:
                 지금 막는 이유는 등급이 아니라 **아직 안 만든 것**이기 때문이다.
                 등급 이야기(「설정은 팀장부터」)는 화면이 서는 날 다시 한다.
               */}
-              <Link className="v3-acct-l" href={notYetHref("settings")}>
-                설정<span className="v3-lock" aria-label="아직 안 엽니다">🔒</span>
-              </Link>
+              {/* 2026-10 레일 정리 — 레일에서 내려온 링크. 등급 조건은 그 화면과 같은 함수다. */}
+              {ACCOUNT_LINKS.filter((i) => (i.admin ? admin : true) && (i.lead ? lead : true)).map((i) => (
+                <Link key={i.label} className="v3-acct-l" href={i.href as string}
+                      aria-current={pathname === i.href ? "page" : undefined}>{i.label}</Link>
+              ))}
               <button type="button" className="v3-acct-l" onClick={() => void logout()}>로그아웃</button>
             </div>
           </div>

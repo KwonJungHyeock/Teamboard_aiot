@@ -165,3 +165,12 @@
   .v3.v3-space .v3-rail { background: rgba(244, 247, 251, .97); }
   .v3.v3-space .v3-card { border-radius: 22px; padding: 16px 16px; }
 }
+
+/* ══ 2026-10 레일 정리 — 계정 블록에 링크가 늘었다 (모드와 상관없이) ══════════ */
+.v3 .v3-acct-a { flex-wrap: wrap; }
+.v3 .v3-acct-a .v3-acct-l { flex: 0 0 auto; padding: 0 8px; }
+.v3 .v3-acct-l[aria-current="page"] { text-decoration: underline; text-underline-offset: 3px; }
+/* 「곧」 — 자물쇠 대신 다음 차례라는 표시 */
+.v3 .v3-lock.soon { margin-left: auto; padding: 0 7px; border-radius: var(--v3-radius-pill);
+  font-size: 11px; font-weight: 700; opacity: .8; background: rgba(255, 255, 255, .18); }
+.v3.v3-space .v3-lock.soon { background: rgba(18, 26, 43, .07); }

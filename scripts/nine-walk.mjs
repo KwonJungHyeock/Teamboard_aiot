@@ -158,11 +158,13 @@ try {
   const groups = await page.locator(".v3-rail .v3-railg-t").allTextContents();
   const locks = await page.locator(".v3-rail .v3-navlink.lock").allTextContents();
   const wantLocks = RAIL.flatMap((g) => g.items.filter((i) => i.lock).map((i) => i.label));
-  chk("④-레일-세-묶음", groups.map((t) => t.trim()).join("|") === "개인|업무|관리",
-      `[${groups.map((t) => t.trim()).join(" · ")}]`);
+  // 2026-10 레일 정리 — 세 묶음이 **한 줄**이 됐다. 묶음 제목은 RAIL 에 적힌 것만(빈 제목은 안 그린다).
+  const wantTitles = RAIL.map((g) => g.title).filter(Boolean);
+  chk("④-레일-묶음-제목", groups.map((t) => t.trim()).join("|") === wantTitles.join("|"),
+      `[${groups.map((t) => t.trim()).join(" · ")}] · 있어야 할 것 [${wantTitles.join(" · ")}]`);
   chk("④짝-자물쇠가-남는다",
       wantLocks.every((l) => locks.some((t) => t.includes(l))) && locks.length === wantLocks.length,
-      `레일 자물쇠 [${locks.map((t) => t.replace(/\s+/g, "").replace("🔒", "")).join(" · ")}]` +
+      `레일 자물쇠 [${locks.map((t) => t.replace(/\s+/g, "").replace("🔒", "").replace("곧", "")).join(" · ")}]` +
       ` · 있어야 할 것 [${wantLocks.join(" · ")}]`);
 
   // ── ⑤ 막는 목록이 아홉과 **안 겹친다** ────────────────────────

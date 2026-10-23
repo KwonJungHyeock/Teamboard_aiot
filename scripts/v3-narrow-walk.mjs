@@ -205,13 +205,14 @@ try {
    * 하나로 옮긴다 — **팀**. (지금 서 있는 곳이 업무 목록이라, 그걸 누르면 주소가
    * 안 바뀌어 「옮긴」 것이 아니다. 처음에 그렇게 골랐다가 빨개졌다.)
    */
-  await ph.p.locator(".v3-rail .v3-navlink", { hasText: /^팀$/ }).click();
-  await ph.p.waitForURL(/\/v3\/team/, { timeout: 9000 });
+  // 2026-10 레일 정리 — 「팀」이 레일에서 빠졌다(관제가 대신한다). 열려 있는 다른 항목 **목표**로 옮긴다.
+  await ph.p.locator(".v3-rail .v3-navlink", { hasText: /^목표$/ }).click();
+  await ph.p.waitForURL(/\/v3\/goals/, { timeout: 9000 });
   await ph.p.waitForTimeout(400);
   const moved = await railState();
   chk("①-8-화면을-옮기면-닫힌다",
       !moved.shown && moved.scrim === 0 && moved.bodyOverflow === shut.bodyOverflow,
-      `팀으로 간 뒤 — 레일 보임 ${moved.shown} · 덮개 ${moved.scrim}개 ·` +
+      `목표로 간 뒤 — 레일 보임 ${moved.shown} · 덮개 ${moved.scrim}개 ·` +
       ` body overflow-y ${moved.bodyOverflow} (열린 채 덮여 있으면 아무것도 안 눌린다)`);
 
   await shot(ph.p, { path: `${OUT}/1-390-닫힘.png` });

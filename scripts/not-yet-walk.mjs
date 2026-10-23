@@ -125,14 +125,15 @@ try {
   /*
    * 막은 것 **전부가** 레일에 서지는 않는다 — 레일에 있던 것만 자물쇠를 단다
    * (066 §B-8: 「지우면 없어진 줄 안다」는 레일에 **있던** 자리의 이야기다).
-   * 그래서 있어야 할 자물쇠 수는 **레일 목록(`RAIL`)과 설정 하나**에서 센다.
+   * 그래서 있어야 할 자물쇠 수는 **레일 목록(`RAIL`)**에서 센다.
+   * 2026-10 레일 정리 — 계정 블록의 「설정🔒」은 뺐다(아직 없는 화면이라). 레일 자물쇠만 센다.
    */
   const { RAIL } = req(path.join(TMP, "v3", "nine.js"));
-  const wantLocks = RAIL.flatMap((g) => g.items.filter((i) => i.lock)).length + 1;   // + 설정
+  const wantLocks = RAIL.flatMap((g) => g.items.filter((i) => i.lock)).length;
   const locks = await page.locator(".v3-rail .v3-lock").count();
   const railOld = await page.locator('.v3-rail a[href="/profile"], .v3-rail a[href="/settings"]').count();
   chk("④-레일에-자물쇠가-남는다", locks === wantLocks,
-      `자물쇠 ${locks}개 · 있어야 할 것 ${wantLocks}개 (레일의 자물쇠 항목 + 설정)`);
+      `자물쇠 ${locks}개 · 있어야 할 것 ${wantLocks}개 (레일의 자물쇠 항목)`);
   chk("④짝-레일이-옛-화면으로-안-내보낸다", railOld === 0,
       `레일의 /profile·/settings 링크 ${railOld}개 (0이어야 한다 — §B-11)`);
 

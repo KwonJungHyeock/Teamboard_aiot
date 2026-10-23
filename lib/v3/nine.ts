@@ -110,40 +110,41 @@ export interface RailItem {
 
 export interface RailGroup { title: string; items: RailItem[] }
 
+/*
+ * ── 2026-10 레일 정리 — **여섯 개만** ─────────────────────────────
+ *
+ * 지시: 「왼쪽 패널에서 필수 기능만 빼고 필요 없는 것들 빼고 심플하게」.
+ * 세 묶음(067 §0-4)을 한 줄로 접었다. 묶음 제목이 없으면 그리지 않는다.
+ *
+ *   관제 · 내 업무 · 내 기록 · 업무 목록 · 목표 · 회의실(곧)
+ *
+ * 레일에서 **빠진 화면은 없어진 것이 아니다** — 주소는 그대로 열린다(`NINE`).
+ *   · 대시보드 · 팀 · 집계 → 관제가 대신하고, 관제 머리의 작은 링크로 간다
+ *   · 내 정보 · 구성원 · 새 화면 스위치 → 아래 계정 블록(`ACCOUNT_LINKS`)
+ *   · 캘린더 · 프로젝트 · 영역 · 설정(자물쇠) → 아직 없는 화면이라 뺐다
+ * 회의실만 자물쇠로 남긴다 — 다음 차례라 자리를 보여 둔다.
+ */
 export const RAIL: RailGroup[] = [
   {
-    title: "개인",
+    title: "",
     items: [
-      { label: "대시보드", href: `${V3_BASE}` },
+      { label: "관제", href: `${V3_BASE}/control` },
       // 「내 업무」는 새 화면이 아니라 **업무 목록의 한 조건**이다 (066 §B-4).
       { label: "내 업무", href: `${V3_BASE}/tasks?mine=1` },
       { label: "내 기록", href: `${V3_BASE}/log` },
-      // 캘린더는 주 보기가 없어 반쪽이고, 옛 화면으로 내보내면 §A-2 가 깨진다.
-      { label: "캘린더", lock: "calendar" },
-    ],
-  },
-  {
-    title: "업무",
-    items: [
-      { label: "관제", href: `${V3_BASE}/control` },
       { label: "업무 목록", href: `${V3_BASE}/tasks` },
       { label: "목표", href: `${V3_BASE}/goals` },
-      // 집계는 팀장부터다 — **그 화면과 같은 함수로 가린다**(§G 038).
-      { label: "집계", href: `${V3_BASE}/stats`, lead: true },
-      { label: "팀", href: `${V3_BASE}/team` },
-      { label: "프로젝트", lock: "projects" },
+      { label: "회의실", lock: "huddle" },
     ],
   },
-  {
-    title: "관리",
-    items: [
-      // 구성원은 **관리자만**이다. 권한이 없으면 레일에 안 나오고 부르지도
-      // 않는다(규약 6-3) — 「아홉에 들어 있다」와 「누구에게나 보인다」는 다른 말이다.
-      { label: "구성원", href: `${V3_BASE}/members`, admin: true },
-      { label: "영역", lock: "areas" },
-      { label: "내 정보", href: `${V3_BASE}/me` },
-      // 074 §A — 끄는 자리 · 켜는 자리. **관리자만** 보이고 부른다
-      { label: "새 화면 스위치", href: SWITCH_PATH, admin: true },
-    ],
-  },
+];
+
+/**
+ * 계정 블록의 링크 — 레일에서 내려온 것들. 등급 조건은 **그 화면과 같은 함수**로
+ * 가린다(§G 038): 구성원 · 스위치는 관리자만.
+ */
+export const ACCOUNT_LINKS: RailItem[] = [
+  { label: "내 정보", href: `${V3_BASE}/me` },
+  { label: "구성원", href: `${V3_BASE}/members`, admin: true },
+  { label: "새 화면 스위치", href: SWITCH_PATH, admin: true },
 ];
