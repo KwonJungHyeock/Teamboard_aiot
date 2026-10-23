@@ -3,14 +3,15 @@
 //   node scripts/control-walk.mjs            재기만 한다
 //   SHOT=1 node scripts/control-walk.mjs     캡처까지 (OUT 폴더)
 //
-// 묻는 것:
-//   ① 레일 「업무」 맨 위에 「관제」 · 누르면 열린다(열두 번째)
-//   ② 「기한 지남」 타일 = DB 에서 센 값(보는 사람에게 보이는 안 끝난 업무 중 due < 오늘)
-//   ③ 남의 **비공개** 지남 업무는 제목도 숫자도 안 보인다 · 주인에게는 보인다
-//   ④ 손 안 댄 지 3일 넘은 진행 업무가 「소식 없음」으로 뜬다
-//   ⑤ 사람별 줄 = 활성 사람(보기 전용 제외) 전부
+// 묻는 것 (v2 — 마감 안내판 · 상태 벽 · 지금 팀 · 레일 여섯):
+//   ① 레일이 여섯 개(관제 · 내 업무 · 내 기록 · 업무 목록 · 목표 · 회의실 곧) · 묶음 제목 없음 ·
+//     내 정보는 계정 블록, 구성원 · 스위치는 관리자에게만 계정 블록에
+//   ② 「기한 지남」 숫자 = DB 에서 센 값(보는 사람에게 보이는 안 끝난 업무 중 due < 오늘)
+//   ③ 남의 **비공개** 업무는 제목이 안 보인다 · 주인에게는 안내판에 보인다
+//   ④ 안내판: 최근에 지난 것 · 내일 마감이 줄로, 2주 넘게 밀린 것은 수 한 줄로
+//   ⑤ 30분 안에 활동한 사람은 「작업 중」 · 그 사람이 손대는 목표 업무 타일은 숨쉰다
 //   ⑥ 팀장은 「목표 세우기」로 이번 달 팀 목표를 세운다 · 팀원에게는 버튼이 없다
-//   ⑦ 아침 알림: 인증 없이 401 · 팀장 실행 200 · 담당자에게 지남·소식 없음 · 팀장 요약 · 두 번 돌려도 한 번
+//   ⑦ 아침 알림: 인증 없이 401 · 팀원 403 · 팀장 200 · 담당자에게 지남·소식 없음 · 팀장 요약 · 두 번 돌려도 한 번
 //   ⑧ 좁은 화면(390px) 옆으로 안 넘침 · 공간 모드에서도 열린다
 //   ⑨ 콘솔 오류 0
 //
@@ -83,11 +84,24 @@ try {
     `INSERT INTO task (title, area_id, created_by, assignee_id, status, due_date, visibility)
      VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
     [title, area, o.by, o.to, o.status, o.due, o.vis ?? "team"]))[0].id;
-  const lateId = await ins(`${MARK} 지난 업무`, { by: lead.id, to: m1.id, status: "doing", due: "2026-01-02" });
-  const privId = await ins(`${MARK} 비공개 지난 업무`, { by: m2.id, to: m2.id, status: "todo", due: "2026-01-02", vis: "private" });
+  const day = (n) => (Number(today.slice(0, 4)) ? new Date(Date.parse(`${today}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10) : today);
+  const lateId = await ins(`${MARK} 지난 업무`, { by: lead.id, to: m1.id, status: "doing", due: day(-2) });
+  const privId = await ins(`${MARK} 비공개 지난 업무`, { by: m2.id, to: m2.id, status: "todo", due: day(-1), vis: "private" });
   const quietId = await ins(`${MARK} 조용한 업무`, { by: lead.id, to: m1.id, status: "doing", due: null });
   await sql(`UPDATE task SET updated_at = now() - interval '5 days' WHERE id = $1`, [quietId]);
   const quietAge = (await sql(`SELECT (now() - updated_at) > interval '3 days' AS old FROM task WHERE id = $1`, [quietId]))[0].old;
+  const tmrId = await ins(`${MARK} 내일 마감`, { by: lead.id, to: m1.id, status: "todo", due: day(1) });
+  const liveId = await ins(`${MARK} 손대는 중`, { by: lead.id, to: m1.id, status: "doing", due: day(6) });
+  // 지금 분기 팀 목표 — 없으면 만든다(지울 때 같이 지운다)
+  let q = (await sql(`SELECT id FROM goal WHERE is_active AND scope = 'team' AND period_type = 'quarter'
+                        AND period_start <= $1::date AND period_end >= $1::date ORDER BY id LIMIT 1`, [today]))[0];
+  if (!q) {
+    const qs = `${today.slice(0, 4)}-${String(Math.floor((Number(today.slice(5, 7)) - 1) / 3) * 3 + 1).padStart(2, "0")}-01`;
+    q = (await sql(`INSERT INTO goal (period_type, period_start, period_end, title, scope)
+                    VALUES ('quarter', $1::date, ($1::date + interval '3 months' - interval '1 day')::date, $2, 'team') RETURNING id`, [qs, `${MARK} 분기 목표`]))[0];
+  }
+  await sql(`INSERT INTO goal_task (goal_id, task_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [q.id, liveId]);
+  await sql(`INSERT INTO activity_log (user_id, message, level, task_id) VALUES ($1, $2, 'info', $3)`, [m1.id, `${MARK} 진행 올림`, liveId]);
 
   const cookie = (u) => tok({ id: u.id, actorId: u.id, name: u.nm, role: u.role, adminGrant: u.admin_grant, email: "x@x" });
   browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
@@ -107,18 +121,26 @@ try {
   // ① 레일
   const w = await open(lead);
   await w.goto(`${BASE}/v3`, { waitUntil: "networkidle" });
-  const rail = await w.evaluate(`(() => { const g = [...document.querySelectorAll(".v3-railg")].find((x) => x.querySelector(".v3-railg-t")?.textContent.trim() === "업무");
-    return g ? [...g.querySelectorAll("a")].map((a) => a.textContent.trim()) : []; })()`);
+  const railInfo = await w.evaluate(`(() => ({
+    items: [...document.querySelectorAll(".v3-rail .v3-navlink")].map((a) => a.textContent.trim()),
+    titles: document.querySelectorAll(".v3-rail .v3-railg-t").length,
+    acct: [...document.querySelectorAll(".v3-rail .v3-acct-a .v3-acct-l")].map((a) => a.textContent.trim()),
+  }))()`);
+  const leadIsAdmin = lead.role === "admin" || lead.admin_grant === true;
+  const wantItems = ["관제", "내 업무", "내 기록", "업무 목록", "목표", "회의실곧"];
+  const acctOk = railInfo.acct.includes("내 정보") && railInfo.acct.includes("로그아웃")
+    && (railInfo.acct.includes("구성원") === leadIsAdmin) && (railInfo.acct.includes("새 화면 스위치") === leadIsAdmin);
   await w.locator('.v3-rail a[href="/v3/control"]').click();
   await w.waitForURL(/\/v3\/control$/, { timeout: 9000 }).catch(() => {});
   await w.locator(".v3-ctl").waitFor({ timeout: 9000 });
-  chk("①-레일-업무-맨-위", rail[0] === "관제" && w.url().endsWith("/v3/control"), `업무 묶음 [${rail.join(" · ")}] · 주소 ${w.url()}`);
+  chk("①-레일-여섯-개", JSON.stringify(railInfo.items) === JSON.stringify(wantItems) && railInfo.titles === 0 && acctOk,
+      `[${railInfo.items.join(" · ")}] · 묶음 제목 ${railInfo.titles}개 · 계정 [${railInfo.acct.join(" · ")}] (관리자 ${leadIsAdmin})`);
 
   // ② 지남 숫자
   const want = Number((await sql(
     `SELECT count(*) n FROM task t WHERE t.is_active AND t.status IN ('todo','doing','review') AND t.due_date < $2::date
         AND (t.visibility = 'team' OR t.created_by = $1)`, [lead.id, today]))[0].n);
-  const tiles = await w.evaluate(`[...document.querySelectorAll(".v3-stat")].map((s) => [s.querySelector(".v3-stat-l")?.textContent, s.querySelector(".v3-stat-n")?.textContent])`);
+  const tiles = await w.evaluate(`[...document.querySelectorAll(".v3-ctl-read")].map((s) => [s.querySelector("span")?.textContent, s.querySelector("b")?.textContent])`);
   const lateTile = Number((tiles.find((t) => t[0] === "기한 지남") ?? [])[1]);
   chk("②-지남-타일이-DB와-같다", lateTile === want, `화면 ${lateTile} · DB ${want}`);
 
@@ -126,32 +148,36 @@ try {
   const leadSees = await w.locator(".v3-ctl", { hasText: `${MARK} 비공개` }).count();
   const ow = await open(m2);
   await ow.goto(`${BASE}/v3/control`, { waitUntil: "networkidle" });
-  const ownerSees = await ow.locator(".v3-ctl-sig", { hasText: `${MARK} 비공개` }).count();
+  const ownerSees = await ow.locator(".v3-ctl-board", { hasText: `${MARK} 비공개` }).count();
   chk("③-남의-비공개는-안-샌다", leadSees === 0 && ownerSees === 1, `팀장 화면에 보임 ${leadSees} · 주인 화면에 보임 ${ownerSees}`);
 
-  // ④ 소식 없음 — 목록은 오래된 것부터 몇 줄만 보이므로, 타일 숫자와 사람 줄로 본다
-  const wantQuiet = Number((await sql(
-    `SELECT count(*) n FROM task t WHERE t.is_active AND t.status IN ('doing','review')
-        AND t.updated_at < now() - interval '3 days' AND (t.visibility = 'team' OR t.created_by = $1)`, [lead.id]))[0].n);
-  const quietTile = Number((tiles.find((t) => /소식 없음/.test(t[0] ?? "")) ?? [])[1]);
-  const m1Row = await w.locator(".v3-ctl-p", { hasText: m1.nm }).first().innerText().catch(() => "");
-  chk("④-소식-없음", quietAge && quietTile === wantQuiet && /소식 없음/.test(m1Row),
-      `손 안 댄 지 5일로 둠 ${quietAge} · 타일 ${quietTile} / DB ${wantQuiet} · ${m1.nm} 줄에 표시 ${/소식 없음/.test(m1Row)}`);
+  // ④ 안내판
+  const rowLate = await w.locator(".v3-ctl-brow", { hasText: `${MARK} 지난 업무` }).innerText().catch(() => "");
+  const rowTmr = await w.locator(".v3-ctl-brow", { hasText: `${MARK} 내일 마감` }).innerText().catch(() => "");
+  const wantOld = Number((await sql(`SELECT count(*) n FROM task t WHERE t.is_active AND t.status IN ('todo','doing','review')
+      AND t.due_date < $2::date - 14 AND (t.visibility = 'team' OR t.created_by = $1)`, [lead.id, today]))[0].n);
+  const oldText = await w.locator(".v3-ctl-old").innerText().catch(() => "");
+  chk("④-안내판", /2일 지남/.test(rowLate) && /지연/.test(rowLate) && /내일/.test(rowTmr)
+      && (wantOld === 0 ? oldText === "" : oldText.includes(`${wantOld}건`)),
+      `지난 줄 "${rowLate.replace(/\s+/g, " ")}" · 내일 줄 "${rowTmr.replace(/\s+/g, " ")}" · 오래 밀림 "${oldText}" / DB ${wantOld}`);
 
-  // ⑤ 사람
+  // ⑤ 작업 중 · 숨쉬는 타일
+  const mRow = w.locator(".v3-ctl-m", { hasText: m1.nm }).first();
+  const mCls = await mRow.getAttribute("class").catch(() => "");
+  const tileCls = await w.locator(".v3-ctl-tile", { hasText: `${MARK} 손대는 중` }).getAttribute("class").catch(() => "");
   const humans = Number((await sql(`SELECT count(*) n FROM actor a LEFT JOIN account ac ON ac.actor_id = a.id
       WHERE a.type = 'human' AND a.is_active AND coalesce(ac.role,'member') <> 'viewer'`))[0].n);
-  const rows = await w.locator(".v3-ctl-p").count();
-  chk("⑤-사람-줄", rows === humans, `화면 ${rows}줄 · DB ${humans}명`);
+  const rows = await w.locator(".v3-ctl-m").count();
+  chk("⑤-작업-중·숨쉬는-타일", /working/.test(mCls ?? "") && /live/.test(tileCls ?? "") && rows === humans,
+      `${m1.nm} 줄 "${mCls}" · 타일 "${tileCls}" · 사람 ${rows}줄 / DB ${humans}명`);
 
   // ⑥ 목표 세우기
   await w.locator(".v3-ctl-add").click();
   await w.getByRole("button", { name: "월", exact: true }).click();
   await w.locator(".v3-ctl-in").fill(`${MARK} 이번 달 목표`);
   await w.locator(".v3-ctl-form .v3-btn.primary").click();
-  const g = w.locator(".v3-ctl-goal", { hasText: `${MARK} 이번 달 목표` });
-  await g.waitFor({ timeout: 9000 }).catch(() => {});
-  const made = (await g.count()) === 1;
+  await w.waitForTimeout(1200);
+  const made = (await w.locator(".v3-ctl-msg").innerText().catch(() => "")).startsWith("세웠습니다");
   const row = (await sql(`SELECT period_type, period_start::text ps, scope FROM goal WHERE title = $1`, [`${MARK} 이번 달 목표`]))[0];
   const memberBtn = await ow.locator(".v3-ctl-add").count();
   await shot(w, { path: `${OUT}/wide.png`, fullPage: true });
@@ -166,7 +192,7 @@ try {
   const r2 = await fetch(`${BASE}/api/cron/team-watch`, { method: "POST", headers: { cookie: `tb_session=${cookie(lead)}` } });
   const j2 = await r2.json().catch(() => ({}));
   const n = await sql(`SELECT user_id, dedupe_key FROM notification WHERE (ref_type = 'task' AND ref_id = ANY($1)) OR dedupe_key = $2`,
-    [[lateId, quietId, privId], `watch-digest:${today}`]);
+    [[lateId, quietId, privId, tmrId, liveId], `watch-digest:${today}`]);
   const has = (u, k) => n.some((x) => x.user_id === u && x.dedupe_key.startsWith(k));
   const leadsN = Number((await sql(`SELECT count(*) n FROM account ac JOIN actor a ON a.id = ac.actor_id WHERE ac.role IN ('admin','lead') AND a.is_active`))[0].n);
   const digests = n.filter((x) => x.dedupe_key === `watch-digest:${today}`).length;

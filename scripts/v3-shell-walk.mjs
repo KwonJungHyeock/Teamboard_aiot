@@ -217,12 +217,17 @@ try {
    * 등급으로 가르는 흐린 칸(`.off`)은 **없어야** 한다 — 남아 있으면 등급
    * 때문에 막힌 것으로 읽힌다(053 §B-31).
    */
-  const settingsLock = await page.locator('.v3-acct-l[href="/v3/not-yet?k=settings"] .v3-lock').count();
-  const settingsOld = await page.locator('.v3-acct-l[href="/settings"]').count();
+  /*
+   * 2026-10 레일 정리 — 아직 없는 「설정🔒」은 계정 블록에서 **뺐다**(지시: 필요 없는 것은 뺀다).
+   * 대신 레일에서 내려온 「내 정보」가 선다. 묻는 것은 같은 결이다: 옛 화면으로 안 내보내고,
+   * 등급으로 흐린 칸이 없다.
+   */
+  const settingsAny = await page.locator('.v3-acct-l[href*="settings"]').count();
+  const meLink = await page.locator('.v3-acct-l[href="/v3/me"]').count();
   const settingsOff = await page.locator(".v3-acct-l.off").count();
-  chk("⑦-설정은-누구에게나-자물쇠",
-      settingsLock === 1 && settingsOld === 0 && settingsOff === 0,
-      `자물쇠 설정 ${settingsLock}개 · 옛 /settings 링크 ${settingsOld}개 · 등급으로 흐린 칸 ${settingsOff}개` +
+  chk("⑦-계정-블록-내-정보·설정-없음",
+      settingsAny === 0 && meLink === 1 && settingsOff === 0,
+      `설정 링크 ${settingsAny}개 · 내 정보 ${meLink}개 · 등급으로 흐린 칸 ${settingsOff}개` +
       ` (hasLead(${me.role}) = ${hasLead(me.role)} 와 상관없다)`);
 
   // ── ⑧⑨ 가오픈 카드 ────────────────────────────────────────────

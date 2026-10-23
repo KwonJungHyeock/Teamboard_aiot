@@ -191,7 +191,7 @@ try {
     const WANT = RAIL.flatMap((g) => g.items.map((i) => i.label));
     chk("④-켜면-v3-가-열린다",
         landed === "/v3" && res?.status() === 200
-        && WANT.every((w) => railNames.map((t) => t.replace(/🔒/g, "").trim()).includes(w)),
+        && WANT.every((w) => railNames.map((t) => t.replace(/🔒|곧$/g, "").trim()).includes(w)),
         `→ ${landed} (${res?.status()}) · 레일 [${railNames.join(" · ")}]`);
     await shot(page, { path: `${OUT}/v3-parts.png`, fullPage: true });
 
