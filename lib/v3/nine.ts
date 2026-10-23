@@ -55,6 +55,12 @@ export const NINE: NineScreen[] = [
    * 다른 것이다: 메모는 문서이고, 기록은 한 일의 줄이다.
    */
   { n: 11, key: "log", label: "내 기록", path: `${V3_BASE}/log` },
+  /*
+   * ── 열두 번째 (2026-10 관제 패널) — 관제 ───────────────────────────
+   * 팀 목표 · 2주 흐름 · 사람별 지금 · 위험 신호. 누구에게나 같은 화면이다
+   * (지시: 「팀 전체 같은 화면」). 그래서 lead/admin 표시를 달지 않는다.
+   */
+  { n: 12, key: "control", label: "관제", path: `${V3_BASE}/control` },
 ];
 
 /** 새 화면 스위치 자리. **스위치가 꺼져 있어도** 관리자에게는 열린다(`app/v3/layout.tsx`) */
@@ -119,6 +125,7 @@ export const RAIL: RailGroup[] = [
   {
     title: "업무",
     items: [
+      { label: "관제", href: `${V3_BASE}/control` },
       { label: "업무 목록", href: `${V3_BASE}/tasks` },
       { label: "목표", href: `${V3_BASE}/goals` },
       // 집계는 팀장부터다 — **그 화면과 같은 함수로 가린다**(§G 038).

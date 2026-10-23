@@ -1,0 +1,109 @@
+/* ══════════════════════════════════════════════════════════════════
+   v3 「관제」 (2026-10 관제 패널)
+
+   **토큰을 새로 만들지 않는다.** 색 · 간격 · 모서리 · 그림자 · 글자 크기는
+   `app/v3.css` 의 값만 쓴다. 공간 모드(`app/v3-space.css`)에서는 카드 · 타일이
+   유리판이 되는 것을 그대로 받는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.v3-ctl { display: flex; flex-direction: column; gap: var(--v3-gap); }
+.v3-ctl > .v3-lede { margin-top: -6px; }
+.v3-ctl-live { display: inline-flex; align-items: center; gap: 6px; }
+.v3-ctl-live i { width: 8px; height: 8px; border-radius: 50%; background: var(--v3-done);
+  animation: v3-ctl-pulse 1.8s ease-out infinite; }
+@keyframes v3-ctl-pulse { 0% { box-shadow: 0 0 0 0 rgba(35, 128, 74, .45); } 100% { box-shadow: 0 0 0 9px rgba(35, 128, 74, 0); } }
+
+/* 사람 표가 넓어야 읽힌다 — 흐름·사람은 넓은 왼쪽, 목표·신호는 오른쪽 기둥 */
+.v3-ctl-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto 1fr;
+  grid-template-areas: "mid goals" "mid sig"; gap: var(--v3-gap); align-items: start; }
+.v3-ctl-goals { grid-area: goals; }
+.v3-ctl-mid { grid-area: mid; }
+.v3-ctl-sig { grid-area: sig; }
+.v3-ctl-grid .v3-card { margin: 0; }
+.v3-ctl-mid { display: flex; flex-direction: column; gap: var(--v3-gap); min-width: 0; }
+
+/* ── 팀 목표 ─────────────────────────────────────────────────────── */
+.v3-ctl-add { width: 100%; }
+.v3-ctl-form { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--v3-line-2);
+  border-radius: var(--v3-radius-s); }
+.v3-ctl-seg { display: flex; gap: 4px; }
+.v3-ctl-seg button { flex: 1; min-height: 34px; padding: 0 8px; border: 1px solid var(--v3-line-2);
+  border-radius: var(--v3-radius-pill); background: var(--v3-card); color: var(--v3-ink); font: inherit;
+  font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.v3-ctl-seg button.on { background: var(--v3-ink); border-color: var(--v3-ink); color: #fff; }
+.v3 .v3-ctl-in { width: 100%; box-sizing: border-box; min-height: 40px; padding: 0 12px; border: 1px solid var(--v3-line-2);
+  border-radius: var(--v3-radius-s); font: inherit; font-size: 14px; color: var(--v3-ink); background: var(--v3-card); }
+.v3 .v3-ctl-in:focus { outline: none; border-color: var(--v3-rail); }
+.v3-ctl-acts { display: flex; justify-content: flex-end; gap: 6px; }
+.v3-ctl-why, .v3-ctl-none { margin: 0; font-size: 12px; color: var(--v3-ink-2); }
+.v3-ctl-msg { margin: 8px 0 0; font-size: 13px; color: var(--v3-done); }
+
+.v3-ctl-tier { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+.v3-ctl-kick { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--v3-rail); }
+.v3-ctl-goal { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--v3-line);
+  border-radius: var(--v3-radius-s); color: var(--v3-ink); text-decoration: none; }
+.v3-ctl-goal:hover { border-color: var(--v3-line-2); background: var(--v3-bg); }
+.v3-ctl-gh { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.v3-ctl-gh b { flex: 1; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-ctl-st { flex: 0 0 auto; padding: 0 8px; border-radius: var(--v3-radius-pill); font-style: normal;
+  font-size: 11px; font-weight: 700; }
+.v3-ctl-st.ok { background: #E7F4EC; color: var(--v3-done); }
+.v3-ctl-st.risk { background: var(--v3-warn-bg); color: #9A6200; }
+.v3-ctl-st.wait { background: var(--v3-bg); color: var(--v3-ink-2); }
+/* 진행 막대 위 검은 눈금 = 기간이 얼마나 지났나. 막대가 눈금보다 뒤면 늦는 중이다 */
+.v3-ctl-gbar { position: relative; height: 8px; border-radius: var(--v3-radius-pill); background: var(--v3-line); }
+.v3-ctl-gbar span { position: absolute; inset: 0 auto 0 0; border-radius: var(--v3-radius-pill); background: var(--v3-rail); }
+.v3-ctl-gbar i { position: absolute; top: -3px; width: 2px; height: 14px; margin-left: -1px; background: var(--v3-ink); }
+.v3-ctl-gs { font-size: 12px; color: var(--v3-ink-2); }
+
+/* ── 2주 흐름 ─────────────────────────────────────────────────────── */
+.v3-ctl-legend { display: flex; gap: 14px; margin: -4px 0 6px; font-size: 12px; color: var(--v3-ink-2); }
+.v3-ctl-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.v3-ctl-legend i { width: 14px; height: 3px; border-radius: 2px; }
+.v3-ctl-legend i.done { background: var(--v3-rail); }
+.v3-ctl-legend i.made { background: var(--v3-warn); }
+.v3-ctl-axis { stroke: var(--v3-line-2); }
+.v3-ctl-done { fill: none; stroke: var(--v3-rail); stroke-width: 3; stroke-linejoin: round; }
+.v3-ctl-made { fill: none; stroke: var(--v3-warn); stroke-width: 2.5; stroke-linejoin: round; }
+.v3-ctl-days { display: flex; justify-content: space-between; font-size: 11px; color: var(--v3-ink-2); }
+
+/* ── 사람별 지금 ─────────────────────────────────────────────────── */
+.v3-ctl-p { display: grid; grid-template-columns: 36px minmax(0, 1.4fr) 96px 140px minmax(0, 1fr); align-items: center;
+  gap: 12px; padding: 8px 6px; border-bottom: 1px solid var(--v3-line); }
+.v3-ctl-p:last-child { border-bottom: 0; }
+.v3-ctl-p.flag { background: var(--v3-warn-bg); border-radius: var(--v3-radius-s); border-bottom-color: transparent; }
+.v3-ctl-av { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%;
+  background: var(--v3-rail); color: #fff; font-weight: 700; }
+.v3-ctl-pn { min-width: 0; display: flex; flex-direction: column; }
+.v3-ctl-pn b { font-size: 14px; }
+.v3-ctl-pn a, .v3-ctl-pn em { font-size: 12.5px; font-style: normal; color: var(--v3-ink-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
+.v3-ctl-pn a:hover { color: var(--v3-ink); text-decoration: underline; }
+.v3-ctl-seen { font-size: 12px; color: var(--v3-ink-2); line-height: 1.35; }
+.v3-ctl-seen b { color: var(--v3-ink); }
+.v3-ctl-load { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--v3-ink-2); }
+.v3-ctl-load b { color: var(--v3-ink); }
+.v3-ctl-flags { display: flex; flex-wrap: wrap; gap: 4px; }
+.v3-ctl-flags em { padding: 1px 8px; border-radius: var(--v3-radius-pill); font-style: normal; font-size: 11.5px; font-weight: 700; }
+.v3-ctl-flags em.late { background: var(--v3-late-bg); color: var(--v3-late); }
+.v3-ctl-flags em.warn { background: var(--v3-card); color: #9A6200; border: 1px solid var(--v3-warn); }
+
+/* ── 지금 볼 것 ──────────────────────────────────────────────────── */
+.v3-ctl-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.v3-ctl-s { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-left: 3px solid var(--v3-warn);
+  border-radius: var(--v3-radius-s); background: var(--v3-bg); font-size: 13px; }
+.v3-ctl-s.late { border-left-color: var(--v3-late); }
+.v3-ctl-s a { color: var(--v3-ink); font-weight: 600; text-decoration: none; }
+.v3-ctl-s a:hover { text-decoration: underline; }
+.v3-ctl-tag { font-size: 11.5px; font-weight: 700; color: #9A6200; }
+.v3-ctl-s.late .v3-ctl-tag { color: var(--v3-late); }
+.v3-ctl-who { font-size: 12px; color: var(--v3-ink-2); }
+
+@media (max-width: 1100px) {
+  .v3-ctl-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: none;
+    grid-template-areas: "goals" "sig" "mid"; }
+}
+@media (max-width: 900px) {
+  .v3-ctl-p { grid-template-columns: 36px minmax(0, 1fr) auto; }
+  .v3-ctl-seen, .v3-ctl-load { display: none; }
+}

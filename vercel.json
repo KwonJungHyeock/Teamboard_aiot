@@ -1,6 +1,13 @@
 {
   "framework": "nextjs",
   "crons": [
-    { "path": "/api/cron/goal-snapshot", "schedule": "10 15 * * *" }
+    {
+      "path": "/api/cron/goal-snapshot",
+      "schedule": "10 15 * * *"
+    },
+    {
+      "path": "/api/cron/team-watch",
+      "schedule": "0 0 * * *"
+    }
   ]
 }
