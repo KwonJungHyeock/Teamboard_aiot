@@ -20,7 +20,7 @@ export const OFF_LINE = "새 화면이 꺼지고 모두가 옛 화면으로 돌�
 export const ON_LINE = "새 화면이 켜지고 모두가 새 화면으로 옮겨 갑니다";
 /** 끈 뒤 · 켠 뒤 가는 곳 */
 export const AFTER_OFF = "/settings";
-export const AFTER_ON = "/v3";
+export const AFTER_ON = "/v3/control";   // 켜면 첫 화면(관제)으로
 
 export default function SwitchView({ on }: { on: boolean }) {
   const [asking, setAsking] = useState(false);
