@@ -106,11 +106,13 @@ try {
       ` · 「오늘 할 일」 칸 ${noTodoTile}개(0 이어야 — 072 §B)`);
   /*
    * **색은 계산된 값으로 본다** — 클래스 이름으로 보면 CSS 가 안 먹어도 통과한다.
-   * 무채색은 `--v3-ink`(#16203A) = rgb(22, 32, 58) 이다.
+   * 무채색은 `--v3-ink`(#16203A) = rgb(22, 32, 58) 이다. 2026-10 부터 공간 모드가 기본이라
+   * 숫자는 남색 판 색(#121A2B) = rgb(18, 26, 43) 로 그려진다 — 둘 다 무채색이다.
    */
-  const GREY = "rgb(22, 32, 58)";
+  const GREYS = ["rgb(22, 32, 58)", "rgb(18, 26, 43)"];
+  const GREY = GREYS.join(" 또는 ");
   chk("①짝-기한-지남만-색이다",
-      late?.color !== GREY && [doing, week, doneM].every((t) => t?.color === GREY),
+      !GREYS.includes(late?.color) && [doing, week, doneM].every((t) => GREYS.includes(t?.color)),
       `기한 지남 ${late?.color} · 진행 중 ${doing?.color} · 이번 주 마감 ${week?.color} · 이번 달 완료 ${doneM?.color} (무채색 ${GREY})`);
 
   /** 그 칸을 **눌러서** 도착한 목록의 행 수를 센다. 주소를 직접 치면 「같은 조건으로

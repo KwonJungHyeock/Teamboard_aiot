@@ -130,9 +130,7 @@ try {
     await page.waitForTimeout(300);
     return `${r?.status()}:${new URL(page.url()).pathname}:${await page.locator(".side a").count()}:${await page.locator(".v3").count()}`;
   };
-  const fpOff = await homeFp();
-  chk("①-꺼짐에선-옛-홈", fpOff.startsWith("200:/:") && fpOff.endsWith(":0"),
-      `지문 ${fpOff} (끝의 0 = v3 껍데기 없음)`);
+  // ① (스위치 꺼짐 → 옛 홈) — 2026-10 스위치와 옛 화면을 거둬 잴 것이 없다. 번호는 비워 둔다.
 
   // ── ②~⑧ 켜짐 ───────────────────────────────────────────────────
   await setSwitch(true);
@@ -147,12 +145,15 @@ try {
   // 이 사람에게 보여야 할 레일 이름 — 관리자라 등급으로 가리는 것이 없다.
   const wantRail = RAIL.flatMap((g) => g.items.map((i) => i.label));
   const railClean = railNames.map((t) => t.replace(/🔒/g, "").trim());
-  chk("②-켜면-대시보드에-도착한다",
-      new URL(page.url()).pathname === "/v3"
+  // 2026-10 — 첫 화면은 관제다(`/` → `/v3/control`). 대시보드는 주소로 열려 있다.
+  chk("②-첫-화면은-관제",
+      new URL(page.url()).pathname === "/v3/control"
       && wantRail.every((w) => railClean.includes(w))
-      && /안녕하세요/.test(h1),
+      && h1 === "관제",
       `→ ${new URL(page.url()).pathname} (${res?.status()}) · 레일 [${railNames.join(" · ")}] · "${h1}"`);
 
+  // ③~⑧ 은 대시보드를 잰다 — 이제 첫 화면이 아니라 주소로 간다
+  await page.goto(`${BASE}/v3`, { waitUntil: "networkidle" });
   await page.locator(".v3-card").last().waitFor({ timeout: 8000 });
   await page.waitForTimeout(400);
 
@@ -300,11 +301,7 @@ try {
   chk("⑧-콘솔오류", errs.length === 0, `${errs.length}건${errs.length ? ` — ${errs[0]}` : ""}`);
   await shot(page, { path: `${OUT}/v3-today.png`, fullPage: true });
 
-  // ── ⑨ 끄면 옛 홈이 글자 그대로 돌아온다 ─────────────────────────
-  await setSwitch(false);
-  const fpBack = await homeFp();
-  chk("⑨-끄면-옛-홈이-돌아온다", fpBack === fpOff,
-      fpBack === fpOff ? `지문 일치 (${fpBack})` : `${fpBack} vs ${fpOff}`);
+  // ⑨(끄면 옛 홈) — 2026-10 스위치 · 옛 화면 철거로 잴 것이 없다.
 
   await ctx.close();
   console.log(`\n${pass}/${pass + fail} 통과`);

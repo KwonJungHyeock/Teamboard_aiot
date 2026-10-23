@@ -226,9 +226,12 @@ try {
 
   // ── 지남 색은 하나만 ────────────────────────────────────────────
   const lateT = tileView.find((t) => t.late), others = tileView.filter((t) => !t.late);
-  const LATE = "rgb(224, 82, 79)", LATE_BG = "rgb(253, 237, 236)";
-  chk("B-10-기한-지남만-지남-색", lateT && lateT.border === LATE && lateT.bg === LATE_BG && lateT.color === LATE
-      && others.every((t) => t.border !== LATE && t.bg === "rgb(255, 255, 255)" && t.color !== LATE),
+  // 2026-10 공간 모드가 기본 — 타일은 유리판이라 바탕이 반투명이다(`app/v3-space.css`).
+  // 지남 바탕은 지남 분홍(253, 237, 236)을, 나머지는 흰색(255, 255, 255)을 — 투명도와 상관없이 — 쓰는지 본다.
+  const LATE = "rgb(224, 82, 79)";
+  const rgbOf = (c) => (String(c).match(/\d+, \d+, \d+/) ?? [""])[0];
+  chk("B-10-기한-지남만-지남-색", lateT && lateT.border === LATE && rgbOf(lateT.bg) === "253, 237, 236" && lateT.color === LATE
+      && others.every((t) => t.border !== LATE && rgbOf(t.bg) === "255, 255, 255" && t.color !== LATE),
       `기한 지남 테두리 ${lateT?.border} · 바탕 ${lateT?.bg} · 숫자 ${lateT?.color} / 나머지 바탕 ` +
       [...new Set(others.map((t) => t.bg))].join(","));
 

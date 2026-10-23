@@ -263,7 +263,8 @@ for (const f of files) {
   const src = strip(readFileSync(f, "utf-8"));
   for (const m of tags(src)) { seen++; if (m.name === "button") btns++; }
 }
-chk("①-태그를-읽었다", seen > 3000 && btns > 100, `태그 ${seen}개 · 그중 button ${btns}개`);
+// 2026-10 옛 화면 철거로 컴포넌트가 줄었다(태그 1,900 · button 90 남짓) — 문턱도 내린다
+chk("①-태그를-읽었다", seen > 1500 && btns > 60, `태그 ${seen}개 · 그중 button ${btns}개`);
 chk("②-JSX-안에서-겹친-자리", direct.length + indirect.length === 0,
     direct.length + indirect.length === 0 ? "0자리"
       : `㉮ ${direct.length} · ㉯ ${indirect.length} — [${[...direct, ...indirect].join(" · ")}]`);

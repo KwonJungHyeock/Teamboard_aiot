@@ -45,7 +45,8 @@ const routePath = (f) => "/" + f.replace(/^app\//, "").replace(/\/route\.ts$/, "
 
 /** 이 핸들러가 권한 없는 사람을 **거절**하는가. */
 const blocks = (body) =>
-  /require(Lead|Admin)\s*\(/.test(body) ||
+  // `requireLiveLead` · `requireLiveAdmin`(DB 로 다시 확인하는 쪽)도 막는 것이다 — 2026-10 에 빠진 걸 찾았다
+  /require(Live)?(Lead|Admin)\s*\(/.test(body) ||
   /if\s*\(\s*!\s*hasLead\s*\([^)]*\)\s*\)/.test(body);
 
 const guarded = [];          // { path, verb }
@@ -142,7 +143,8 @@ for (const c of hits.sort((a, b) => a.file.localeCompare(b.file)))
  */
 chk("①-막는-자리를-찾았다", guarded.length >= 10,
     `${guarded.length}쌍 — [${[...guardedKey].slice(0, 4).join(" · ")} …]`);
-chk("②-화면의-호출을-찾았다", calls.length >= 50, `${calls.length}자리`);
+// 2026-10 옛 화면 철거로 화면의 호출이 35자리 남짓으로 줄었다
+chk("②-화면의-호출을-찾았다", calls.length >= 25, `${calls.length}자리`);
 chk("③-겹치는-자리를-찾았다", hits.length >= 1,
     `${hits.length}자리 (0이면 ①②가 서로 다른 것을 보고 있다)`);
 

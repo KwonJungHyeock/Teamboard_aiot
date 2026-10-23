@@ -234,7 +234,8 @@ try {
   // ① 거르개는 검정 채움 그대로 — 「내 항목」이 눌려 있다.
   const filterOn = page.locator('.v3-chip[aria-pressed="true"]').first();
   const filterBg = await bg(filterOn);
-  chk("①-거르개-칩은-검정-채움", filterBg === "rgb(22, 32, 58)",
+  // 2026-10 공간 모드가 기본 — 채움은 남색 판 색(#121A2B)이다. 둘 다 「검정 채움」이다
+  chk("①-거르개-칩은-검정-채움", ["rgb(22, 32, 58)", "rgb(18, 26, 43)"].includes(filterBg),
       `골라진 거르개 칩 배경 ${filterBg} (= --v3-ink #16203A · 안 건드렸다)`);
 
   await page.goto(`${BASE}/v3/new`, { waitUntil: "networkidle" });
@@ -502,15 +503,7 @@ try {
   chk("⑫-옛-상세-주소가-옮겨진다", legacy.ok && legacy.where === `/v3/tasks/${subject}`,
       `/tasks?panel=task:${subject} → ${legacy.where} ${legacy.ok ? "그 업무로 도착" : "**다른 화면**"}`);
 
-  // ── ⑬ 스위치를 끄면 옛 상세가 그대로 ───────────────────────────
-  await setSwitch(null);
-  await page.goto(`${BASE}/tasks?panel=task:${subject}`, { waitUntil: "networkidle" });
-  const oldPanel = await page.locator("aside.tdp").filter({ hasText: `#${subject}` })
-    .first().waitFor({ timeout: 9000 }).then(() => true).catch(() => false);
-  const offUrl = new URL(page.url());
-  chk("⑬-스위치-끄면-옛-상세-그대로", oldPanel && offUrl.pathname === "/tasks",
-      `스위치 off · ${offUrl.pathname}${offUrl.search} · 옛 패널에 #${subject} ${oldPanel ? "떴다" : "**안 떴다**"}`);
-  await setSwitch(true);
+  // ⑬(스위치를 끄면 옛 상세) — 2026-10 스위치와 옛 화면을 거둬 잴 것이 없다. 번호는 비워 둔다.
 
   // ══ §C 캘린더 ══════════════════════════════════════════════════
   // 잠겨 있으면 아래 여섯(⑭~⑱짝)은 잴 화면이 없다 — 건너뛰고 **센다**(068 §C-2).

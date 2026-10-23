@@ -39,10 +39,9 @@ const tok = (u) => {
 // 조용히 지우지 않는다 — 왜 뺐는지 이 줄이 답한다. 그래서 **20경로**다.
 
 const ROUTES = [
-  "/", "/tasks", "/goals", "/projects", "/projects/1", "/calendar", "/signals",
-  "/signals?tab=decision", "/inbox", "/activity", "/huddle",
-  "/reports", "/handover", "/members", "/settings", "/saved", "/notes",
-  "/profile", "/status", "/areas/1",
+  // 2026-10 옛 화면 철거 — 옛 주소는 전부 새 화면으로 넘어가므로 **새 화면을 직접** 잰다
+  "/v3/control", "/v3", "/v3/tasks", "/v3/goals", "/v3/stats", "/v3/team",
+  "/v3/log", "/v3/me", "/v3/members", "/v3/new",
 ];
 
 /** 허용 목록 — 주석이 아니라 파일이다. 사유 한 줄이 없으면 등록으로 안 친다. */

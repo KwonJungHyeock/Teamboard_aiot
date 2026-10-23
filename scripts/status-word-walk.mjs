@@ -58,17 +58,11 @@ const chk = (id, c, n) => { if (c) { pass++; console.log(`OK   ${id.padEnd(24)} 
 const SPLIT_WORDS = ["할 일", "검토"];
 
 /** 화면마다 상태가 **어디에** 그려지는가. 본문 전체를 훑으면 산문까지 센다. */
-const SCREENS = [
-  { path: "/open-due", cell: ".od-t tbody tr td:nth-child(5)" },
-  { path: "/tasks",    cell: "td.col-st" },
-  /*
-   * /handover 는 **문서가 하나 있어야** 업무가 그려진다. 빈 화면에서 재면
-   * 「낱말 0가지」가 나오고, 그러면 ①은 공짜로 참이 된다.
-   * 그래서 조건을 만든다 — 「＋ 새 인수인계」를 눌러 문서를 만들고 나서 읽는다.
-   * 만든 문서는 뒷정리에서 지운다.
-   */
-  { path: "/handover", cell: ".ho-task-m, .ho-task-pick em", setup: true },
-];
+/*
+ * 2026-10 옛 화면 철거 — ①② 가 재던 세 화면(/open-due · /tasks 표 · /handover)은 **없다.**
+ * 새 화면의 상태 낱말은 아래 ④⑤(대시보드 칩 · 고르개)가 잰다. ①② 는 건너뛴다.
+ */
+const SCREENS = [];
 
 const KEY = "ui_v3_enabled";
 const MARK = "[071검사]";
@@ -146,6 +140,7 @@ try {
   for (const s of seen) console.log(`  ${s.path.padEnd(12)} 상태 칸 낱말 [${s.words.join(" · ")}]`);
 
   const stray = seen.flatMap((s) => s.words.filter((w) => !CANON.includes(w)).map((w) => `${s.path} "${w}"`));
+  if (SCREENS.length) {
   chk("①-낱말이-제품-이름표-안에", stray.length === 0,
       stray.length === 0 ? `세 화면의 상태 낱말이 전부 STATUS_META 안에 있다`
         : `밖에 있는 것 ${stray.length}건 — [${stray.join(" · ")}]`);
@@ -159,6 +154,7 @@ try {
   chk("②-갈렸던-낱말이-없다", split.length === 0,
       split.length === 0 ? `「${SPLIT_WORDS.join("」·「")}」 세 화면 본문에 0번`
         : `${split.length}건 — [${split.join(" · ")}]`);
+  }
   /* ── ④⑤ 대시보드 — 칩과 고르개 (071 §A-7) ─────────────────────── */
   const swRow = (await sql(`SELECT value FROM config WHERE key = $1`, [KEY]))[0];
   swBefore = swRow === undefined ? null : swRow.value;

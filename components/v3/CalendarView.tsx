@@ -34,8 +34,8 @@ import { notYetHref } from "@/lib/v3/not-yet";
 interface Tally { before: number; after: number; none: number; excludedDone: number }
 
 export default function CalendarView({
-  today, openAtMs, areas,
-}: { today: string; openAtMs: number; areas: AreaView[] }) {
+  today, openAtMs, areas, isLead,
+}: { today: string; openAtMs: number; areas: AreaView[]; isLead: boolean }) {
   const router = useRouter();
   const sp = useSearchParams();
   const [tasks, setTasks] = useState<TodayTask[] | null>(null);
@@ -80,13 +80,15 @@ export default function CalendarView({
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("업무를 불러오지 못했습니다."))))
       .then((d) => setTasks(d.tasks ?? []))
       .catch((e) => setErr(String(e.message ?? e)));
+    // 가오픈 기준 집계는 팀장 API 다 — 팀원이 부르면 403 이 콘솔에 남는다(perm-call-audit ④)
+    if (!isLead) return;
     fetch("/api/tasks/open-due")
       .then(async (r) => (r.ok
         ? r.json()
         : Promise.reject(new Error((await r.json().catch(() => ({}))).error ?? `숫자를 불러오지 못했습니다 (${r.status})`))))
       .then((d) => setTally(d.tally))
       .catch((e) => setTallyWhy(String(e.message ?? e)));
-  }, []);
+  }, [isLead]);
 
   const weeks = useMemo(() => monthGrid(ym), [ym]);
   const days = useMemo(() => byDay(tasks ?? []), [tasks]);

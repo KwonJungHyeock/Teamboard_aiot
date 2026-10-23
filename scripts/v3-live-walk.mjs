@@ -385,7 +385,8 @@ try {
   await firstChip.click();
   const mouseRing = await firstChip.evaluate((a) => getComputedStyle(a).outlineStyle);
   await page.keyboard.press("Escape");
-  chk("C-29-탭만-파란-테두리", tabRing.startsWith("solid 2px rgb(47, 95, 232)") && mouseRing === "none",
+  // 공간 모드(2026-10 기본)의 파랑은 #2348B8 — 둘 다 「파란 테두리」다
+  chk("C-29-탭만-파란-테두리", /^solid 2px rgb\((47, 95, 232|35, 72, 184)\)/.test(tabRing) && mouseRing === "none",
       `탭 → ${tabRing} · 마우스 → ${mouseRing}`);
 
   // ══ §D ⌘K ═════════════════════════════════════════════════════
@@ -433,7 +434,8 @@ try {
   const hov = await tiles.first().evaluate((t) => ({
     go: getComputedStyle(t.querySelector(".v3-stat-go")).opacity, tf: getComputedStyle(t).transform,
     txt: t.querySelector(".v3-stat-go")?.textContent }));
-  chk("E-42-목록→·1px", hov.go === "1" && /matrix\(1, 0, 0, 1, 0, -1\)/.test(hov.tf) && hov.txt === "목록 →",
+  // 2026-10 공간 모드가 기본 — 타일이 4px 떠오른다(`app/v3-space.css`, 움직이는 중이면 3.x). 1px(기본) · 4px(공간) 둘 다 받는다
+  chk("E-42-목록→·1px", hov.go === "1" && /matrix\(1, 0, 0, 1, 0, -(1|3\.\d+|4)\)/.test(hov.tf) && hov.txt === "목록 →",
       `「${hov.txt}」 불투명도 ${hov.go} · ${hov.tf}`);
   const apiTasks = await page.evaluate(async () => (await (await fetch("/api/tasks")).json()).tasks);
   const tileRes = [];
