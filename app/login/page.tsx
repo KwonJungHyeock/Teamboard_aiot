@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { APP_NAME_LONG } from "@/lib/brand";
+import { APP_NAME_LONG, TEAM_NAME } from "@/lib/brand";
 
 const REASON_MESSAGE: Record<string, string> = {
   inactive: "계정이 비활성화되었습니다. 관리자에게 문의하세요.",
@@ -64,7 +64,7 @@ export default function LoginPage() {
         </div>
       </div>
       <form className="login-card" onSubmit={submit}>
-        <p className="sub">AIoT 교육플랫폼 사업팀 · 회사 업무메일로 로그인</p>
+        <p className="sub">{TEAM_NAME} · 회사 업무메일로 로그인</p>
         {notice && (
           <p
             className="error-text"
