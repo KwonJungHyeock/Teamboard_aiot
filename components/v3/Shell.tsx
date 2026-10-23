@@ -46,6 +46,7 @@ import { roleLabel, showsAdminGrantBadge, hasLead, isAdmin } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import DeniedNote from "../DeniedNote";
 import { APP_NAME, TEAM_NAME } from "@/lib/brand";
+import { lookCookie } from "@/lib/v3/look";
 
 /*
  * ── 레일은 **세 묶음**이다 (067 §0-4) ───────────────────────────
@@ -73,7 +74,26 @@ function typing(el: EventTarget | null): boolean {
   return tag === "input" || tag === "textarea" || tag === "select" || n.isContentEditable === true;
 }
 
-export default function V3Shell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
+/**
+ * 공간 모드 스위치 — **겉모습만** 바꾼다(`lib/v3/look.ts`).
+ *
+ * 누르면 그 사람 브라우저의 쿠키 하나만 바뀐다. 서버로 가는 요청이 없다 —
+ * 그래서 되돌리기도 다시 누르는 것 하나다. 넓은 화면은 본문 위, 좁은 화면은
+ * 위 바에 선다. 「＋ 새 업무」처럼 **한 화면에 하나만** 보인다(CSS 가 가른다).
+ */
+function LookSwitch({ on, onToggle, className }: { on: boolean; onToggle: () => void; className: string }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} onClick={onToggle}
+            className={`v3-look ${className}`}
+            title={on ? "공간 모드 끄기 — 지금 화면으로 돌아갑니다" : "공간 모드 켜기 — 주소·데이터는 그대로, 겉모습만 바뀝니다"}>
+      <span className="v3-look-track" aria-hidden="true"><span className="v3-look-knob" /></span>
+      <span className="v3-look-l">공간 모드</span>
+    </button>
+  );
+}
+
+export default function V3Shell({ user, space: space0 = false, children }:
+  { user: SessionUser; space?: boolean; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   // 「오늘」은 정확히 그 경로일 때만 켜진다. `startsWith` 로 하면 전부 켜진다.
@@ -88,6 +108,14 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
    */
   const [drawer, setDrawer] = useState(false);
   useEffect(() => { setDrawer(false); }, [pathname]);
+
+  // 공간 모드 — 첫 값은 서버가 쿠키에서 읽어 준다(번쩍임 없음). 바꾸면 쿠키만 적는다.
+  const [space, setSpace] = useState(space0);
+  const toggleSpace = useCallback(() => {
+    const next = !space;
+    document.cookie = lookCookie(next);
+    setSpace(next);
+  }, [space]);
   useEffect(() => {
     if (!drawer) return;
     // 뒤 본문이 굴러가면 닫고 나서 딴 데 와 있다. 원래 값으로 되돌린다 —
@@ -130,7 +158,9 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
   }
 
   return (
-    <div className={`v3${drawer ? " drawer-on" : ""}`}>
+    <div className={`v3${space ? " v3-space" : ""}${drawer ? " drawer-on" : ""}`}>
+      {/* 공간 모드의 바닥 — 떠다니는 빛 둘. 꾸밈이라 읽히지 않는다. */}
+      {space && <><span className="v3-sp-blob a" aria-hidden="true" /><span className="v3-sp-blob b" aria-hidden="true" /></>}
       {/*
         위 바 — **768px 미만에서만** 보인다(CSS 가 정한다). 왼쪽 ☰ ·
         가운데 화면 이름 · 오른쪽 ＋ 새 업무.
@@ -142,6 +172,7 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
           <span aria-hidden="true">☰</span>
         </button>
         <b className="v3-topbar-t">{title}</b>
+        <LookSwitch on={space} onToggle={toggleSpace} className="v3-look-bar" />
         <Link className="v3-btn primary v3-topbar-new" href={newHref}>＋ 새 업무</Link>
       </div>
 
@@ -245,6 +276,7 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
           {/* 「＋ 새 업무」 — **이 화면의 유일한 자리**다 (056 §A).
               단축키 `C` 도 같은 곳으로 가므로 버튼에 적어 둔다. */}
           <div className="v3-top">
+            <LookSwitch on={space} onToggle={toggleSpace} className="v3-look-top" />
             <Link className="v3-btn primary v3-topnew" href={newHref}>
               ＋ 새 업무
               <kbd className="v3-topkbd">C</kbd>
