@@ -69,8 +69,8 @@ try {
 
   // 짝조건 — 스위치가 켜져 다시 보내질 때 **이유가 안 떨어진다**.
   chk("⑦-옮겨-가도-이유가-따라간다",
-      v3Destination("/?denied=stats") === "/v3?denied=stats"
-      && v3Destination("/") === "/v3",
+      v3Destination("/?denied=stats") === "/v3/control?denied=stats"
+      && v3Destination("/") === "/v3/control",
       `/?denied=stats → ${v3Destination("/?denied=stats")} · 이유 없으면 그대로 ${v3Destination("/")}`);
 
   const swRow = (await sql(`SELECT value FROM config WHERE key = $1`, [KEY]))[0];
@@ -166,7 +166,7 @@ try {
   const v3Url = new URL(page.url());
   const v3Txt = await noteText();
   chk("⑦짝-스위치-켜도-이유가-산다",
-      v3Url.pathname === "/v3" && v3Txt.includes(DENIED_REASON.members),
+      v3Url.pathname === "/v3/control" && v3Txt.includes(DENIED_REASON.members),
       `/members → ${v3Url.pathname}${v3Url.search} · 화면 "${v3Txt}"`);
   await shot(page, { path: `${OUT}/B31-v3에서도.png`, fullPage: true });
   await setSwitch(null);

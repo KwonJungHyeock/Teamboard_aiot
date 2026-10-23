@@ -34,7 +34,11 @@ export interface RoutePair {
 export const ROUTE_PAIRS: RoutePair[] = [
   // 화면이 생길 때마다 한 줄씩 는다. **짝이 되는 옛 경로가 실재하는지**
   // 검사기가 확인한다 — 없는 경로를 적으면 아무도 안 지나가는 규칙이 된다.
-  { old: "/", v3: `${V3_BASE}`, what: "오늘 (옛 홈)" },
+  /*
+   * 2026-10 관제 패널 — **첫 화면은 관제다**(지시: 「첫 화면 바로 적용」). 로그인하면
+   * `/` 로 오고, 여기서 관제로 보낸다. 「대시보드」(`/v3`)는 그대로 있고 레일에서 간다.
+   */
+  { old: "/", v3: `${V3_BASE}/control`, what: "관제 (옛 홈 · 첫 화면)" },
   { old: "/tasks", v3: `${V3_BASE}/tasks`, what: "업무 (옛 업무 목록)" },
   { old: "/calendar", v3: `${V3_BASE}/calendar`, what: "캘린더 (옛 캘린더)" },
   /*

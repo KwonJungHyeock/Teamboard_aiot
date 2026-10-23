@@ -129,10 +129,10 @@ try {
   const bareState = await a.page.locator("[data-switch-state]").getAttribute("data-switch-state").catch(() => null);
   await a.page.locator("[data-switch-act]").click();
   await a.page.locator("[data-switch-yes]").click();
-  await a.page.waitForURL((u) => u.pathname === "/v3", { timeout: 15000 });
+  await a.page.waitForURL((u) => u.pathname === "/v3/control", { timeout: 15000 });
   const onDb = await sw();
   chk("A-7-꺼져도-같은-자리에서-켠다", bareAt === SWITCH_PATH && bareRail === 0 && bareState === "off" && onDb === true,
-      `꺼진 채 ${bareAt} (레일 ${bareRail}개 · 상태 ${bareState}) → 켜기 → /v3 · DB ${JSON.stringify(onDb)}`);
+      `꺼진 채 ${bareAt} (레일 ${bareRail}개 · 상태 ${bareState}) → 켜기 → /v3/control · DB ${JSON.stringify(onDb)}`);
   // 팀원은 꺼진 상태에서도 그 자리가 **안 열린다** — 예외는 관리자뿐이다
   await setSw(null);
   const m2 = await as(MEMBER);
@@ -149,7 +149,7 @@ try {
     await a.page.goto(`${BASE}${SWITCH_PATH}`, { waitUntil: "networkidle" });
     await a.page.locator("[data-switch-act]").click();
     await a.page.locator("[data-switch-yes]").click();
-    await a.page.waitForURL((u) => (want ? u.pathname === "/v3" : u.pathname === "/settings"), { timeout: 15000 });
+    await a.page.waitForURL((u) => (want ? u.pathname === "/v3/control" : u.pathname === "/settings"), { timeout: 15000 });
     trail.push(`${want ? "켬" : "끔"}→DB ${JSON.stringify(await sw())} · ${new URL(a.page.url()).pathname}`);
   }
   chk("A-10-켬→끔→켬-화면만으로", trail[0].startsWith("끔→DB false") && trail[1].startsWith("켬→DB true"),
