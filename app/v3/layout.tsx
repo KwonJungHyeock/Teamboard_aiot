@@ -8,7 +8,7 @@
 // 「막은 사람이 가는 곳도 한 곳에서 낸다」(§G) — `DENIED_HREF` 로 보낸다.
 // 스위치가 꺼진 것은 권한 문제가 아니지만, **갈 곳은 같아야 한다**: 로그인한
 // 누구나 볼 수 있는 화면. 두 개를 두면 목적지가 사라질 때 고칠 자리가 둘이 된다.
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getLiveSession } from "@/lib/auth";
 import { getUiV3 } from "@/lib/v3/switch";
@@ -18,8 +18,10 @@ import { isAdmin } from "@/lib/types";
 import { V3_BASE } from "@/lib/v3/routes";
 import { notYetHref, notYetOf } from "@/lib/v3/not-yet";
 import { PATH_HEADER } from "@/middleware";
+import { LOOK_COOKIE, isSpace } from "@/lib/v3/look";
 import V3Shell from "@/components/v3/Shell";
 import "../v3.css";
+import "../v3-space.css";
 
 // 스위치는 **요청마다** 읽는다. 빌드 때 굳으면 끄는 데 배포가 든다 —
 // 「되돌리기는 스위치 하나」가 거짓이 된다.
@@ -61,5 +63,10 @@ export default async function V3Layout({ children }: { children: React.ReactNode
     const first = here.replace(`${V3_BASE}/`, "").split("?")[0].split("/")[0];
     redirect(notYetOf(first) ? notYetHref(first) : `${V3_BASE}/not-yet`);
   }
-  return <V3Shell user={live.user}>{children}</V3Shell>;
+  /*
+   * 공간 모드는 **첫 그림부터** 맞아야 한다 — 클라이언트에서 쿠키를 읽고 바꾸면
+   * 옛 모습이 한 번 번쩍인다. 그래서 서버가 읽어 넘긴다(`lib/v3/look.ts`).
+   */
+  const space = isSpace(cookies().get(LOOK_COOKIE)?.value);
+  return <V3Shell user={live.user} space={space}>{children}</V3Shell>;
 }

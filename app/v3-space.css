@@ -1,0 +1,167 @@
+/* ══════════════════════════════════════════════════════════════════
+   v3 「공간 모드」 — 차세대 예시안 D(공간 보드)의 겉모습
+
+   ── 무엇을 바꾸고 무엇을 안 바꾸나 ───────────────────────────────
+   **겉모습만.** 주소 · 데이터 · 기능 · 마크업은 그대로다. 규칙은 전부
+   `.v3.v3-space` 아래에만 산다 — 스위치(`lib/v3/look.ts`)가 꺼져 있으면
+   이 파일에서 닿는 것은 스위치 버튼 하나뿐이다. `app/v3.css` 의 토큰은
+   **한 글자도 안 고친다.** 공간 모드에서만 같은 이름을 다른 값으로 덮는다.
+
+   ── 예시안 D 의 말 ──────────────────────────────────────────────
+   밝은 회청색 바닥 위로 빛이 천천히 흐르고, 일은 **반투명 유리판** 위에 놓인다.
+   깊이(그림자 · 흐림)가 위계를 말한다 — 앞에 있는 것이 지금 볼 것이다.
+
+   ── 움직임 ──────────────────────────────────────────────────────
+   흐르는 빛 · 판이 떠오르며 들어오기 · 올리면 앞으로 나오기. 움직임을 줄여 달라는
+   사람에게는 `app/v3.css` 의 한 자리(`prefers-reduced-motion`)가 전부 끈다 —
+   그 규칙이 `.v3 *` 전체에 `animation: none` 을 건다. 여기서 또 적지 않는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 스위치 버튼 — **켜기 전에도** 보여야 하므로 `.v3` 전체에 둔다 ───── */
+.v3 .v3-look { display: inline-flex; align-items: center; gap: 8px; min-height: 36px;
+  margin-right: auto; padding: 0 12px 0 8px; border: 1px solid var(--v3-line-2);
+  border-radius: var(--v3-radius-pill); background: var(--v3-card); color: var(--v3-ink);
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.v3 .v3-look:hover { border-color: var(--v3-ink-3); }
+.v3-look-track { position: relative; width: 30px; height: 18px; flex: 0 0 30px;
+  border-radius: var(--v3-radius-pill); background: var(--v3-line-2);
+  transition: background var(--v3-motion, .13s); }
+.v3-look-knob { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(16, 24, 40, .25);
+  transition: transform var(--v3-motion, .13s); }
+.v3-look[aria-checked="true"] .v3-look-track { background: #121A2B; }
+.v3-look[aria-checked="true"] .v3-look-knob { transform: translateX(12px); }
+/* 위 바(좁은 화면)의 것은 넓은 화면에서 안 보인다. 본문 위의 것은 좁은 화면에서
+   `.v3-top` 째로 숨는다(v3.css). 그래서 **한 화면에 하나다.** */
+.v3 .v3-look-bar { display: none; }
+@media (max-width: 767.98px) {
+  .v3 .v3-look-bar { display: inline-flex; flex: 0 0 auto; margin-right: 0; min-height: 34px;
+    padding: 0 8px; border-color: rgba(255, 255, 255, .4); background: rgba(255, 255, 255, .16);
+    color: #fff; }
+  .v3 .v3-look-bar .v3-look-l { display: none; }
+}
+
+/* ══ 여기부터 공간 모드에서만 ══════════════════════════════════════ */
+
+.v3.v3-space {
+  /* 예시안 D 의 값 — 공간 모드 **안에서만** 덮는다 */
+  --v3-bg: #DCE3EC;
+  --v3-rail: #2348B8;
+  --v3-ink: #121A2B;
+  --v3-ink-2: #3E4A60;
+  --v3-line: #E4E9F1;
+  --v3-line-2: #CDD5E2;
+  --v3-radius: 22px;
+  --sp-glass: rgba(255, 255, 255, .68);
+  --sp-glass-hi: rgba(255, 255, 255, .86);
+  --sp-edge: rgba(255, 255, 255, .92);
+  --sp-depth: 0 30px 60px -32px rgba(30, 45, 80, .45);
+  --sp-depth-hi: 0 44px 80px -36px rgba(30, 45, 80, .55);
+  --sp-blur: blur(18px);
+
+  position: relative; isolation: isolate; min-height: 100vh;
+  background: var(--v3-bg);
+}
+
+/* ── 바닥의 빛 — 화면에 붙어 있고 천천히 흐른다 ──────────────────── */
+.v3-sp-blob { position: fixed; z-index: -1; border-radius: 50%; pointer-events: none;
+  filter: blur(8px); }
+.v3-sp-blob.a { left: -140px; bottom: -180px; width: 620px; height: 620px; background: #C9D6F2;
+  animation: v3-sp-drift-a 22s ease-in-out infinite; }
+.v3-sp-blob.b { right: -160px; top: -160px; width: 560px; height: 560px; background: #D7E8E3;
+  animation: v3-sp-drift-b 26s ease-in-out infinite; }
+@keyframes v3-sp-drift-a { 50% { transform: translate(80px, -60px); } }
+@keyframes v3-sp-drift-b { 50% { transform: translate(-70px, 70px); } }
+
+/* ── 레일 — 파란 막대 대신 **유리 기둥** ──────────────────────────── */
+.v3.v3-space .v3-rail { background: rgba(255, 255, 255, .55); color: var(--v3-ink);
+  border-right: 1px solid var(--sp-edge); backdrop-filter: var(--sp-blur);
+  -webkit-backdrop-filter: var(--sp-blur); }
+.v3.v3-space .v3-rail-team { color: var(--v3-ink-2); }
+.v3.v3-space .v3-railg-t { color: var(--v3-ink-2); }
+.v3.v3-space .v3-rail a { color: var(--v3-ink); }
+.v3.v3-space .v3-rail a:hover { background: rgba(18, 26, 43, .06); color: var(--v3-ink); }
+/* 지금 있는 곳은 예시안의 아래 메뉴처럼 **검은 알약** */
+.v3.v3-space .v3-rail a[aria-current="page"] { background: #121A2B; color: #fff;
+  border-radius: var(--v3-radius-pill); }
+.v3.v3-space .v3-navlink.lock { color: var(--v3-ink-2); }
+.v3.v3-space .v3-navlink.lock:hover { color: var(--v3-ink); }
+.v3.v3-space .v3-acct { border-top-color: rgba(18, 26, 43, .10); }
+.v3.v3-space .v3-acct-av { background: #fff; color: var(--v3-ink); border: 2px solid var(--v3-rail); }
+.v3.v3-space .v3-acct-nm b { color: var(--v3-ink); }
+.v3.v3-space .v3-acct-bg em { background: rgba(18, 26, 43, .07); color: var(--v3-ink); }
+.v3.v3-space .v3-acct-bg em.grant { background: #121A2B; color: #fff; }
+.v3.v3-space .v3-acct-l { color: var(--v3-ink) !important; }
+.v3.v3-space .v3-acct-l:hover { background: rgba(18, 26, 43, .06); color: var(--v3-ink) !important; }
+.v3.v3-space .v3-acct-l.off,
+.v3.v3-space .v3-acct-l.off:hover { color: var(--v3-ink-2) !important; background: none; }
+.v3.v3-space .v3-topkbd { background: rgba(255, 255, 255, .24); }
+
+/* ── 판 — 카드 · 타일 · 팀 열이 유리판이 된다 ─────────────────────── */
+.v3.v3-space .v3-card,
+.v3.v3-space .v3-stat,
+.v3.v3-space .v3-col {
+  background: var(--sp-glass); border: 1px solid var(--sp-edge);
+  box-shadow: var(--sp-depth); backdrop-filter: var(--sp-blur);
+  -webkit-backdrop-filter: var(--sp-blur); }
+.v3.v3-space .v3-card { border-radius: 28px; padding: 20px 24px; }
+.v3.v3-space .v3-stat { border-radius: 24px; transition: transform .3s cubic-bezier(.2, .8, .2, 1),
+  box-shadow .3s ease; }
+.v3.v3-space .v3-stat:hover { transform: translateY(-4px); box-shadow: var(--sp-depth-hi); }
+/* 기한 지남 타일은 유리여도 **붉게** 말한다 — 신호를 겉모습이 지우면 안 된다 */
+.v3.v3-space .v3-stat.late { background: rgba(253, 237, 236, .86); border-color: var(--v3-late); }
+.v3.v3-space .v3-stat .v3-stat-n { letter-spacing: -.03em; }
+
+/* 가오픈 카드 — 파란 판 대신 **짙은 밤하늘 판** */
+.v3.v3-space .v3-open { background: linear-gradient(135deg, #121A2B, #2348B8);
+  border-color: transparent; border-radius: 24px; box-shadow: var(--sp-depth-hi); }
+
+/* 제목은 조금 더 크게, 조금 더 단단하게 */
+.v3.v3-space .v3-h1 { font-size: 30px; letter-spacing: -.03em; }
+
+/* 버튼 · 칩 — 알약 */
+.v3.v3-space .v3-btn { border-radius: var(--v3-radius-pill); }
+.v3.v3-space .v3-btn.primary { background: #121A2B; border-color: #121A2B; }
+.v3.v3-space .v3-btn.primary:hover { background: #2348B8; border-color: #2348B8; }
+.v3.v3-space .v3-search { border-radius: var(--v3-radius-pill); background: var(--sp-glass-hi); }
+.v3.v3-space .v3-look { background: var(--sp-glass-hi); border-color: var(--sp-edge);
+  box-shadow: var(--sp-depth); }
+
+/* 줄 — 올리면 살짝 밝아진다(판 위의 판) */
+.v3.v3-space .v3-row { border-radius: 14px; transition: background .2s ease; }
+.v3.v3-space .v3-row:hover { background: rgba(255, 255, 255, .7); }
+
+/* ── 팀 — 곡면 벽(예시안 D-3). 열이 가운데를 보고 살짝 돈다 ──────── */
+@media (min-width: 1100px) {
+  .v3.v3-space .v3-team { perspective: 1800px; }
+  .v3.v3-space .v3-team > .v3-col { transition: transform .4s cubic-bezier(.2, .8, .2, 1),
+    box-shadow .3s ease; }
+  .v3.v3-space .v3-team > .v3-col:first-child { transform: rotateY(8deg); transform-origin: right center; }
+  .v3.v3-space .v3-team > .v3-col:last-child:not(:first-child) { transform: rotateY(-8deg);
+    transform-origin: left center; }
+  .v3.v3-space .v3-team > .v3-col:hover { transform: translateZ(30px); box-shadow: var(--sp-depth-hi); }
+}
+
+/* ── 들어오기 — 본문의 판들이 아래에서 차례로 떠오른다 ───────────── *
+   `backwards` 다(`both` 가 아니다): 끝난 뒤에도 transform 이 붙어 있으면 그 판이
+   안쪽 `position: fixed`(상태 고르기 · 토스트 · 찾기)의 기준이 되어 엉뚱한 데 뜬다. */
+.v3.v3-space .v3-main > * { animation: v3-sp-rise .55s cubic-bezier(.2, .8, .2, 1) backwards; }
+.v3.v3-space .v3-main > :nth-child(2) { animation-delay: .04s; }
+.v3.v3-space .v3-main > :nth-child(3) { animation-delay: .08s; }
+.v3.v3-space .v3-main > :nth-child(4) { animation-delay: .12s; }
+.v3.v3-space .v3-main > :nth-child(n+5) { animation-delay: .16s; }
+@keyframes v3-sp-rise { from { opacity: 0; transform: translateY(14px); } }
+
+/* ── 좁은 화면 — 위 바도 유리 ─────────────────────────────────────── */
+@media (max-width: 767.98px) {
+  .v3.v3-space .v3-topbar { background: rgba(255, 255, 255, .72); color: var(--v3-ink);
+    border-bottom: 1px solid var(--sp-edge); backdrop-filter: var(--sp-blur);
+    -webkit-backdrop-filter: var(--sp-blur); }
+  .v3.v3-space .v3-topbar-t { color: var(--v3-ink); }
+  .v3.v3-space .v3-burger { background: rgba(18, 26, 43, .06); color: var(--v3-ink); }
+  .v3.v3-space .v3-topbar-new { background: #121A2B !important; color: #fff !important; }
+  .v3.v3-space .v3-look-bar { border-color: var(--v3-line-2); background: #fff; color: var(--v3-ink); }
+  /* 서랍은 덮는 판이라 뒤가 비치면 못 읽는다 — 거의 불투명하게 */
+  .v3.v3-space .v3-rail { background: rgba(244, 247, 251, .97); }
+  .v3.v3-space .v3-card { border-radius: 22px; padding: 16px 16px; }
+}
