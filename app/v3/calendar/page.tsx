@@ -9,6 +9,7 @@
 // 데이터는 화면이 `/api/tasks` 와 `/api/tasks/open-due` 에서 가져온다.
 // 새 API 는 없다.
 import { getLiveSession } from "@/lib/auth";
+import { hasLead } from "@/lib/types";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { query } from "@/lib/db";
@@ -38,6 +39,7 @@ export default async function V3Calendar() {
         today={kstToday()}
         openAtMs={Date.parse(openAt)}
         areas={resolveAreas(areaRows)}
+        isLead={hasLead(live.user.role)}
       />
     </Suspense>
   );

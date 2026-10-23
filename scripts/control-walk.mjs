@@ -127,9 +127,10 @@ try {
     acct: [...document.querySelectorAll(".v3-rail .v3-acct-a .v3-acct-l")].map((a) => a.textContent.trim()),
   }))()`);
   const leadIsAdmin = lead.role === "admin" || lead.admin_grant === true;
+  // 새 화면 스위치는 2026-10 옛 화면 철거로 거뒀다
   const wantItems = ["관제", "내 업무", "내 기록", "업무 목록", "목표", "회의실곧"];
   const acctOk = railInfo.acct.includes("내 정보") && railInfo.acct.includes("로그아웃")
-    && (railInfo.acct.includes("구성원") === leadIsAdmin) && (railInfo.acct.includes("새 화면 스위치") === leadIsAdmin);
+    && (railInfo.acct.includes("구성원") === leadIsAdmin) && !railInfo.acct.includes("새 화면 스위치");
   await w.locator('.v3-rail a[href="/v3/control"]').click();
   await w.waitForURL(/\/v3\/control$/, { timeout: 9000 }).catch(() => {});
   await w.locator(".v3-ctl").waitFor({ timeout: 9000 });

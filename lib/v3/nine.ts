@@ -48,7 +48,6 @@ export const NINE: NineScreen[] = [
    * 끌 수 없었다**(073 §C). 끄는 길이 없는 스위치는 켤 수 없다 — 그래서 가오픈 필수에 더한다.
    * 관리자만 보이고 부른다(`admin` · 규약 6-3).
    */
-  { n: 10, key: "switch", label: "새 화면 스위치", path: `${V3_BASE}/switch` },
   /*
    * ── 열한 번째 (2026-10 업무기록) — 내 기록 ───────────────────────
    * 각자 한 줄씩 적는 업무기록(0037). 옛 화면에 짝이 없다 — 「메모」(notes)와
@@ -64,7 +63,6 @@ export const NINE: NineScreen[] = [
 ];
 
 /** 새 화면 스위치 자리. **스위치가 꺼져 있어도** 관리자에게는 열린다(`app/v3/layout.tsx`) */
-export const SWITCH_PATH = `${V3_BASE}/switch`;
 
 /**
  * 막음 화면 자신은 **아홉이 아니지만 열려 있어야 한다.** 안 그러면 막힌 사람을
@@ -146,5 +144,4 @@ export const RAIL: RailGroup[] = [
 export const ACCOUNT_LINKS: RailItem[] = [
   { label: "내 정보", href: `${V3_BASE}/me` },
   { label: "구성원", href: `${V3_BASE}/members`, admin: true },
-  { label: "새 화면 스위치", href: SWITCH_PATH, admin: true },
 ];

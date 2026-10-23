@@ -17,29 +17,8 @@
    그 규칙이 `.v3 *` 전체에 `animation: none` 을 건다. 여기서 또 적지 않는다.
    ══════════════════════════════════════════════════════════════════ */
 
-/* ── 스위치 버튼 — **켜기 전에도** 보여야 하므로 `.v3` 전체에 둔다 ───── */
-.v3 .v3-look { display: inline-flex; align-items: center; gap: 8px; min-height: 36px;
-  margin-right: auto; padding: 0 12px 0 8px; border: 1px solid var(--v3-line-2);
-  border-radius: var(--v3-radius-pill); background: var(--v3-card); color: var(--v3-ink);
-  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-.v3 .v3-look:hover { border-color: var(--v3-ink-3); }
-.v3-look-track { position: relative; width: 30px; height: 18px; flex: 0 0 30px;
-  border-radius: var(--v3-radius-pill); background: var(--v3-line-2);
-  transition: background var(--v3-motion, .13s); }
-.v3-look-knob { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
-  border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(16, 24, 40, .25);
-  transition: transform var(--v3-motion, .13s); }
-.v3-look[aria-checked="true"] .v3-look-track { background: #121A2B; }
-.v3-look[aria-checked="true"] .v3-look-knob { transform: translateX(12px); }
-/* 위 바(좁은 화면)의 것은 넓은 화면에서 안 보인다. 본문 위의 것은 좁은 화면에서
-   `.v3-top` 째로 숨는다(v3.css). 그래서 **한 화면에 하나다.** */
-.v3 .v3-look-bar { display: none; }
-@media (max-width: 767.98px) {
-  .v3 .v3-look-bar { display: inline-flex; flex: 0 0 auto; margin-right: 0; min-height: 34px;
-    padding: 0 8px; border-color: rgba(255, 255, 255, .4); background: rgba(255, 255, 255, .16);
-    color: #fff; }
-  .v3 .v3-look-bar .v3-look-l { display: none; }
-}
+/* 2026-10 — 공간 모드가 **기본**이 됐다. 켜고 끄던 스위치(`.v3-look`)와 쿠키는 거뒀고,
+   껍데기(`components/v3/Shell.tsx`)가 늘 `v3-space` 를 단다. 아래 규칙은 그대로 산다. */
 
 /* ══ 여기부터 공간 모드에서만 ══════════════════════════════════════ */
 
@@ -124,8 +103,6 @@
 .v3.v3-space .v3-btn.primary { background: #121A2B; border-color: #121A2B; }
 .v3.v3-space .v3-btn.primary:hover { background: #2348B8; border-color: #2348B8; }
 .v3.v3-space .v3-search { border-radius: var(--v3-radius-pill); background: var(--sp-glass-hi); }
-.v3.v3-space .v3-look { background: var(--sp-glass-hi); border-color: var(--sp-edge);
-  box-shadow: var(--sp-depth); }
 
 /* 줄 — 올리면 살짝 밝아진다(판 위의 판) */
 .v3.v3-space .v3-row { border-radius: 14px; transition: background .2s ease; }
@@ -160,7 +137,6 @@
   .v3.v3-space .v3-topbar-t { color: var(--v3-ink); }
   .v3.v3-space .v3-burger { background: rgba(18, 26, 43, .06); color: var(--v3-ink); }
   .v3.v3-space .v3-topbar-new { background: #121A2B !important; color: #fff !important; }
-  .v3.v3-space .v3-look-bar { border-color: var(--v3-line-2); background: #fff; color: var(--v3-ink); }
   /* 서랍은 덮는 판이라 뒤가 비치면 못 읽는다 — 거의 불투명하게 */
   .v3.v3-space .v3-rail { background: rgba(244, 247, 251, .97); }
   .v3.v3-space .v3-card { border-radius: 22px; padding: 16px 16px; }

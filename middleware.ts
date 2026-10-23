@@ -1,9 +1,11 @@
 // 페이지 접근 가드 — 세션 쿠키 없으면 /login으로. (서명 검증은 서버 컴포넌트/API에서 수행)
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { V3_BASE, v3Destination } from "./lib/v3/routes";
+import { notYetForOld, notYetHref } from "./lib/v3/not-yet";
 
 const SESSION_COOKIE = "tb_session";
-/** 미들웨어가 실어 주는 지금 경로. `components/AppShell.tsx` 가 읽는다. */
+/** 미들웨어가 실어 주는 지금 경로. `app/v3/layout.tsx` 가 읽는다. */
 export const PATH_HEADER = "x-tb-path";
 
 export function middleware(request: NextRequest) {
@@ -23,19 +25,27 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
   /*
+   * ── 2026-10 옛 화면 철거 — 옛 주소는 **여기서** 새 화면으로 보낸다 ──────
+   *
+   * 옛 셸(`AppShell`)이 하던 일이다. 셸과 옛 화면을 지웠으니 같은 표(`ROUTE_PAIRS` ·
+   * `NOT_YET`)를 여기서 읽는다 — 둘 다 DB 를 안 읽는 순수한 표라 미들웨어에서 된다.
+   *   · 막힌 것(아직 새 화면이 없는 것)이 먼저 → 막음 화면
+   *   · 짝이 있으면 → 그 새 화면(이유 `?denied=` 는 따라간다)
+   *   · 나머지 옛 주소 → 첫 화면(관제). 404 보다 낫다 — 북마크가 옛 주소다.
+   */
+  if (!pathname.startsWith(V3_BASE)) {
+    const full = pathname + request.nextUrl.search;
+    const blocked = notYetForOld(pathname);
+    const to = blocked ? notYetHref(blocked.key) : (v3Destination(full) ?? `${V3_BASE}/control${request.nextUrl.search}`);
+    // 개발 서버는 요청 주소의 호스트를 localhost 로 바꿔 놓는다 — 로컬 검사는 `BASE=http://localhost:3000` 으로 돈다.
+    return NextResponse.redirect(new URL(to, request.url));
+  }
+  /*
    * 지금 경로를 **서버 컴포넌트가 읽을 수 있게** 넘긴다 (MD-P-2026-043 §C).
-   *
-   * v3 스위치가 켜지면 옛 경로가 새 경로로 보내야 하는데, 그 판단은 DB 를
-   * 읽어야 하고 미들웨어는 DB 를 못 본다. 반대로 서버 컴포넌트는 DB 를 보지만
-   * **자기가 어느 경로인지 모른다.** 그래서 여기서 경로만 실어 준다.
-   *
-   * 옛 화면 파일을 하나도 안 건드리고 한 자리에서 보내려면 이 길뿐이다 —
-   * 아니면 화면마다 한 줄씩 넣어야 하고, 그러면 빠뜨린 화면이 눌러 보기
-   * 전까지 안 보인다(§G — 막는 것은 뿌리에서 한 번).
+   * 새 화면 뿌리(`app/v3/layout.tsx`)가 열한 화면 밖의 주소를 막음 화면으로 보낼 때 쓴다.
+   * **쿼리까지** 넘긴다.
    */
   const h = new Headers(request.headers);
-  // **쿼리까지** 넘긴다. 짝표가 `?panel=task:12` 같은 것을 알아야 하기 때문이다
-  // (`lib/v3/routes.ts` 참고) — 경로만 보면 상세로 가던 링크를 목록이 삼킨다.
   h.set(PATH_HEADER, pathname + request.nextUrl.search);
   return NextResponse.next({ request: { headers: h } });
 }

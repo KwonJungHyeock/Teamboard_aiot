@@ -6,7 +6,8 @@
 //
 //   ① 팀원으로 `/members` → 밀려난 화면에 **그 문구가 있다**
 //   ② 문구는 **막은 쪽이 낸 것**이다 — `lib/denied.ts` 의 표와 글자까지 같다
-//   ③ 막는 자리마다 **제 문장**이 나온다 (구성원 · 설정 · 업무 현황 …)
+//   ③ 옛 막는 자리(설정 · 상태 · 가오픈 기한 · 에이전트 사용량)는 2026-10 옛 화면 철거로
+//      **화면이 없다** — 이제 「아직 안 엽니다」 화면에 닿는지 본다
 //   ④ **안 사라진다** — 기다려도 그대로, 닫기를 눌러야 없어진다
 //   ⑤ 닫으면 **주소에서도 빠진다** (새로고침해도 다시 안 뜬다)
 //   ⑥ 모르는 이름은 **아무 말도 안 만든다** (`?denied=아무거나`)
@@ -113,7 +114,8 @@ try {
   const landed = new URL(page.url());
   const txt = await noteText();
   chk("①②-밀려난-화면에-그-문구가",
-      landed.pathname === "/" && txt.includes(DENIED_REASON.members),
+      // 2026-10 옛 화면 철거 — `/members` 는 새 구성원 화면으로 가고, 거기서 팀원은 관제로 밀린다
+      landed.pathname === "/v3/control" && txt.includes(DENIED_REASON.members),
       `/members → ${landed.pathname}${landed.search} · 화면 "${txt}"` +
       ` · lib/denied 의 말 "${DENIED_REASON.members}"`);
   await shot(page, { path: `${OUT}/B31-밀려난-이유.png`, fullPage: true });
@@ -123,11 +125,11 @@ try {
   for (const [where, key] of [["/settings", "settings"], ["/status", "status"],
                               ["/open-due", "open-due"], ["/admin/agent-usage", "agent-usage"]]) {
     await page.goto(`${BASE}${where}`, { waitUntil: "networkidle" });
-    await note().waitFor({ timeout: 9000 }).catch(() => {});
-    const t = await noteText();
-    seen.push({ where, ok: t.includes(DENIED_REASON[key]), t });
+    const u = new URL(page.url());
+    const t = `${u.pathname}${u.search}`;
+    seen.push({ where, ok: t === `/v3/not-yet?k=${key}`, t });
   }
-  chk("③-막는-자리마다-제-문장",
+  chk("③-옛-막는-자리는-아직-안-엽니다로",
       seen.every((s) => s.ok),
       seen.map((s) => `${s.where} ${s.ok ? "맞음" : `**다름: "${s.t}"**`}`).join(" · "));
 
