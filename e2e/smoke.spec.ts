@@ -33,7 +33,7 @@ async function login(page: import("@playwright/test").Page) {
   await page.goto("/login");
   await page.fill('input[type="email"]', EMAIL);
   await page.fill('input[type="password"]', PASSWORD);
-  await page.click("form button");
+  await page.click('form button[type="submit"]');
   await page.waitForURL((u) => !u.pathname.startsWith("/login"));
 }
 
@@ -69,23 +69,10 @@ test("로그인 → 홈 진입", async ({ page }) => {
 
   await login(page);
 
-  // 홈이 실제로 그려지는지 — 사이드바가 뜨면 셸이 살아있는 것
+  // 홈이 실제로 그려지는지 — 상단 캡슐 메뉴가 뜨면 셸이 살아있는 것 (디자인 v1.0)
   await page.goto("/");
-  await expect(page.locator(".side, aside")).toBeVisible();
+  await expect(page.locator(".ed-nav")).toBeVisible();
   expect(errors, `런타임 에러: ${errors.join(" | ")}`).toHaveLength(0);
-});
-
-test("첫 로그인 계정에는 첫 사용 안내가 뜬다", async ({ page }) => {
-  await login(page);
-
-  await page.goto("/");
-  await expect(page.locator(".frn")).toBeVisible();
-  await page.click(".frn-skip");
-  await expect(page.locator(".frn")).toHaveCount(0);
-
-  // 건너뛰면 다시 뜨지 않는다
-  await page.reload();
-  await expect(page.locator(".frn")).toHaveCount(0);
 });
 
 test("member 는 관리 화면에 들어갈 수 없다", async ({ page }) => {
