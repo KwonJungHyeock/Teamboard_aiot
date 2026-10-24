@@ -146,6 +146,8 @@
 .v3 .v3-acct-a { flex-wrap: wrap; }
 .v3 .v3-acct-a .v3-acct-l { flex: 0 0 auto; padding: 0 8px; }
 .v3 .v3-acct-l[aria-current="page"] { text-decoration: underline; text-underline-offset: 3px; }
+/* 계정 블록의 링크는 검은 알약을 안 받는다 — 글자색(잉크)이 남아 검은 덩어리가 됐다(2026-10 내 정보 캡처) */
+.v3.v3-space .v3-rail a.v3-acct-l[aria-current="page"] { background: none; color: var(--v3-ink) !important; font-weight: 700; }
 /* 「곧」 — 자물쇠 대신 다음 차례라는 표시 */
 .v3 .v3-lock.soon { margin-left: auto; padding: 0 7px; border-radius: var(--v3-radius-pill);
   font-size: 11px; font-weight: 700; opacity: .8; background: rgba(255, 255, 255, .18); }

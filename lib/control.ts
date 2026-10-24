@@ -19,6 +19,7 @@ import { query, queryOne } from "./db";
 import { visibleTaskSql } from "./visibility";
 import { kstToday } from "./home";
 import { inMeetingNow } from "./meeting";
+import { todayNotes } from "./daily";
 import { effectiveGoalStatus, elapsedRatio, type GoalStatus } from "./progress";
 
 /** 진행 · 검토인데 이만큼 손이 안 닿았으면 「소식 없음」 */
@@ -51,6 +52,8 @@ export interface ControlPerson {
   working: boolean;
   /** 지금 회의실에 들어와 있으면 그 회의 (0038 · `inMeetingNow`) */
   meeting: { id: number; title: string } | null;
+  /** 오늘 적은 한 줄 · 고른 상태 (0039 · `todayNotes`) */
+  daily: { line: string | null; state: "focus" | "out" | "off" | null } | null;
 }
 export interface ControlSignal {
   kind: "late" | "quiet" | "heavy";
@@ -171,7 +174,7 @@ export async function getControl(viewerId: number): Promise<ControlData> {
     [viewerId, today]
   );
 
-  const inMeeting = await inMeetingNow();
+  const [inMeeting, notes] = await Promise.all([inMeetingNow(), todayNotes()]);
   const people: ControlPerson[] = peopleRows.map((p) => {
     const open = Number(p.open), week = Number(p.week);
     const mt = inMeeting.get(p.id);
@@ -180,6 +183,7 @@ export async function getControl(viewerId: number): Promise<ControlData> {
       open, late: Number(p.late), quiet: Number(p.quiet), week,
       heavy: week >= HEAVY_WEEK || open >= HEAVY_OPEN, lastSeen: p.last_seen, working: !!p.working,
       meeting: mt ? { id: mt.meetingId, title: mt.title } : null,
+      daily: notes.get(p.id) ?? null,
     };
   });
 

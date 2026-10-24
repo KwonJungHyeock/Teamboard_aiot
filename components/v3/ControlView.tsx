@@ -29,7 +29,11 @@ interface Person {
   id: number; name: string; role: string | null; nowTitle: string | null; nowId: number | null;
   open: number; late: number; quiet: number; week: number; heavy: boolean; lastSeen: string | null; working: boolean;
   meeting: { id: number; title: string } | null;
+  daily: { line: string | null; state: DailyState | null } | null;
 }
+type DailyState = "focus" | "out" | "off";
+/** `lib/daily.ts` DAILY_STATES 와 같은 셋 — 그 파일은 `pg` 를 끌고 와서 부품이 import 하지 않는다 */
+const STATE_LABEL: Record<DailyState, string> = { focus: "집중", out: "외근", off: "휴가" };
 interface Feed { at: string; kind: "done" | "new" | "touch"; title: string; who: string | null; taskId: number }
 export interface ControlProps {
   today: string;
@@ -41,6 +45,7 @@ export interface ControlProps {
   people: Person[];
   feed: Feed[];
   quietDays: number;
+  meId: number;
   canLead: boolean;
   team: string;
   openDay: number | null;
@@ -106,6 +111,7 @@ const LEVEL = { year: "연간", quarter: "분기", month: "월" } as const;
 export default function ControlView(p: ControlProps) {
   const router = useRouter();
   const [now, setNow] = useState(() => Date.now());
+  const me = p.people.find((m) => m.id === p.meId);
 
   // 1분마다 새로 받는다. 탭이 숨어 있으면 쉰다 — 안 보는 화면이 DB 를 두드리지 않게.
   useEffect(() => {
@@ -265,6 +271,7 @@ export default function ControlView(p: ControlProps) {
       </div>
 
       {/* ── 지금 팀 ───────────────────────────────────────────── */}
+      <MyDay key={`${me?.daily?.line ?? ""}|${me?.daily?.state ?? ""}`} daily={me?.daily ?? null} onSaved={() => router.refresh()} />
       <section className="v3-ctl-team" aria-label="지금 팀">
         {p.people.map((m) => (
           <div key={m.id} className={`v3-ctl-m${m.working || m.meeting ? " working" : ""}${m.heavy || m.late ? " flag" : ""}`}>
@@ -273,7 +280,12 @@ export default function ControlView(p: ControlProps) {
               <span className="v3-ctl-av">{m.name.slice(0, 1)}</span>
             </span>
             <span className="v3-ctl-mn">
-              <span><b>{m.name}</b> <em>{m.meeting ? "회의 중" : m.working ? `작업 중 · ${ago(m.lastSeen, now)} 활동` : ago(m.lastSeen, now)}</em></span>
+              <span>
+                <b>{m.name}</b>
+                {!m.meeting && m.daily?.state && <span className={`v3-ctl-st ${m.daily.state}`}>{STATE_LABEL[m.daily.state]}</span>}
+                {" "}<em>{m.meeting ? "회의 중" : m.working ? `작업 중 · ${ago(m.lastSeen, now)} 활동` : ago(m.lastSeen, now)}</em>
+              </span>
+              {m.daily?.line && <q className="v3-ctl-say" title="오늘 할 일 — 본인이 아침에 적은 한 줄">{m.daily.line}</q>}
               {m.meeting && <Link className="v3-ctl-mt" href={`${V3_BASE}/room/${m.meeting.id}`}>회의실 · {m.meeting.title}</Link>}
               {m.nowId ? <Link href={`${V3_BASE}/tasks/${m.nowId}`}>{m.nowTitle}</Link> : <i>진행 중인 일 없음</i>}
               <small>진행 {m.open} · 이번 주 마감 {m.week}{m.late ? ` · 지남 ${m.late}` : ""}{m.heavy ? " · 몰림" : ""}</small>
@@ -299,5 +311,39 @@ export default function ControlView(p: ControlProps) {
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * 하루 한 줄 · 상태 (0039) — 내 것만 여기서 고친다. **팀이 본다**(「내 기록」과 다르다).
+ * 엔터나 칸을 벗어나면 저장, 상태 칩은 누르면 바로. 다시 누르면 「보통」으로.
+ */
+function MyDay({ daily, onSaved }: { daily: { line: string | null; state: DailyState | null } | null; onSaved: () => void }) {
+  const [line, setLine] = useState(daily?.line ?? "");
+  const [state, setState] = useState<DailyState | null>(daily?.state ?? null);
+  const [note, setNote] = useState("");
+  const save = async (body: Record<string, unknown>) => {
+    const r = await fetch("/api/daily", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .catch(() => null);
+    if (!r?.ok) { setNote((r && (await r.json().catch(() => null))?.error) || "저장하지 못했습니다."); return; }
+    setNote("팀에 보입니다");
+    onSaved();
+  };
+  const saveLine = () => { if (line.trim() !== (daily?.line ?? "")) save({ line }); };
+  return (
+    <form className="v3-ctl-myday" onSubmit={(e) => { e.preventDefault(); saveLine(); }}>
+      <label className="v3-ctl-myday-l" htmlFor="v3-myday">오늘 할 일</label>
+      <input id="v3-myday" className="v3-ctl-myday-in" value={line} maxLength={200}
+             placeholder="한 줄 — 팀이 봅니다 · 엔터로 저장" onChange={(e) => setLine(e.target.value)} onBlur={saveLine} />
+      <span className="v3-ctl-myday-st" role="group" aria-label="내 상태">
+        {(Object.keys(STATE_LABEL) as DailyState[]).map((k) => (
+          <button key={k} type="button" aria-pressed={state === k} className={`v3-ctl-st ${k}${state === k ? " on" : ""}`}
+                  onClick={() => { const next = state === k ? null : k; setState(next); save({ state: next }); }}>
+            {STATE_LABEL[k]}
+          </button>
+        ))}
+      </span>
+      {note && <em className="v3-ctl-myday-n" role="status">{note}</em>}
+    </form>
   );
 }

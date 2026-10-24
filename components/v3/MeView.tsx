@@ -16,6 +16,7 @@
 // 화면이 또 불러오면 셸의 이름표와 이 화면이 다른 것을 말할 수 있다.
 import { useState } from "react";
 import { Card, Button } from "./parts";
+import ClaudeConnect from "./ClaudeConnect";
 
 export default function MeView({
   name, email, roleLabel, team,
@@ -102,6 +103,8 @@ export default function MeView({
         </div>
         {msg && <p className={ok ? "v3-why" : "v3-err v3-newerr"} role="status">{msg}</p>}
       </Card>
+
+      <ClaudeConnect />
     </>
   );
 }

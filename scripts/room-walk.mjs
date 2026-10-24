@@ -11,6 +11,7 @@
 //   ⑤ 화면 — 레일의 회의실 → 목록 → 열린 회의 → 엔터로 안건이 올라간다 · 영상은 눌러야 켜진다
 //   ⑥ 끝내기 — 회의록이 굳고 참석자 각자의 내 기록에 「회의」 한 줄 · 끝난 뒤 올리기는 409
 //   ⑦ 옛 주소 `/huddle` → 회의실
+//   ⑩ 결정 찾기 — 확정한 결정이 낱말로 찾아진다 · 없는 낱말은 0건 · 목록 화면에서 치면 걸러진다
 //   ⑧ 좁은 화면(390px)에서 옆으로 안 넘친다
 //   ⑨ 콘솔 오류 0 (영상 iframe 이 밖으로 못 나가서 내는 소리는 뺀다 — 검사 브라우저는 프록시가 없다)
 //
@@ -184,6 +185,27 @@ try {
   await shot(page, { path: `${OUT}/R4-회의록.png`, fullPage: true });
   chk("⑥-회의록-화면", minutes.includes("업로드 한도 100MB") && minutes.includes("덱 나눠 올리기"),
       `회의록에 결정 · 할 일 ${minutes.includes("업로드 한도 100MB") && minutes.includes("덱 나눠 올리기") ? "보임" : "안 보임"}`);
+
+  // ── ⑩ 결정 찾기 ─────────────────────────────────────────────────
+  const hit = await api(member, "GET", `/api/meetings/decisions?q=${encodeURIComponent("업로드 한도")}`);
+  const miss = await api(member, "GET", `/api/meetings/decisions?q=${encodeURIComponent("zzqq없는말")}`);
+  const pct = await api(member, "GET", `/api/meetings/decisions?q=${encodeURIComponent("%")}`);
+  const found = (hit.data?.decisions ?? []).filter((d) => d.body.includes(MARK));
+  chk("⑩-결정-찾기-API", hit.status === 200 && found.length === 1 && found[0].meetingId === mid
+      && miss.data?.decisions?.length === 0 && !(pct.data?.decisions ?? []).some((d) => d.body.includes(MARK)),
+      `「업로드 한도」 ${found.length}건(이 회의 ${found[0]?.meetingId === mid}) · 없는 말 ${miss.data?.decisions?.length}건 · 「%」 그대로 찾기 ${pct.status}`);
+  await page.goto(`${BASE}/v3/room`, { waitUntil: "networkidle" });
+  await page.locator(".v3-room-dec").waitFor({ timeout: 9000 });
+  const decBefore = await page.locator(".v3-room-dec li").filter({ hasText: "업로드 한도" }).count();
+  await page.locator('.v3-room-dec input[type="search"]').fill("zzqq없는말");
+  await page.waitForTimeout(1200);
+  const decGone = await page.locator(".v3-room-dec li").count();
+  await page.locator('.v3-room-dec input[type="search"]').fill("업로드");
+  await page.waitForTimeout(1200);
+  const decBack = await page.locator(".v3-room-dec li").filter({ hasText: "업로드 한도" }).count();
+  await shot(page, { path: `${OUT}/R5-결정찾기.png`, fullPage: true });
+  chk("⑩-결정-찾기-화면", decBefore === 1 && decGone === 0 && decBack === 1,
+      `처음 ${decBefore}건 · 없는 말 ${decGone}건 · 「업로드」 ${decBack}건`);
 
   // ── ⑦ 옛 주소 ──────────────────────────────────────────────────
   await page.goto(`${BASE}/huddle`, { waitUntil: "networkidle" });

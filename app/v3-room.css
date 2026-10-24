@@ -163,3 +163,4 @@ a.v3-room-b:hover { color: var(--v3-rail); }
   .v3-room-dot, .v3-room-it { animation: none; }
   .v3-room-tile, .v3-room-p { transition: none; }
 }
+.v3-room-dec .v3-room-in { margin-bottom: 4px; }

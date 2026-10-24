@@ -9,6 +9,7 @@ import { queryOne } from "@/lib/db";
 import { roleLabel } from "@/lib/types";
 import { TEAM_NAME } from "@/lib/brand";
 import MeView from "@/components/v3/MeView";
+import "../../v3-connect.css";
 
 export const dynamic = "force-dynamic";
 
