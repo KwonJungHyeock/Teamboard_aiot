@@ -289,3 +289,22 @@ export async function hideCategory(ownerId: number, id: number): Promise<boolean
   );
   return true;
 }
+
+/**
+ * 그 달에 **내가 끝낸 업무** — 업무일지 스트림 · 월간 보고 재료에 「완료」 줄로 함께 보인다(2026-10 리디자인).
+ * work_log 에 따로 적지 않는다(읽을 때 합친다). 카테고리는 업무의 영역(area) 이름.
+ */
+export interface DoneTask { id: number; title: string; areaName: string; completedAt: string; loggedOn: string }
+export async function doneTasksOfMonth(ownerId: number, month: string): Promise<DoneTask[]> {
+  const rows = await query<{ id: number; title: string; area_name: string; completed_at: string; day: string }>(
+    `SELECT t.id, t.title, ar.name AS area_name, t.completed_at::text,
+            (t.completed_at AT TIME ZONE 'Asia/Seoul')::date::text AS day
+       FROM task t JOIN area ar ON ar.id = t.area_id
+      WHERE t.is_active AND t.assignee_id = $1 AND t.status = 'done' AND t.completed_at IS NOT NULL
+        AND (t.completed_at AT TIME ZONE 'Asia/Seoul')::date >= $2::date
+        AND (t.completed_at AT TIME ZONE 'Asia/Seoul')::date < ($2::date + interval '1 month')
+      ORDER BY t.completed_at DESC LIMIT 300`,
+    [ownerId, `${month}-01`]
+  );
+  return rows.map((r) => ({ id: r.id, title: r.title, areaName: r.area_name, completedAt: r.completed_at, loggedOn: r.day }));
+}
