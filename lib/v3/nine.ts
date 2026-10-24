@@ -66,6 +66,12 @@ export const NINE: NineScreen[] = [
    * `/v3/room/12` 처럼 회의 번호가 붙으므로 prefix 다.
    */
   { n: 13, key: "room", label: "회의실", path: `${V3_BASE}/room`, prefix: true },
+  /*
+   * ── 열네 번째 (2026-10) — 설정 ───────────────────────────────────
+   * 옛 「설정」을 지우고 나니 가오픈 날짜 · 진척 편집자 · Notion 을 바꿀 화면이 없었다.
+   * 팀장부터 연다(화면이 막는다 — 팀원은 이유와 함께 관제로).
+   */
+  { n: 14, key: "settings", label: "설정", path: `${V3_BASE}/settings` },
 ];
 
 /** 새 화면 스위치 자리. **스위치가 꺼져 있어도** 관리자에게는 열린다(`app/v3/layout.tsx`) */
@@ -150,4 +156,5 @@ export const RAIL: RailGroup[] = [
 export const ACCOUNT_LINKS: RailItem[] = [
   { label: "내 정보", href: `${V3_BASE}/me` },
   { label: "구성원", href: `${V3_BASE}/members`, admin: true },
+  { label: "설정", href: `${V3_BASE}/settings`, lead: true },
 ];

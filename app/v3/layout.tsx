@@ -18,6 +18,7 @@ import { PATH_HEADER } from "@/middleware";
 import V3Shell from "@/components/v3/Shell";
 import "../v3.css";
 import "../v3-space.css";
+import "../v3-bell.css";
 
 // 스위치는 **요청마다** 읽는다. 빌드 때 굳으면 끄는 데 배포가 든다 —
 // 「되돌리기는 스위치 하나」가 거짓이 된다.

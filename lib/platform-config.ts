@@ -79,6 +79,12 @@ export async function getProgressEditorId(): Promise<number | null> {
 }
 
 export async function setProgressEditorId(actorId: number | null): Promise<void> {
+  // 비우기는 행을 지운다 — `to_jsonb(NULL)` 은 NULL 이라 NOT NULL 칸에 못 들어간다
+  // (2026-10 설정 화면에서 「지정 안 함」 저장이 500 이던 것). 행이 없으면 읽는 쪽이 null 로 본다.
+  if (actorId === null) {
+    await query(`DELETE FROM config WHERE key = $1`, [PROGRESS_EDITOR_KEY]);
+    return;
+  }
   await query(
     `INSERT INTO config (key, value) VALUES ($1, to_jsonb($2::int))
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
