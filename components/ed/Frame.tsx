@@ -7,7 +7,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { MENU } from "@/lib/v3/nine";
 import { V3_BASE } from "@/lib/v3/routes";
-import { DENIED_PARAM } from "@/lib/denied";
+import { DENIED_PARAM, deniedReason } from "@/lib/denied";
 import { ago, initial } from "@/lib/ed/core";
 import { KIND_LABEL, type ActivityKind } from "@/lib/activity-kinds";
 import TaskDrawer from "./TaskDrawer";
@@ -163,21 +163,18 @@ function LiveTicker() {
   );
 }
 
-/** 권한 없는 화면에서 돌아왔을 때 한 줄(`?denied=`) — 닫으면 주소에서도 뺀다 */
+/** 권한 없는 화면에서 돌아왔을 때 — 그 이유 한 줄(lib/denied). 닫을 때까지 남고, 닫으면 주소에서도 뺀다 */
 function DeniedToast() {
   const sp = useSearchParams();
   const router = useRouter();
   const path = usePathname();
-  const k = sp.get(DENIED_PARAM);
-  useEffect(() => {
-    if (!k) return;
-    const t = setTimeout(() => {
-      const q = new URLSearchParams(sp.toString()); q.delete(DENIED_PARAM);
-      router.replace(q.toString() ? `${path}?${q}` : path, { scroll: false });
-    }, 3200);
-    return () => clearTimeout(t);
-  }, [k, sp, router, path]);
-  return k ? <div className="ed-toast" role="status">권한이 없는 화면입니다</div> : null;
+  const reason = deniedReason(sp.toString());
+  if (!reason) return null;
+  const close = () => {
+    const q = new URLSearchParams(sp.toString()); q.delete(DENIED_PARAM);
+    router.replace(q.toString() ? `${path}?${q}` : path, { scroll: false });
+  };
+  return <div className="ed-toast dnote" role="status">{reason}<button type="button" className="dnote-x" onClick={close} aria-label="닫기">✕</button></div>;
 }
 
 function DrawerHost() {
