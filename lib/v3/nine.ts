@@ -72,6 +72,11 @@ export const NINE: NineScreen[] = [
    * 팀장부터 연다(화면이 막는다 — 팀원은 이유와 함께 관제로).
    */
   { n: 14, key: "settings", label: "설정", path: `${V3_BASE}/settings` },
+  /*
+   * ── 열다섯 번째 (2026-10) — 캘린더 ─────────────────────────────────
+   * 화면은 046 부터 있었고 「주 보기가 없어 반쪽」이라 잠가 뒀다. 주 보기 · 내 것만을 더해 연다.
+   */
+  { n: 15, key: "calendar", label: "캘린더", path: `${V3_BASE}/calendar` },
 ];
 
 /** 새 화면 스위치 자리. **스위치가 꺼져 있어도** 관리자에게는 열린다(`app/v3/layout.tsx`) */
@@ -132,7 +137,7 @@ export interface RailGroup { title: string; items: RailItem[] }
  *   · 대시보드 · 팀 · 집계 → 관제가 대신하고, 관제 머리의 작은 링크로 간다
  *   · 내 정보 · 구성원 · 새 화면 스위치 → 아래 계정 블록(`ACCOUNT_LINKS`)
  *   · 캘린더 · 프로젝트 · 영역 · 설정(자물쇠) → 아직 없는 화면이라 뺐다
- * 회의실은 자물쇠로 자리만 보여 두다가 2026-10 회의실(0038)에서 열었다.
+ * 회의실은 자물쇠로 자리만 보여 두다가 2026-10 회의실(0038)에서 열었다. 캘린더는 주 보기를 더해 2026-10 에 다시 넣었다.
  */
 export const RAIL: RailGroup[] = [
   {
@@ -144,6 +149,7 @@ export const RAIL: RailGroup[] = [
       { label: "내 기록", href: `${V3_BASE}/log` },
       { label: "업무 목록", href: `${V3_BASE}/tasks` },
       { label: "목표", href: `${V3_BASE}/goals` },
+      { label: "캘린더", href: `${V3_BASE}/calendar` },
       { label: "회의실", href: `${V3_BASE}/room` },
     ],
   },

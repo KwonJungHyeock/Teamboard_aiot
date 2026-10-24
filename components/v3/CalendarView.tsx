@@ -26,6 +26,7 @@ import { areaOf, type AreaView } from "@/lib/v3/category";
 import {
   parseMonth, shiftMonth, monthLabel, monthGrid, inMonth, byDay, cellItems,
   noDueSplit, monthCount, openDay, dayList, WEEKDAYS, CELL_MAX,
+  parseWeek, shiftWeek, weekDays, weekLabel, weekStart, dayLabel,
 } from "@/lib/v3/calendar";
 import { taskHref } from "@/lib/v3/routes";
 // 067 §A-2 — 옛 화면으로 나가는 자리를 막음 화면으로 돌린다
@@ -34,8 +35,8 @@ import { notYetHref } from "@/lib/v3/not-yet";
 interface Tally { before: number; after: number; none: number; excludedDone: number }
 
 export default function CalendarView({
-  today, openAtMs, areas, isLead,
-}: { today: string; openAtMs: number; areas: AreaView[]; isLead: boolean }) {
+  today, openAtMs, areas, isLead, meId,
+}: { today: string; openAtMs: number; areas: AreaView[]; isLead: boolean; meId: number }) {
   const router = useRouter();
   const sp = useSearchParams();
   const [tasks, setTasks] = useState<TodayTask[] | null>(null);
@@ -66,14 +67,24 @@ export default function CalendarView({
 
   // 보고 있는 달은 **주소에 담긴다** — 그대로 공유된다(지시 §C).
   const ym = parseMonth(sp.get("m"), today);
+  // 2026-10 — 주 보기 · 내 것만. 둘 다 주소에 담긴다(`?v=week&w=일요일` · `?mine=1`)
+  const isWeek = sp.get("v") === "week";
+  const wk = parseWeek(sp.get("w"), today);
+  const mine = sp.get("mine") === "1";
 
-  const goMonth = useCallback((next: string) => {
+  const setQ = useCallback((edit: (q: URLSearchParams) => void) => {
     const q = new URLSearchParams(sp.toString());
-    // 이번 달은 주소에 안 적는다. 기본값을 적으면 「돌아온 자리」가 두 개가 된다.
-    if (next === today.slice(0, 7)) q.delete("m"); else q.set("m", next);
+    edit(q);
     setOpenCells(new Set());
     router.replace(q.toString() ? `?${q}` : "?", { scroll: false });
-  }, [router, sp, today]);
+  }, [router, sp]);
+  const goMonth = useCallback((next: string) => setQ((q) => {
+    // 이번 달은 주소에 안 적는다. 기본값을 적으면 「돌아온 자리」가 두 개가 된다.
+    if (next === today.slice(0, 7)) q.delete("m"); else q.set("m", next);
+  }), [setQ, today]);
+  const goWeek = useCallback((next: string) => setQ((q) => {
+    if (next === weekStart(today)) q.delete("w"); else q.set("w", next);
+  }), [setQ, today]);
 
   useEffect(() => {
     fetch("/api/tasks")
@@ -91,9 +102,12 @@ export default function CalendarView({
   }, [isLead]);
 
   const weeks = useMemo(() => monthGrid(ym), [ym]);
-  const days = useMemo(() => byDay(tasks ?? []), [tasks]);
-  const noDue = useMemo(() => noDueSplit(tasks ?? []), [tasks]);
-  const thisMonth = useMemo(() => monthCount(tasks ?? [], ym), [tasks, ym]);
+  const shownTasks = useMemo(() => (mine ? (tasks ?? []).filter((t) => t.assigneeId === meId) : (tasks ?? [])), [tasks, mine, meId]);
+  const days = useMemo(() => byDay(shownTasks), [shownTasks]);
+  const week = useMemo(() => weekDays(wk), [wk]);
+  const weekCount = useMemo(() => week.reduce((n, d) => n + (days.get(d)?.length ?? 0), 0), [week, days]);
+  const noDue = useMemo(() => noDueSplit(shownTasks), [shownTasks]);
+  const thisMonth = useMemo(() => monthCount(shownTasks, ym), [shownTasks, ym]);
   const open = useMemo(() => openDay(openAtMs), [openAtMs]);
 
   return (
@@ -145,29 +159,78 @@ export default function CalendarView({
 
       <Card>
         <div className="v3-calbar">
-          <Button className="v3-sortbtn" onClick={() => goMonth(shiftMonth(ym, -1))}>◂ 지난달</Button>
-          <b className="v3-calm">{monthLabel(ym)}</b>
-          <span className="v3-sub">
-            {tasks === null ? "불러오는 중…" : `${thisMonth}건`}
+          <span className="v3-calv" role="tablist" aria-label="보기">
+            <button type="button" role="tab" aria-selected={!isWeek} onClick={() => setQ((q) => q.delete("v"))}>달</button>
+            <button type="button" role="tab" aria-selected={isWeek} onClick={() => setQ((q) => q.set("v", "week"))}>주</button>
           </span>
-          <span className="v3-chips-sp" />
-          {/* 오늘로 돌아오는 자리. 달을 몇 번 넘기면 돌아오는 길이 없다. */}
-          {ym !== today.slice(0, 7) && (
-            <Button className="v3-sortbtn" onClick={() => goMonth(today.slice(0, 7))}>이번 달</Button>
+          <button type="button" className={`v3-calmine${mine ? " on" : ""}`} aria-pressed={mine}
+                  onClick={() => setQ((q) => (mine ? q.delete("mine") : q.set("mine", "1")))}>내 것만</button>
+          {isWeek ? (
+            <>
+              <Button className="v3-sortbtn" onClick={() => goWeek(shiftWeek(wk, -1))}>◂ 지난주</Button>
+              <b className="v3-calm">{weekLabel(wk)}</b>
+              <span className="v3-sub">{tasks === null ? "불러오는 중…" : `${weekCount}건`}</span>
+              <span className="v3-chips-sp" />
+              {wk !== weekStart(today) && <Button className="v3-sortbtn" onClick={() => goWeek(weekStart(today))}>이번 주</Button>}
+              <Button className="v3-sortbtn" onClick={() => goWeek(shiftWeek(wk, 1))}>다음주 ▸</Button>
+            </>
+          ) : (
+            <>
+              <Button className="v3-sortbtn" onClick={() => goMonth(shiftMonth(ym, -1))}>◂ 지난달</Button>
+              <b className="v3-calm">{monthLabel(ym)}</b>
+              <span className="v3-sub">
+                {tasks === null ? "불러오는 중…" : `${thisMonth}건`}
+              </span>
+              <span className="v3-chips-sp" />
+              {/* 오늘로 돌아오는 자리. 달을 몇 번 넘기면 돌아오는 길이 없다. */}
+              {ym !== today.slice(0, 7) && (
+                <Button className="v3-sortbtn" onClick={() => goMonth(today.slice(0, 7))}>이번 달</Button>
+              )}
+              <Button className="v3-sortbtn" onClick={() => goMonth(shiftMonth(ym, 1))}>다음달 ▸</Button>
+            </>
           )}
-          <Button className="v3-sortbtn" onClick={() => goMonth(shiftMonth(ym, 1))}>다음달 ▸</Button>
         </div>
+
+        {/* ── 주 보기 — 접지 않는다. 좁으면 이레가 위아래로 흐른다 ── */}
+        {isWeek && (
+          <div className={narrow ? "v3-daylist" : "v3-calwk"} role={narrow ? undefined : "grid"} aria-label={weekLabel(wk)}>
+            {week.map((date, i) => {
+              const rows = days.get(date) ?? [];
+              return (
+                <section key={date} className={`v3-calwk-d${date === today ? " today" : ""}${date === open ? " open" : ""}`}>
+                  <header className="v3-calwk-h">
+                    <b>{WEEKDAYS[i]} {Number(date.slice(5, 7))}.{Number(date.slice(8))}</b>
+                    {date === today && <em className="v3-day-tag">오늘</em>}
+                    {date === open && <em className="v3-cal-open">가오픈</em>}
+                    <span className="v3-day-n">{rows.length ? `${rows.length}건` : ""}</span>
+                  </header>
+                  {rows.map((t) => {
+                    const a = areaOf(areas, t.areaId);
+                    return (
+                      <Link key={t.id} className={`v3-pill v3-calwk-p ${a?.tone ?? "etc"}${t.status === "done" ? " done" : ""}`}
+                            href={taskHref(t.id)} title={`${t.title}${a ? ` · ${a.name}` : ""} · ${dayLabel(date)}`}>
+                        <span>{t.title}</span>
+                        {t.assigneeName && !mine && <em>{t.assigneeName}</em>}
+                      </Link>
+                    );
+                  })}
+                  {rows.length === 0 && <p className="v3-calwk-e">—</p>}
+                </section>
+              );
+            })}
+          </div>
+        )}
 
         {/* 뷰가 바뀐 사실을 **적는다.** 월 그리드를 찾던 사람이 없어졌다고
             여기면 안 된다 — 화면이 스스로 무엇을 하고 있는지 말한다. */}
-        {narrow && (
+        {!isWeek && narrow && (
           <p className="v3-why v3-calnote">
             {/* 별표를 쓰지 않는다 — 여기는 마크다운이 아니라 글자 그대로 찍힌다. */}
             폭이 좁아 <b>날짜별 목록</b>으로 보입니다. 월 그리드는 화면이 넓어지면 돌아옵니다.
           </p>
         )}
 
-        {narrow ? (
+        {isWeek ? null : narrow ? (
           <div className="v3-daylist">
             {dayList(days, ym, today, open).map((d) => (
               <section className="v3-day" key={d.date}>
@@ -251,7 +314,7 @@ export default function CalendarView({
         )}
       </Card>
 
-      {tasks !== null && thisMonth === 0 && (
+      {tasks !== null && !isWeek && thisMonth === 0 && (
         <Card>
           <Empty
             title={`${monthLabel(ym)}에 기한인 업무가 없어요`}

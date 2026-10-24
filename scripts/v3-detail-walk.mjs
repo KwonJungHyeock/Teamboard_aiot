@@ -539,7 +539,8 @@ try {
     const openLabel = (await openCell.locator(".v3-cal-open").innerText().catch(() => "")).trim();
     const openCellN = (await openCell.locator(".v3-cal-dn").innerText().catch(() => "")).trim();
     chk("⑮-오늘-파란-동그라미-·-가오픈-글자",
-        dnBg === "rgb(47, 95, 232)" && todayN === String(Number(today.slice(8)))
+        // 공간 모드(2026-10 기본)에서 --v3-rail 은 #2348B8 — 둘 다 「레일 파랑」이다
+        ["rgb(47, 95, 232)", "rgb(35, 72, 184)"].includes(dnBg) && todayN === String(Number(today.slice(8)))
         && openLabel === "가오픈" && openCellN === String(openDayN),
         `오늘 ${todayN}일 배경 ${dnBg} (= --v3-rail) · 가오픈 ${openYm}-${openCellN} "${openLabel}"`);
 

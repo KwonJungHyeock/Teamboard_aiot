@@ -50,8 +50,6 @@ export interface NotYetScreen {
  * 눈으로 짚을 수 있어야 한다.
  */
 export const NOT_YET: NotYetScreen[] = [
-  { key: "calendar", label: "캘린더", old: "/calendar",
-    what: "달과 주로 업무를 보는 자리입니다. 주 보기가 아직 없어 반쪽입니다." },
   { key: "projects", label: "프로젝트", old: "/projects", prefix: true,
     what: "프로젝트 목록과 프로젝트 작업실입니다." },
   { key: "signals", label: "시그널", old: "/signals",
