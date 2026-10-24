@@ -1,0 +1,106 @@
+/* 목표 관리 (goals.dc.html · DESIGN.md 5.7) */
+@keyframes golBranch { from { transform: scaleY(0) } to { transform: scaleY(1) } }
+@keyframes golDetA { from { opacity: 0; transform: translateX(16px) } to { opacity: 1; transform: none } }
+@keyframes golDetB { from { opacity: 0; transform: translateX(16px) } to { opacity: 1; transform: none } }
+
+.gol { flex: 1; min-height: 0; margin-top: 0; display: flex; flex-direction: column; gap: 16px; }
+.gol-head { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.gol-head .l { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.gol-head .r { display: flex; align-items: center; gap: 14px; font-size: 12px; font-weight: 600; color: var(--sub); }
+.gol-seg button { font-weight: 600; padding: 7px 14px; }
+.gol-legend { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.gol-legend i { width: 2px; height: 12px; border-radius: 2px; background: var(--ink); opacity: .6; }
+.gol-new { padding: 9px 14px; }
+.gol-newpop { width: 320px; gap: 12px; }
+.gol-newpop .ft { display: flex; align-items: center; gap: 10px; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--faint); }
+.gol-newpop .ft span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.gol-main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 420px; gap: 16px; }
+.gol-tree { position: relative; min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 22px; background: var(--surface); box-shadow: var(--elev1); overflow: hidden; animation: qIn .55s var(--ease) backwards; }
+.gol-tree > .in { flex: 1; min-height: 0; overflow: auto; padding: 12px 12px 16px; }
+.gol-grp { display: flex; align-items: center; gap: 8px; padding: 6px 10px; animation: rowIn .45s var(--ease) backwards; }
+.gol-grp span { font-size: 12px; font-weight: 700; letter-spacing: .02em; color: var(--faint); }
+.gol-grp i { flex: 1; height: 1px; background: var(--line); }
+.gol-row { position: relative; display: grid; grid-template-columns: var(--ind,0px) minmax(220px,.9fr) minmax(260px,1.4fr) 44px; gap: 18px; align-items: center; min-height: 62px; padding: 8px 14px 8px 10px; border-radius: 14px; cursor: pointer; outline: 0;
+  animation: rowIn .45s var(--ease) backwards; transition: background .2s, box-shadow .2s; }
+.gol-row:hover, .gol-row:focus-visible { background: var(--panel2); }
+.gol-row.on { background: var(--panel2); }
+.gol-row.plan { opacity: .65; }
+.gol-row .br { position: relative; height: 100%; }
+.gol-row .br span { position: absolute; right: 6px; top: -12px; width: 12px; height: calc(50% + 12px); border-left: 1.5px solid var(--line); border-bottom: 1.5px solid var(--line); border-bottom-left-radius: 8px;
+  transform-origin: top; animation: golBranch .5s var(--ease) backwards; }
+.gol-row .nm { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.gol-row .t1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.gol-row .sc, .gol-det .sc { flex-shrink: 0; display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; }
+.gol-pips { display: flex; gap: 2px; }
+.gol-pips i { width: 3px; height: 10px; border-radius: 2px; display: block; }
+.gol-pips.lgp i { width: 4px; height: 12px; }
+.gol-row .tt { min-width: 0; font-size: 14px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gol-row .tt.top { font-size: 15px; font-weight: 700; }
+.gol-row .mt { font-size: 12px; color: var(--faint); white-space: nowrap; }
+.gol-row .ga { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.gol-row .bar { position: relative; height: 10px; }
+.gol-row .tr { position: absolute; inset: 2px 0; border-radius: 99px; background: var(--panel2); overflow: hidden; }
+.gol-row.on .tr, .gol-row:hover .tr { background: color-mix(in oklch, var(--line) 80%, var(--panel2)); }
+.gol-row .fl { height: 100%; border-radius: 99px; transition: width 1.2s var(--ease); }
+.gol-row .ex { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; border-radius: 2px; background: var(--ink); opacity: .45; }
+.gol-row .st { font-size: 11px; font-weight: 600; }
+.gol-row .pc { text-align: right; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.gol-det { position: relative; min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 22px; background: var(--surface); box-shadow: var(--elev2); overflow: hidden; animation: qIn .55s var(--ease) .08s backwards; }
+.gol-det > .in { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 20px; padding: 22px; }
+.gol-det > .in.detA { animation: golDetA .4s var(--ease) backwards; }
+.gol-det > .in.detB { animation: golDetB .4s var(--ease) backwards; }
+.gol-det .hd { display: flex; flex-direction: column; gap: 8px; }
+.gol-det .hd .mt { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--faint); }
+.gol-det .hd .sc { font-weight: 700; }
+.gol-det .hd .tt { font-size: 20px; font-weight: 700; letter-spacing: -.02em; line-height: 1.35; }
+.gol-det .up { align-self: flex-start; border: 0; background: transparent; cursor: pointer; font-size: 12px; font-weight: 600; padding: 0; color: var(--sub); }
+.gol-det .up:hover { color: var(--ink); }
+.gol-det .pg { display: flex; flex-direction: column; gap: 10px; }
+.gol-det .big { display: flex; align-items: baseline; gap: 10px; }
+.gol-det .big span { font-size: 24px; font-weight: 600; }
+.gol-det .big em { font-style: normal; font-size: 13px; font-weight: 600; }
+.gol-det .sbar { position: relative; display: flex; height: 10px; gap: 2px; border-radius: 99px; background: var(--panel2); box-shadow: var(--sunken); }
+.gol-det .sbar span { display: block; border-radius: 3px; transition: flex-grow .8s var(--ease); }
+.gol-det .sbar span:first-child { border-top-left-radius: 99px; border-bottom-left-radius: 99px; }
+.gol-det .sbar span:last-of-type { border-top-right-radius: 99px; border-bottom-right-radius: 99px; }
+.gol-det .sbar i { position: absolute; top: -5px; width: 2px; height: 20px; margin-left: -1px; border-radius: 2px; background: var(--ink); }
+.gol-det .lg { display: flex; gap: 14px; flex-wrap: wrap; }
+.gol-det .lg span { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--sub); }
+.gol-det .lg i { width: 7px; height: 7px; border-radius: 2px; display: block; }
+.gol-det .lg b { font-weight: 700; color: var(--ink); }
+.gol-det .kids { display: flex; flex-direction: column; gap: 6px; }
+.gol-det .kids button { border: 0; cursor: pointer; text-align: left; display: grid; grid-template-columns: minmax(0,1fr) 60px 36px; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 10px;
+  background: var(--panel2); box-shadow: var(--sunken); color: var(--ink); }
+.gol-det .kids .t { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gol-det .kids .b { height: 4px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.gol-det .kids .b span { display: block; height: 100%; }
+.gol-det .kids .p { text-align: right; font-size: 12px; font-weight: 600; color: var(--sub); }
+.gol-det .tasks { display: flex; flex-direction: column; gap: 2px; }
+.gol-det .th { display: flex; align-items: center; justify-content: space-between; padding-bottom: 6px; }
+.gol-link { border: 0; background: transparent; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--accent); padding: 0; }
+.gol-link:hover { text-decoration: underline; }
+.gol-linkpop { width: 320px; max-height: 360px; }
+.gol-linkpop .ed-input { margin-bottom: 4px; }
+.gol-linkpop button { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; white-space: normal; }
+.gol-linkpop .t { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gol-linkpop em { font-style: normal; font-size: 12px; font-weight: 500; color: var(--faint); }
+.gol-det .tk { display: grid; grid-template-columns: 8px minmax(0,1fr) auto auto; gap: 10px; align-items: center; min-height: 40px; padding: 6px; border-radius: 10px; cursor: pointer; outline: 0;
+  animation: rowIn .35s var(--ease) backwards; }
+.gol-det .tk:hover, .gol-det .tk:focus-visible { background: var(--panel2); }
+.gol-det .tk > i { width: 7px; height: 7px; border-radius: 50%; display: block; }
+.gol-det .tk .t { min-width: 0; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+.gol-det .tk .t.done { color: var(--faint); text-decoration: line-through; }
+.gol-det .tk .w { font-size: 12px; color: var(--faint); }
+.gol-det .tk .d { min-width: 52px; text-align: right; font-size: 12px; font-weight: 600; }
+
+@media (max-width: 1259px) and (min-width: 980px) {
+  .gol-row { grid-template-columns: var(--ind,0px) minmax(150px,1fr) minmax(110px,1fr) 44px; gap: 14px; }
+}
+@media (max-width: 979px) {
+  .gol-main { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 979px), (max-height: 699px) { .gol-tree, .gol-det { min-height: 420px; } }
+.gol-newpop .ed-seg button { background: transparent; box-shadow: none; color: var(--sub); font-size: 13px; padding: 7px 10px; border-radius: 9px; justify-content: center; }
+.gol-newpop .ed-seg button.on { background: var(--surface); box-shadow: var(--elev1); color: var(--ink); }

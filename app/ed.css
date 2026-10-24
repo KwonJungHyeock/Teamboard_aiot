@@ -294,8 +294,8 @@ textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; bord
 .ed-optpop .og { display: flex; flex-direction: column; gap: 8px; }
 .ed-optpop .og > span { font-size: 12px; font-weight: 700; color: var(--faint); }
 .ed-optpop .og > div { display: flex; gap: 4px; flex-wrap: wrap; }
-.ed-optpop button { border: 0; cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 9px; background: var(--panel2); box-shadow: var(--sunken); color: var(--sub); display: flex; align-items: center; gap: 5px; white-space: nowrap; }
-.ed-optpop button.on { background: var(--ink); color: var(--bg); box-shadow: none; }
+.ed-optpop .og button { border: 0; cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 9px; background: var(--panel2); box-shadow: var(--sunken); color: var(--sub); display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ed-optpop .og button.on { background: var(--ink); color: var(--bg); box-shadow: none; }
 
 /* 알림 목록(계정 메뉴 › 알림) */
 .ed-note { border: 0; background: transparent; cursor: pointer; text-align: left; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; padding: 11px 10px; border-radius: 12px; color: var(--ink); }
