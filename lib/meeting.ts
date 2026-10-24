@@ -267,3 +267,40 @@ export async function inMeetingNow(): Promise<Map<number, { meetingId: number; t
   );
   return new Map(rows.map((r) => [r.actor_id, { meetingId: r.id, title: r.title }]));
 }
+
+export interface FoundDecision {
+  itemId: number; body: string; votes: number; decidedAt: string;
+  meetingId: number; meetingTitle: string; meetingAt: string; by: string;
+}
+
+/**
+ * 결정 찾기 — 확정한 결정만, 최근 것부터. 「그때 뭐라고 정했지?」에 답하는 자리다.
+ * 열린 회의의 결정도 확정했으면 나온다(회의가 안 끝나도 정한 것은 정한 것).
+ * 낱말은 띄어쓰기로 나눠 **전부** 들어간 것만(결정 본문 · 회의 이름에서).
+ */
+export async function findDecisions(rawQ: unknown, limit = 50): Promise<FoundDecision[]> {
+  const words = String(rawQ ?? "").trim().split(/\s+/).filter(Boolean).slice(0, 5).map((w) => w.slice(0, 40));
+  const params: unknown[] = [];
+  const conds = words.map((w) => {
+    params.push(`%${w.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
+    return `(i.body ILIKE $${params.length} OR m.title ILIKE $${params.length})`;
+  });
+  params.push(Math.min(Math.max(limit, 1), 100));
+  const rows = await query<{
+    id: number; body: string; votes: number; decided_at: string;
+    meeting_id: number; title: string; started_at: string; who: string;
+  }>(
+    `SELECT i.id, i.body, coalesce(jsonb_array_length(i.meta->'votes'), 0) AS votes, i.meta->>'decidedAt' AS decided_at,
+            m.id AS meeting_id, m.title, m.started_at::text, a.display_name AS who
+       FROM meeting_item i JOIN meeting m ON m.id = i.meeting_id JOIN actor a ON a.id = i.created_by
+      WHERE i.is_active AND i.kind = 'decision' AND i.meta ? 'decidedAt'
+        ${conds.length ? `AND ${conds.join(" AND ")}` : ""}
+      ORDER BY i.meta->>'decidedAt' DESC
+      LIMIT $${params.length}`,
+    params
+  );
+  return rows.map((r) => ({
+    itemId: r.id, body: r.body, votes: Number(r.votes), decidedAt: r.decided_at,
+    meetingId: r.meeting_id, meetingTitle: r.title, meetingAt: r.started_at, by: r.who,
+  }));
+}

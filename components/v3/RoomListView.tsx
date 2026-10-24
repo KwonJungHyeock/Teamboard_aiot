@@ -8,6 +8,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, Empty } from "./parts";
 
+interface Decision {
+  itemId: number; body: string; votes: number; decidedAt: string;
+  meetingId: number; meetingTitle: string; meetingAt: string; by: string;
+}
 interface Summary {
   id: number; title: string; status: "live" | "ended"; startedAt: string; endedAt: string | null;
   startedBy: string; present: number; attendees: number; decisions: number; actions: number;
@@ -27,7 +31,7 @@ function minutesOf(a: string, b: string | null): number {
   return Number.isNaN(s) || Number.isNaN(e) ? 0 : Math.max(1, Math.round((e - s) / 60000));
 }
 
-export default function RoomListView({ initial }: { initial: Summary[] }) {
+export default function RoomListView({ initial, decisions }: { initial: Summary[]; decisions: Decision[] }) {
   const router = useRouter();
   const [list, setList] = useState(initial);
   const [title, setTitle] = useState("");
@@ -90,6 +94,8 @@ export default function RoomListView({ initial }: { initial: Summary[] }) {
         ))}
       </section>
 
+      <DecisionFinder initial={decisions} />
+
       <Card title="지난 회의" sub={past.length ? `${past.length}건 · 최근 60일` : undefined}>
         {past.length === 0 ? (
           <Empty title="아직 끝난 회의가 없습니다" why="회의를 끝내면 안건 · 결정 · 할 일 · 링크가 한 장으로 여기 쌓입니다." />
@@ -108,5 +114,48 @@ export default function RoomListView({ initial }: { initial: Summary[] }) {
         )}
       </Card>
     </div>
+  );
+}
+
+/**
+ * 결정 찾기 — 「그때 뭐라고 정했지?」. 확정한 결정만, 최근 것부터.
+ * 치는 동안 0.3초 쉬면 찾는다(엔터를 안 눌러도 된다).
+ */
+function DecisionFinder({ initial }: { initial: Decision[] }) {
+  const [q, setQ] = useState("");
+  const [found, setFound] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    const word = q.trim();
+    if (!word) { setFound(initial); return; }
+    const t = setTimeout(async () => {
+      setBusy(true);
+      const r = await fetch(`/api/meetings/decisions?q=${encodeURIComponent(word)}`).catch(() => null);
+      if (r?.ok) setFound((await r.json()).decisions);
+      setBusy(false);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [q, initial]);
+
+  return (
+    <Card title="결정 찾기" sub={q.trim() ? (busy ? "찾는 중…" : `${found.length}건`) : "최근 확정한 결정"} className="v3-room-dec">
+      <input className="v3-room-in" type="search" value={q} aria-label="결정 찾기"
+             placeholder="낱말로 찾기 — 예: 업로드 한도" onChange={(e) => setQ(e.target.value)} />
+      {found.length === 0 ? (
+        <p className="v3-room-quiet">{q.trim() ? "그런 결정이 없습니다." : "아직 확정한 결정이 없습니다. 회의에서 결정을 확정하면 여기 쌓입니다."}</p>
+      ) : (
+        <ul className="v3-room-past">
+          {found.map((d) => (
+            <li key={d.itemId}>
+              <Link href={`/v3/room/${d.meetingId}`}>
+                <b>{d.body}</b>
+                <span>{d.meetingTitle} · {when(d.decidedAt)}</span>
+                <span className="v3-room-n">찬성 {d.votes}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }
