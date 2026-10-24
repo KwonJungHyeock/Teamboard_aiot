@@ -9,7 +9,7 @@
 
 CREATE TABLE IF NOT EXISTS task_revision (
   id            SERIAL PRIMARY KEY,
-  task_id       INTEGER     NOT NULL REFERENCES task(id),
+  task_id       INTEGER     NOT NULL REFERENCES task(id) ON DELETE CASCADE,
   requester_id  INTEGER     NOT NULL REFERENCES actor(id),
   memo          TEXT        NOT NULL DEFAULT '',
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
