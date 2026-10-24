@@ -81,6 +81,11 @@ export const TOOLS: ToolDef[] = [
       line: { type: "string", description: "오늘 할 일 한 줄. 빈 글자면 지운다" },
       state: { type: "string", enum: ["focus", "out", "off", ""] } } },
   },
+  {
+    name: "get_weekly_brief",
+    description: "팀의 AI 주간 브리핑을 읽는다(관제에 뜨는 것과 같다). week: last(지난주 · 기본) · this(이번 주). 아직 없으면 없다고 답한다 — 만들지는 않는다.",
+    inputSchema: { type: "object", properties: { week: { type: "string", enum: ["last", "this"] } } },
+  },
 ];
 
 const err = (r: { status: number; data: any }, fallback: string) =>
@@ -175,6 +180,14 @@ export async function runTool(name: string, args: Record<string, unknown>, me: {
       if (r.status !== 200) return { text: err(r, "저장하지 못했습니다."), isError: true };
       const n = r.data.note;
       return { text: `오늘 줄을 정했습니다 — ${n.line ?? "(한 줄 없음)"} · 상태 ${({ focus: "집중", out: "외근", off: "휴가" } as any)[n.state] ?? "보통"}` };
+    }
+    case "get_weekly_brief": {
+      const week = args.week === "this" ? "this" : "last";
+      const r = await call(`/api/brief?week=${week}`);
+      if (r.status !== 200) return { text: err(r, "읽지 못했습니다."), isError: true };
+      const b = r.data.brief;
+      if (!b) return { text: `${week === "this" ? "이번 주" : "지난주"}(${r.data.week.start} ~ ${r.data.week.end}) 브리핑이 아직 없습니다. 관제 화면에서 「브리핑 만들기」를 누르면 생깁니다.` };
+      return { text: `주간 브리핑 ${b.weekStart} ~ ${b.weekEnd}${b.demo ? " (데모)" : ""}\n${b.text}` };
     }
     default:
       return { text: `모르는 도구입니다: ${name}`, isError: true };

@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { V3_BASE } from "@/lib/v3/routes";
 import { EMPTY_LIST_QUERY, serializeListQuery } from "@/lib/v3/list-query";
 import { Button } from "./parts";
+import BriefCard from "./BriefCard";
 
 type State = "ok" | "warn" | "late" | "review" | "done";
 interface BoardRow { id: number; title: string; who: string | null; due: string; state: State; progress: number }
@@ -47,6 +48,8 @@ export interface ControlProps {
   quietDays: number;
   meId: number;
   canLead: boolean;
+  /** 지난주 AI 브리핑(없으면 null) — `lib/brief.ts` */
+  brief: React.ComponentProps<typeof BriefCard>["initial"];
   team: string;
   openDay: number | null;
   openDate: string | null;
@@ -293,6 +296,9 @@ export default function ControlView(p: ControlProps) {
           </div>
         ))}
       </section>
+
+      {/* ── AI 주간 브리핑 ─────────────────────────────────────── */}
+      <BriefCard initial={p.brief} canLead={p.canLead} />
 
       {/* ── 방금 일어난 일 ───────────────────────────────────────── */}
       {p.feed.length > 0 && (

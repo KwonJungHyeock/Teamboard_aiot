@@ -5,7 +5,7 @@
 //
 // 묻는 것:
 //   ① 키 — 만들면 한 번만 돌려준다 · 목록에는 앞 글자만 · DB 에는 키 원문이 없다
-//   ② 문 — 키 없음 · 틀린 키는 401 · initialize · tools/list(8개) · 알림은 202
+//   ② 문 — 키 없음 · 틀린 키는 401 · initialize · tools/list(9개) · 알림은 202
 //   ③ 내 기록 — add_worklog(#카테고리) → list_worklog 에 보인다 → update_worklog 로 고친다
 //   ④ 내 업무 — create_task → list_my_tasks → update_task(완료 · 제목) · 활동 기록에 「(Claude)」
 //   ⑤ 남의 것 — 남의 개인 업무 get/update · 남의 기록 update 가 실패한다(화면과 같은 규칙)
@@ -96,7 +96,7 @@ try {
   const tl = await rpc(key, "tools/list", {});
   const names = (tl.data?.result?.tools ?? []).map((t) => t.name);
   chk("②-문", noKey.status === 401 && badKey.status === 401 && init.data?.result?.protocolVersion === "2025-06-18"
-      && note.status === 202 && names.length === 8,
+      && note.status === 202 && names.length === 9,
       `키 없음 ${noKey.status} · 틀린 키 ${badKey.status} · initialize ${init.data?.result?.serverInfo?.name} · 알림 ${note.status} · 도구 [${names.join(",")}]`);
 
   // ── ③ 내 기록 ─────────────────────────────────────────────────

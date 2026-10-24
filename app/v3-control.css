@@ -213,3 +213,29 @@ a.v3-ctl-brow:hover { background: rgba(255, 255, 255, .05); }
 .v3-ctl-mn > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .v3-ctl-mn q.v3-ctl-say { quotes: "“" "”"; font-size: 13px; color: var(--v3-ink); overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── AI 주간 브리핑 ─────────────────────────────────────────────────
+   유리판 하나. 숫자 다섯은 서버가 센 것 — 고정폭으로 단단하게. */
+.v3-brief { position: relative; padding: 20px 24px; border-radius: 28px; background: var(--ctl-glass);
+  border: 1px solid var(--ctl-edge); box-shadow: var(--ctl-depth); }
+.v3-brief-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.v3-brief-h h2 { margin: 0; font-size: 17px; }
+.v3-brief-h em { font-style: normal; font-size: 12.5px; color: var(--v3-ink-2); }
+.v3-brief-h .v3-btn { margin-left: auto; }
+.v3-brief-tabs { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--v3-radius-pill); background: rgba(18, 26, 43, .06); }
+.v3-brief-tabs button { min-height: 28px; padding: 0 12px; border: 0; border-radius: var(--v3-radius-pill); background: none;
+  color: var(--v3-ink-2); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.v3-brief-tabs button[aria-selected="true"] { background: var(--v3-card); color: var(--v3-ink); box-shadow: 0 1px 2px rgba(16, 24, 40, .08); }
+.v3-brief-n { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 16px 0 4px; padding: 0; list-style: none; }
+.v3-brief-n li { display: flex; align-items: baseline; gap: 6px; font-size: 12.5px; color: var(--v3-ink-2); }
+.v3-brief-n b { font-family: var(--ctl-mono); font-size: 22px; font-weight: 600; color: var(--v3-ink); font-variant-numeric: tabular-nums; }
+.v3-brief-n li.late b { color: var(--v3-late); }
+.v3-brief-t { columns: 2 320px; column-gap: 36px; }
+.v3-brief-t h3 { break-after: avoid; margin: 14px 0 4px; font-size: 14px; }
+.v3-brief-t p, .v3-brief-t li { font-size: 14px; line-height: 1.6; color: var(--v3-ink); }
+.v3-brief-t p { margin: 0 0 4px; }
+.v3-brief-t ul { break-inside: avoid; margin: 0; padding-left: 18px; }
+.v3-brief-q { margin: 14px 0 0; font-size: 14px; color: var(--v3-ink-2); }
+.v3-brief-q.err { color: var(--v3-late); }
+.v3-brief-f { margin: 14px 0 0; font-size: 12px; color: var(--v3-ink-2); }
+@media (max-width: 640px) { .v3-brief { padding: 16px; border-radius: 22px; } .v3-brief-h .v3-btn { margin-left: 0; } }
