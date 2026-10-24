@@ -25,7 +25,10 @@ function ago(s: string, now: number): string {
   if (m < 60 * 24) return `${Math.round(m / 60)}시간 전`;
   return `${Math.round(m / 60 / 24)}일 전`;
 }
-const hrefOf = (i: Item) => (i.refType === "task" && i.refId ? taskHref(i.refId) : null);
+const hrefOf = (i: Item) =>
+  i.refType === "task" && i.refId ? taskHref(i.refId)
+  : i.refType === "monthly_report" && i.refId ? `/v3/report?r=${i.refId}`   // 월간 보고(0042) — 그 보고의 달로
+  : null;
 
 export default function Bell() {
   const router = useRouter();
