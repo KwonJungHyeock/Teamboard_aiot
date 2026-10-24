@@ -104,7 +104,11 @@ export function nineOf(pathname: string): NineScreen | null {
   const p = pathname.split("?")[0].replace(/\/+$/, "") || V3_BASE;
   // 긴 것부터 본다. `/v3/tasks/12` 는 상세지 목록이 아니다.
   return [...NINE].sort((a, b) => b.path.length - a.path.length)
-    .find((s) => (s.prefix ? p.startsWith(s.path) || p === s.path.replace(/\/$/, "") : p === s.path)) ?? null;
+    // 2026-10 정련 — 「/v3/tasks/」(상세, 끝이 /)는 「/v3/tasks」(목록)와 **같다고 보지 않는다.**
+    // 그렇게 보면 목록 화면의 위 바 제목이 「업무 상세」가 됐다(390px 캡처로 찾았다).
+    .find((s) => (s.prefix
+      ? p.startsWith(s.path) || (!s.path.endsWith("/") && p === s.path)
+      : p === s.path)) ?? null;
 }
 
 /* ══ 레일 세 묶음 (§0-4) ═══════════════════════════════════════════

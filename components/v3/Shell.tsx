@@ -253,7 +253,6 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
         <main className="v3-main">
           {/* 밀려난 이유 — 옛 셸과 **같은 표**에서 나온다 (053 §B-31).
               스위치가 켜져 있으면 옛 홈이 여기로 다시 보내므로 이 자리도 필요하다. */}
-          <Suspense fallback={null}><DeniedNote /></Suspense>
           {/* 「＋ 새 업무」 — **이 화면의 유일한 자리**다 (056 §A).
               단축키 `C` 도 같은 곳으로 가므로 버튼에 적어 둔다. */}
           <div className="v3-top">
@@ -263,6 +262,8 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
               <kbd className="v3-topkbd">C</kbd>
             </Link>
           </div>
+          {/* 2026-10 정련 — 이유 줄은 위 줄 **아래**에. 위에 두면 종 · 버튼이 제목 줄로 밀려 내려왔다 */}
+          <Suspense fallback={null}><DeniedNote /></Suspense>
           {children}
         </main>
       </div>

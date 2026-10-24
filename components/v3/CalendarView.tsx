@@ -28,9 +28,7 @@ import {
   noDueSplit, monthCount, openDay, dayList, WEEKDAYS, CELL_MAX,
   parseWeek, shiftWeek, weekDays, weekLabel, weekStart, dayLabel,
 } from "@/lib/v3/calendar";
-import { taskHref } from "@/lib/v3/routes";
-// 067 §A-2 — 옛 화면으로 나가는 자리를 막음 화면으로 돌린다
-import { notYetHref } from "@/lib/v3/not-yet";
+import { taskHref, V3_BASE } from "@/lib/v3/routes";
 
 interface Tally { before: number; after: number; none: number; excludedDone: number }
 
@@ -125,7 +123,7 @@ export default function CalendarView({
             {" "}기한 없는 <b>{noDue.total}건</b>은 <b>아무 날에도 안 걸립니다</b>
             {noDue.open !== noDue.total && <> (그중 아직 안 끝난 것 <b>{noDue.open}건</b>)</>}
             {" — "}
-            <Link className="v3-lk" href={notYetHref("open-due")}>가오픈 기한 화면</Link>에서 봅니다.
+            <Link className="v3-lk" href={`${V3_BASE}/tasks?due=none`}>업무 목록 「기한 없음」</Link>에서 봅니다.
           </>
         )}
       </p>
@@ -145,7 +143,7 @@ export default function CalendarView({
             <span className="v3-stat-l">가오픈 이전</span></div>
           <div className="v3-stat"><span className="v3-stat-n">{tally.after}</span>
             <span className="v3-stat-l">가오픈 이후</span></div>
-          <Link className="v3-stat warn v3-stat-lk" href={notYetHref("open-due")}>
+          <Link className="v3-stat warn v3-stat-lk" href={`${V3_BASE}/tasks?due=none`}>
             <span className="v3-stat-n">{tally.none}</span>
             <span className="v3-stat-l">기한 없음 · 목록 보기</span>
           </Link>

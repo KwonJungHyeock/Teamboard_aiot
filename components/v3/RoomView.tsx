@@ -67,7 +67,9 @@ export default function RoomView({ initial, me, lead, domain, people }: {
   const [video, setVideo] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
+  // 시계는 **붙은 뒤에** 돈다 — 서버와 브라우저가 1초 다르게 세면 하이드레이션이 깨진다(2026-10 정련)
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => { setNow(Date.now()); }, []);
   const input = useRef<HTMLInputElement>(null);
 
   const live = m.status === "live";
@@ -149,7 +151,8 @@ export default function RoomView({ initial, me, lead, domain, people }: {
   }, [m.items]);
   const present = m.attendees.filter((a) => a.present);
   const nameOf = (id: unknown) => people.find((p) => p.id === Number(id))?.name ?? "";
-  const elapsed = Math.max(0, Math.floor(((live ? now : ts(m.endedAt)) - ts(m.startedAt)) / 1000)) || 0;
+  const elapsed = live && now === null ? null
+    : Math.max(0, Math.floor(((live ? (now as number) : ts(m.endedAt)) - ts(m.startedAt)) / 1000)) || 0;
   const jitsi = `https://${domain}/${encodeURIComponent(m.room)}#config.prejoinPageEnabled=false`
     + `&userInfo.displayName=${encodeURIComponent(JSON.stringify(me.name))}`;
   const current = items.agenda.find((a) => !a.meta.done);
@@ -166,7 +169,7 @@ export default function RoomView({ initial, me, lead, domain, people }: {
             {" · "}{m.startedBy} 엶 · {seoul(m.startedAt)}
           </span>
         </div>
-        <b className="v3-room-clock" aria-label="회의 시간">{clock(elapsed)}</b>
+        <b className="v3-room-clock" aria-label="회의 시간">{elapsed === null ? "--:--" : clock(elapsed)}</b>
         <div className="v3-room-ppl" aria-label="참석자">
           {m.attendees.map((a) => (
             <span key={a.id} className={`v3-room-p${a.present ? " on" : ""}`} title={`${a.name}${a.present ? " · 접속 중" : ""}`}>

@@ -1,0 +1,25 @@
+/* ══════════════════════════════════════════════════════════════════
+   v3 정련 (2026-10 디자인 디테일업 · 정련 검수) — 화면을 가로지르는 작은 고침만.
+   **토큰을 새로 만들거나 고치지 않는다** — 간격 · 색은 `app/v3.css` 의 것을 쓴다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 카드 사이 간격은 `.v3-card + .v3-card` 만 있었다 — 타일 줄(.v3-stats)이나 두 칸(.v3-two) 다음의
+   카드는 0px 로 붙었다(대시보드 캡처). 그 두 짝에도 카드끼리와 같은 간격을 둔다. */
+.v3 .v3-stats + .v3-card, .v3 .v3-stats + .v3-two,
+.v3 .v3-two + .v3-card, .v3 .v3-two + .v3-two { margin-top: var(--v3-gap); }
+
+@media (max-width: 640px) {
+  /* 내 기록 — 두 줄짜리 안내가 44px 칸에서 잘렸다 */
+  .v3 .v3-log-in { min-height: 72px; }
+
+  /* 관제 머리 — 제목 한 줄, 판독 숫자 넷은 한 줄 네 칸, 가오픈은 그 아래 한 줄 */
+  .v3 .v3-ctl-head { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 8px; align-items: end; }
+  .v3 .v3-ctl-head > .v3-ctl-title { grid-column: 1 / -1; }
+  .v3 .v3-ctl-head .v3-ctl-read b { font-size: 26px; }
+  .v3 .v3-ctl-head .v3-ctl-read span { font-size: 12px; }
+  .v3 .v3-ctl-head > .v3-ctl-dday { grid-column: 1 / -1; margin-left: 0; flex-direction: row; align-items: baseline;
+    justify-content: space-between; }
+}
+
+/* 설정 — 칸 이름이 위 버튼에 붙어 있었다 */
+.v3 .v3-card .v3-cc-k { display: block; margin-top: 16px; }
