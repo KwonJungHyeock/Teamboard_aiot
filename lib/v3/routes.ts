@@ -57,6 +57,8 @@ export const ROUTE_PAIRS: RoutePair[] = [
    */
   { old: "/goals", v3: `${V3_BASE}/goals`, what: "목표 (옛 목표 나무)" },
   { old: "/members", v3: `${V3_BASE}/members`, what: "구성원 (옛 구성원 관리)" },
+  // 2026-10 회의실(0038) — 옛 허들룸 자리를 회의실이 잇는다. 막음 표(`not-yet.ts`)의 허들 줄은 지웠다.
+  { old: "/huddle", v3: `${V3_BASE}/room`, what: "회의실 (옛 허들룸)" },
   // 「새 업무」에는 짝이 되는 **옛 경로가 없다** — 옛 화면에서 등록은 모달이라
   // 주소가 없다. 짝표에 안 적는다: 없는 경로를 적으면 아무도 안 지나가는 규칙이 된다.
 ];

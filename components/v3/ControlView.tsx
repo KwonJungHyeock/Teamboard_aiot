@@ -28,6 +28,7 @@ interface Group { id: number; title: string; progress: number | null; tiles: Til
 interface Person {
   id: number; name: string; role: string | null; nowTitle: string | null; nowId: number | null;
   open: number; late: number; quiet: number; week: number; heavy: boolean; lastSeen: string | null; working: boolean;
+  meeting: { id: number; title: string } | null;
 }
 interface Feed { at: string; kind: "done" | "new" | "touch"; title: string; who: string | null; taskId: number }
 export interface ControlProps {
@@ -266,13 +267,14 @@ export default function ControlView(p: ControlProps) {
       {/* ── 지금 팀 ───────────────────────────────────────────── */}
       <section className="v3-ctl-team" aria-label="지금 팀">
         {p.people.map((m) => (
-          <div key={m.id} className={`v3-ctl-m${m.working ? " working" : ""}${m.heavy || m.late ? " flag" : ""}`}>
+          <div key={m.id} className={`v3-ctl-m${m.working || m.meeting ? " working" : ""}${m.heavy || m.late ? " flag" : ""}`}>
             <span className="v3-ctl-ring" aria-hidden="true">
               <span className="v3-ctl-orbit" />
               <span className="v3-ctl-av">{m.name.slice(0, 1)}</span>
             </span>
             <span className="v3-ctl-mn">
-              <span><b>{m.name}</b> <em>{m.working ? `작업 중 · ${ago(m.lastSeen, now)} 활동` : ago(m.lastSeen, now)}</em></span>
+              <span><b>{m.name}</b> <em>{m.meeting ? "회의 중" : m.working ? `작업 중 · ${ago(m.lastSeen, now)} 활동` : ago(m.lastSeen, now)}</em></span>
+              {m.meeting && <Link className="v3-ctl-mt" href={`${V3_BASE}/room/${m.meeting.id}`}>회의실 · {m.meeting.title}</Link>}
               {m.nowId ? <Link href={`${V3_BASE}/tasks/${m.nowId}`}>{m.nowTitle}</Link> : <i>진행 중인 일 없음</i>}
               <small>진행 {m.open} · 이번 주 마감 {m.week}{m.late ? ` · 지남 ${m.late}` : ""}{m.heavy ? " · 몰림" : ""}</small>
             </span>

@@ -18,6 +18,7 @@
 import { query, queryOne } from "./db";
 import { visibleTaskSql } from "./visibility";
 import { kstToday } from "./home";
+import { inMeetingNow } from "./meeting";
 import { effectiveGoalStatus, elapsedRatio, type GoalStatus } from "./progress";
 
 /** 진행 · 검토인데 이만큼 손이 안 닿았으면 「소식 없음」 */
@@ -48,6 +49,8 @@ export interface ControlPerson {
   heavy: boolean; lastSeen: string | null;
   /** `LIVE_MINUTES` 안에 활동이 있었나 */
   working: boolean;
+  /** 지금 회의실에 들어와 있으면 그 회의 (0038 · `inMeetingNow`) */
+  meeting: { id: number; title: string } | null;
 }
 export interface ControlSignal {
   kind: "late" | "quiet" | "heavy";
@@ -168,12 +171,15 @@ export async function getControl(viewerId: number): Promise<ControlData> {
     [viewerId, today]
   );
 
+  const inMeeting = await inMeetingNow();
   const people: ControlPerson[] = peopleRows.map((p) => {
     const open = Number(p.open), week = Number(p.week);
+    const mt = inMeeting.get(p.id);
     return {
       id: p.id, name: p.name, role: p.role, nowTitle: p.now_title, nowId: p.now_id,
       open, late: Number(p.late), quiet: Number(p.quiet), week,
       heavy: week >= HEAVY_WEEK || open >= HEAVY_OPEN, lastSeen: p.last_seen, working: !!p.working,
+      meeting: mt ? { id: mt.meetingId, title: mt.title } : null,
     };
   });
 

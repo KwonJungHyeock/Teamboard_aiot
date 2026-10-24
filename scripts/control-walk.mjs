@@ -127,8 +127,8 @@ try {
     acct: [...document.querySelectorAll(".v3-rail .v3-acct-a .v3-acct-l")].map((a) => a.textContent.trim()),
   }))()`);
   const leadIsAdmin = lead.role === "admin" || lead.admin_grant === true;
-  // 새 화면 스위치는 2026-10 옛 화면 철거로 거뒀다
-  const wantItems = ["관제", "내 업무", "내 기록", "업무 목록", "목표", "회의실곧"];
+  // 2026-10 회의실(0038)이 열려 자물쇠 「곧」이 빠졌다 · 새 화면 스위치는 옛 화면 철거로 거뒀다
+  const wantItems = ["관제", "내 업무", "내 기록", "업무 목록", "목표", "회의실"];
   const acctOk = railInfo.acct.includes("내 정보") && railInfo.acct.includes("로그아웃")
     && (railInfo.acct.includes("구성원") === leadIsAdmin) && !railInfo.acct.includes("새 화면 스위치");
   await w.locator('.v3-rail a[href="/v3/control"]').click();
