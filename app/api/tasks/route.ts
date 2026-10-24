@@ -88,6 +88,10 @@ export async function GET(request: Request) {
     params.push(session.id);
     const viewerParam = `$${params.length}`;
 
+    // 체크리스트(하위 업무)만 — 업무 상세 드로어가 쓴다 (2026-10 리디자인)
+    const parent = url.searchParams.get("parent");
+    if (parent && /^\d+$/.test(parent)) add("t.parent_task_id = ?", Number(parent));
+
     if (status && (STATUSES as readonly string[]).includes(status)) {
       add("t.status = ?", status);
     } else {

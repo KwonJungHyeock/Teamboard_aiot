@@ -1,0 +1,326 @@
+/*
+ * 통합업무관리 · 디자인 v1.0 — 공통 층 (DESIGN.md 2~4장).
+ *
+ * 토큰 · 배경 · 상단 메뉴바 · 계정 메뉴 · LIVE 티커 · 공통 부품(세그먼트 · 버튼 · 등록창 ·
+ * 드로어 · 체크박스 · 상태 점)을 여기 한 파일에 둔다. 화면마다 다른 것은 `ed-<화면>.css`.
+ * 시안의 인라인 스타일을 그대로 옮겼다 — 수치를 바꿀 때는 시안(.dc.html)과 같이 본다.
+ */
+
+:root {
+  --ringbg: #fbfbfd; --bg: #eceff4; --panel2: #e4e8ef; --ink: #121725; --sub: #586174; --faint: #8b93a3;
+  --line: #dbe0e8; --accent: #2f5bea; --red: #e5484d; --amber: #d98a06; --green: #1fa971;
+  --violet: oklch(.58 .16 295); --rose: oklch(.62 .18 10); --teal: oklch(.6 .1 200);
+  --dot: rgba(18,23,37,.13); --blobA: rgba(47,91,234,.16); --blobB: rgba(31,169,113,.12); --scrim: rgba(18,23,37,.18);
+  --surface: linear-gradient(180deg,#ffffff,#f8f9fb);
+  --elev1: 0 1px 0 rgba(255,255,255,.9) inset,0 1px 2px rgba(16,24,40,.05),0 6px 14px -6px rgba(16,24,40,.12);
+  --elev2: 0 1px 0 #fff inset,0 12px 28px -12px rgba(16,24,40,.16),0 34px 60px -34px rgba(16,24,40,.14);
+  --elev3: 0 1px 0 #fff inset,0 30px 80px -20px rgba(16,24,40,.35);
+  --sunken: inset 0 1px 2px rgba(16,24,40,.08);
+  --glass: rgba(236,239,244,.7);
+  --review: color-mix(in oklch, var(--accent) 45%, var(--panel2));
+  --ease: cubic-bezier(.2,.8,.2,1);
+  --ease-out: cubic-bezier(.4,0,.2,1);
+  color-scheme: light;
+}
+[data-theme=dark] {
+  --ringbg: #151d2f; --bg: #0a0e18; --panel2: #141b2a; --ink: #e9edf6; --sub: #9aa3b7; --faint: #687286;
+  --line: #1f2839; --accent: #6b8cff; --red: #ff5c61; --amber: #f5aa2a; --green: #35c98b;
+  --violet: oklch(.72 .14 295); --rose: oklch(.74 .15 10); --teal: oklch(.75 .09 200);
+  --dot: rgba(233,237,246,.09); --blobA: rgba(107,140,255,.20); --blobB: rgba(53,201,139,.12); --scrim: rgba(0,0,0,.45);
+  --surface: linear-gradient(180deg,#182134,#121929);
+  --elev1: 0 1px 0 rgba(255,255,255,.06) inset,0 8px 18px -8px rgba(0,0,0,.6);
+  --elev2: 0 1px 0 rgba(255,255,255,.06) inset,0 22px 44px -14px rgba(0,0,0,.65);
+  --elev3: 0 1px 0 rgba(255,255,255,.07) inset,0 40px 90px -20px rgba(0,0,0,.8);
+  --sunken: inset 0 1px 3px rgba(0,0,0,.5);
+  --glass: rgba(10,14,24,.7);
+  color-scheme: dark;
+}
+
+/* ── 바탕 ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-pretendard), "Pretendard Variable", Pretendard, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased; transition: background .3s;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { font-family: inherit; }
+input, textarea, select { font-family: inherit; color: var(--ink); }
+input::placeholder, textarea::placeholder { color: var(--faint); }
+summary::-webkit-details-marker { display: none; }
+:focus-visible { outline: 2px solid color-mix(in oklch, var(--accent) 60%, transparent); outline-offset: 2px; }
+.tn { font-variant-numeric: tabular-nums; }
+.ed-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── 모션 (DESIGN.md 4장) ─────────────────────────────────────── */
+@keyframes menuIn { from { opacity: 0; transform: translateY(-6px) scale(.98) } to { opacity: 1; transform: none } }
+@keyframes qIn { from { opacity: 0; transform: translateY(14px) scale(.99) } to { opacity: 1; transform: none } }
+@keyframes rowIn { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-8px) } to { opacity: 1; transform: none } }
+@keyframes leave { 0% { opacity: 1; transform: none; max-height: 80px } 60% { opacity: 0; transform: translateX(18px); max-height: 80px } 100% { opacity: 0; transform: translateX(18px); max-height: 0; padding-top: 0; padding-bottom: 0; margin: 0 } }
+@keyframes tickIn { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+@keyframes breathe { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
+@keyframes pulseRed { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--red) 55%, transparent) } 70% { box-shadow: 0 0 0 8px transparent } 100% { box-shadow: 0 0 0 0 transparent } }
+@keyframes ping { 0% { transform: scale(1); opacity: .7 } 80%,100% { transform: scale(2.6); opacity: 0 } }
+@keyframes rowA { 0% { background: color-mix(in oklch, var(--accent) 12%, transparent) } 100% { background: transparent } }
+@keyframes rowB { 0% { background: color-mix(in oklch, var(--accent) 12%, transparent) } 100% { background: transparent } }
+@keyframes drop { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes pop { from { opacity: 0; transform: translateY(-4px) scale(.97) } to { opacity: 1; transform: none } }
+@keyframes slideR { from { opacity: 0; transform: translateX(40px) } to { opacity: 1; transform: none } }
+@keyframes float1 { 0% { transform: translate(-10%,-10%) scale(1) } 50% { transform: translate(25vw,12vh) scale(1.15) } 100% { transform: translate(8vw,30vh) scale(.95) } }
+@keyframes float2 { 0% { transform: translate(10%,10%) scale(1) } 50% { transform: translate(-22vw,-14vh) scale(1.1) } 100% { transform: translate(-6vw,-30vh) scale(1) } }
+@keyframes drift { from { background-position: 0 0 } to { background-position: 260px 130px } }
+@keyframes shimmer { from { background-position: -200% 0 } to { background-position: 200% 0 } }
+@keyframes spin { to { transform: rotate(360deg) } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; }
+}
+.q { animation: qIn .55s var(--ease) backwards; }
+.q1 { animation-delay: .07s } .q2 { animation-delay: .14s } .q3 { animation-delay: .21s } .q4 { animation-delay: .28s } .q5 { animation-delay: .35s }
+
+/* ── 공통 프레임 ─────────────────────────────────────────────── */
+.ed-app { position: relative; height: 100vh; min-height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+.ed-app.scroll { height: auto; overflow: visible; }
+@media (max-width: 979px), (max-height: 699px) {
+  .ed-app { height: auto; overflow: visible; }
+}
+
+.ed-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.ed-bg i { position: absolute; display: block; border-radius: 50%; filter: blur(20px); }
+.ed-bg .a { left: -10%; top: -20%; width: 760px; height: 760px; background: radial-gradient(circle,var(--blobA),transparent 65%); animation: float1 42s ease-in-out infinite alternate; }
+.ed-bg .b { right: -12%; bottom: -25%; width: 820px; height: 820px; background: radial-gradient(circle,var(--blobB),transparent 65%); animation: float2 54s ease-in-out infinite alternate; }
+.ed-bg .g { inset: 0; border-radius: 0; filter: none; background-image: radial-gradient(circle,var(--dot) 1px,transparent 1.4px); background-size: 26px 26px; animation: drift 90s linear infinite;
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%,#000,transparent); mask-image: radial-gradient(ellipse 80% 70% at 50% 40%,#000,transparent); }
+.ed-bg .s { left: 0; top: 0; width: 560px; height: 560px; margin: -280px 0 0 -280px; filter: none; background: radial-gradient(circle,var(--blobA),transparent 60%); opacity: .8;
+  transition: transform .5s var(--ease); transform: translate(50vw,40vh); }
+
+.ed-top { position: relative; z-index: 30; flex-shrink: 0; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 20px; height: 68px; padding: 0 28px; }
+.ed-logo { justify-self: start; display: flex; align-items: center; gap: 9px; white-space: nowrap; color: var(--ink); }
+.ed-logo:hover { text-decoration: none; }
+.ed-logo img { width: 26px; height: auto; }
+.ed-logo .dk { display: none; }
+[data-theme=dark] .ed-logo .lt { display: none; }
+[data-theme=dark] .ed-logo .dk { display: block; }
+.ed-logo b { display: flex; flex-direction: column; line-height: 1.15; }
+.ed-logo b span:first-child { font-size: 14px; font-weight: 800; letter-spacing: -.01em; }
+.ed-logo b span:last-child { font-size: 10.5px; font-weight: 600; color: var(--faint); }
+
+.ed-nav { justify-self: center; min-width: 0; max-width: 100%; display: flex; gap: 2px; padding: 4px; border-radius: 99px; background: var(--glass);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: var(--elev1), inset 0 0 0 1px color-mix(in oklch,var(--ink) 6%,transparent);
+  overflow-x: auto; scrollbar-width: none; }
+.ed-nav::-webkit-scrollbar { display: none; }
+.ed-nav a { flex-shrink: 0; padding: 8px 14px; border-radius: 99px; color: var(--sub); font-size: 13.5px; font-weight: 500; white-space: nowrap; transition: background .2s, color .2s; }
+.ed-nav a:hover { background: var(--panel2); color: var(--ink); text-decoration: none; }
+.ed-nav a.on { padding: 8px 16px; background: var(--ink); color: var(--bg); font-weight: 700; box-shadow: 0 6px 14px -6px color-mix(in oklch,var(--ink) 60%,transparent); }
+
+.ed-right { justify-self: end; display: flex; align-items: center; gap: 8px; }
+.ed-pill { flex-shrink: 0; white-space: nowrap; height: 36px; padding: 0 12px; border: 0; cursor: pointer; font-size: 12px; font-weight: 600; border-radius: 99px;
+  background: var(--glass); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: var(--elev1); color: var(--sub); }
+.ed-acct { position: relative; }
+.ed-acct > summary { flex-shrink: 0; white-space: nowrap; list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; height: 36px; padding: 3px 12px 3px 3px; border-radius: 99px;
+  background: var(--glass); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: var(--elev1); }
+.ed-acct > summary .nm { font-size: 13px; font-weight: 600; color: var(--ink); }
+.ed-acct > summary .cv { font-size: 9px; color: var(--faint); }
+.ed-av { position: relative; width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg,var(--accent),color-mix(in oklch,var(--accent) 55%,var(--green))); }
+.ed-av.lg { width: 40px; height: 40px; font-size: 15px; }
+.ed-av .nd { position: absolute; right: -1px; top: -1px; width: 9px; height: 9px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 2px var(--ringbg); }
+.ed-menu { position: absolute; right: 0; top: calc(100% + 10px); z-index: 40; width: 248px; display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 18px;
+  background: var(--surface); box-shadow: var(--elev2), 0 30px 60px -24px rgba(16,24,40,.35); animation: menuIn .18s var(--ease); }
+.ed-menu .pf { display: flex; align-items: center; gap: 10px; padding: 10px 10px 12px; }
+.ed-menu .pf b { display: block; font-size: 14px; font-weight: 700; }
+.ed-menu .pf small { display: block; margin-top: 2px; font-size: 12px; color: var(--faint); }
+.ed-menu hr { height: 1px; margin: 0 6px 4px; border: 0; background: var(--line); }
+.ed-menu hr + hr { display: none; }
+.ed-menu a, .ed-menu button { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; text-align: left;
+  font-size: 13px; font-weight: 500; color: var(--ink); }
+.ed-menu a:hover, .ed-menu button:hover { background: var(--panel2); text-decoration: none; }
+.ed-menu .cnt { margin-left: auto; min-width: 20px; padding: 1px 6px; border-radius: 99px; text-align: center; font-size: 11px; font-weight: 700; color: #fff; background: var(--red); }
+.ed-menu .out { font-weight: 600; color: var(--sub); }
+.ed-menu .out:hover { color: var(--red); }
+
+.ed-main { position: relative; z-index: 1; flex: 1; min-height: 0; width: 100%; max-width: 1440px; margin: 0 auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; }
+@media (max-width: 979px) { .ed-main { padding: 20px 16px; } .ed-top { padding: 0 16px; gap: 12px; } .ed-logo b { display: none; } }
+
+.ed-live { position: relative; z-index: 1; flex-shrink: 0; display: flex; align-items: center; gap: 14px; height: 46px; padding: 0 32px; background: var(--glass);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: 0 -1px 0 var(--line); font-size: 14px; color: var(--sub); }
+.ed-live > span { font-size: 10px; font-weight: 800; letter-spacing: .1em; color: var(--green); }
+.ed-live > div { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: tickIn .5s var(--ease) backwards; }
+.ed-live b { font-weight: 700; color: var(--ink); margin-right: 4px; }
+.ed-live small { margin-left: 8px; font-size: 12px; color: var(--faint); }
+.ed-app.scroll .ed-live { position: sticky; bottom: 0; z-index: 20; }
+
+/* ── 페이지 머리 ──────────────────────────────────────────────── */
+.ed-head { flex-shrink: 0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.ed-h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; white-space: nowrap; }
+.ed-crumb { font-size: 12px; font-weight: 600; color: var(--faint); }
+.ed-crumb a { color: var(--faint); }
+.ed-h2 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+.ed-sp { flex: 1; }
+
+/* ── 면 ───────────────────────────────────────────────────────── */
+.ed-card { border-radius: 20px; background: var(--surface); box-shadow: var(--elev1); }
+.ed-card2 { border-radius: 22px; background: var(--surface); box-shadow: var(--elev2); }
+.ed-well { border-radius: 18px; background: var(--panel2); box-shadow: var(--sunken); }
+.ed-scroll { overflow: auto; scrollbar-width: thin; scrollbar-color: color-mix(in oklch,var(--faint) 40%,transparent) transparent; }
+
+/* ── 세그먼트 ─────────────────────────────────────────────────── */
+.ed-seg { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--panel2); box-shadow: var(--sunken); flex-shrink: 0; }
+.ed-seg button { border: 0; cursor: pointer; padding: 7px 13px; border-radius: 9px; background: transparent; font-size: 13px; font-weight: 500; color: var(--sub); white-space: nowrap; transition: background .2s, color .2s; }
+.ed-seg button:hover { color: var(--ink); }
+.ed-seg button.on { background: var(--surface); box-shadow: var(--elev1); color: var(--ink); font-weight: 600; }
+.ed-seg button small { margin-left: 5px; font-size: 11px; font-weight: 700; color: var(--faint); }
+.ed-seg.full { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
+
+/* ── 버튼 ─────────────────────────────────────────────────────── */
+.ed-btn { border: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;
+  white-space: nowrap; background: var(--panel2); box-shadow: var(--sunken); color: var(--sub); transition: background .2s, color .2s, opacity .2s, transform .15s; }
+.ed-btn:hover { color: var(--ink); text-decoration: none; }
+.ed-btn:active { transform: translateY(1px); }
+.ed-btn:disabled { opacity: .3; cursor: default; }
+.ed-btn.pri { background: var(--ink); color: var(--bg); font-weight: 700; box-shadow: none; }
+.ed-btn.pri:hover { color: var(--bg); }
+.ed-btn.flt { background: var(--surface); box-shadow: var(--elev1); color: var(--ink); }
+.ed-btn.gh { background: transparent; box-shadow: none; }
+.ed-btn.sm { padding: 6px 11px; border-radius: 10px; font-size: 12px; }
+.ed-btn.lg { padding: 11px 22px; font-size: 14px; }
+.ed-btn.red { color: var(--red); }
+.ed-x { width: 34px; height: 34px; flex-shrink: 0; border: 0; border-radius: 12px; cursor: pointer; font-size: 14px; color: var(--sub); background: var(--panel2); box-shadow: var(--sunken); }
+.ed-x:hover { color: var(--ink); }
+.ed-chip { border: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 12px; font-size: 13px; font-weight: 600; white-space: nowrap;
+  background: var(--panel2); box-shadow: var(--sunken); color: var(--sub); }
+.ed-chip.on { background: var(--surface); box-shadow: var(--elev1); color: var(--ink); }
+.ed-chip.ink { background: var(--ink); color: var(--bg); box-shadow: none; }
+
+/* ── 상태 점 · 배지 · 체크 ───────────────────────────────────── */
+.ed-dot { display: inline-block; width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: var(--faint); }
+.ed-dot.halo { width: 8px; height: 8px; box-shadow: 0 0 0 4px color-mix(in oklch, currentColor 16%, transparent); }
+.s-over { color: var(--red); } .s-doing { color: var(--accent); } .s-review { color: var(--review); } .s-todo { color: var(--faint); } .s-done { color: var(--green); }
+.ed-dot.s-over, .ed-dot.s-doing, .ed-dot.s-review, .ed-dot.s-todo, .ed-dot.s-done { background: currentColor; }
+.ed-badge { display: inline-flex; align-items: center; flex-shrink: 0; padding: 3px 8px; border-radius: 8px; font-size: 12px; font-weight: 700; white-space: nowrap; color: var(--sub); background: var(--panel2); }
+.ed-badge.red { color: var(--red); background: color-mix(in oklch,var(--red) 14%,transparent); }
+.ed-badge.amber { color: var(--amber); background: color-mix(in oklch,var(--amber) 16%,transparent); }
+.ed-badge.accent { color: var(--accent); background: color-mix(in oklch,var(--accent) 13%,transparent); }
+.ed-badge.green { color: var(--green); background: color-mix(in oklch,var(--green) 13%,transparent); }
+.ed-badge.violet { color: var(--violet); background: color-mix(in oklch,var(--violet) 13%,transparent); }
+.ed-badge.sm { padding: 1px 6px; border-radius: 6px; font-size: 11px; }
+.ed-check { width: 20px; height: 20px; flex-shrink: 0; border: 0; padding: 0; border-radius: 7px; cursor: pointer; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff;
+  background: var(--panel2); box-shadow: var(--sunken); transition: background .2s, transform .15s; }
+.ed-check:hover { transform: scale(1.06); }
+.ed-check.on { background: var(--green); box-shadow: none; }
+.ed-check.sel { background: var(--accent); box-shadow: none; }
+.ed-check.sm { width: 18px; height: 18px; border-radius: 6px; font-size: 11px; }
+.ed-face { width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: var(--sub); background: var(--panel2); }
+.ed-empty { padding: 6px 2px; font-size: 13px; color: var(--faint); }
+.ed-label { font-size: 13px; font-weight: 700; color: var(--sub); }
+
+/* ── 한 줄 등록창 ────────────────────────────────────────────── */
+.ed-comp { position: relative; z-index: 5; flex-shrink: 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 8px 8px 20px; border-radius: 20px; background: var(--surface); box-shadow: var(--elev2); }
+.ed-comp .plus { width: 24px; height: 24px; flex-shrink: 0; border-radius: 8px; display: grid; place-items: center; font-size: 17px; font-weight: 600; color: var(--accent); background: color-mix(in oklch,var(--accent) 12%,transparent); }
+.ed-comp .plus.faint { color: var(--faint); background: transparent; }
+.ed-comp > input { flex: 1; min-width: 180px; border: 0; outline: 0; background: transparent; font-size: 17px; font-weight: 500; color: var(--ink); padding: 10px 0; }
+.ed-comp > input:focus-visible { outline: 0; }
+.ed-comp .opts { display: flex; gap: 6px; flex-shrink: 0; margin-left: auto; align-items: center; }
+.ed-comp .tok { border: 0; cursor: pointer; font-size: 13px; font-weight: 600; padding: 9px 13px; border-radius: 12px; background: var(--panel2); box-shadow: var(--sunken); color: var(--sub); white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.ed-comp .tok.set { color: var(--accent); background: color-mix(in oklch,var(--accent) 12%,var(--panel2)); }
+.ed-comp .tok .cv { font-size: 9px; opacity: .6; }
+.ed-comp .add { border: 0; cursor: pointer; font-size: 14px; font-weight: 700; padding: 9px 18px; border-radius: 12px; background: var(--ink); color: var(--bg); white-space: nowrap; transition: opacity .2s; }
+.ed-comp .add.off { opacity: .3; }
+.ed-pop { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; min-width: 150px; max-height: 320px; overflow: auto; padding: 6px; border-radius: 14px; background: var(--surface); box-shadow: var(--elev3);
+  display: flex; flex-direction: column; gap: 2px; animation: pop .16s var(--ease); }
+.ed-pop button { border: 0; cursor: pointer; text-align: left; font-size: 13px; font-weight: 600; padding: 9px 12px; border-radius: 10px; background: transparent; color: var(--ink); white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+.ed-pop button:hover { background: var(--panel2); }
+.ed-pop button.on { background: var(--ink); color: var(--bg); }
+.ed-pop .grp { padding: 8px 10px 4px; font-size: 11px; font-weight: 700; color: var(--faint); }
+.ed-rel { position: relative; }
+
+/* ── 드로어 ───────────────────────────────────────────────────── */
+.ed-scrim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); animation: fadeIn .2s; }
+.ed-drawer { position: fixed; top: 16px; right: 16px; bottom: 16px; z-index: 41; width: 460px; max-width: calc(100vw - 32px); display: flex; flex-direction: column; border-radius: 24px;
+  background: var(--surface); box-shadow: var(--elev3); overflow: hidden; animation: slideR .35s var(--ease); }
+.ed-drawer.w420 { width: 420px; }
+.ed-drawer .dh { flex-shrink: 0; display: flex; align-items: flex-start; gap: 12px; padding: 22px 22px 6px; }
+.ed-drawer .db { flex: 1; min-height: 0; overflow: auto; padding: 12px 22px 22px; display: flex; flex-direction: column; gap: 22px; }
+.ed-drawer .df { flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 16px 22px; box-shadow: 0 -1px 0 var(--line); }
+.ed-drawer .tt { flex: 1; resize: none; border: 0; outline: 0; background: transparent; font-size: 20px; font-weight: 700; line-height: 1.35; color: var(--ink); padding: 0; }
+.ed-field { display: flex; flex-direction: column; gap: 10px; }
+.ed-field > span { font-size: 13px; font-weight: 700; color: var(--sub); }
+.ed-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.ed-box { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: var(--panel2); box-shadow: var(--sunken); }
+.ed-input { border: 0; outline: 0; font-size: 14px; color: var(--ink); padding: 10px 12px; border-radius: 12px; background: var(--panel2); box-shadow: var(--sunken); width: 100%; }
+.ed-input:focus-visible { outline: 0; box-shadow: var(--sunken), inset 0 0 0 1.5px color-mix(in oklch,var(--accent) 50%,transparent); }
+textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; border-radius: 14px; }
+.ed-bar { height: 4px; border-radius: 99px; background: var(--panel2); box-shadow: var(--sunken); overflow: hidden; }
+.ed-bar > i { display: block; height: 100%; border-radius: 99px; background: var(--green); transition: width .4s var(--ease); }
+.ed-crow { display: flex; align-items: center; gap: 10px; padding: 7px 4px; border-radius: 10px; }
+.ed-crow:hover { background: var(--panel2); }
+.ed-crow > span { flex: 1; min-width: 0; font-size: 14px; }
+.ed-crow.done > span { color: var(--faint); text-decoration: line-through; }
+.ed-crow .rm { border: 0; background: transparent; cursor: pointer; color: var(--faint); font-size: 12px; padding: 2px 6px; opacity: 0; }
+.ed-crow:hover .rm { opacity: 1; }
+
+/* ── 토스트 ───────────────────────────────────────────────────── */
+.ed-toast { position: fixed; left: 50%; bottom: 64px; z-index: 60; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 18px; border-radius: 99px;
+  background: var(--ink); color: var(--bg); font-size: 13px; font-weight: 600; box-shadow: 0 18px 40px -14px rgba(0,0,0,.45); animation: tickIn .3s var(--ease); }
+.ed-toast button { border: 0; cursor: pointer; padding: 6px 12px; border-radius: 99px; font-size: 12px; font-weight: 700; background: color-mix(in oklch,var(--bg) 18%,transparent); color: var(--bg); }
+
+/* ── 단순 화면(내 정보 · 구성원 · 설정 · 막음) ───────────────── */
+.ed-page { width: 100%; max-width: 880px; display: flex; flex-direction: column; gap: 16px; overflow: auto; min-height: 0; padding-bottom: 8px; }
+.ed-sec { padding: 20px 22px; border-radius: 20px; background: var(--surface); box-shadow: var(--elev1); display: flex; flex-direction: column; gap: 14px; }
+.ed-sec h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.ed-row { display: flex; align-items: center; gap: 12px; padding: 10px 2px; box-shadow: 0 1px 0 var(--line); font-size: 14px; }
+.ed-row:last-child { box-shadow: none; }
+.ed-row .k { width: 120px; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--sub); }
+.ed-err { font-size: 13px; color: var(--red); }
+.ed-ok { font-size: 13px; color: var(--green); font-weight: 600; }
+
+/* 등록창 — 내 업무형(토큰 + ···) */
+.ed-comp.tk { gap: 10px; padding: 6px 6px 6px 18px; border-radius: 18px; flex-wrap: nowrap; }
+.ed-comp.tk .plus.faint { width: auto; height: auto; font-size: 20px; font-weight: 300; line-height: 1; background: none; }
+.ed-comp.tk > input { font-size: 16px; min-width: 120px; }
+.ed-comp .toks { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.ed-comp .tkn { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 99px; background: var(--panel2); color: var(--sub); white-space: nowrap; }
+.ed-comp .tkn.acc { color: var(--accent); background: color-mix(in oklch,var(--accent) 10%,transparent); }
+.ed-comp .tkn.amb { color: var(--amber); background: color-mix(in oklch,var(--amber) 12%,transparent); }
+.ed-comp .tkn i, .ed-optpop i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.ed-comp .more { width: 38px; height: 38px; border: 0; cursor: pointer; border-radius: 12px; display: grid; place-items: center; font-size: 16px; font-weight: 700; letter-spacing: 1px; background: transparent; color: var(--sub); }
+.ed-comp .more.on, .ed-comp .more:hover { background: var(--panel2); }
+.ed-comp .cerr { width: 100%; padding: 0 0 4px; font-size: 13px; color: var(--red); }
+.ed-optpop { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: 340px; max-height: 60vh; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: 18px;
+  background: var(--surface); box-shadow: var(--elev3); animation: pop .16s var(--ease); }
+.ed-optpop .og { display: flex; flex-direction: column; gap: 8px; }
+.ed-optpop .og > span { font-size: 12px; font-weight: 700; color: var(--faint); }
+.ed-optpop .og > div { display: flex; gap: 4px; flex-wrap: wrap; }
+.ed-optpop button { border: 0; cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 9px; background: var(--panel2); box-shadow: var(--sunken); color: var(--sub); display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ed-optpop button.on { background: var(--ink); color: var(--bg); box-shadow: none; }
+
+/* 알림 목록(계정 메뉴 › 알림) */
+.ed-note { border: 0; background: transparent; cursor: pointer; text-align: left; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; padding: 11px 10px; border-radius: 12px; color: var(--ink); }
+.ed-note:hover { background: var(--panel2); }
+.ed-note .k { font-size: 11px; font-weight: 700; color: var(--faint); padding-top: 2px; }
+.ed-note .s { font-size: 14px; line-height: 1.45; }
+.ed-note em { grid-column: 2; font-style: normal; font-size: 12px; color: var(--faint); }
+.ed-note[data-new] .k { color: var(--accent); }
+.ed-note[data-new] .s { font-weight: 600; }
+
+/* 업무 상세 드로어 */
+.tdr-fix { display: flex; flex-direction: column; gap: 3px; font-size: 14px; line-height: 1.5; color: var(--ink); }
+.tdr-fix span { font-size: 12px; font-weight: 600; color: var(--faint); }
+.tdr-al { align-self: flex-start; }
+.tdr-due { margin-left: 6px; font-style: normal; color: var(--sub); }
+.tdr-due.red { color: var(--red); } .tdr-due.amber { color: var(--amber); }
+.tdr-date { position: relative; }
+.tdr-date input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.tdr-cd { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.tdr-owner { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--panel2); box-shadow: var(--sunken); }
+.tdr-owner b { display: block; font-size: 14px; font-weight: 600; }
+.tdr-owner small { display: block; font-size: 12px; color: var(--faint); }
+.ed-face.lg { width: 28px; height: 28px; font-size: 11px; background: var(--surface); box-shadow: var(--elev1); color: var(--ink); }
+.tdr-ping { border: 0; cursor: pointer; font-size: 13px; font-weight: 700; padding: 8px 12px; border-radius: 10px; background: var(--surface); box-shadow: var(--elev1); color: var(--accent); white-space: nowrap; }
+.tdr-ping:disabled { color: var(--green); cursor: default; }
+.tdr-ch { display: flex; align-items: center; justify-content: space-between; }
+.tdr-ch .tn { font-size: 12px; font-weight: 700; color: var(--faint); }
+.ed-chip:disabled { opacity: .5; cursor: default; }

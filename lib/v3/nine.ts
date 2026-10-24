@@ -33,54 +33,22 @@ export interface NineScreen {
 }
 
 export const NINE: NineScreen[] = [
-  { n: 1, key: "dash",    label: "대시보드",  path: `${V3_BASE}` },
-  { n: 2, key: "tasks",   label: "업무 목록", path: `${V3_BASE}/tasks` },
-  { n: 3, key: "detail",  label: "업무 상세", path: `${V3_BASE}/tasks/`, prefix: true },
-  { n: 4, key: "new",     label: "새 업무",   path: `${V3_BASE}/new` },
-  { n: 5, key: "goals",   label: "목표",      path: `${V3_BASE}/goals`, prefix: true },
-  { n: 6, key: "stats",   label: "집계",      path: `${V3_BASE}/stats` },
-  { n: 7, key: "team",    label: "팀",        path: `${V3_BASE}/team` },
-  { n: 8, key: "members", label: "구성원",    path: `${V3_BASE}/members` },
+  // 2026-10 디자인 v1.0 — 상단 캡슐 메뉴 여덟 + 계정 메뉴 셋 + 옛 주소(새 자리로 넘긴다)
+  { n: 1, key: "dash",    label: "업무 현황", path: `${V3_BASE}` },
+  { n: 2, key: "tasks",   label: "전체 업무", path: `${V3_BASE}/tasks` },
+  { n: 3, key: "detail",  label: "전체 업무", path: `${V3_BASE}/tasks/`, prefix: true },
+  { n: 4, key: "new",     label: "내 업무",   path: `${V3_BASE}/new` },
+  { n: 5, key: "goals",   label: "목표 관리", path: `${V3_BASE}/goals`, prefix: true },
+  { n: 6, key: "stats",   label: "성과 분석", path: `${V3_BASE}/stats` },
+  { n: 7, key: "team",    label: "업무 현황", path: `${V3_BASE}/team` },
+  { n: 8, key: "members", label: "구성원 관리", path: `${V3_BASE}/members` },
   { n: 9, key: "me",      label: "내 정보",   path: `${V3_BASE}/me` },
-  /*
-   * ── 열 번째 (074 §A-8) — 새 화면 스위치 ─────────────────────────
-   * 아홉에 없던 자리다. 스위치를 켜면 옛 「설정」이 막음 화면 뒤로 가서 **화면으로는
-   * 끌 수 없었다**(073 §C). 끄는 길이 없는 스위치는 켤 수 없다 — 그래서 가오픈 필수에 더한다.
-   * 관리자만 보이고 부른다(`admin` · 규약 6-3).
-   */
-  /*
-   * ── 열한 번째 (2026-10 업무기록) — 내 기록 ───────────────────────
-   * 각자 한 줄씩 적는 업무기록(0037). 옛 화면에 짝이 없다 — 「메모」(notes)와
-   * 다른 것이다: 메모는 문서이고, 기록은 한 일의 줄이다.
-   */
-  { n: 11, key: "log", label: "내 기록", path: `${V3_BASE}/log` },
-  /*
-   * ── 열두 번째 (2026-10 관제 패널) — 관제 ───────────────────────────
-   * 팀 목표 · 2주 흐름 · 사람별 지금 · 위험 신호. 누구에게나 같은 화면이다
-   * (지시: 「팀 전체 같은 화면」). 그래서 lead/admin 표시를 달지 않는다.
-   */
-  { n: 12, key: "control", label: "관제", path: `${V3_BASE}/control` },
-  /*
-   * ── 열세 번째 (2026-10 회의실 · 0038) — 회의실 ─────────────────────
-   * 영상은 Jitsi, 안건 · 링크 · 결정 · 할 일과 회의록은 우리 표에. 팀 전체가 같은 회의를 본다.
-   * `/v3/room/12` 처럼 회의 번호가 붙으므로 prefix 다.
-   */
-  { n: 13, key: "room", label: "회의실", path: `${V3_BASE}/room`, prefix: true },
-  /*
-   * ── 열네 번째 (2026-10) — 설정 ───────────────────────────────────
-   * 옛 「설정」을 지우고 나니 가오픈 날짜 · 진척 편집자 · Notion 을 바꿀 화면이 없었다.
-   * 팀장부터 연다(화면이 막는다 — 팀원은 이유와 함께 관제로).
-   */
+  { n: 10, key: "my", label: "내 업무", path: `${V3_BASE}/my` },
+  { n: 11, key: "log", label: "업무일지", path: `${V3_BASE}/log` },
+  { n: 12, key: "control", label: "업무 현황", path: `${V3_BASE}/control` },
+  { n: 13, key: "room", label: "회의", path: `${V3_BASE}/room`, prefix: true },
   { n: 14, key: "settings", label: "설정", path: `${V3_BASE}/settings` },
-  /*
-   * ── 열다섯 번째 (2026-10) — 캘린더 ─────────────────────────────────
-   * 화면은 046 부터 있었고 「주 보기가 없어 반쪽」이라 잠가 뒀다. 주 보기 · 내 것만을 더해 연다.
-   */
-  { n: 15, key: "calendar", label: "캘린더", path: `${V3_BASE}/calendar` },
-  /*
-   * ── 열여섯 번째 (2026-10 · 0042) — 월간 보고 ─────────────────────────
-   * 레일에는 안 세운다(레일은 간단히). 「내 기록」 머리의 링크와 알림함으로 온다.
-   */
+  { n: 15, key: "calendar", label: "일정", path: `${V3_BASE}/calendar` },
   { n: 16, key: "report", label: "월간 보고", path: `${V3_BASE}/report` },
 ];
 
@@ -152,16 +120,28 @@ export const RAIL: RailGroup[] = [
   {
     title: "",
     items: [
-      { label: "관제", href: `${V3_BASE}/control` },
-      // 「내 업무」는 새 화면이 아니라 **업무 목록의 한 조건**이다 (066 §B-4).
-      { label: "내 업무", href: `${V3_BASE}/tasks?mine=1` },
-      { label: "내 기록", href: `${V3_BASE}/log` },
-      { label: "업무 목록", href: `${V3_BASE}/tasks` },
-      { label: "목표", href: `${V3_BASE}/goals` },
-      { label: "캘린더", href: `${V3_BASE}/calendar` },
-      { label: "회의실", href: `${V3_BASE}/room` },
+      { label: "업무 현황", href: `${V3_BASE}/control` },
+      { label: "내 업무", href: `${V3_BASE}/my` },
+      { label: "업무일지", href: `${V3_BASE}/log` },
+      { label: "전체 업무", href: `${V3_BASE}/tasks` },
+      { label: "목표 관리", href: `${V3_BASE}/goals` },
+      { label: "성과 분석", href: `${V3_BASE}/stats`, lead: true },
+      { label: "일정", href: `${V3_BASE}/calendar` },
+      { label: "회의", href: `${V3_BASE}/room` },
     ],
   },
+];
+
+/** 상단 캡슐 메뉴 — 순서 · 이름 고정 (DESIGN.md 3.2). `match` 는 켜짐 판정에 쓰는 주소 앞부분 */
+export const MENU: { label: string; href: string; match: string[]; lead?: boolean }[] = [
+  { label: "업무 현황", href: `${V3_BASE}/control`, match: [`${V3_BASE}/control`] },
+  { label: "내 업무",   href: `${V3_BASE}/my`,      match: [`${V3_BASE}/my`] },
+  { label: "업무일지",  href: `${V3_BASE}/log`,     match: [`${V3_BASE}/log`, `${V3_BASE}/report`] },
+  { label: "전체 업무", href: `${V3_BASE}/tasks`,   match: [`${V3_BASE}/tasks`] },
+  { label: "목표 관리", href: `${V3_BASE}/goals`,   match: [`${V3_BASE}/goals`] },
+  { label: "성과 분석", href: `${V3_BASE}/stats`,   match: [`${V3_BASE}/stats`], lead: true },
+  { label: "일정",      href: `${V3_BASE}/calendar`, match: [`${V3_BASE}/calendar`] },
+  { label: "회의",      href: `${V3_BASE}/room`,    match: [`${V3_BASE}/room`] },
 ];
 
 /**
@@ -170,6 +150,6 @@ export const RAIL: RailGroup[] = [
  */
 export const ACCOUNT_LINKS: RailItem[] = [
   { label: "내 정보", href: `${V3_BASE}/me` },
-  { label: "구성원", href: `${V3_BASE}/members`, admin: true },
+  { label: "구성원 관리", href: `${V3_BASE}/members`, admin: true },
   { label: "설정", href: `${V3_BASE}/settings`, lead: true },
 ];
