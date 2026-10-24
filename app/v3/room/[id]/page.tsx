@@ -1,11 +1,11 @@
-// 회의 하나 — 영상(Jitsi) · 안건 · 링크 · 결정 · 할 일. 끝나면 회의록 (0038).
+// 회의 하나 — 영상 스테이지 + 패널 (디자인 v1.0 · meeting.dc.html)
 import { notFound, redirect } from "next/navigation";
 import { getLiveSession } from "@/lib/auth";
 import { getActiveHumans } from "@/lib/db";
 import { hasLead } from "@/lib/types";
 import { getMeeting, heartbeat, jitsiDomain } from "@/lib/meeting";
-import RoomView from "@/components/v3/RoomView";
-import "../../../v3-room.css";
+import Room, { type MeetingData } from "@/components/ed/screens/Room";
+import "../../../ed-room.css";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,7 @@ export default async function V3RoomOne({ params }: { params: { id: string } }) 
   if (!meeting) notFound();
   const people = (await getActiveHumans()).map((a) => ({ id: a.id, name: a.display_name }));
   return (
-    <RoomView initial={meeting} me={{ id: live.user.id, name: live.user.name }}
-              lead={hasLead(live.user.role)} domain={jitsiDomain()} people={people} />
+    <Room initial={meeting as unknown as MeetingData} me={{ id: live.user.id, name: live.user.name }}
+          lead={hasLead(live.user.role) || live.user.adminGrant} domain={jitsiDomain()} people={people} />
   );
 }
