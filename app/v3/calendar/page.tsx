@@ -17,6 +17,7 @@ import { kstToday } from "@/lib/home";
 import { getPlatformOpen } from "@/lib/platform-config";
 import { resolveAreas } from "@/lib/v3/category";
 import CalendarView from "@/components/v3/CalendarView";
+import "../../v3-calendar.css";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export default async function V3Calendar() {
         openAtMs={Date.parse(openAt)}
         areas={resolveAreas(areaRows)}
         isLead={hasLead(live.user.role)}
+        meId={live.user.id}
       />
     </Suspense>
   );

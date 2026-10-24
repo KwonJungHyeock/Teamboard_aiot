@@ -68,9 +68,9 @@ try {
    * 켤 수 없어서 가오픈 필수에 넣었다. 아홉 + 하나 = 열. 목록은 여전히 제품에게 묻는다.
    * 2026-10 업무기록 — **열한 번째** 「내 기록」(`/v3/log`)이 더해졌다.
    * 2026-10 관제 패널 — 「관제」(`/v3/control`)가 더해졌다.
-   * 2026-10 옛 화면 철거 — 새 화면 스위치(열 번째)를 거뒀다. 2026-10 회의실(0038) · 설정이 더해져 지금 열셋.
+   * 2026-10 옛 화면 철거 — 새 화면 스위치(열 번째)를 거뒀다. 2026-10 회의실(0038) · 설정 · 캘린더가 더해져 지금 열넷.
    */
-  chk("0조건-아홉이-아홉이다", NINE.length === 13 && ["log", "control", "room", "settings"].every((k) => NINE.some((s) => s.key === k)) && !NINE.some((s) => s.key === "switch"),
+  chk("0조건-아홉이-아홉이다", NINE.length === 14 && ["log", "control", "room", "settings", "calendar"].every((k) => NINE.some((s) => s.key === k)) && !NINE.some((s) => s.key === "switch"),
       `${NINE.map((s) => `${s.n}${s.label}`).join(" · ")}`);
 
   // 상세(3번)는 **업무 하나가 있어야** 열린다. 조건을 만든다.
@@ -119,7 +119,7 @@ try {
 
   // ── ② 아홉 밖의 v3 주소는 **전부** 막음 화면 (§0-2 · §A-1) ─────
   //    화면이 있는 것(캘린더)과 없는 것(아무 말)을 **둘 다** 본다.
-  const OUTSIDE = ["/v3/calendar", "/v3/projects", "/v3/areas", "/v3/없는화면", "/v3/reports"];   // 2026-10 설정은 열셋에 들었다
+  const OUTSIDE = ["/v3/open-due", "/v3/projects", "/v3/areas", "/v3/없는화면", "/v3/reports"];   // 2026-10 설정은 열셋에 들었다
   const notBlocked = [];
   for (const u of OUTSIDE) {
     const r = await visit(u);

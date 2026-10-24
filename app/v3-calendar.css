@@ -1,0 +1,24 @@
+/* v3 캘린더 — 주 보기 · 내 것만 (2026-10 캘린더 열기). 새 토큰 없음 — `app/v3.css` 값만. */
+.v3-calv { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--v3-radius-pill); background: var(--v3-bg); }
+.v3-calv button { min-height: 30px; padding: 0 14px; border: 0; border-radius: var(--v3-radius-pill); background: none;
+  color: var(--v3-ink-2); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.v3-calv button[aria-selected="true"] { background: var(--v3-card); color: var(--v3-ink); box-shadow: 0 1px 2px rgba(16, 24, 40, .08); }
+.v3-calmine { min-height: 32px; padding: 0 12px; border: 1px solid var(--v3-line-2); border-radius: var(--v3-radius-pill);
+  background: var(--v3-card); color: var(--v3-ink-2); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.v3-calmine.on { border-color: var(--v3-ink); background: var(--v3-ink); color: #fff; }
+
+.v3-calwk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; margin-top: 12px;
+  border-radius: var(--v3-radius-s); overflow: hidden; background: var(--v3-line); border: 1px solid var(--v3-line); }
+.v3-calwk-d { min-height: 260px; padding: 10px 8px; display: flex; flex-direction: column; gap: 5px; background: var(--v3-card); }
+.v3-calwk-d.today { background: #F7F9FE; }
+.v3-calwk-d.open { box-shadow: inset 0 0 0 2px var(--v3-warn); }
+.v3-calwk-h { display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px; font-size: 12.5px; color: var(--v3-ink-2); }
+.v3-calwk-h b { color: var(--v3-ink); font-size: 13px; }
+.v3-calwk-d.today .v3-calwk-h b { color: var(--v3-rail); }
+.v3-calwk-h .v3-day-n { margin-left: auto; }
+.v3 .v3-calwk-p { display: flex; flex-direction: column; align-items: flex-start; height: auto; white-space: normal; line-height: 1.35; padding: 5px 8px; }
+.v3 .v3-calwk-p span { overflow-wrap: anywhere; }
+.v3 .v3-calwk-p em { font-style: normal; font-size: 11px; opacity: .75; }
+.v3-calwk-e { margin: 0; color: var(--v3-ink-3); font-size: 12px; }
+.v3-daylist .v3-calwk-d { min-height: 0; padding: 10px 0; border-top: 1px solid var(--v3-line); background: none; }
+.v3-daylist .v3-calwk-d.today { background: none; }

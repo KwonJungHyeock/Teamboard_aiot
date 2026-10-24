@@ -193,3 +193,45 @@ export function dayLabel(date: string): string {
   const w = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
   return `${m}월 ${d}일 (${w})`;
 }
+
+/* ══ 주 보기 (2026-10 캘린더 열기) ════════════════════════════════
+ * 달은 한눈에, 주는 **빠짐없이**. 주 보기는 칸을 접지 않는다(`CELL_MAX` 없음) —
+ * 한 주에 몰린 업무를 다 세워야 「이번 주 뭐가 있나」에 답한다.
+ * 주는 달과 같이 **일요일에 시작**한다. 주소에는 그 주의 일요일을 적는다(`?w=`).
+ */
+const YMD = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** 그 날이 든 주의 일요일 */
+export function weekStart(date: string): string {
+  const t = Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)));
+  return new Date(t - new Date(t).getUTCDay() * 86400000).toISOString().slice(0, 10);
+}
+
+/** 주소의 주. 이상하면 **오늘이 든 주**로 돌아온다(달과 같은 판단) */
+export function parseWeek(raw: string | null | undefined, today: string): string {
+  const m = raw ? YMD.exec(raw) : null;
+  if (!m) return weekStart(today);
+  const t = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== raw) return weekStart(today);
+  return weekStart(raw as string);
+}
+
+/** 주 이동 — `by` 주 */
+export function shiftWeek(start: string, by: number): string {
+  const t = Date.UTC(Number(start.slice(0, 4)), Number(start.slice(5, 7)) - 1, Number(start.slice(8, 10)));
+  return new Date(t + by * 7 * 86400000).toISOString().slice(0, 10);
+}
+
+/** 일요일부터 이레 */
+export function weekDays(start: string): string[] {
+  return Array.from({ length: 7 }, (_, i) => new Date(
+    Date.UTC(Number(start.slice(0, 4)), Number(start.slice(5, 7)) - 1, Number(start.slice(8, 10)) + i)).toISOString().slice(0, 10));
+}
+
+/** 「10월 19일 ~ 25일」 · 달을 넘으면 「10월 26일 ~ 11월 1일」 */
+export function weekLabel(start: string): string {
+  const end = shiftWeek(start, 1);
+  const last = new Date(Date.UTC(Number(end.slice(0, 4)), Number(end.slice(5, 7)) - 1, Number(end.slice(8, 10)) - 1)).toISOString().slice(0, 10);
+  const m1 = Number(start.slice(5, 7)), d1 = Number(start.slice(8, 10)), m2 = Number(last.slice(5, 7)), d2 = Number(last.slice(8, 10));
+  return m1 === m2 ? `${m1}월 ${d1}일 ~ ${d2}일` : `${m1}월 ${d1}일 ~ ${m2}월 ${d2}일`;
+}
