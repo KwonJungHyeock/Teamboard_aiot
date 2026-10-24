@@ -344,3 +344,11 @@ textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; bord
   .ed-acct > summary .nm, .ed-acct > summary .cv { display: none; }
   .ed-top { gap: 12px; padding: 0 20px; }
 }
+
+/* 404 · 500 */
+.errpage { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--bg); }
+.errpage-card { width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 32px 28px; border-radius: 24px; background: var(--surface); box-shadow: var(--elev3); text-align: center; animation: qIn .55s var(--ease) backwards; }
+.errpage-code { font-size: 40px; font-weight: 600; letter-spacing: -.02em; color: var(--faint); }
+.errpage-card h1 { margin: 0; font-size: 20px; font-weight: 700; }
+.errpage-digest { margin: 0; font-size: 12px; color: var(--faint); }
+.errpage-act { display: flex; gap: 8px; margin-top: 6px; }

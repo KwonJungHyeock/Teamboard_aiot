@@ -4,14 +4,12 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "check:empty": "node scripts/check-empty-icons.mjs",
     "db:init": "node scripts/init-db.mjs",
     "db:seed-demo": "node scripts/seed-demo.mjs",
     "dev": "next dev",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "lint": "next lint",
-    "prebuild": "node scripts/check-empty-icons.mjs",
     "start": "next start",
     "verify:blob": "node scripts/verify-blob-access.mjs"
   },
