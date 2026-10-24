@@ -91,7 +91,7 @@ export const NOT_YET_WHEN = "11월 2일 가오픈 뒤에 엽니다.";
  * 로그인한 누구나 볼 수 있는 화면으로 보낸다 — `lib/denied.ts` 가 팀 홈을 고른
  * 것과 같은 판단이다.
  */
-export const NOT_YET_BACK = { label: "대시보드로", href: V3_BASE };
+export const NOT_YET_BACK = { label: "관제로", href: `${V3_BASE}/control` };   // 2026-10 — 첫 화면이 관제다
 
 /** ③ 막는 자리가 부른다. */
 export function notYetHref(key: string): string {

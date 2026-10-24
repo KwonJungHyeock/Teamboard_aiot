@@ -164,3 +164,7 @@ a.v3-room-b:hover { color: var(--v3-rail); }
   .v3-room-tile, .v3-room-p { transition: none; }
 }
 .v3-room-dec .v3-room-in { margin-bottom: 4px; }
+
+/* 2026-10 정련 — 남색 판 위의 「영상 켜기」. 공간 모드의 주 버튼도 남색이라 판에 묻혔다 → 흰 버튼 */
+.v3 .v3-room-off .v3-btn.primary { background: #fff; border-color: #fff; color: var(--room-slab); }
+.v3 .v3-room-off .v3-btn.primary:hover { background: #E7ECF5; border-color: #E7ECF5; }

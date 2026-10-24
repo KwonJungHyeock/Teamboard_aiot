@@ -361,7 +361,7 @@ function TodayBody({
                 ? `기한이 오늘이거나 지난 업무가 없습니다. 다만 기한 없는 업무 ${view.counts.noDue}건은 아무 날에도 안 걸려 여기 안 뜹니다.`
                 : "기한이 오늘이거나 지난 업무가 없습니다. 진행 중인 업무는 「업무」에서 봅니다."}
               action={view.counts.noDue > 0
-                ? { label: "기한 없는 업무 보기", href: notYetHref("open-due") }
+                ? { label: "기한 없는 업무 보기", href: `${V3_BASE}/tasks?due=none` }
                 : { label: "업무 보기", href: `${V3_BASE}/tasks` }}
             />
           ) : view.todo.map((t) => (
@@ -425,8 +425,8 @@ function TodayBody({
           : inbox.length === 0 ? (
             <Empty
               title="받은 것이 없어요"
-              why="승인 요청 · 멘션 · 답글 · 인계가 여기로 모입니다. 지금은 처리할 것이 없습니다."
-              action={{ label: "활동 전체 보기", href: notYetHref("activity") }}
+              why="승인 요청 · 멘션 · 답글 · 인계가 여기로 모입니다. 지금은 처리할 것이 없습니다. 지난 알림은 위의 종에서 봅니다."
+              action={{ label: "내 업무 보기", href: `${V3_BASE}/tasks?mine=1` }}
             />
           ) : inbox.map((i) => (
             <div className="v3-row v3-inbox" key={i.id}>

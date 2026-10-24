@@ -17,8 +17,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, Button, Empty } from "./parts";
 import { type TodayTask } from "@/lib/v3/today";
-// 067 §A-2 — 옛 화면으로 나가는 자리를 막음 화면으로 돌린다
-import { notYetHref } from "@/lib/v3/not-yet";
 import {
   STAT_COLUMNS, crossTab, outside, reconcile, inMonth, monthLabel, shiftMonth,
   cellHref, rangesFor, ringOf, distribution, distTally, type StatTable,
@@ -27,6 +25,7 @@ import { ChartToggle } from "./StatsCharts";
 // 「마지막 갱신」 시각은 **서버가 준 것**을 쓴다 (§G 048) — 047 과 같은 방식.
 import { stampFrom, clockKst } from "@/lib/v3/detail";
 import { type AreaView } from "@/lib/v3/category";
+import { V3_BASE } from "@/lib/v3/routes";
 
 interface Person { id: number; name: string }
 interface Tally { before: number; after: number; none: number; excludedDone: number }
@@ -173,7 +172,7 @@ export default function StatsView({
         {tasks !== null && noDue > 0 && (
           <>
             {" — "}기한 없는 <b>{noDue}건</b>은 <b>어느 달에도 안 들어갑니다</b>{" "}
-            (<Link className="v3-lk" href={notYetHref("open-due")}>가오픈 기한 화면</Link>).
+            (<Link className="v3-lk" href={`${V3_BASE}/tasks?due=none`}>업무 목록 「기한 없음」</Link>).
           </>
         )}
       </p>
@@ -268,7 +267,7 @@ export default function StatsView({
               <span className="v3-stat-l">가오픈 이전</span></div>
             <div className="v3-stat"><span className="v3-stat-n">{tally.after}</span>
               <span className="v3-stat-l">가오픈 이후</span></div>
-            <Link className="v3-stat warn v3-stat-lk" href={notYetHref("open-due")}>
+            <Link className="v3-stat warn v3-stat-lk" href={`${V3_BASE}/tasks?due=none`}>
               <span className="v3-stat-n">{tally.none}</span>
               <span className="v3-stat-l">기한 없음 · 목록 보기</span>
             </Link>
