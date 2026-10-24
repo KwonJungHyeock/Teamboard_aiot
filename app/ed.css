@@ -338,3 +338,9 @@ textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; bord
 .mem-who small { display: block; font-size: 12px; color: var(--faint); }
 .mem-sel { padding: 7px 10px; font-size: 13px; }
 .mem-why { grid-column: 2 / -1; font-size: 12px; color: var(--faint); }
+/* 좁은 폭 — 메뉴 캡슐이 잘리지 않게 계정 알약은 아바타만 */
+@media (max-width: 1180px) {
+  .ed-acct > summary { padding: 3px; }
+  .ed-acct > summary .nm, .ed-acct > summary .cv { display: none; }
+  .ed-top { gap: 12px; padding: 0 20px; }
+}
