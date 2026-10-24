@@ -324,3 +324,17 @@ textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; bord
 .tdr-ch { display: flex; align-items: center; justify-content: space-between; }
 .tdr-ch .tn { font-size: 12px; font-weight: 700; color: var(--faint); }
 .ed-chip:disabled { opacity: .5; cursor: default; }
+
+/* 내 정보 · 구성원 · 설정 */
+.me-pw { display: flex; gap: 8px; flex-wrap: wrap; }
+.me-pw .ed-input { flex: 1; min-width: 180px; }
+.me-faint { font-size: 13px; color: var(--faint); }
+.me-code { font-size: 12px; padding: 2px 6px; border-radius: 6px; background: var(--panel2); color: var(--sub); }
+.me-cc { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.me-cc pre { width: 100%; margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--panel2); box-shadow: var(--sunken); font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; cursor: copy; }
+.mem-row { display: grid; grid-template-columns: 30px minmax(0,1fr) 120px auto auto; align-items: center; gap: 12px; padding: 12px 0; box-shadow: 0 1px 0 var(--line); }
+.mem-row:last-child { box-shadow: none; }
+.mem-who b { display: block; font-size: 14px; font-weight: 600; }
+.mem-who small { display: block; font-size: 12px; color: var(--faint); }
+.mem-sel { padding: 7px 10px; font-size: 13px; }
+.mem-why { grid-column: 2 / -1; font-size: 12px; color: var(--faint); }

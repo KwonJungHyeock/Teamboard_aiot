@@ -8,8 +8,7 @@ import { redirect } from "next/navigation";
 import { queryOne } from "@/lib/db";
 import { roleLabel } from "@/lib/types";
 import { TEAM_NAME } from "@/lib/brand";
-import MeView from "@/components/v3/MeView";
-import "../../v3-connect.css";
+import Me from "@/components/ed/account/Me";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +18,7 @@ export default async function V3Me() {
   const row = await queryOne<{ email: string | null }>(
     "SELECT email FROM account WHERE actor_id = $1", [live.user.id]);
   return (
-    <MeView
+    <Me
       name={live.user.name}
       email={row?.email ?? ""}
       roleLabel={roleLabel(live.user.role)}

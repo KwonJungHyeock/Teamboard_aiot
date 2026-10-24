@@ -1,105 +1,88 @@
 "use client";
 
+// 로그인 — 디자인 v1.0 (login.dc.html · DESIGN.md 5.1). 가운데 400px 열 + 공통 배경 + 오른쪽 위 테마.
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { APP_NAME_LONG, TEAM_NAME } from "@/lib/brand";
+import { Backdrop, ThemePill } from "@/components/ed/Frame";
+import { TEAM_NAME } from "@/lib/brand";
+import "../ed-login.css";
 
-const REASON_MESSAGE: Record<string, string> = {
-  inactive: "계정이 비활성화되었습니다. 관리자에게 문의하세요.",
-};
+const REASON: Record<string, string> = { inactive: "비활성화된 계정입니다" };
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [pw, setPw] = useState("");
+  const [show, setShow] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [bad, setBad] = useState<"email" | "pw" | null>(null);
+  const [shake, setShake] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  // 서버측 세션 무효화(?reason=inactive 등) 사유 표시 — window에서 직접 읽어 Suspense 불필요
   useEffect(() => {
-    const reason = new URLSearchParams(window.location.search).get("reason");
-    if (reason && REASON_MESSAGE[reason]) setNotice(REASON_MESSAGE[reason]);
+    const r = new URLSearchParams(window.location.search).get("reason");
+    if (r && REASON[r]) setError(REASON[r]);
   }, []);
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
+  const fail = (msg: string, which: "email" | "pw" | null) => { setError(msg); setBad(which); setShake((n) => n + 1); };
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    if (!email.trim()) return fail("업무메일을 입력하세요", "email");
+    if (!pw) return fail("비밀번호를 입력하세요", "pw");
+    setBusy(true); setError(""); setBad(null);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "로그인 실패");
-        return;
-      }
-      // 로그인 후 첫 화면은 **홈**이다 (MD-P-2026-026 지시 30).
-      // 예전에는 /assistant 로 보냈다 — 새 팀원이 처음 보는 화면이 에이전트 콘솔이고
-      // "잔여 토큰 2,000,000" 이 먼저 보였다. 이 제품이 무엇인지 잘못 말하는 첫인상이다.
-      //
-      // 들어오려던 경로로 되돌리는 동작은 **없다.** middleware 가 /login 으로 보낼 때
-      // 원래 경로를 남기지 않는다(?next= 없음). 이번에는 만들지 않는다.
+      const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: pw }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { fail(data.error ?? "로그인하지 못했습니다", "pw"); return; }
       router.push("/");
       router.refresh();
     } catch {
-      setError("서버에 연결할 수 없습니다.");
+      fail("서버에 연결할 수 없습니다", null);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="login-wrap">
-      {/* Eduino AI 로고 — 다크 앵커 배경(사이드바 그라데이션)에 ondark 마크 + 라이트 텍스트 */}
-      <div className="login-hero">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="login-mk-img" src="/brand/eduino_mark_ondark.png" alt="Eduino AI" width={72} height={49} />
-        <div className="login-hero-t">
-          <b>Eduino AI</b>
-          <span>{APP_NAME_LONG}</span>
+    <div className="lg-wrap">
+      <Backdrop />
+      <div className="lg-theme"><ThemePill /></div>
+      <div className="lg-col">
+        <div className="lg-brand">
+          <div className="lg-mark">
+            <i className="glow" aria-hidden="true" />
+            <div className="tile">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="lt" src="/brand/ed-mark.png" alt="Eduino AI" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="dk" src="/brand/ed-mark-dark.png" alt="" />
+            </div>
+          </div>
+          <div className="nm"><b>Eduino AI</b><span>통합업무관리</span></div>
         </div>
+        <form className="lg-card" key={shake} data-shake={shake ? (shake % 2 ? "A" : "B") : undefined} onSubmit={submit} noValidate>
+          <label>
+            <span>업무메일</span>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@robodyne.co.kr"
+                   autoComplete="username" className={bad === "email" ? "bad" : undefined} />
+          </label>
+          <label>
+            <span>비밀번호</span>
+            <div className="pw">
+              <input type={show ? "text" : "password"} value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password"
+                     className={bad === "pw" ? "bad" : undefined} />
+              <button type="button" onClick={() => setShow((s) => !s)}>{show ? "숨기기" : "보기"}</button>
+            </div>
+          </label>
+          {error && <div className="err" role="alert">{error}</div>}
+          <button type="submit" className="go" style={{ opacity: busy ? 0.85 : 1 }}>
+            {busy && <i className="spin" aria-hidden="true" />}{busy ? "로그인 중" : "로그인"}
+          </button>
+        </form>
+        <div className="team">{TEAM_NAME}</div>
       </div>
-      <form className="login-card" onSubmit={submit}>
-        <p className="sub">{TEAM_NAME} · 회사 업무메일로 로그인</p>
-        {notice && (
-          <p
-            className="error-text"
-            role="alert"
-            style={{ background: "rgba(245,165,36,.12)", border: "1px solid rgba(245,165,36,.3)", color: "#F5A524", padding: "8px 11px", borderRadius: 8 }}
-          >
-            {notice}
-          </p>
-        )}
-        <div className="field">
-          <label>업무메일</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="name@robodyne.co.kr"
-            autoComplete="username"
-            required
-          />
-        </div>
-        <div className="field">
-          <label>비밀번호</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-          />
-        </div>
-        <button className="btn primary" style={{ width: "100%" }} disabled={busy}>
-          {busy ? "확인 중..." : "로그인"}
-        </button>
-        {error && <p className="error-text">{error}</p>}
-      </form>
     </div>
   );
 }

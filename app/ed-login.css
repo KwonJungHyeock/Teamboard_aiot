@@ -1,0 +1,39 @@
+/* 로그인 (login.dc.html) */
+@keyframes rise { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+@keyframes shakeA { 0%,100% { transform: none } 20%,60% { transform: translateX(-6px) } 40%,80% { transform: translateX(6px) } }
+@keyframes shakeB { 0%,100% { transform: none } 20%,60% { transform: translateX(-6px) } 40%,80% { transform: translateX(6px) } }
+@keyframes glow { 0%,100% { opacity: .75; transform: scale(1) } 50% { opacity: 1; transform: scale(1.08) } }
+:root { --blobC: rgba(232,71,79,.10); }
+[data-theme=dark] { --blobC: rgba(255,90,97,.14); }
+.lg-wrap { position: relative; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 24px; overflow: hidden; background: var(--bg); }
+.lg-wrap .ed-bg .g { -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 45%,#000,transparent); mask-image: radial-gradient(ellipse 70% 60% at 50% 45%,#000,transparent); }
+.lg-theme { position: fixed; top: 20px; right: 24px; z-index: 2; }
+.lg-theme .ed-pill { height: auto; padding: 9px 12px; border-radius: 12px; font-size: 13px; background: var(--panel2); box-shadow: var(--sunken); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.lg-col { position: relative; z-index: 1; width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 32px; animation: rise .6s var(--ease) backwards; }
+.lg-brand { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.lg-mark { position: relative; width: 88px; height: 88px; display: grid; place-items: center; }
+.lg-mark .glow { position: absolute; inset: -30px; border-radius: 50%; background: radial-gradient(circle,var(--blobC),transparent 65%); animation: glow 6s ease-in-out infinite; }
+.lg-mark .tile { position: relative; width: 72px; height: 72px; border-radius: 22px; display: grid; place-items: center; background: var(--surface); box-shadow: var(--elev1); }
+.lg-mark img { width: 44px; height: auto; display: block; }
+.lg-mark .dk { display: none; }
+[data-theme=dark] .lg-mark .lt { display: none; }
+[data-theme=dark] .lg-mark .dk { display: block; }
+.lg-brand .nm { text-align: center; }
+.lg-brand .nm b { display: block; font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+.lg-brand .nm span { display: block; margin-top: 4px; font-size: 13px; font-weight: 500; color: var(--sub); }
+.lg-card { width: 100%; display: flex; flex-direction: column; gap: 14px; padding: 28px; border-radius: 24px; background: var(--surface); box-shadow: var(--elev3); }
+.lg-card[data-shake=A] { animation: shakeA .35s var(--ease); }
+.lg-card[data-shake=B] { animation: shakeB .35s var(--ease); }
+.lg-card label { display: flex; flex-direction: column; gap: 8px; }
+.lg-card label > span { font-size: 13px; font-weight: 700; color: var(--sub); }
+.lg-card input { width: 100%; border: 0; outline: 0; font-size: 15px; font-weight: 500; color: var(--ink); padding: 14px 16px; border-radius: 14px; background: var(--panel2); box-shadow: var(--sunken); transition: box-shadow .2s; }
+.lg-card input:focus-visible { box-shadow: var(--sunken), inset 0 0 0 1.5px color-mix(in oklch,var(--accent) 55%,transparent); }
+.lg-card input.bad { box-shadow: inset 0 0 0 1.5px var(--red); }
+.lg-card .pw { position: relative; }
+.lg-card .pw input { padding-right: 64px; }
+.lg-card .pw button { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: 0; cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 9px; background: var(--surface); box-shadow: var(--elev1); color: var(--sub); }
+.lg-card .err { font-size: 13px; font-weight: 600; color: var(--red); }
+.lg-card .go { margin-top: 6px; border: 0; cursor: pointer; font-size: 15px; font-weight: 700; padding: 15px; border-radius: 14px; background: var(--ink); color: var(--bg); display: flex; align-items: center; justify-content: center; gap: 10px; transition: opacity .2s, transform .15s; }
+.lg-card .go:active { transform: scale(.99); }
+.lg-card .spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--bg); border-right-color: transparent; animation: spin .7s linear infinite; }
+.lg-col .team { font-size: 12px; color: var(--faint); }

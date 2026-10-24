@@ -4,8 +4,7 @@ import { redirect } from "next/navigation";
 import { getLiveSession } from "@/lib/auth";
 import { hasLead } from "@/lib/types";
 import { deniedHref } from "@/lib/denied";
-import SettingsView from "@/components/v3/SettingsView";
-import "../../v3-connect.css";
+import Settings from "@/components/ed/account/Settings";
 
 export const dynamic = "force-dynamic";
 
@@ -13,5 +12,5 @@ export default async function V3Settings() {
   const live = await getLiveSession();
   if (!live) redirect("/api/auth/logout?reason=inactive");
   if (!hasLead(live.user.role)) redirect(deniedHref("settings"));
-  return <SettingsView />;
+  return <Settings />;
 }

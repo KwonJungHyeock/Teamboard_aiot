@@ -7,6 +7,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { MENU } from "@/lib/v3/nine";
 import { V3_BASE } from "@/lib/v3/routes";
+import { DENIED_PARAM } from "@/lib/denied";
 import { ago, initial } from "@/lib/ed/core";
 import { KIND_LABEL, type ActivityKind } from "@/lib/activity-kinds";
 import TaskDrawer from "./TaskDrawer";
@@ -162,6 +163,23 @@ function LiveTicker() {
   );
 }
 
+/** 권한 없는 화면에서 돌아왔을 때 한 줄(`?denied=`) — 닫으면 주소에서도 뺀다 */
+function DeniedToast() {
+  const sp = useSearchParams();
+  const router = useRouter();
+  const path = usePathname();
+  const k = sp.get(DENIED_PARAM);
+  useEffect(() => {
+    if (!k) return;
+    const t = setTimeout(() => {
+      const q = new URLSearchParams(sp.toString()); q.delete(DENIED_PARAM);
+      router.replace(q.toString() ? `${path}?${q}` : path, { scroll: false });
+    }, 3200);
+    return () => clearTimeout(t);
+  }, [k, sp, router, path]);
+  return k ? <div className="ed-toast" role="status">권한이 없는 화면입니다</div> : null;
+}
+
 function DrawerHost() {
   const sp = useSearchParams();
   const router = useRouter();
@@ -197,7 +215,7 @@ export default function Frame({ user, children }: { user: FrameUser; children: R
       </header>
       <main className="ed-main">{children}</main>
       <LiveTicker />
-      <Suspense fallback={null}><DrawerHost /></Suspense>
+      <Suspense fallback={null}><DrawerHost /><DeniedToast /></Suspense>
     </div>
   );
 }
