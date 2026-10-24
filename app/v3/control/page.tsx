@@ -20,7 +20,7 @@ export default async function V3Control() {
   // 가오픈 날은 대시보드와 **같은 자리**(`platform-config`)에서, 같은 셈(`dDay`)으로 — 두 화면이 다른 날을 말하면 안 된다.
   const openAtMs = Date.parse(openAt);
   return (
-    <ControlView {...data} quietDays={QUIET_DAYS} canLead={hasLead(live.user.role)} team={TEAM_NAME}
+    <ControlView {...data} meId={live.user.id} quietDays={QUIET_DAYS} canLead={hasLead(live.user.role)} team={TEAM_NAME}
                  openDay={Number.isFinite(openAtMs) ? dDay(openAtMs, Date.now()) : null}
                  openDate={Number.isFinite(openAtMs) ? new Date(openAtMs + 9 * 3600 * 1000).toISOString().slice(5, 10).replace("-", ".") : null} />
   );

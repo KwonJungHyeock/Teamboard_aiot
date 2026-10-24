@@ -184,3 +184,32 @@ a.v3-ctl-brow:hover { background: rgba(255, 255, 255, .05); }
   .v3-ctl-brow.head span:nth-child(3) { display: none; }
   .v3-ctl-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ── 하루 한 줄 · 상태 (0039) ─────────────────────────────────────
+   상태 칩은 색을 새로 만들지 않는다 — 집중은 강조 파랑, 외근은 호박, 휴가는 흐린 글자. */
+.v3-ctl-myday { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0;
+  padding: 10px 14px; border-radius: var(--v3-radius-s); background: var(--ctl-glass);
+  border: 1px solid var(--ctl-edge); }
+.v3-ctl-myday-l { font-size: 13px; font-weight: 700; color: var(--v3-ink); white-space: nowrap; }
+.v3 .v3-ctl-myday-in { flex: 1 1 240px; min-width: 0; width: auto; min-height: 36px; padding: 0 12px;
+  border: 1px solid var(--v3-line-2); border-radius: var(--v3-radius-s); background: var(--v3-card);
+  color: var(--v3-ink); font: inherit; font-size: 14px; }
+.v3 .v3-ctl-myday-in:focus { outline: none; border-color: var(--v3-rail); }
+.v3-ctl-myday-st { display: flex; gap: 6px; }
+.v3-ctl-myday-n { font-style: normal; font-size: 12px; color: var(--v3-ink-2); }
+.v3-ctl-st { display: inline-flex; align-items: center; margin-left: 6px; padding: 1px 8px; border-radius: var(--v3-radius-pill);
+  border: 1px solid transparent; font-size: 11.5px; font-weight: 700; line-height: 1.5; vertical-align: 1px; }
+.v3-ctl-st.focus { background: var(--v3-cat-platform-bg); color: var(--v3-rail); }
+.v3-ctl-st.out { background: var(--v3-warn-bg); color: var(--v3-warn); }
+.v3-ctl-st.off { background: var(--v3-cat-etc-bg); color: var(--v3-ink-2); }
+/* 고르개 — 안 눌린 칩은 색이 없다. 눌린 것만 제 색 */
+.v3-ctl-myday-st button.v3-ctl-st { margin: 0; min-height: 30px; padding: 0 12px; font: inherit; font-size: 12.5px; font-weight: 600;
+  border-color: var(--v3-line-2); background: var(--v3-card); color: var(--v3-ink-2); cursor: pointer; }
+.v3-ctl-myday-st button.v3-ctl-st:hover { border-color: var(--v3-ink-3); }
+.v3-ctl-myday-st button.v3-ctl-st.focus.on { background: var(--v3-cat-platform-bg); border-color: var(--v3-rail); color: var(--v3-rail); }
+.v3-ctl-myday-st button.v3-ctl-st.out.on { background: var(--v3-warn-bg); border-color: var(--v3-warn); color: var(--v3-warn); }
+.v3-ctl-myday-st button.v3-ctl-st.off.on { background: var(--v3-cat-etc-bg); border-color: var(--v3-ink-3); color: var(--v3-ink); }
+/* 이름 줄은 한 줄 — 상태 칩이 붙어도 「15일 전」이 다음 줄로 안 떨어진다 */
+.v3-ctl-mn > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-ctl-mn q.v3-ctl-say { quotes: "“" "”"; font-size: 13px; color: var(--v3-ink); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
