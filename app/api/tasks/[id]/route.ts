@@ -13,6 +13,7 @@ import { recomputeGoalChain, recomputeGoalsForTask } from "@/lib/goals";
 import { jsonError } from "@/lib/api";
 import { decisionsForTask } from "@/lib/decisions";
 import { notify } from "@/lib/notify";
+import { notify as pushNotify } from "@/lib/push";
 import { visibleTaskSql, isVisibility } from "@/lib/visibility";
 import { areaProjectError } from "@/lib/area-project-server";
 import { hasLead } from "@/lib/types";
@@ -102,6 +103,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (payload.projectId !== undefined) set("project_id", payload.projectId ? Number(payload.projectId) : null);
     // 활동 로그(파트 5) — 의미 있는 변경(담당·진행률·목표·상태)만 기록.
     const extraLogs: string[] = [];
+    /** 데스크톱 알림(0041) — 저장이 끝난 **뒤에** 보낸다. 중간에 막히면 안 간다 */
+    let pushTo: number | null = null;
     if (payload.assigneeId !== undefined) {
       const newAssignee = payload.assigneeId ? Number(payload.assigneeId) : null;
       set("assignee_id", newAssignee);
@@ -122,6 +125,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
             snippet: `업무 배정 · ${task.title}`, actorId: session.id,
           });
         }
+        if (newAssignee && newAssignee !== session.id) pushTo = newAssignee;
       }
     }
     const isDate = (v: unknown): v is string =>
@@ -608,6 +612,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
     if (statusLog) {
       await logActivity({ userId: session.id, message: statusLog, taskId });
+    }
+    if (pushTo) {
+      await pushNotify([pushTo], "assign", {
+        title: `${session.name.replace(/ \(Claude\)$/, "")} 님이 업무를 넘겼습니다`, body: task.title,
+        url: `/v3/tasks/${taskId}`, tag: `assign-${taskId}`,
+      });
     }
     return NextResponse.json({ ok: true });
   } catch (error) {

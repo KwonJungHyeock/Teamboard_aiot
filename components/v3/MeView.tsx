@@ -17,6 +17,7 @@
 import { useState } from "react";
 import { Card, Button } from "./parts";
 import ClaudeConnect from "./ClaudeConnect";
+import PushSettings from "./PushSettings";
 
 export default function MeView({
   name, email, roleLabel, team,
@@ -103,6 +104,8 @@ export default function MeView({
         </div>
         {msg && <p className={ok ? "v3-why" : "v3-err v3-newerr"} role="status">{msg}</p>}
       </Card>
+
+      <PushSettings />
 
       <ClaudeConnect />
     </>

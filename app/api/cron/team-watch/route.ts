@@ -6,6 +6,8 @@ import { getSession } from "@/lib/auth";
 import { jsonError } from "@/lib/api";
 import { hasLead } from "@/lib/types";
 import { runControlWatch } from "@/lib/control-watch";
+import { pushMorningDue } from "@/lib/push";
+import { kstToday } from "@/lib/home";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +23,10 @@ export async function GET(request: Request) {
     if (!isCronCaller(request)) {
       return NextResponse.json({ error: "인증되지 않은 호출입니다." }, { status: 401 });
     }
-    return NextResponse.json(await runControlWatch());
+    const watch = await runControlWatch();
+    // 데스크톱 알림(0041) — 하루 한 번, 예약 호출일 때만(팀장이 손으로 돌리는 POST 는 다시 안 보낸다)
+    const pushed = await pushMorningDue(kstToday()).catch(() => 0);
+    return NextResponse.json({ ...watch, pushed });
   } catch (error) {
     return jsonError(error);
   }
