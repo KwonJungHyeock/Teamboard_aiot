@@ -160,6 +160,16 @@ function completeWithMock(taskType: TaskType, instruction: string): string {
 
 // ---------- 공개 인터페이스 ----------
 
+/**
+ * 글 한 편 — 시스템 지시 + 사용자 글을 받아 답 글을 돌려준다(주간 브리핑 · `lib/brief.ts`).
+ * 키가 없으면(데모) 던진다 — 부르는 쪽이 `isDemoMode()` 로 먼저 갈라야 한다.
+ */
+export async function completeText(system: string, user: string): Promise<string> {
+  const provider = resolveProvider();
+  if (provider === "mock") throw new Error("LLM 키가 연결되지 않았습니다(데모 모드).");
+  return provider === "openai" ? completeWithOpenAI(system, user) : completeWithAnthropic(system, user);
+}
+
 export interface DraftResult {
   title: string;
   body: string;
