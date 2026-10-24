@@ -28,3 +28,9 @@
 .v3-pn-kinds { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 4px 0 8px 124px; }
 .v3-pn-k { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--v3-ink); cursor: pointer; }
 @media (max-width: 640px) { .v3-pn-kinds { padding-left: 0; } .v3-pn-row > b { width: 100%; } }
+
+/* 설정 (2026-10) — 칸 하나에 입력 · 저장 · 지금 값 */
+.v3-set-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; }
+.v3 .v3-set-date, .v3 .v3-set-sel { flex: 0 0 auto; width: 220px; }
+.v3 .v3-set-label { flex: 0 0 200px; }
+@media (max-width: 640px) { .v3 .v3-set-date, .v3 .v3-set-sel, .v3 .v3-set-label { width: 100%; flex: 1 1 100%; } }

@@ -122,7 +122,8 @@ try {
 
   // ── ③ 막는 자리마다 제 문장 ───────────────────────────────────
   const seen = [];
-  for (const [where, key] of [["/settings", "settings"], ["/status", "status"],
+  // /settings 는 2026-10 설정 화면이 서서 막음이 아니다 — 아래 ③짝에서 따로 본다
+  for (const [where, key] of [["/status", "status"],
                               ["/open-due", "open-due"], ["/admin/agent-usage", "agent-usage"]]) {
     await page.goto(`${BASE}${where}`, { waitUntil: "networkidle" });
     const u = new URL(page.url());
@@ -132,6 +133,14 @@ try {
   chk("③-옛-막는-자리는-아직-안-엽니다로",
       seen.every((s) => s.ok),
       seen.map((s) => `${s.where} ${s.ok ? "맞음" : `**다름: "${s.t}"**`}`).join(" · "));
+
+  // ③짝 — 설정(2026-10 새 화면)은 팀장부터. 팀원은 이유를 들고 관제로
+  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle" });
+  await note().waitFor({ timeout: 9000 }).catch(() => {});
+  const setUrl = new URL(page.url());
+  const setTxt = await noteText();
+  chk("③짝-설정은-팀장부터", setUrl.pathname === "/v3/control" && setTxt.includes(DENIED_REASON.settings),
+      `/settings → ${setUrl.pathname}${setUrl.search} · "${setTxt}"`);
 
   // ── ④ 안 사라진다 ────────────────────────────────────────────
   //

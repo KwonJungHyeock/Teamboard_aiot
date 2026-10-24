@@ -141,12 +141,13 @@ try {
   const c2 = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   await c2.addCookies([{ name: "tb_session", domain: HOST, path: "/", value: tok(MEMBER) }]);
   const p2 = await c2.newPage();
-  const r2 = await p2.goto(`${BASE}/settings`, { waitUntil: "networkidle" });
+  // 2026-10 설정은 화면이 섰다 — 아직 막힌 「시스템 상태」로 잰다
+  const r2 = await p2.goto(`${BASE}/status`, { waitUntil: "networkidle" });
   const u2 = new URL(p2.url());
   const b2 = await p2.locator("body").innerText();
   chk("⑤-팀원도-같은-막음-화면", r2.status() === 200 && u2.pathname === "/v3/not-yet"
       && !b2.includes("팀장부터"),
-      `팀원(${MEMBER.name}) /settings → ${r2.status()} ${u2.pathname}` +
+      `팀원(${MEMBER.name}) /status → ${r2.status()} ${u2.pathname}` +
       ` · 등급 이야기 ${b2.includes("팀장부터") ? "**한다**" : "안 한다"}` +
       ` (지금 막는 이유는 등급이 아니다)`);
   await c2.close();
