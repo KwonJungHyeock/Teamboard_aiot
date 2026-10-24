@@ -222,11 +222,13 @@ try {
    * 대신 레일에서 내려온 「내 정보」가 선다. 묻는 것은 같은 결이다: 옛 화면으로 안 내보내고,
    * 등급으로 흐린 칸이 없다.
    */
-  const settingsAny = await page.locator('.v3-acct-l[href*="settings"]').count();
+  // 2026-10 설정 화면이 섰다 — 이제 팀장부터 **진짜 링크**(/v3/settings)가 선다. 옛 /settings 는 0, 흐린 칸 0
+  const settingsAny = await page.locator('.v3-acct-l[href="/v3/settings"]').count();
+  const settingsOld = await page.locator('.v3-acct-l[href="/settings"]').count();
   const meLink = await page.locator('.v3-acct-l[href="/v3/me"]').count();
   const settingsOff = await page.locator(".v3-acct-l.off").count();
   chk("⑦-계정-블록-내-정보·설정-없음",
-      settingsAny === 0 && meLink === 1 && settingsOff === 0,
+      settingsAny === (hasLead(me.role) ? 1 : 0) && settingsOld === 0 && meLink === 1 && settingsOff === 0,
       `설정 링크 ${settingsAny}개 · 내 정보 ${meLink}개 · 등급으로 흐린 칸 ${settingsOff}개` +
       ` (hasLead(${me.role}) = ${hasLead(me.role)} 와 상관없다)`);
 

@@ -45,6 +45,7 @@ import { RAIL, ACCOUNT_LINKS, nineOf } from "@/lib/v3/nine";
 import { roleLabel, showsAdminGrantBadge, hasLead, isAdmin } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import DeniedNote from "../DeniedNote";
+import Bell from "./Bell";
 import { APP_NAME, TEAM_NAME } from "@/lib/brand";
 
 /*
@@ -149,6 +150,7 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
           <span aria-hidden="true">☰</span>
         </button>
         <b className="v3-topbar-t">{title}</b>
+        <Bell />
         <Link className="v3-btn primary v3-topbar-new" href={newHref}>＋ 새 업무</Link>
       </div>
 
@@ -255,6 +257,7 @@ export default function V3Shell({ user, children }: { user: SessionUser; childre
           {/* 「＋ 새 업무」 — **이 화면의 유일한 자리**다 (056 §A).
               단축키 `C` 도 같은 곳으로 가므로 버튼에 적어 둔다. */}
           <div className="v3-top">
+            <Bell />
             <Link className="v3-btn primary v3-topnew" href={newHref}>
               ＋ 새 업무
               <kbd className="v3-topkbd">C</kbd>
