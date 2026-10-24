@@ -228,7 +228,7 @@ export default function WorklogView({ me }: { me: { id: number; name: string } }
 
   return (
     <div className="v3-log">
-      <h1 className="v3-h1">내 기록</h1>
+      <h1 className="v3-h1 v3-log-h1">내 기록 <a className="v3-btn v3-log-mr" href={`/v3/report?m=${month}`}>이 달 월간 보고 →</a></h1>
       <p className="v3-lede">
         {Number(y)}년 {Number(mo)}월 · {total}줄 · 이미지 {imgs} · 파일 {files - imgs} — 나만 봅니다
       </p>
