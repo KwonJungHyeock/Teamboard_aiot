@@ -7,6 +7,7 @@ import { checkParent } from "@/lib/subtask";
 import { requireSession } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
+import { notify as pushNotify } from "@/lib/push";
 import { jsonError } from "@/lib/api";
 import { kstToday } from "@/lib/home";
 import { visibleTaskSql, isVisibility } from "@/lib/visibility";
@@ -450,6 +451,13 @@ export async function POST(request: Request) {
         ? `${session.name}이(가) 개인 업무 생성`
         : `${session.name}이(가) 업무 생성 — "${title}"`,
     });
+    // 남에게 만들어 준 업무 — 받는 사람 기기에 알림(0041). 개인 업무는 남에게 못 준다(위에서 막았다)
+    if (assigneeId !== session.id) {
+      await pushNotify([assigneeId], "assign", {
+        title: `${session.name.replace(/ \(Claude\)$/, "")} 님이 업무를 맡겼습니다`, body: title,
+        url: `/v3/tasks/${task!.id}`, tag: `assign-${task!.id}`,
+      });
+    }
     return NextResponse.json({ id: task!.id });
   } catch (error) {
     return jsonError(error);

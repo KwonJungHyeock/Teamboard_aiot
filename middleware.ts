@@ -15,7 +15,9 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/brand") || // 브랜드 로고 등 공개 자산(로그인 전 표시)
-    pathname === "/favicon.ico"
+    pathname === "/favicon.ico" ||
+    // 앱 설치 · 알림(2026-10 알림 A) — 브라우저가 로그인 쿠키 없이도 읽어야 한다
+    pathname === "/sw.js" || pathname === "/manifest.webmanifest"
   ) {
     return NextResponse.next();
   }
