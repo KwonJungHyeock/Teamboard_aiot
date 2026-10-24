@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import "@/lib/theme.css";
-import "./globals.css";
-import "./home.css";
-import "./design.css";   // MD-P-2026-019 공통 규격 (마지막에 실려 우선한다)
+import "./ed.css";   // 디자인 v1.0 — 토큰 · 공통 프레임 · 공통 부품 (2026-10 리디자인)
 import { APP_NAME, ORG_NAME, TEAM_NAME } from "@/lib/brand";
 
 // Pretendard Variable — self-host woff2 (CDN 런타임 의존 제거, 오프라인·CLS 0).
@@ -38,9 +35,15 @@ export const metadata: Metadata = {
   },
 };
 
+const THEME_BOOT = `try{var t=localStorage.getItem("eduino-theme");document.documentElement.dataset.theme=t==="dark"?"dark":"light"}catch(e){document.documentElement.dataset.theme="light"}`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko" className={`${pretendard.variable} ${jetbrainsMono.variable}`}>
+    <html lang="ko" className={`${pretendard.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+      <head>
+        {/* 테마는 칠하기 전에 정한다 — 다크로 고른 사람이 흰 화면을 한 번 보지 않게 (localStorage['eduino-theme']) */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+      </head>
       <body>{children}</body>
     </html>
   );

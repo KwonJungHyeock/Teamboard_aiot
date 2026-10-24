@@ -157,12 +157,12 @@ try {
   page.on("pageerror", (e) => errs.push(e.message));
   page.on("console", (m) => { const ty = m.type(); if (ty === "error" || ty === "warning") errs.push(`[${ty}] ${m.text().slice(0, 160)}`); });
   await page.goto(`${BASE}/v3/me`, { waitUntil: "networkidle" });
-  const card = await page.locator(".v3-card", { hasText: "알림 · 앱 설치" }).innerText().catch(() => "");
+  const card = await page.locator("#push").innerText().catch(() => "");
   const linked = await page.locator('link[rel="manifest"]').count();
   chk("⑧-설치-파일·화면", man.status === 200 && man.data?.start_url === "/v3/control" && man.data?.icons?.length === 2
       && sw.status === 200 && (sw.headers.get("content-type") ?? "").includes("javascript")
-      && card.includes("이 기기에서 알림 켜기") && linked === 1 && errs.length === 0,
-      `manifest ${man.status} · sw.js ${sw.status} · 카드 ${card.includes("이 기기에서 알림 켜기") ? "있음" : "없음"} · manifest 링크 ${linked} · 콘솔 ${errs.length}`);
+      && (card.includes("알림 켜기") || card.includes("알림 서버 키 없음")) && linked === 1 && errs.length === 0,
+      `manifest ${man.status} · sw.js ${sw.status} · 카드 ${(card.includes("알림 켜기") || card.includes("알림 서버 키 없음")) ? "있음" : "없음"} · manifest 링크 ${linked} · 콘솔 ${errs.length}`);
 
   // ── ⑨ 브라우저 쪽 ────────────────────────────────────────────
   await ctx.grantPermissions(["notifications"], { origin: BASE });

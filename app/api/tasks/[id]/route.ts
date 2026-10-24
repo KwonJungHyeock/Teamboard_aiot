@@ -639,7 +639,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       id: number; title: string; description: string; status: string; priority: string;
       origin: string; work_type: string; area_id: number; area_name: string; area_color: string | null;
       project_id: number | null; project_name: string | null; color_key: string | null;
-      assignee_id: number | null; assignee_name: string | null; created_by_name: string | null;
+      assignee_id: number | null; assignee_name: string | null; created_by_name: string | null; created_by: number | null;
       start_date: string | null; due_date: string | null; drop_reason: string | null;
       progress: number; goal_ids: number[] | null;
       blocked: boolean; blocked_reason: string | null; blocked_since: string | null; blocked_by: number | null;
@@ -650,7 +650,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       `SELECT t.id, t.title, t.description, t.status, t.priority, t.origin, t.work_type,
               t.area_id, ar.name AS area_name, ar.color_key AS area_color,
               t.project_id, p.name AS project_name, p.color_key,
-              t.assignee_id, a.display_name AS assignee_name, c.display_name AS created_by_name,
+              t.assignee_id, a.display_name AS assignee_name, c.display_name AS created_by_name, t.created_by,
               t.start_date::text, t.due_date::text, t.drop_reason, t.progress,
               array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
               t.blocked, t.blocked_reason, t.blocked_since::text, t.blocked_by,
@@ -690,7 +690,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         id: t.id, title: t.title, description: t.description, status: t.status, priority: t.priority,
         origin: t.origin, workType: t.work_type, areaId: t.area_id, areaName: t.area_name, areaColor: t.area_color,
         projectId: t.project_id, projectName: t.project_name, colorKey: t.color_key,
-        assigneeId: t.assignee_id, assigneeName: t.assignee_name, createdByName: t.created_by_name,
+        assigneeId: t.assignee_id, assigneeName: t.assignee_name, createdByName: t.created_by_name, createdById: t.created_by,
         startDate: t.start_date, dueDate: t.due_date, dropReason: t.drop_reason,
         progress: t.progress ?? 0,
         goalIds: t.goal_ids ?? [],

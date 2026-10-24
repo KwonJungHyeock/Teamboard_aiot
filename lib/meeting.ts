@@ -28,8 +28,10 @@ export interface MeetingSummary {
   id: number; title: string; status: "live" | "ended"; startedAt: string; endedAt: string | null;
   startedBy: string; present: number; attendees: number; decisions: number; actions: number;
 }
+/** 0044 — 채팅 · 파일까지 포함한 항목 종류(올리기는 각자의 함수로만) */
+export type AnyKind = ItemKind | "chat" | "file";
 export interface MeetingItem {
-  id: number; kind: ItemKind; body: string; url: string | null; meta: Record<string, unknown>;
+  id: number; kind: AnyKind; body: string; url: string | null; meta: Record<string, unknown>;
   createdBy: string; createdById: number; createdAt: string;
 }
 export interface Attendee { id: number; name: string; present: boolean; joinedAt: string }
@@ -94,7 +96,7 @@ export async function getMeeting(id: number): Promise<MeetingDetail | null> {
   );
   if (!m) return null;
   const items = await query<{
-    id: number; kind: ItemKind; body: string; url: string | null; meta: Record<string, unknown>;
+    id: number; kind: AnyKind; body: string; url: string | null; meta: Record<string, unknown>;
     created_by: number; who: string; created_at: string;
   }>(
     `SELECT i.id, i.kind, i.body, i.url, i.meta, i.created_by, a.display_name AS who, i.created_at::text
@@ -208,6 +210,8 @@ export async function updateItem(id: number, itemId: number, actorId: number, is
     const t = Number(input.taskId);
     if (!Number.isInteger(t) || t <= 0) throw new MeetingError("업무 번호가 올바르지 않습니다.");
     meta.taskId = t;
+  } else if (op === "check" && it.kind === "action") {
+    meta.done = !meta.done;   // 2026-10 리디자인 — 할 일 체크
   } else if (op === "remove") {
     if (!(host || it.created_by === actorId)) throw new MeetingError("올린 사람이나 회의를 연 사람이 내릴 수 있습니다.", 403);
     await query(`UPDATE meeting_item SET is_active = false, updated_at = now() WHERE id = $1`, [itemId]);
@@ -228,7 +232,7 @@ export async function endMeeting(id: number, actorId: number, isLead: boolean): 
   if (!(m.started_by === actorId || isLead)) throw new MeetingError("회의 끝내기는 연 사람이나 팀장이 합니다.", 403);
   const d = await getMeeting(id);
   if (!d) throw new MeetingError("회의를 찾을 수 없습니다.", 404);
-  const of = (k: ItemKind) => d.items.filter((i) => i.kind === k);
+  const of = (k: AnyKind) => d.items.filter((i) => i.kind === k);
   const decided = of("decision").filter((i) => i.meta.decidedAt);
   const minutes = {
     title: d.title, startedAt: d.startedAt, endedAt: new Date().toISOString(),
@@ -237,7 +241,8 @@ export async function endMeeting(id: number, actorId: number, isLead: boolean): 
     decisions: decided.map((i) => ({ body: i.body, votes: Array.isArray(i.meta.votes) ? (i.meta.votes as number[]).length : 0 })),
     openProposals: of("decision").filter((i) => !i.meta.decidedAt).map((i) => i.body),
     actions: of("action").map((i) => ({ body: i.body, taskId: (i.meta.taskId as number | undefined) ?? null })),
-    links: of("link").map((i) => ({ body: i.body, url: i.url })),
+    links: [...of("link").map((i) => ({ body: i.body, url: i.url })),
+            ...of("file").map((i) => ({ body: i.body, url: `/api/meetings/${id}/files/${i.id}` }))],
     notes: of("note").map((i) => i.body),
   };
   const ended = await queryOne<{ id: number }>(
@@ -303,4 +308,62 @@ export async function findDecisions(rawQ: unknown, limit = 50): Promise<FoundDec
     itemId: r.id, body: r.body, votes: Number(r.votes), decidedAt: r.decided_at,
     meetingId: r.meeting_id, meetingTitle: r.title, meetingAt: r.started_at, by: r.who,
   }));
+}
+
+
+// ── 채팅 · 파일 · 리액션 (0044 · 2026-10 리디자인) ──────────────────
+//
+// 채팅 한 줄과 올린 파일도 `meeting_item` 에 쌓는다(kind 'chat' · 'file').
+// 파일 본문은 Private Blob(`meetings/{회의}/…`)에 두고, 읽기는 회의 항목에 실제로 붙은 경로만 연다.
+export const REACTIONS = ["👍", "👏", "🙌", "❓"] as const;
+export const MEETING_FILE_MAX = 4 * 1024 * 1024;
+
+async function insertItem(id: number, actorId: number, kind: "chat" | "file", body: string, url: string | null, meta: Record<string, unknown>) {
+  const row = await queryOne<{ id: number }>(
+    `INSERT INTO meeting_item (meeting_id, kind, body, url, meta, created_by, position)
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6,
+             (SELECT coalesce(max(position), 0) + 1 FROM meeting_item WHERE meeting_id = $1 AND kind = $2))
+     RETURNING id`,
+    [id, kind, body, url, JSON.stringify(meta), actorId]
+  );
+  await heartbeat(id, actorId);
+  return row!.id;
+}
+
+export async function addChat(id: number, actorId: number, raw: unknown): Promise<number> {
+  await liveOrThrow(id);
+  const body = String(raw ?? "").trim().slice(0, 1000);
+  if (!body) throw new MeetingError("내용이 비었습니다.");
+  return insertItem(id, actorId, "chat", body, null, {});
+}
+
+export async function addFile(id: number, actorId: number, f: { pathname: string; name: string; size: number; mime: string }): Promise<number> {
+  await liveOrThrow(id);
+  return insertItem(id, actorId, "file", f.name.slice(0, 200) || "파일", f.pathname,
+    { name: f.name.slice(0, 200), size: f.size, mime: f.mime });
+}
+
+/** 리액션 — 같은 사람이 다시 누르면 거둔다 */
+export async function toggleReaction(id: number, itemId: number, actorId: number, emoji: unknown): Promise<void> {
+  await liveOrThrow(id);
+  const e = String(emoji ?? "");
+  if (!(REACTIONS as readonly string[]).includes(e)) throw new MeetingError("리액션이 올바르지 않습니다.");
+  const it = await queryOne<{ meta: Record<string, unknown> }>(
+    `SELECT meta FROM meeting_item WHERE id = $1 AND meeting_id = $2 AND is_active AND kind IN ('chat', 'file')`, [itemId, id]);
+  if (!it) throw new MeetingError("메시지를 찾을 수 없습니다.", 404);
+  const meta = { ...(it.meta ?? {}) };
+  const reactions = { ...((meta.reactions ?? {}) as Record<string, number[]>) };
+  const set = new Set(Array.isArray(reactions[e]) ? reactions[e] : []);
+  if (set.has(actorId)) set.delete(actorId); else set.add(actorId);
+  if (set.size) reactions[e] = Array.from(set); else delete reactions[e];
+  meta.reactions = reactions;
+  await query(`UPDATE meeting_item SET meta = $2::jsonb, updated_at = now() WHERE id = $1`, [itemId, JSON.stringify(meta)]);
+  await heartbeat(id, actorId);
+}
+
+/** 회의 파일 읽기 — 그 회의에 실제로 올라간 경로만 */
+export async function meetingFileOf(id: number, itemId: number): Promise<{ pathname: string; name: string } | null> {
+  const r = await queryOne<{ url: string; body: string }>(
+    `SELECT url, body FROM meeting_item WHERE id = $1 AND meeting_id = $2 AND kind = 'file' AND is_active`, [itemId, id]);
+  return r && r.url ? { pathname: r.url, name: r.body } : null;
 }

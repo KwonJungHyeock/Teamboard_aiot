@@ -15,11 +15,8 @@ import { isNine } from "@/lib/v3/nine";
 import { V3_BASE } from "@/lib/v3/routes";
 import { notYetHref, notYetOf } from "@/lib/v3/not-yet";
 import { PATH_HEADER } from "@/middleware";
-import V3Shell from "@/components/v3/Shell";
-import "../v3.css";
-import "../v3-space.css";
-import "../v3-bell.css";
-import "../v3-polish.css";
+import Frame from "@/components/ed/Frame";
+import { hasLead, isAdmin, roleLabel } from "@/lib/types";
 
 // 스위치는 **요청마다** 읽는다. 빌드 때 굳으면 끄는 데 배포가 든다 —
 // 「되돌리기는 스위치 하나」가 거짓이 된다.
@@ -51,5 +48,9 @@ export default async function V3Layout({ children }: { children: React.ReactNode
     const first = here.replace(`${V3_BASE}/`, "").split("?")[0].split("/")[0];
     redirect(notYetOf(first) ? notYetHref(first) : `${V3_BASE}/not-yet`);
   }
-  return <V3Shell user={live.user}>{children}</V3Shell>;
+  const u = live.user;
+  const lead = hasLead(u.role) || u.adminGrant;
+  const admin = isAdmin(u);
+  const user = { id: u.id, name: u.name, lead, admin, roleLabel: `${roleLabel(u.role)}${u.adminGrant && u.role !== "admin" ? " · 관리자 권한" : ""}` };
+  return <Frame user={user}>{children}</Frame>;
 }

@@ -97,7 +97,7 @@ export async function leadReview(reportId: number, lead: { id: number; name: str
 }
 
 /** 그 달의 내 사실 — AI 초안 재료 */
-async function facts(actorId: number, month: string) {
+export async function facts(actorId: number, month: string) {
   const from = `${month}-01`;
   const logs = await query<{ day: string; body: string; cat: string | null }>(
     `SELECT w.logged_on::text AS day, w.body, c.name AS cat FROM work_log w LEFT JOIN work_log_category c ON c.id = w.category_id
@@ -115,7 +115,7 @@ async function facts(actorId: number, month: string) {
   return { month, logs, done: done.map((d) => d.title), meetings: meetings.map((m) => m.title) };
 }
 
-const SYSTEM = `당신은 「AI 로봇 플랫폼팀」 팀원 한 사람의 월간 업무 보고 초안을 쓰는 보조입니다. 읽는 사람은 팀장입니다.
+export const SYSTEM = `당신은 「AI 로봇 플랫폼팀」 팀원 한 사람의 월간 업무 보고 초안을 쓰는 보조입니다. 읽는 사람은 팀장입니다.
 
 절대 규칙:
 - 주어진 사실(JSON)에 없는 일 · 수치 · 성과 · 평가를 만들지 않는다. 부풀리지 않는다.
@@ -126,28 +126,63 @@ const SYSTEM = `당신은 「AI 로봇 플랫폼팀」 팀원 한 사람의 월�
 - 「다음 달에 이어서 할 것」은 기록에서 「진행 중 · 다음에 · 이어서」처럼 끝나지 않은 것으로 읽히는 것만. 없으면 「없음」.
 - 해당 사실이 없는 칸은 「없음」 한 줄.`;
 
-/** AI 초안 — 만든 글을 그 달 보고 본문으로 저장한다(낸 보고는 못 덮는다) */
-export async function draftWithAI(actorId: number, name: string, month: string): Promise<MonthlyReport> {
+/** 데모(키 없음) 초안 — 사실을 그대로 묶는다. 문장을 지어내지 않는다 */
+export function demoDraft(f: Awaited<ReturnType<typeof facts>>): string {
+  const byCat = new Map<string, string[]>();
+  for (const l of f.logs) { const k = l.cat ?? "기타"; byCat.set(k, [...(byCat.get(k) ?? []), `${l.day.slice(5)} ${l.body}`]); }
+  return [
+    `## 이번 달 요약`, `- (데모 — AI 키가 없어 사실만 묶었습니다) 기록 ${f.logs.length}줄 · 끝낸 업무 ${f.done.length}건 · 회의 ${f.meetings.length}번`,
+    `## 한 일`, ...Array.from(byCat.entries()).flatMap(([k, xs]) => [`### ${k}`, ...xs.map((x: string) => `- ${x}`)]),
+    `## 끝낸 업무`, ...(f.done.length ? f.done.map((t) => `- ${t}`) : ["- 없음"]),
+    `## 회의`, ...(f.meetings.length ? f.meetings.map((t) => `- ${t}`) : ["- 없음"]),
+    `## 다음 달에 이어서 할 것`, `- (직접 적어 주세요)`,
+  ].join("\n");
+}
+export const draftHeader = (name: string, month: string) => `# ${name} · ${Number(month.slice(0, 4))}년 ${Number(month.slice(5))}월 업무 보고\n\n`;
+export const draftUser = (name: string, month: string, f: Awaited<ReturnType<typeof facts>>) =>
+  `사람: ${name}\n달: ${month}\n\n사실(JSON):\n${JSON.stringify(f)}\n\n위 사실만으로 월간 보고 초안을 쓰세요.`;
+
+/** AI 초안을 만들어도 되는가 — 낸 보고는 못 덮고, 재료가 없으면 만들지 않는다. 사실을 돌려준다 */
+export async function draftReady(actorId: number, month: string) {
   const cur = await getMine(actorId, month);
   if (cur?.status === "submitted") throw new MonthlyError("이미 낸 보고입니다. 되돌린 뒤에 초안을 다시 만드세요.", 409);
   const f = await facts(actorId, month);
   if (!f.logs.length && !f.done.length) throw new MonthlyError("이 달에는 내 기록도 끝낸 업무도 없습니다 — 초안을 만들 재료가 없습니다.");
-  let text: string;
-  if (isDemoMode()) {
-    // 키가 없으면(데모) 사실을 그대로 묶는다 — 문장을 지어내지 않는다
-    const byCat = new Map<string, string[]>();
-    for (const l of f.logs) { const k = l.cat ?? "기타"; byCat.set(k, [...(byCat.get(k) ?? []), `${l.day.slice(5)} ${l.body}`]); }
-    text = [
-      `## 이번 달 요약`, `- (데모 — AI 키가 없어 사실만 묶었습니다) 기록 ${f.logs.length}줄 · 끝낸 업무 ${f.done.length}건 · 회의 ${f.meetings.length}번`,
-      `## 한 일`, ...Array.from(byCat.entries()).flatMap(([k, xs]) => [`### ${k}`, ...xs.map((x: string) => `- ${x}`)]),
-      `## 끝낸 업무`, ...(f.done.length ? f.done.map((t) => `- ${t}`) : ["- 없음"]),
-      `## 회의`, ...(f.meetings.length ? f.meetings.map((t) => `- ${t}`) : ["- 없음"]),
-      `## 다음 달에 이어서 할 것`, `- (직접 적어 주세요)`,
-    ].join("\n");
-  } else {
-    text = await completeText(SYSTEM, `사람: ${name}\n달: ${month}\n\n사실(JSON):\n${JSON.stringify(f)}\n\n위 사실만으로 월간 보고 초안을 쓰세요.`);
-  }
-  await saveBody(actorId, month, `# ${name} · ${Number(month.slice(0, 4))}년 ${Number(month.slice(5))}월 업무 보고\n\n${text.trim()}`);
+  return f;
+}
+
+/** 흘려 쓴 초안을 저장한다 — 그사이 냈으면 덮지 않는다 */
+export async function saveDraft(actorId: number, month: string, body: string): Promise<MonthlyReport | null> {
+  const cur = await getMine(actorId, month);
+  if (cur?.status === "submitted") return null;
+  await saveBody(actorId, month, body);
   await query(`UPDATE monthly_report SET ai_at = now() WHERE actor_id = $1 AND month = $2`, [actorId, month]);
-  return (await getMine(actorId, month))!;
+  return getMine(actorId, month);
+}
+
+/** AI 초안 — 만든 글을 그 달 보고 본문으로 저장한다(낸 보고는 못 덮는다) */
+export async function draftWithAI(actorId: number, name: string, month: string): Promise<MonthlyReport> {
+  const f = await draftReady(actorId, month);
+  const text = isDemoMode() ? demoDraft(f) : await completeText(SYSTEM, draftUser(name, month, f));
+  return (await saveDraft(actorId, month, `${draftHeader(name, month)}${text.trim()}`))!;
+}
+
+/**
+ * 팀장 화면 「팀원 보고」 — 팀원 전부의 그 달 상태(2026-10 리디자인).
+ *   submitted · read(확인함) · writing(쓰는 중) · none(미작성)
+ * 쓰는 중인 글은 **본문을 내주지 않는다**(쓰는 중에는 나만 본다 — 0042 규칙).
+ */
+export interface TeamRow { actorId: number; name: string; state: "none" | "writing" | "submitted" | "read"; report: MonthlyReport | null }
+export async function teamStatus(month: string, leadId: number): Promise<TeamRow[]> {
+  const people = await query<{ id: number; name: string }>(
+    `SELECT a.id, a.display_name AS name FROM actor a JOIN account ac ON ac.actor_id = a.id
+      WHERE a.is_active AND a.type = 'human' AND a.id <> $1 ORDER BY a.id`, [leadId]);
+  const rows = await query<Row>(`SELECT ${COLS} ${FROM} WHERE r.month = $1`, [month]);
+  const by = new Map(rows.map((r) => [r.actor_id, toReport(r)]));
+  return people.map((p) => {
+    const r = by.get(p.id) ?? null;
+    if (!r || (r.status === "draft" && !r.body.trim())) return { actorId: p.id, name: p.name, state: "none", report: null };
+    if (r.status === "draft") return { actorId: p.id, name: p.name, state: "writing", report: { ...r, body: "" } };
+    return { actorId: p.id, name: p.name, state: r.leadReadAt ? "read" : "submitted", report: r };
+  });
 }

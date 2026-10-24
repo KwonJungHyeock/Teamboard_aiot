@@ -1,0 +1,92 @@
+/* 업무일지 (my-log.dc.html) */
+@keyframes cellIn { from { opacity: 0; transform: scale(.6) } to { opacity: 1; transform: none } }
+@keyframes cellA { 0% { transform: scale(1.35) } 100% { transform: scale(1) } }
+@keyframes cellB { 0% { transform: scale(1.35) } 100% { transform: scale(1) } }
+@keyframes logLeave { 0% { opacity: 1; max-height: 60px } 60% { opacity: 0; transform: translateX(18px); max-height: 60px } 100% { opacity: 0; transform: translateX(18px); max-height: 0; min-height: 0; padding-top: 0; padding-bottom: 0 } }
+
+.log-page { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 16px; }
+.log-head { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.log-head .l { display: flex; align-items: center; gap: 16px; }
+.log-mon { display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 12px; background: var(--panel2); box-shadow: var(--sunken); }
+.log-mon button { width: 30px; height: 30px; border: 0; cursor: pointer; border-radius: 9px; background: transparent; color: var(--sub); font-size: 13px; }
+.log-mon button:hover { background: var(--surface); }
+.log-mon span { padding: 0 10px; font-size: 14px; font-weight: 700; }
+.log-rep { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; padding: 9px 14px; border-radius: 12px; background: var(--surface); box-shadow: var(--elev1); color: var(--ink); }
+.log-rep:hover { text-decoration: none; box-shadow: var(--elev2); }
+
+.log-comp { position: relative; z-index: 5; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 18px; border-radius: 18px; background: var(--surface); box-shadow: var(--elev2); }
+.log-comp .plus { font-size: 20px; font-weight: 300; line-height: 1; color: var(--faint); }
+.log-comp > input { flex: 1; min-width: 120px; border: 0; outline: 0; background: transparent; font-size: 16px; font-weight: 500; color: var(--ink); padding: 10px 0; }
+.log-comp > input:focus-visible { outline: 0; }
+.log-comp .toks { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.log-comp .tkn { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 99px; background: var(--panel2); color: var(--sub); white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.log-comp .tkn i { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.log-comp .tkn.acc { color: var(--accent); background: color-mix(in oklch,var(--accent) 10%,transparent); }
+.log-comp .tkn.amb { color: var(--amber); background: color-mix(in oklch,var(--amber) 12%,transparent); }
+.log-comp .tkn button { border: 0; background: none; cursor: pointer; color: var(--faint); font-size: 10px; padding: 0 0 0 2px; }
+.log-comp .ico { flex-shrink: 0; width: 38px; height: 38px; border: 0; border-radius: 12px; display: grid; place-items: center; cursor: pointer; color: var(--sub); font-size: 16px; font-weight: 700; letter-spacing: 1px; background: transparent; }
+.log-comp .ico:hover, .log-comp .ico.on { background: var(--panel2); }
+.log-comp .go { flex-shrink: 0; border: 0; cursor: pointer; font-size: 14px; font-weight: 700; padding: 10px 18px; border-radius: 12px; background: var(--ink); color: var(--bg); transition: opacity .2s; }
+.log-comp .go.off { opacity: .3; cursor: default; }
+
+.log-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 340px; gap: 16px; }
+.log-stream { position: relative; min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 22px; background: var(--surface); box-shadow: var(--elev1); overflow: hidden; animation: qIn .55s var(--ease) backwards; }
+.log-filt { flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 14px 20px 0; }
+.log-filt button { border: 0; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 99px; background: var(--ink); color: var(--bg); }
+.log-filt button span { opacity: .6; }
+.log-scroll { flex: 1; min-height: 0; overflow: auto; padding: 4px 14px 16px; }
+.log-empty { padding: 40px 12px; font-size: 13px; color: var(--faint); }
+.log-day.in { animation: rowIn .4s var(--ease) backwards; }
+.log-dh { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 16px 8px 8px; background: var(--ringbg); }
+.log-dh span { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+.log-dh span.t { color: var(--accent); }
+.log-dh small { font-size: 12px; font-weight: 600; color: var(--faint); }
+.log-rows { position: relative; }
+.log-rows .rail { position: absolute; left: 70.25px; top: 6px; bottom: 6px; width: 1.5px; border-radius: 2px; background: var(--line); }
+.log-row { position: relative; display: grid; grid-template-columns: 44px 14px minmax(0,1fr) auto; gap: 12px; align-items: center; min-height: 40px; padding: 6px 8px; border-radius: 10px; overflow: hidden; transition: background .15s; }
+.log-row:hover { background: var(--panel2); }
+.log-row.nw { animation: slideIn .45s var(--ease) backwards; }
+.log-row.lv { animation: logLeave .45s var(--ease-out) forwards; }
+.log-row .tm { font-size: 12px; font-weight: 500; color: var(--faint); text-align: right; }
+.log-row .pt { position: relative; z-index: 1; justify-self: center; width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 3px var(--ringbg); }
+.log-row:hover .pt { box-shadow: 0 0 0 3px var(--panel2); }
+.log-row .tx { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.log-row .tx > span { min-width: 0; font-size: 14px; font-weight: 500; line-height: 1.45; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-row .dn { flex-shrink: 0; font-style: normal; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: color-mix(in oklch,var(--green) 13%,transparent); color: var(--green); }
+.log-row .fl { flex-shrink: 0; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--panel2); color: var(--sub); }
+.log-row:hover .fl { background: var(--surface); }
+.log-row .ct { font-size: 12px; color: var(--faint); white-space: nowrap; }
+.log-row .rm { display: none; border: 0; background: transparent; cursor: pointer; color: var(--faint); font-size: 12px; padding: 4px 6px; animation: fadeIn .12s; }
+.log-row:hover .rm { display: block; }
+.log-row:hover .rm + .ct, .log-row:hover .ct:has(+ .rm) { display: none; }
+
+.log-side { min-height: 0; width: 100%; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+.log-card { flex-shrink: 0; padding: 18px; border-radius: 22px; background: var(--surface); box-shadow: var(--elev1); animation: qIn .55s var(--ease) backwards; }
+.log-card.q1 { animation-delay: .08s } .log-card.q2 { animation-delay: .16s } .log-copy.q3 { animation-delay: .24s }
+.log-ch { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+.log-ch b { font-size: 15px; font-weight: 700; }
+.log-ch small { font-size: 12px; font-weight: 600; color: var(--faint); }
+.log-heat { display: grid; grid-template-columns: repeat(7,1fr); gap: 5px; }
+.log-heat .wh { text-align: center; font-size: 11px; font-weight: 600; color: var(--faint); padding-bottom: 2px; }
+.log-heat .hc { aspect-ratio: 1; border: 0; padding: 0; cursor: default; border-radius: 9px; display: grid; place-items: center; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.log-heat .hc.has { cursor: pointer; }
+.log-card.cat { display: flex; flex-direction: column; gap: 12px; }
+.log-card.cat .t { font-size: 15px; font-weight: 700; }
+.log-bar { display: flex; height: 8px; gap: 2px; border-radius: 99px; overflow: hidden; background: var(--panel2); }
+.log-bar span { transition: flex-grow .8s var(--ease); }
+.log-cats { display: flex; flex-direction: column; gap: 2px; }
+.log-cats button { border: 0; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 9px; background: transparent; color: var(--ink); text-align: left; }
+.log-cats button:hover, .log-cats button.on { background: var(--panel2); }
+.log-cats i { width: 7px; height: 7px; border-radius: 50%; }
+.log-cats span { flex: 1; font-size: 13px; font-weight: 500; }
+.log-cats b { font-size: 13px; font-weight: 600; color: var(--sub); }
+.log-copy { flex-shrink: 0; border: 0; cursor: pointer; font-size: 14px; font-weight: 700; padding: 14px; border-radius: 16px; background: var(--ink); color: var(--bg); box-shadow: var(--elev1); transition: background .25s, color .25s; animation: qIn .55s var(--ease) backwards; }
+.log-copy.ok { background: var(--green); color: #fff; }
+
+@media (max-width: 979px) {
+  .log-grid { grid-template-columns: minmax(0,1fr); }
+  .log-stream { min-height: 480px; }
+  .log-side { max-width: 400px; overflow: visible; }
+  .log-comp { flex-wrap: wrap; }
+}
+@media (max-height: 699px) { .log-stream { min-height: 420px; } }

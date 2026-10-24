@@ -1,0 +1,124 @@
+/* 업무 현황 (monitor-v8-home.dc.html) — 수치는 시안 인라인 스타일 그대로 */
+
+/* 이번 주 레일 */
+.mon-week { flex-shrink: 0; display: flex; align-items: flex-start; gap: 16px; border-radius: 20px; background: var(--surface); box-shadow: var(--elev1); padding: 12px 12px 12px 20px; overflow: hidden; }
+.mon-wh { flex-shrink: 0; width: 104px; border: 0; background: transparent; cursor: pointer; text-align: left; padding: 8px 0; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+.mon-wh > div { display: flex; flex-direction: column; gap: 2px; }
+.mon-wh b { font-size: 15px; font-weight: 700; }
+.mon-wh span { font-size: 12px; color: var(--faint); white-space: nowrap; }
+.mon-wh i { display: inline-block; font-style: normal; font-size: 10px; color: var(--faint); transition: transform .25s; }
+.mon-wscroll { flex: 1; min-width: 0; overflow: auto; max-height: 40vh; scrollbar-width: thin; }
+.mon-wgrid { display: grid; grid-template-columns: minmax(150px,1.3fr) repeat(7,minmax(108px,1fr)); gap: 4px; min-width: 920px; }
+.mon-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.mon-cell { border: 0; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 14px; background: transparent; color: var(--ink); transition: background .2s; }
+.mon-cell:hover { background: var(--panel2); }
+.mon-cell.over { background: color-mix(in oklch, var(--red) 8%, transparent); }
+.mon-cell.today { background: var(--surface); box-shadow: var(--elev2); }
+.mon-cd { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.mon-cd span { font-size: 12px; font-weight: 600; color: var(--faint); white-space: nowrap; }
+.mon-cd b { font-size: 20px; font-weight: 600; line-height: 1.1; letter-spacing: -.02em; color: var(--faint); }
+.mon-cell.has .mon-cd b { color: var(--ink); }
+.mon-cell.over .mon-cd span, .mon-cell.over .mon-cd b { color: var(--red); }
+.mon-cell.today .mon-cd span, .mon-cell.today .mon-cd b { color: var(--accent); }
+.mon-faces { margin-left: auto; display: flex; align-items: center; padding-left: 6px; }
+.mon-faces span { width: 22px; height: 22px; margin-left: -6px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700;
+  background: var(--surface); box-shadow: 0 0 0 2px var(--ringbg), var(--elev1); color: var(--ink); }
+.mon-cell.over .mon-faces span { color: var(--red); }
+.mon-cell.today .mon-faces span { color: var(--accent); }
+/* 화면에서 계속 움직이는 단 하나 — 가장 급한 것(지남 칸 첫 배지) */
+.mon-faces span.pulse { animation: pulseRed 2s ease-out infinite; }
+.mon-faces i { width: 14px; height: 2px; border-radius: 2px; background: var(--line); }
+.mon-tks { display: flex; flex-direction: column; gap: 6px; animation: drop .3s var(--ease) backwards; }
+.mon-tk { border: 0; cursor: pointer; text-align: left; padding: 9px 10px; border-radius: 12px; background: var(--surface); box-shadow: var(--elev1); display: flex; flex-direction: column; gap: 7px; color: var(--ink); }
+.mon-tk.done { opacity: .4; }
+.mon-tk.done .tt { text-decoration: line-through; }
+.mon-tk .tt { font-size: 13px; font-weight: 600; line-height: 1.4; text-wrap: pretty; }
+.mon-tk .wh { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--sub); min-width: 0; }
+.mon-tk .wh span { width: 20px; height: 20px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; background: var(--panel2); }
+.mon-tk .wh em { font-style: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mon-tk .wh b { margin-left: auto; flex-shrink: 0; font-weight: 700; color: var(--red); }
+.mon-more { padding: 2px 4px; font-size: 12px; font-weight: 700; color: var(--red); }
+
+/* 2열 */
+.mon-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(260px,360px) minmax(0,1fr); gap: 24px; }
+.mon-grid > section { min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.mon-sh { flex-shrink: 0; display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px; }
+.mon-sh h2 { margin: 0; font-size: 17px; font-weight: 700; }
+.mon-sh > span { font-size: 13px; font-weight: 600; color: var(--faint); }
+.mon-sh.team { align-items: center; gap: 20px; flex-wrap: wrap; }
+
+/* 내 업무 웰 */
+.mon-well { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 20px; background: var(--panel2); box-shadow: var(--sunken); }
+.mon-my { flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: var(--surface); box-shadow: var(--elev1); cursor: pointer; transition: opacity .3s; animation: rowIn .4s var(--ease) backwards; }
+.mon-my:nth-child(2) { animation-delay: .04s } .mon-my:nth-child(3) { animation-delay: .08s } .mon-my:nth-child(4) { animation-delay: .12s } .mon-my:nth-child(5) { animation-delay: .16s }
+.mon-my.new { animation: slideIn .45s var(--ease) backwards; }
+.mon-my.done { opacity: .45; }
+.mon-my.done .tt { text-decoration: line-through; }
+.mon-my .bd { min-width: 0; flex: 1; }
+.mon-my .tt { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mon-my .gl { margin-top: 3px; font-size: 12px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mon-due { flex-shrink: 0; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 99px; background: var(--panel2); color: var(--sub); }
+.mon-due.red { background: color-mix(in oklch, var(--red) 14%, transparent); color: var(--red); }
+.mon-due.amber { background: color-mix(in oklch, var(--amber) 16%, transparent); color: var(--amber); }
+
+/* 팀 */
+.mon-goals { display: flex; gap: 18px; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+.mon-g { display: flex; align-items: center; gap: 8px; flex-shrink: 0; white-space: nowrap; font-size: 13px; font-weight: 600; color: var(--sub); }
+.mon-g .bar { position: relative; width: 56px; height: 4px; border-radius: 99px; background: var(--panel2); box-shadow: var(--sunken); }
+.mon-g .bar i { display: block; height: 100%; border-radius: 99px; transition: width 1.4s var(--ease); }
+.mon-g .bar em { position: absolute; top: -3px; width: 2px; height: 10px; margin-left: -1px; background: var(--ink); opacity: .4; }
+.mon-table { flex: 1; min-height: 0; overflow: auto; border-radius: 20px; background: var(--surface); box-shadow: var(--elev1); padding: 6px 14px; }
+.mon-th, .mon-tr { display: grid; grid-template-columns: minmax(120px,190px) minmax(80px,1fr) auto; gap: 16px; }
+.mon-th { position: sticky; top: 0; z-index: 1; padding: 10px 6px; font-size: 12px; font-weight: 700; color: var(--faint); background: var(--ringbg); box-shadow: 0 1px 0 var(--line); }
+.mon-th > span { white-space: nowrap; overflow: hidden; }
+.n3 { display: grid; grid-template-columns: repeat(3,40px); gap: 6px; text-align: center; }
+.n3 span { white-space: nowrap; }
+.mon-th .a { color: var(--accent); } .mon-th .w { color: var(--amber); } .mon-th .o { color: var(--red); }
+.mon-tr { align-items: center; padding: 12px 6px; border-radius: 12px; box-shadow: 0 1px 0 var(--line); cursor: pointer; transition: background .2s; animation-fill-mode: backwards; }
+.mon-tr:hover { background: var(--panel2); }
+.mon-tr .who { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.mon-tr .who > div { min-width: 0; }
+.mon-tr .who b { display: block; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mon-tr .who small { display: block; font-size: 12px; }
+.mon-tr .av, .mon-dh .av { position: relative; width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--panel2); }
+.mon-tr .av i { position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: 50%; background: var(--faint); border: 2px solid var(--ringbg); }
+.mon-tr .av i.fresh { background: var(--green); }
+.mon-tr .av i.quiet { background: var(--amber); animation: breathe 4s ease-in-out infinite; }
+.mon-tr .wk { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.mon-tr .blk { display: flex; gap: 3px; flex-wrap: wrap; min-height: 6px; }
+.mon-tr .blk span { width: 16px; height: 6px; border-radius: 3px; }
+.mon-tr .ln { font-size: 13px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mon-tr .num { font-size: 17px; font-weight: 600; }
+
+/* 팀원 드로어 */
+.mon-dh { flex-shrink: 0; display: flex; align-items: center; gap: 14px; padding: 22px 22px 18px; }
+.mon-dh .av { width: 48px; height: 48px; font-size: 17px; }
+.mon-dh .av i { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ringbg); }
+.mon-dh .nm { font-size: 19px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mon-dh .ls { margin-top: 2px; font-size: 13px; }
+.mon-d3 { flex-shrink: 0; display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; padding: 0 22px 20px; }
+.mon-d3 > div { padding: 12px; border-radius: 14px; background: var(--panel2); box-shadow: var(--sunken); }
+.mon-d3 b { display: block; font-size: 24px; font-weight: 600; }
+.mon-d3 span { display: block; margin-top: 2px; font-size: 12px; font-weight: 700; }
+.ed-drawer .db.mon-db { padding: 0 22px 22px; }
+.mon-db .grp { display: flex; flex-direction: column; gap: 6px; }
+.mon-db .lb { font-size: 13px; font-weight: 700; color: var(--sub); padding: 0 2px 4px; }
+.mon-dt { border: 0; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 12px; background: var(--panel2); box-shadow: var(--sunken); color: var(--ink); }
+.mon-dt i { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; }
+.mon-dt span { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mon-dt em { flex-shrink: 0; font-style: normal; font-size: 12px; font-weight: 700; }
+.mon-rest { padding: 4px 2px; font-size: 13px; font-weight: 600; }
+.mon-fd { display: flex; gap: 10px; padding: 9px 2px; box-shadow: 0 1px 0 var(--line); }
+.mon-fd span { flex: 1; min-width: 0; font-size: 13px; color: var(--ink); line-height: 1.45; }
+.mon-fd em { flex-shrink: 0; font-style: normal; font-size: 12px; color: var(--faint); }
+
+@media (max-width: 979px) {
+  .mon-grid { grid-template-columns: minmax(0,1fr); }
+  .mon-well { max-height: 50vh; }
+}
+
+/* 등록창 칩 색 — 시안: 담당(항상 값 있음) ink, 비어 있는 마감 · 목표는 faint, 문법으로 잡히면 accent */
+.mon-comp { display: contents; }
+.mon-comp .ed-comp .tok { color: var(--faint); }
+.mon-comp .ed-comp .opts > .ed-rel:first-child .tok { color: var(--ink); }
+.mon-comp .ed-comp .tok.set { color: var(--accent); }

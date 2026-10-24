@@ -76,7 +76,7 @@ export const ROUTE_PAIRS: RoutePair[] = [
  * 이 함수를 부르므로, 네 화면의 목적지가 한꺼번에 새 상세로 옮겨 간다.
  */
 export function taskHref(id: number): string {
-  return `${V3_BASE}/tasks/${id}`;
+  return `${V3_BASE}/tasks?task=${id}`;
 }
 
 /**

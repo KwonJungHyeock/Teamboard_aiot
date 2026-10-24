@@ -5,7 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import type { AssistantSettings, TaskType } from "./types";
 
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-4-8";
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5-5";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.1";
 
 type Provider = "anthropic" | "openai" | "mock";
@@ -13,8 +13,9 @@ type Provider = "anthropic" | "openai" | "mock";
 function resolveProvider(): Provider {
   const explicit = process.env.LLM_PROVIDER;
   if (explicit === "openai" || explicit === "anthropic" || explicit === "mock") return explicit;
-  if (process.env.OPENAI_API_KEY) return "openai";
+  // 2026-10 — Claude 키가 있으면 Claude 가 먼저다(두 키가 다 있으면 Claude)
   if (process.env.ANTHROPIC_API_KEY) return "anthropic";
+  if (process.env.OPENAI_API_KEY) return "openai";
   // 키가 하나도 없으면 데모 모드 — 승인 게이트 흐름을 키 없이 시험할 수 있게 함
   return "mock";
 }
@@ -281,4 +282,56 @@ export async function generateDraft(params: {
   const body = lines.slice(bodyStart).join("\n").trim();
 
   return { title, body };
+}
+
+
+// ---------- 스트리밍 (2026-10 리디자인 · 월간 보고 AI 초안) ----------
+//
+// 글을 조각조각 흘려 보낸다. Claude 가 아니면(OpenAI · 데모) 완성된 글을 잘라서 흘린다 —
+// 화면은 공급자를 몰라도 된다. 거절(refusal)로 끝나면 오류를 던진다.
+export async function* streamText(system: string, user: string, demo: () => string): AsyncGenerator<string> {
+  const provider = resolveProvider();
+  if (provider === "anthropic") {
+    if (!anthropicClient) anthropicClient = new Anthropic();
+    const params = {
+      model: ANTHROPIC_MODEL,
+      max_tokens: 16000,
+      system,
+      messages: [{ role: "user" as const, content: user }],
+    };
+    // 안전 분류기가 거절하면 서버가 다른 모델로 이어 쓰게 한다(server-side fallback).
+    // 이 기능을 모르는 환경이면 400 이 나므로, 그때만 한 번 빼고 다시 부른다.
+    let stream;
+    try {
+      stream = anthropicClient.beta.messages.stream({
+        ...params, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
+      } as unknown as Parameters<typeof anthropicClient.beta.messages.stream>[0]);
+      for await (const ev of stream) {
+        if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") yield ev.delta.text;
+      }
+    } catch (e) {
+      if (!(e instanceof Anthropic.BadRequestError)) throw e;
+      const plain = anthropicClient.messages.stream(params);
+      for await (const ev of plain) {
+        if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") yield ev.delta.text;
+      }
+      const fin = await plain.finalMessage();
+      if ((fin.stop_reason as string) === "refusal") throw new Error("AI 가 이 요청을 처리하지 않았습니다.");
+      return;
+    }
+    const fin = await stream.finalMessage();
+    if ((fin.stop_reason as string) === "refusal") throw new Error("AI 가 이 요청을 처리하지 않았습니다.");
+    return;
+  }
+  const text = provider === "openai" ? await completeWithOpenAI(system, user) : demo();
+  for (let i = 0; i < text.length; i += 12) {
+    yield text.slice(i, i + 12);
+    if (provider === "mock") await new Promise((r) => setTimeout(r, 18));
+  }
+}
+
+/** 지금 쓰는 공급자 · 모델 — 화면에 「데모」 표시를 할지 정한다 */
+export function llmInfo(): { provider: Provider; model: string | null } {
+  const p = resolveProvider();
+  return { provider: p, model: p === "anthropic" ? ANTHROPIC_MODEL : p === "openai" ? OPENAI_MODEL : null };
 }

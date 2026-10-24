@@ -1,12 +1,13 @@
-// 월간 보고(개인 · 0042) — 내 보고 쓰기 · 내기, 팀장은 「팀원 보고」 탭에서 확인.
-// 알림함에서 오면 `?r=보고번호` — 그 보고의 달 · 탭으로 연다(지난달 보고를 이번 달 화면에 떨구지 않는다).
+// 월간 보고(개인 · 0042) — 디자인 v1.0 (monthly-report.dc.html). 내 보고 쓰기 · 내기, 팀장은 「팀원 보고」 탭.
+// 알림함에서 오면 `?r=보고번호` — 그 보고의 달 · 탭으로 연다.
 import { redirect } from "next/navigation";
 import { getLiveSession } from "@/lib/auth";
 import { queryOne } from "@/lib/db";
 import { hasLead } from "@/lib/types";
 import { kstToday } from "@/lib/home";
-import MonthlyView from "@/components/v3/MonthlyView";
-import "../../v3-log.css";
+import ReportView from "@/components/ed/screens/ReportView";
+import "../../ed-log.css";
+import "../../ed-report.css";
 
 export const dynamic = "force-dynamic";
 
@@ -21,5 +22,5 @@ export default async function V3Report({ searchParams }: { searchParams: { m?: s
     const r = await queryOne<{ month: string; actor_id: number }>(`SELECT month, actor_id FROM monthly_report WHERE id = $1`, [rid]);
     if (r) { month = r.month; tab = r.actor_id === live.user.id ? "mine" : lead ? "team" : "mine"; }
   }
-  return <MonthlyView me={{ id: live.user.id, name: live.user.name }} lead={lead} month={month} tab={tab} today={kstToday()} />;
+  return <ReportView key={`${month}:${tab}`} lead={lead} initMonth={month} initTab={tab} />;
 }

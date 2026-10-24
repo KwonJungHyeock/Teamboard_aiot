@@ -13,7 +13,7 @@ import { getLiveSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/types";
 import { deniedHref } from "@/lib/denied";
-import MembersView from "@/components/v3/MembersView";
+import Members from "@/components/ed/account/Members";
 
 export const dynamic = "force-dynamic";
 
@@ -22,5 +22,5 @@ export default async function V3Members() {
   if (!live) redirect("/api/auth/logout?reason=inactive");
   // **DB 의 지금 값**으로 본다 — 토큰으로 보면 권한 회수가 늦게 먹는다(039).
   if (!isAdmin(live.user)) redirect(deniedHref("members"));
-  return <MembersView me={live.user.id} />;
+  return <Members me={live.user.id} />;
 }
