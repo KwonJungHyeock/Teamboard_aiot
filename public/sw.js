@@ -7,7 +7,7 @@ self.addEventListener("push", (event) => {
   let msg = { title: "팀보드", body: "", url: "/v3/control" };
   try { msg = { ...msg, ...event.data.json() }; } catch { if (event.data) msg.body = event.data.text(); }
   event.waitUntil(self.registration.showNotification(msg.title, {
-    body: msg.body, tag: msg.tag, renotify: !!msg.tag, icon: "/brand/app-192.png", badge: "/brand/app-192.png",
+    body: msg.body, tag: msg.tag, renotify: !!msg.tag, icon: "/brand/app-192.png?v=2", badge: "/brand/app-192.png?v=2",
     data: { url: msg.url },
   }));
 });

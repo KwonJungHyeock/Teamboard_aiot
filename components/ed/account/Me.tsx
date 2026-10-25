@@ -207,7 +207,7 @@ function Claude() {
   const code = made ? `claude mcp add --transport http --scope user teamboard ${url} --header "Authorization: Bearer ${made}"` : "";
   const desktop = made ? JSON.stringify({ mcpServers: { teamboard: { command: "npx", args: ["-y", "mcp-remote", url, "--header", "Authorization:${TB_AUTH}"], env: { TB_AUTH: `Bearer ${made}` } } } }, null, 2) : "";
   return (
-    <section className="ed-sec q q3">
+    <section className="ed-sec q q3" id="claude">
       <h2>Claude 연결</h2>
       {made ? (
         <div className="me-cc">
@@ -217,6 +217,11 @@ function Claude() {
           <div className="ed-label">Claude 데스크톱 · claude_desktop_config.json</div>
           <pre onClick={() => void copy(desktop, "desk")}>{desktop}</pre>
           <button type="button" className="ed-btn sm" onClick={() => void copy(desktop, "desk")}>{copied === "desk" ? "복사됨 ✓" : "복사"}</button>
+          <ul className="me-tip">
+            <li>Claude 데스크톱 → 설정 → 개발자 → 구성 편집. 이미 내용이 있으면 <code>"mcpServers"</code> 안에 <code>teamboard</code> 묶음만 넣습니다(쉼표 주의).</li>
+            <li>저장한 뒤 파일 → 종료로 완전히 끄고 다시 켭니다. 개발자 화면에 「실행 중」이면 됩니다.</li>
+            <li>키는 지금 한 번만 보입니다. 복사 버튼으로만 옮기고, 채팅 · 캡처에 남기지 마세요.</li>
+          </ul>
           <button type="button" className="ed-btn pri" onClick={() => setMade(null)}>완료</button>
         </div>
       ) : (

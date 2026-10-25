@@ -14,8 +14,10 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#121A2B",
     lang: "ko",
     icons: [
-      { src: "/brand/app-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/brand/app-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      // 2026-10 — 받은 로고 원본(ed-mark)을 벡터로 따서 다시 뽑았다. ?v= 는 설치된 앱 · 탭이 옛 아이콘을 붙들지 않게
+      { src: "/brand/app-192.png?v=2", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/brand/app-512.png?v=2", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/brand/app-maskable-512.png?v=2", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }

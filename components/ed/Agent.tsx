@@ -2,23 +2,54 @@
 
 // 에이전트 — 상단 막대의 버튼 → 오른쪽 패널에서 말로 업무를 찾고 · 등록하고 · 고친다.
 // 서버(/api/ed/agent)가 Claude 와 도구를 돌리고, 쓰기는 「나 · 개인 업무」로만 들어간다(lib/claude-guard.ts).
+// 서버에 Claude 키가 없으면(2026-10 운영 기본) 채팅 대신 「각자 쓰는 Claude 앱에 연결해서 쓰기」 안내를 띄운다.
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { isEnter } from "@/lib/ed/core";
+import { V3_BASE } from "@/lib/v3/routes";
 import { Drawer, emitChanged } from "./ui";
 
 interface Msg { role: "user" | "assistant"; text: string; steps?: string[]; error?: boolean }
 const QUICK = ["오늘 마감인 내 업무", "기한 지난 팀 업무", "이번 주 끝낸 내 업무"];
+const SAY = ["팀보드에서 내 업무 중 정리할 거 찾아줘", "이거 금요일까지 팀보드 내 업무로 추가해줘", "오늘 한 일 팀보드 업무일지에 남겨줘", "기한 지난 팀 업무 알려줘"];
+
+/** 서버 키 없음 — Claude 데스크톱 · Claude Code 에 연결해서 쓰는 길 */
+function UseClaudeApp({ onClose }: { onClose: () => void }) {
+  const [copied, setCopied] = useState("");
+  const copy = async (t: string) => { try { await navigator.clipboard.writeText(t); setCopied(t); setTimeout(() => setCopied(""), 1600); } catch { /* 복사 못 하면 직접 친다 */ } };
+  return (
+    <div className="db ag-guide">
+      <b className="ag-gt">쓰고 있는 Claude 앱에서 바로 씁니다</b>
+      <p>Claude 데스크톱이나 Claude Code에 팀보드를 한 번 연결하면, 어느 대화에서든 업무를 찾고 등록합니다. 등록은 항상 <b>내 개인 업무</b>로 들어갑니다.</p>
+      <ol>
+        <li><b>연결 키 만들기</b> — 내 정보 › Claude 연결</li>
+        <li><b>Claude 데스크톱</b> — 설정 → 개발자 → 구성 편집에 붙여 넣고, 파일 → 종료 후 다시 켜기</li>
+        <li><b>Claude Code</b> — 명령을 복사해 터미널에서 한 번 실행</li>
+      </ol>
+      <Link href={`${V3_BASE}/me#claude`} className="ed-btn pri" onClick={onClose}>연결 키 만들기</Link>
+      <div className="ed-label">이렇게 말해 보세요 · 눌러서 복사</div>
+      <div className="ag-say">{SAY.map((t) => (
+        <button key={t} type="button" className="ed-chip" onClick={() => void copy(t)}>{copied === t ? "복사됨 ✓" : t}</button>
+      ))}</div>
+    </div>
+  );
+}
 
 export default function Agent() {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState<boolean | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight, behavior: "smooth" }); }, [msgs]);
-  useEffect(() => { if (open) setTimeout(() => input.current?.focus(), 50); }, [open]);
+  useEffect(() => { if (open && ready) setTimeout(() => input.current?.focus(), 50); }, [open, ready]);
+  useEffect(() => {
+    if (!open || ready !== null) return;
+    void fetch("/api/ed/agent", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((d) => setReady(!!d?.ready)).catch(() => setReady(false));
+  }, [open, ready]);
 
   const send = async (q: string) => {
     const said = q.trim();
@@ -75,6 +106,7 @@ export default function Agent() {
             {msgs.length > 0 && <button type="button" className="ed-btn sm gh" onClick={() => setMsgs([])} disabled={busy}>새 대화</button>}
             <button type="button" className="ed-x" onClick={() => setOpen(false)} aria-label="닫기">✕</button>
           </div>
+          {ready === false ? <UseClaudeApp onClose={() => setOpen(false)} /> : ready === null ? <div className="db" /> : (<>
           <div className="db ag-list" ref={list}>
             {msgs.length === 0 ? (
               <div className="ag-quick">{QUICK.map((q) => <button key={q} type="button" className="ed-chip" onClick={() => void send(q)}>{q}</button>)}</div>
@@ -90,6 +122,7 @@ export default function Agent() {
                       onKeyDown={(e) => { if (isEnter(e) && !e.shiftKey) { e.preventDefault(); void send(text); } }} />
             <button type="button" className={`ed-btn pri${text.trim() && !busy ? "" : " off"}`} disabled={!text.trim() || busy} onClick={() => void send(text)}>보내기</button>
           </div>
+          </>)}
         </Drawer>
       )}
     </>
