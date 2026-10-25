@@ -30,7 +30,7 @@ export interface StatsData {
   };
   monthDue: Record<St4, number>;
   launch: { before: number; after: number; none: number; done: number };
-  cross: { cat: { label: string; v: number[] }[]; who: { label: string; v: number[] }[] };
+  cross: { cat: { id: number; label: string; v: number[] }[]; who: { id: number; label: string; v: number[] }[] };
   load: { name: string; v: number[] }[];
 }
 
@@ -61,7 +61,7 @@ export async function getStats(viewerId: number, month: string, today: string): 
          FROM task t JOIN area ar ON ar.id = t.area_id LEFT JOIN actor a ON a.id = t.assignee_id
         WHERE ${countableSql("t")} AND t.parent_task_id IS NULL AND ${visibleTaskSql("$1")}`, [viewerId]),
     query<{ id: number; name: string }>(`SELECT id, display_name AS name FROM actor WHERE type = 'human' AND is_active ORDER BY id`),
-    query<{ name: string }>(`SELECT name FROM area WHERE is_active ORDER BY sort_order, id`),
+    query<{ id: number; name: string }>(`SELECT id, name FROM area WHERE is_active ORDER BY sort_order, id`),
     getPlatformOpen(),
   ]);
   const curMonth = today.slice(0, 7);
@@ -130,8 +130,8 @@ export async function getStats(viewerId: number, month: string, today: string): 
   const vec = (xs: Row[]) => ST4.map((s) => xs.filter((r) => norm(r.status) === s).length);
   const monthDue = Object.fromEntries(ST4.map((s, i) => [s, vec(monthRows)[i]])) as Record<St4, number>;
   const cross = {
-    cat: areas.map((a) => ({ label: a.name, v: vec(monthRows.filter((r) => r.area === a.name)) })),
-    who: people.map((p) => ({ label: p.name, v: vec(monthRows.filter((r) => r.assignee_id === p.id)) })),
+    cat: areas.map((a) => ({ id: a.id, label: a.name, v: vec(monthRows.filter((r) => r.area === a.name)) })),
+    who: people.map((p) => ({ id: p.id, label: p.name, v: vec(monthRows.filter((r) => r.assignee_id === p.id)) })),
   };
 
   // ── 가오픈 기준 구분 · 담당자 부하(지금) ────────────────

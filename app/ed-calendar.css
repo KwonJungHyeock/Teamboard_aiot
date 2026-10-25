@@ -101,3 +101,17 @@
 @media (max-width: 979px) {
   .cal-main { grid-template-columns: minmax(0,1fr); }
 }
+/* 휴대폰 — 달 칸은 점만, 자세한 것은 아래 날짜 패널에서 */
+@media (max-width: 719px) {
+  .cal-main { grid-template-columns: minmax(0,1fr); }
+  .cal-grid { grid-auto-rows: 64px; }
+  .cal-c { padding: 6px 4px 8px; align-items: center; gap: 2px; border-radius: 10px; }
+  .cal-ct { justify-content: center; }
+  .cal-cnt, .cal-lt, .cal-more { display: none; }
+  .cal-n { min-width: 24px; height: 24px; font-size: 13px; padding: 0 5px; }
+  .cal-c .cal-it { height: auto; padding: 0; display: inline-flex; }
+  .cal-c .cal-it span { display: none; }
+  .cal-c { flex-direction: column; }
+  .cal-wh span { padding: 0; text-align: center; }
+  .cal-load { left: 6px; right: 6px; }
+}

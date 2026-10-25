@@ -313,7 +313,7 @@ export default function Stats({ initialMonth }: { initialMonth: string }) {
                     const on = hv?.r === ri && hv?.c === ci, cross = hv && (hv.r === ri || hv.c === ci);
                     const pct = n ? 14 + Math.round((n / maxCell) * 44) : 0;
                     return (
-                      <Link key={`c${ri}-${ci}-${modeN}`} href="/v3/tasks" className="st-cell tn"
+                      <Link key={`c${ri}-${ci}-${modeN}`} href={`/v3/tasks?${mode === "cat" ? "area" : "who"}=${r.id}&f=${ST[ci].k === "review" ? "doing" : ST[ci].k}`} className="st-cell tn"
                             onMouseEnter={() => setHv({ r: ri, c: ci })} onMouseLeave={() => setHv(null)}
                             style={{ color: n ? (pct > 40 ? "#fff" : "var(--ink)") : "var(--faint)",
                               background: n ? `color-mix(in oklch, ${ST[ci].color} ${pct}%, var(--panel2))` : cross ? "var(--panel2)" : "transparent",

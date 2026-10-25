@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { addDays, ago, diffDays, initial, md, todayKst, wd, type EdTask } from "@/lib/ed/core";
+import { addDays, ago, diffDays, initial, isEnter, md, todayKst, wd, type EdTask } from "@/lib/ed/core";
 import Composer from "../Composer";
 import { patchTask, useMeta, useTasks } from "../data";
 import { api, Check, Drawer, useOnChanged } from "../ui";
@@ -18,6 +18,7 @@ interface MonData { today: string; people: MonPerson[]; goals: MonGoal[] }
 const H = 3600e3, D = 24 * H;
 const LEVEL = { year: "연간", quarter: "분기", month: "월" } as const;
 const iso = (s: string) => s.replace(" ", "T").replace(/\+00$/, "Z");
+const DAY: Record<string, string> = { focus: "집중", out: "외근", off: "휴가" };
 const strip = (name: string, msg: string) => (msg.startsWith(name) ? msg.slice(name.length).replace(/^이\(가\)\s*/, "") : msg);
 
 export default function Monitor() {
@@ -33,6 +34,28 @@ export default function Monitor() {
   const [newId, setNewId] = useState<number | null>(null);
   const [flash, setFlash] = useState<Record<number, number>>({});
   const [anim, setAnim] = useState(false);
+  // 하루 한 줄 · 상태(0039) — 팀 표에 보이고, 내 행 드로어에서 정한다. Claude 의 set_today 도 같은 값을 쓴다
+  const [daily, setDaily] = useState<Record<number, { line: string | null; state: string | null }>>({});
+  const [myLine, setMyLine] = useState("");
+  const [brief, setBrief] = useState<null | { loading?: boolean; text?: string; range?: string; none?: boolean; err?: string }>(null);
+  const loadDaily = useCallback(async () => {
+    const r = await fetch("/api/daily", { cache: "no-store" }).catch(() => null);
+    if (r?.ok) setDaily((await r.json()).notes ?? {});
+  }, []);
+  useEffect(() => { void loadDaily(); }, [loadDaily]);
+  const saveDay = async (body: { line?: string; state?: string | null }) => {
+    const r = await fetch("/api/daily", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => null);
+    if (r?.ok) void loadDaily();
+  };
+  const openBrief = async (make = false) => {
+    setBrief({ loading: true });
+    const r = await fetch("/api/brief" + (make ? "" : "?week=last"), make
+      ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ week: "last" }) } : { cache: "no-store" }).catch(() => null);
+    const d = r ? await r.json().catch(() => ({})) : {};
+    if (!r?.ok) { setBrief({ err: d.error ?? "불러오지 못했습니다" }); return; }
+    const range = `${String(d.week?.start ?? "").slice(5).replace("-", ".")} – ${String(d.week?.end ?? "").slice(5).replace("-", ".")}`;
+    setBrief(d.brief ? { text: d.brief.text, range } : { none: true, range });
+  };
   const lastLive = useRef<number | null>(null);
   const today = todayKst();
 
@@ -194,6 +217,7 @@ export default function Monitor() {
         <section className="mon-team q q3">
           <div className="mon-sh team">
             <h2>팀</h2>
+            <button type="button" className="mon-brief" onClick={() => void openBrief()}>주간 브리핑</button>
             <div className="mon-goals">
               {(mon?.goals ?? []).map((g) => (
                 <div key={g.id} title={g.title} className="mon-g">{LEVEL[g.level]}
@@ -210,7 +234,7 @@ export default function Monitor() {
                    style={{ opacity: m.dim ? 0.5 : 1, animation: flash[m.id] ? `${flash[m.id] % 2 ? "rowA" : "rowB"} 1.4s ease-out backwards` : undefined }}>
                 <div className="who">
                   <span className="av">{initial(m.name)}<i className={m.fresh ? "fresh" : m.quiet ? "quiet" : ""} /></span>
-                  <div><b>{m.name}</b><small style={{ color: m.fresh ? "var(--green)" : "var(--faint)" }}>{m.lastMs === null ? "기록 없음" : ago(iso(m.lastSeen!))}</small></div>
+                  <div><b>{m.name}</b><small style={{ color: daily[m.id]?.state ? "var(--accent)" : m.fresh ? "var(--green)" : "var(--faint)" }}>{daily[m.id]?.state ? `${DAY[daily[m.id].state!] ?? ""}${daily[m.id].line ? ` · ${daily[m.id].line}` : ""}` : daily[m.id]?.line ? daily[m.id].line : m.lastMs === null ? "기록 없음" : ago(iso(m.lastSeen!))}</small></div>
                 </div>
                 <div className="wk">
                   <div className="blk">{m.blocks.map((c, i) => <span key={i} style={{ background: c }} />)}</div>
@@ -243,6 +267,26 @@ export default function Monitor() {
             <div><b className="tn" style={{ color: tone(selM.over, "var(--red)") }}>{selM.over}</b><span style={{ color: "var(--red)" }}>지남</span></div>
           </div>
           <div className="db mon-db">
+            {(selM.id === meta?.me.id || daily[selM.id]?.line || daily[selM.id]?.state) && (
+              <div className="grp">
+                <div className="lb">오늘</div>
+                {selM.id === meta?.me.id ? (
+                  <>
+                    <input className="ed-input" placeholder="오늘 할 일 한 줄 · Enter" defaultValue={daily[selM.id]?.line ?? ""} key={daily[selM.id]?.line ?? ""}
+                           onChange={(e) => setMyLine(e.target.value)}
+                           onKeyDown={(e) => { if (isEnter(e)) { e.preventDefault(); void saveDay({ line: myLine }); } }}
+                           onBlur={() => { if (myLine !== (daily[selM.id]?.line ?? "")) void saveDay({ line: myLine }); }} />
+                    <div className="ed-chips">
+                      {[["", "보통"], ["focus", "집중"], ["out", "외근"], ["off", "휴가"]].map(([k, l]) => (
+                        <button key={k} type="button" className={`ed-chip${(daily[selM.id]?.state ?? "") === k ? " on" : ""}`} onClick={() => void saveDay({ state: k || null })}>{l}</button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="mon-day">{daily[selM.id]?.state && <b>{DAY[daily[selM.id].state!]}</b>}{daily[selM.id]?.line}</div>
+                )}
+              </div>
+            )}
             <div className="grp">
               <div className="lb">업무</div>
               {selM.ts.slice(0, 8).map((t) => {
@@ -268,6 +312,23 @@ export default function Monitor() {
             <button type="button" className="ed-btn pri lg" style={{ flex: 1 }} onClick={() => { setPreset({ who: selM.id, k: Date.now() }); setSel(null); }}>업무 맡기기</button>
             <Link className="ed-btn lg" style={{ flex: 1, color: "var(--ink)" }} href={`/v3/tasks?who=${selM.id}`}>전체 업무</Link>
           </div>
+        </Drawer>
+      )}
+      {brief && (
+        <Drawer onClose={() => setBrief(null)} width={460} label="주간 브리핑">
+          <div className="dh" style={{ alignItems: "center" }}>
+            <div style={{ flex: 1 }}><div style={{ fontSize: 20, fontWeight: 700 }}>주간 브리핑</div>{brief.range && <div className="ed-crumb tn" style={{ marginTop: 2 }}>지난주 · {brief.range}</div>}</div>
+            <button type="button" className="ed-x" onClick={() => setBrief(null)} aria-label="닫기">✕</button>
+          </div>
+          <div className="db">
+            {brief.loading ? <div className="ed-empty">불러오는 중</div>
+              : brief.err ? <div className="ed-err">{brief.err}</div>
+              : brief.none ? <div className="ed-empty">아직 없음</div>
+              : <div className="mon-brief-t">{brief.text}</div>}
+          </div>
+          {!brief.loading && (brief.none || brief.text) && (
+            <div className="df"><button type="button" className="ed-btn pri lg" style={{ flex: 1 }} onClick={() => void openBrief(true)}>{brief.none ? "브리핑 만들기" : "다시 만들기"}</button></div>
+          )}
         </Drawer>
       )}
     </>

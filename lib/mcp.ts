@@ -214,7 +214,7 @@ export async function runTool(name: string, args: Record<string, unknown>, me: {
       const r = await call(`/api/brief?week=${week}`);
       if (r.status !== 200) return { text: err(r, "읽지 못했습니다."), isError: true };
       const b = r.data.brief;
-      if (!b) return { text: `${week === "this" ? "이번 주" : "지난주"}(${r.data.week.start} ~ ${r.data.week.end}) 브리핑이 아직 없습니다. 관제 화면에서 「브리핑 만들기」를 누르면 생깁니다.` };
+      if (!b) return { text: `${week === "this" ? "이번 주" : "지난주"}(${r.data.week.start} ~ ${r.data.week.end}) 브리핑이 아직 없습니다. 업무 현황 › 팀 › 「주간 브리핑」에서 만들 수 있습니다.` };
       return { text: `주간 브리핑 ${b.weekStart} ~ ${b.weekEnd}${b.demo ? " (데모)" : ""}\n${b.text}` };
     }
     default:

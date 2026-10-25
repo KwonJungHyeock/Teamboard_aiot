@@ -195,6 +195,14 @@ export default function Frame({ user, children }: { user: FrameUser; children: R
   const path = usePathname() ?? "";
   const scroll = path.startsWith(`${V3_BASE}/stats`);
   useEffect(() => { document.body.classList.toggle("ed-scroll-page", scroll); }, [scroll]);
+  // 좁은 화면에서 메뉴 캡슐이 가로로 밀릴 때 — 지금 화면의 메뉴가 보이게 당겨 둔다
+  const nav = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const on = nav.current?.querySelector<HTMLElement>("a.on");
+    if (on && nav.current && nav.current.scrollWidth > nav.current.clientWidth) {
+      nav.current.scrollLeft = on.offsetLeft - (nav.current.clientWidth - on.offsetWidth) / 2;
+    }
+  }, [path]);
   return (
     <div className={`ed-app${scroll ? " scroll" : ""}`}>
       <Backdrop />
@@ -203,7 +211,7 @@ export default function Frame({ user, children }: { user: FrameUser; children: R
           <img className="lt" src="/brand/ed-mark.png" alt="" /><img className="dk" src="/brand/ed-mark-dark.png" alt="" />
           <b><span>통합업무관리</span><span>AI 로봇 플랫폼팀</span></b>
         </Link>
-        <nav className="ed-nav" aria-label="메뉴">
+        <nav className="ed-nav" aria-label="메뉴" ref={nav}>
           {MENU.filter((m) => !m.lead || user.lead).map((m) => {
             const on = m.match.some((p) => path === p || path.startsWith(`${p}/`));
             return <Link key={m.href} href={m.href} className={on ? "on" : undefined} aria-current={on ? "page" : undefined}>{m.label}</Link>;
