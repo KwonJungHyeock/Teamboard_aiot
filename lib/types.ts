@@ -122,6 +122,12 @@ export interface SessionUser {
    * 권한 있음으로 읽는 쪽이 훨씬 나쁘다.
    */
   adminGrant: boolean;
+  /**
+   * Claude 를 거쳐 들어온 세션인가 (2026-10 — Claude 연결 · 앱 안 에이전트).
+   * 이 표시가 있으면 업무 API 가 **자기 개인 업무만** 만들고 고치게 막는다(app/api/tasks).
+   * 사람이 로그인한 세션에는 없다.
+   */
+  via?: "claude";
 }
 
 export interface Actor {

@@ -11,6 +11,7 @@ import { DENIED_PARAM, deniedReason } from "@/lib/denied";
 import { ago, initial } from "@/lib/ed/core";
 import { KIND_LABEL, type ActivityKind } from "@/lib/activity-kinds";
 import TaskDrawer from "./TaskDrawer";
+import Agent from "./Agent";
 import { Drawer } from "./ui";
 
 export interface FrameUser { id: number; name: string; roleLabel: string; lead: boolean; admin: boolean }
@@ -208,7 +209,7 @@ export default function Frame({ user, children }: { user: FrameUser; children: R
             return <Link key={m.href} href={m.href} className={on ? "on" : undefined} aria-current={on ? "page" : undefined}>{m.label}</Link>;
           })}
         </nav>
-        <div className="ed-right"><ThemePill /><Account user={user} /></div>
+        <div className="ed-right"><Agent /><ThemePill /><Account user={user} /></div>
       </header>
       <main className="ed-main">{children}</main>
       <LiveTicker />

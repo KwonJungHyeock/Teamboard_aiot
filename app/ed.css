@@ -352,3 +352,26 @@ textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; bord
 .errpage-card h1 { margin: 0; font-size: 20px; font-weight: 700; }
 .errpage-digest { margin: 0; font-size: 12px; color: var(--faint); }
 .errpage-act { display: flex; gap: 8px; margin-top: 6px; }
+
+/* 에이전트 */
+.ag-pill { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); }
+.ag-pill i, .ag-h i { font-style: normal; color: var(--accent); }
+.ag-pill.on { background: var(--surface); }
+.ag-h { flex: 1; display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 700; }
+.ag-list { gap: 14px; }
+.ag-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.ag-msg { display: flex; flex-direction: column; gap: 6px; animation: rowIn .35s var(--ease) backwards; }
+.ag-msg.user { align-items: flex-end; }
+.ag-b { max-width: 88%; padding: 10px 14px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; border-radius: 14px 14px 14px 4px; background: var(--surface); box-shadow: var(--elev1); color: var(--ink); }
+.ag-msg.user .ag-b { border-radius: 14px 14px 4px 14px; background: var(--accent); color: #fff; box-shadow: none; }
+.ag-msg.err .ag-b { color: var(--red); }
+.ag-steps { display: flex; flex-direction: column; gap: 3px; }
+.ag-steps span { font-size: 12px; font-weight: 600; color: var(--faint); }
+.ag-steps span::before { content: "· "; }
+.ag-dots { display: inline-flex; gap: 4px; padding: 14px; }
+.ag-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); animation: breathe 1.2s ease-in-out infinite; }
+.ag-dots i:nth-child(2) { animation-delay: .2s; } .ag-dots i:nth-child(3) { animation-delay: .4s; }
+.ag-in { align-items: flex-end; }
+.ag-in textarea { flex: 1; resize: none; border: 0; outline: 0; max-height: 120px; padding: 11px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; background: var(--panel2); box-shadow: var(--sunken); color: var(--ink); }
+.ag-in .ed-btn.off { opacity: .3; }
+@media (max-width: 1180px) { .ag-pill { padding: 0 11px; } }
