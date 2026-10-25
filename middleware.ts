@@ -13,6 +13,7 @@ export function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/login") ||
     pathname.startsWith("/api") ||
+    pathname.startsWith("/.well-known") || // MCP 클라이언트의 OAuth 찾기 — 로그인 화면 대신 JSON 404
     pathname.startsWith("/_next") ||
     pathname.startsWith("/brand") || // 브랜드 로고 등 공개 자산(로그인 전 표시)
     pathname === "/favicon.ico" ||
