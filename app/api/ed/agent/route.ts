@@ -5,10 +5,18 @@ import { getLiveSession } from "@/lib/auth";
 import { jsonError } from "@/lib/api";
 import { claudeCall } from "@/lib/claude-call";
 import { runAgent, type Turn } from "@/lib/agent";
+import { llmInfo } from "@/lib/llm";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
+
+/** 서버에 Claude 키가 있는가 — 없으면 화면은 「Claude 앱에서 쓰기」 안내를 띄운다 */
+export async function GET() {
+  const live = await getLiveSession();
+  if (!live) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  return NextResponse.json({ ready: llmInfo().provider === "anthropic" });
+}
 
 export async function POST(request: Request) {
   try {

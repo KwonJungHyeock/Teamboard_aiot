@@ -30,8 +30,8 @@ export const metadata: Metadata = {
   title: `${APP_NAME} · ${ORG_NAME}`,
   description: `팀 업무 관리 (${TEAM_NAME})`,
   icons: {
-    icon: [{ url: "/brand/favicon-48.png", type: "image/png", sizes: "48x48" }],
-    apple: [{ url: "/brand/apple-icon.png", sizes: "180x180" }],
+    icon: [{ url: "/brand/ed-mark.svg?v=2", type: "image/svg+xml" }, { url: "/brand/favicon-48.png?v=2", type: "image/png", sizes: "48x48" }],
+    apple: [{ url: "/brand/apple-icon.png?v=2", sizes: "180x180" }],
   },
 };
 

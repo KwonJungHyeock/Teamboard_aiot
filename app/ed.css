@@ -372,6 +372,16 @@ textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; bord
 .ag-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); animation: breathe 1.2s ease-in-out infinite; }
 .ag-dots i:nth-child(2) { animation-delay: .2s; } .ag-dots i:nth-child(3) { animation-delay: .4s; }
 .ag-in { align-items: flex-end; }
+.ag-guide { gap: 14px; font-size: 14px; line-height: 1.65; color: var(--sub); }
+.ag-guide p { margin: 0; }
+.ag-guide b { color: var(--ink); }
+.ag-gt { font-size: 17px; font-weight: 700; }
+.ag-guide ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.ag-guide .ed-btn { align-self: flex-start; }
+.ag-guide .ed-label { margin-top: 6px; }
+.ag-say { display: flex; flex-wrap: wrap; gap: 6px; }
+.ag-say .ed-chip { white-space: normal; text-align: left; }
+.me-tip { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.6; color: var(--sub); }
 .ag-in textarea { flex: 1; resize: none; border: 0; outline: 0; max-height: 120px; padding: 11px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; background: var(--panel2); box-shadow: var(--sunken); color: var(--ink); }
 .ag-in .ed-btn.off { opacity: .3; }
 @media (max-width: 1180px) { .ag-pill { padding: 0 11px; } }
