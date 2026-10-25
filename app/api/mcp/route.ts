@@ -7,9 +7,9 @@
 // 세션 이름에 「(Claude)」를 붙인다 — 업무 활동 기록에 「○○ (Claude)이(가) …」로 남아
 // 사람이 직접 한 것과 Claude 가 한 것이 갈린다.
 import { NextResponse } from "next/server";
-import { createSessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { resolveToken } from "@/lib/api-token";
 import { INSTRUCTIONS, runTool, TOOLS, type Call } from "@/lib/mcp";
+import { claudeCall } from "@/lib/claude-call";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,16 +36,8 @@ export async function POST(request: Request) {
   catch { return NextResponse.json(fail(null, -32700, "JSON 이 아닙니다."), { status: 400 }); }
 
   // 그 사람으로서 앱 API 를 부른다 — 쿠키는 이 요청 안에서만 쓰고 버린다
-  const cookie = `${SESSION_COOKIE}=${createSessionToken({ ...user, name: `${user.name} (Claude)` })}`;
-  const origin = new URL(request.url).origin;
-  const call: Call = async (path, init = {}) => {
-    const r = await fetch(`${origin}${path}`, {
-      method: init.method ?? "GET", cache: "no-store", redirect: "manual",
-      headers: { cookie, "content-type": "application/json" },
-      body: init.body === undefined ? undefined : JSON.stringify(init.body),
-    });
-    return { status: r.status, data: await r.json().catch(() => null) };
-  };
+  // 업무 API 울타리(lib/claude-guard.ts)가 걸리는 세션으로 부른다
+  const call: Call = claudeCall(new URL(request.url).origin, user);
 
   const handle = async (m: Rpc): Promise<object | null> => {
     if (!m || m.jsonrpc !== "2.0" || typeof m.method !== "string") return fail(m?.id, -32600, "잘못된 요청입니다.");

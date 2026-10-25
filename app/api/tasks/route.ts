@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { NEW_TASK_GOAL_SOURCE } from "@/lib/goal-inherit";
 import { checkParent } from "@/lib/subtask";
 import { requireSession } from "@/lib/auth";
+import { guardCreate } from "@/lib/claude-guard";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { notify as pushNotify } from "@/lib/push";
@@ -331,7 +332,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const session = requireSession(); // Task 생성은 전원 (SPEC 6장 member 전권)
-    const payload = await request.json();
+    // Claude 를 거친 요청은 「나 · 개인」으로만 만든다 (lib/claude-guard.ts)
+    const payload = await guardCreate(session, await request.json());
 
     const title = String(payload.title ?? "").trim().slice(0, 200);
     if (!title) return NextResponse.json({ error: "제목을 입력하세요." }, { status: 400 });

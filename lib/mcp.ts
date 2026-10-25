@@ -26,6 +26,9 @@ export const INSTRUCTIONS = [
   "· 사용자가 **이미 한 일**을 말하면 add_worklog(내 기록). **앞으로 할 일**이면 create_task(내 업무). 어느 쪽인지 애매하면 먼저 묻는다.",
   "· 기존 것을 고쳐 달라고 하면 list_worklog / list_my_tasks 로 먼저 찾아 번호를 확인하고, 무엇을 어떻게 바꿀지 한 줄로 말한 뒤 update_* 를 부른다.",
   "· 「끝났어」는 update_task 의 status=done 이다.",
+  "· 업무를 찾아 달라고 하면 search_tasks(팀 업무 · 읽기만). 내 것만이면 list_my_tasks.",
+  "· create_task 로 만든 업무는 **나에게 · 개인(나만 봄)**으로 들어간다. 팀에 공개하거나 남에게 맡기는 것은 사람이 앱 화면에서 한다 — 그렇게 해 달라고 하면 화면에서 하라고 안내한다.",
+  "· 고칠 수 있는 것은 내 업무의 제목 · 설명 · 상태 · 기한 · 시작일 · 진행률뿐이다. 남의 업무는 읽기만 한다.",
   "· 지우기는 이 연결로 할 수 없다. 지워 달라고 하면 앱 화면에서 지우라고 안내한다.",
 ].join("\n");
 
@@ -55,13 +58,22 @@ export const TOOLS: ToolDef[] = [
       query: { type: "string", description: "제목에 이 낱말이 든 것만" } } },
   },
   {
+    name: "search_tasks",
+    description: "팀 업무를 찾는다(읽기만). 제목 낱말 · 담당자 이름 · 상태 · 기한으로 거른다. 남의 개인 업무는 나오지 않는다.",
+    inputSchema: { type: "object", properties: {
+      query: { type: "string", description: "제목에 이 낱말이 든 것" },
+      assignee: { type: "string", description: "담당자 이름(일부도 됨)" },
+      status: { type: "string", enum: ["open", "overdue", "done", "all"], description: "open(기본) · overdue(기한 지남) · done · all" },
+      due_before: DATE } },
+  },
+  {
     name: "get_task",
     description: "업무 하나를 자세히 읽는다(설명 · 기한 · 진행률 · 최근 활동).",
     inputSchema: { type: "object", properties: { id: { type: "integer" } }, required: ["id"] },
   },
   {
     name: "create_task",
-    description: "「내 업무」에 새 업무를 만든다(담당은 나, 팀 공개). 앞으로 할 일일 때만.",
+    description: "「내 업무」에 새 업무를 만든다 — 담당은 나, 공개 범위는 개인(나만 봄). 팀 공개는 사람이 화면에서 한다. 앞으로 할 일일 때만.",
     inputSchema: { type: "object", properties: {
       title: { type: "string" }, description: { type: "string" }, due_date: DATE, start_date: DATE }, required: ["title"] },
   },
@@ -139,6 +151,22 @@ export async function runTool(name: string, args: Record<string, unknown>, me: {
       if (q) rows = rows.filter((t: any) => String(t.title).includes(q));
       if (!rows.length) return { text: "해당하는 내 업무가 없습니다." };
       return { text: [`내 업무 ${rows.length}건 (${status})`, ...rows.slice(0, 60).map(taskLine)].join("\n") };
+    }
+    case "search_tasks": {
+      const r = await call("/api/tasks");
+      if (r.status !== 200) return { text: err(r, "읽지 못했습니다."), isError: true };
+      const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+      const status = str(args.status) ?? "open";
+      const q = (str(args.query) ?? "").trim(), who = (str(args.assignee) ?? "").trim(), before = str(args.due_before);
+      let rows = (r.data.tasks ?? []).filter((t: any) => !t.parentTaskId);
+      if (status === "open") rows = rows.filter((t: any) => ["todo", "doing", "review"].includes(t.status));
+      if (status === "overdue") rows = rows.filter((t: any) => t.status !== "done" && t.dueDate && t.dueDate < today);
+      if (status === "done") rows = rows.filter((t: any) => t.status === "done");
+      if (q) rows = rows.filter((t: any) => String(t.title).includes(q));
+      if (who) rows = rows.filter((t: any) => String(t.assigneeName ?? "").includes(who));
+      if (before) rows = rows.filter((t: any) => t.dueDate && t.dueDate <= before);
+      if (!rows.length) return { text: "찾는 업무가 없습니다." };
+      return { text: [`업무 ${rows.length}건`, ...rows.slice(0, 60).map((t: any) => `${taskLine(t)} · ${t.assigneeName ?? "담당 없음"}`)].join("\n") };
     }
     case "get_task": {
       const id = int(args.id);

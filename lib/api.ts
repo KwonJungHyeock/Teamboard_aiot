@@ -1,9 +1,14 @@
+import { ClaudeGuardError } from "./claude-guard";
 import { NextResponse } from "next/server";
 import { AuthError } from "./auth";
 import { UnknownPropertyTypeError } from "./notion-schema";
 import { AREA_PROJECT_MISMATCH } from "./area-project";
 
 export function jsonError(error: unknown): NextResponse {
+  // Claude 를 거친 쓰기를 울타리가 막았다 (lib/claude-guard.ts) — 이유를 그대로 돌려준다
+  if (error instanceof ClaudeGuardError) {
+    return NextResponse.json({ error: error.message }, { status: error.status });
+  }
   if (error instanceof AuthError) {
     return NextResponse.json({ error: error.message }, { status: error.status });
   }

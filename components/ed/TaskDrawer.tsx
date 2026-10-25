@@ -11,7 +11,7 @@ import { api, Drawer, emitChanged, Seg, useToast } from "./ui";
 
 interface Detail {
   id: number; title: string; description: string; status: string; assigneeId: number | null; assigneeName: string | null;
-  createdByName: string | null; createdById: number | null; areaId: number; areaName: string; dueDate: string | null; goalIds: number[]; parentTaskId: number | null;
+  createdByName: string | null; createdById: number | null; visibility: string; areaId: number; areaName: string; dueDate: string | null; goalIds: number[]; parentTaskId: number | null;
 }
 
 export default function TaskDrawer({ id, onClose }: { id: number; onClose: () => void }) {
@@ -126,6 +126,14 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
                options={(["todo", "doing", "review", "done"] as Status[]).map((s) => ({ v: s, label: STATUS_LABEL[s] }))}
                onChange={(s) => void save({ status: s })} />
         </div>
+        {t.createdById === me && !t.parentTaskId && (
+          <div className="ed-field">
+            <span>공개</span>
+            <Seg full value={t.visibility === "private" ? "private" : "team"}
+                 options={[{ v: "private", label: "나만" }, { v: "team", label: "팀" }]}
+                 onChange={(v) => void save({ visibility: v })} />
+          </div>
+        )}
         <div className="ed-field">
           <span>기한 {t.dueDate && <em className={`tdr-due ${db.tone}`}>{db.tone === "red" ? db.text : `${t.dueDate.slice(5).replace("-", ".")}${diffDays(t.dueDate, today) >= 0 ? ` · ${db.text === "오늘" || db.text === "내일" ? db.text : `D-${diffDays(t.dueDate, today)}`}` : ""}`}</em>}</span>
           <div className="ed-chips">

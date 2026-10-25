@@ -7,6 +7,7 @@ import { RESOLUTIONS, RESOLUTION_LABEL, type Resolution, countableSql, doneSql, 
 import { canEditProgress } from "@/lib/progress-permission";
 import { getProgressEditorId } from "@/lib/platform-config";
 import { requireSession } from "@/lib/auth";
+import { guardUpdate } from "@/lib/claude-guard";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { recomputeGoalChain, recomputeGoalsForTask } from "@/lib/goals";
@@ -44,6 +45,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     );
     // 안 보이는 업무는 고칠 수도 없다. 여기서도 404 — 403 은 존재를 알린다 (§A3 ⑨).
     if (!task) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
+    // Claude 를 거친 요청은 내 업무의 몇 칸만 (lib/claude-guard.ts) — 지우기 · 되살리기 · 공개 범위도 여기서 막힌다
+    guardUpdate(session, task, payload);
 
     // 복구 — 삭제의 역방향. 진척 재계산도 같이 되돌아가야 한다 (MD-P-2026-024 지시 2).
     if (payload.isActive === true) {

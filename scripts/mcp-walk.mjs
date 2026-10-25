@@ -96,7 +96,7 @@ try {
   const tl = await rpc(key, "tools/list", {});
   const names = (tl.data?.result?.tools ?? []).map((t) => t.name);
   chk("②-문", noKey.status === 401 && badKey.status === 401 && init.data?.result?.protocolVersion === "2025-06-18"
-      && note.status === 202 && names.length === 9,
+      && note.status === 202 && names.length === 10 && names.includes("search_tasks"),
       `키 없음 ${noKey.status} · 틀린 키 ${badKey.status} · initialize ${init.data?.result?.serverInfo?.name} · 알림 ${note.status} · 도구 [${names.join(",")}]`);
 
   // ── ③ 내 기록 ─────────────────────────────────────────────────

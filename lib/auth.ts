@@ -61,6 +61,7 @@ export function verifySessionToken(token: string): SessionUser | null {
       id: data.id, email: data.email, name: data.name, role: data.role as Role,
       // 039 이전에 발급된 쿠키에는 이 칸이 없다. **없으면 권한 없음이다.**
       adminGrant: data.adminGrant === true,
+      ...(data.via === "claude" ? { via: "claude" as const } : {}),
     };
   } catch {
     return null;
@@ -133,6 +134,7 @@ export async function getLiveSession(): Promise<LiveSession | null> {
     user: {
       id: tokenUser.id, email: tokenUser.email, name: row.display_name, role: row.role,
       adminGrant: row.admin_grant === true,
+      ...(tokenUser.via ? { via: tokenUser.via } : {}),
     },
     mustChangePassword: row.must_change_pw,
   };
