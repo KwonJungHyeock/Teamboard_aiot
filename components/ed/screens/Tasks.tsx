@@ -43,6 +43,15 @@ export default function Tasks() {
     return f === "over" || f === "doing" || f === "todo" || f === "done" ? f : "all";
   });
   const who = Number(sp.get("who")) || null;
+  // 성과 분석 교차표에서 넘어올 때 — `?area=ID`(그 카테고리만)
+  const area = Number(sp.get("area")) || null;
+  // 일정의 「기한 없음 →」에서 넘어올 때 — `?due=none`
+  const noDue = sp.get("due") === "none";
+  const areaName = area ? meta?.areas.find((a) => a.id === area)?.name ?? null : null;
+  const clearArea = () => {
+    const q = new URLSearchParams(sp.toString()); q.delete("area");
+    router.replace(q.toString() ? `${path}?${q}` : path, { scroll: false });
+  };
   const whoName = who ? meta?.people.find((p) => p.id === who)?.name ?? null : null;
   const clearWho = () => {
     const q = new URLSearchParams(sp.toString()); q.delete("who");
@@ -60,7 +69,7 @@ export default function Tasks() {
   }, []);
 
   const list = useMemo(() => (tasks ?? []).filter((t) => t.parentTaskId === null && ["todo", "doing", "review", "done"].includes(t.status)
-    && (!who || t.assigneeId === who)), [tasks, who]);
+    && (!who || t.assigneeId === who) && (!area || t.areaId === area) && (!noDue || (!t.dueDate && t.status !== "done"))), [tasks, who, area, noDue]);
 
   // 이니셜 — 같은 첫 글자가 겹치면 뒤 사람은 끝 글자(박주희 「박」 · 박정길 「길」)
   const initials = useMemo(() => {
@@ -129,7 +138,13 @@ export default function Tasks() {
         <Seg value={filter} onChange={(v) => setFilter(v)} className="tsk-seg"
              options={[{ v: "all", label: "전체" }, { v: "over", label: "지남" }, { v: "doing", label: "진행 중" }, { v: "todo", label: "예정" }, { v: "done", label: "완료" }]} />
         {who && <span className="tsk-who"><i>{whoName ? whoName.charAt(0) : "?"}</i>{whoName ?? "담당"}<button type="button" onClick={clearWho} aria-label="담당 조건 지우기">✕</button></span>}
-        {(filter !== "all" || who) && <button type="button" className="tsk-clear" onClick={() => { setFilter("all"); if (who) clearWho(); }}>조건 지우기</button>}
+        {area && <span className="tsk-who"><i>#</i>{areaName ?? "카테고리"}<button type="button" onClick={clearArea} aria-label="카테고리 조건 지우기">✕</button></span>}
+        {noDue && <span className="tsk-who"><i>—</i>기한 없음<button type="button" onClick={() => { const q = new URLSearchParams(sp.toString()); q.delete("due"); router.replace(q.toString() ? `${path}?${q}` : path, { scroll: false }); }} aria-label="기한 조건 지우기">✕</button></span>}
+        {(filter !== "all" || who || area || noDue) && <button type="button" className="tsk-clear" onClick={() => {
+          setFilter("all");
+          const q = new URLSearchParams(sp.toString()); q.delete("who"); q.delete("area"); q.delete("f"); q.delete("due");
+          router.replace(q.toString() ? `${path}?${q}` : path, { scroll: false });
+        }}>조건 지우기</button>}
       </div>
       <section className="tsk-lanes">
         {lanes.map((l, li) => {

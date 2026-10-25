@@ -5,9 +5,14 @@
 //   체크리스트(하위 업무 = 항목) · 기록(메모) · 하단 삭제 / 완료
 // 저장은 기존 `/api/tasks/:id` PATCH. 체크리스트 항목은 하위 업무로 만든다(진척에 그대로 잡힌다).
 import { useCallback, useEffect, useState } from "react";
-import { addDays, catColor, diffDays, dueBadge, initial, isEnter, mondayOf, STATUS_LABEL, todayKst, weekday, type EdTask, type Status } from "@/lib/ed/core";
+import { addDays, ago, catColor, diffDays, dueBadge, initial, isEnter, mondayOf, STATUS_LABEL, todayKst, weekday, type EdTask, type Status } from "@/lib/ed/core";
 import { createTask, patchTask, deleteTask, useMeta, type Revision } from "./data";
 import { api, Drawer, emitChanged, Seg, useToast } from "./ui";
+
+interface Act { id: number; message: string; created_at?: string; createdAt?: string }
+// 기록 안의 주소 — 옛 상세의 「첨부」처럼 아래에 다시 보인다(저장하는 것은 없다)
+const linksIn = (text: string) => Array.from(new Set(text.match(/https?:\/\/[^\s)>\]]+/g) ?? [])).slice(0, 12);
+const host = (u: string) => { try { const h = new URL(u).hostname.replace(/^www\./, ""); return h; } catch { return u; } };
 
 interface Detail {
   id: number; title: string; description: string; status: string; assigneeId: number | null; assigneeName: string | null;
@@ -27,15 +32,17 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
   const [checkText, setCheckText] = useState("");
   const [ask, setAsk] = useState<string | null>(null);
   const [pinged, setPinged] = useState(false);
+  const [acts, setActs] = useState<Act[]>([]);
   const [toast, showToast] = useToast();
 
   const load = useCallback(async () => {
     try {
       const [d, kids, r] = await Promise.all([
-        api<{ task: Detail }>(`/api/tasks/${id}`),
+        api<{ task: Detail; activity?: Act[] }>(`/api/tasks/${id}`),
         api<{ tasks: EdTask[] }>(`/api/tasks?parent=${id}`),
         api<{ revisions: Revision[] }>("/api/revisions").catch(() => ({ revisions: [] as Revision[] })),
       ]);
+      setActs(d.activity ?? []);
       setT(d.task); setTitle(d.task.title); setMemo(d.task.description ?? ""); setCreatedById(d.task.createdById);
       setChecks(kids.tasks.filter((k) => k.parentTaskId === id).sort((a, b) => a.id - b.id));
       setRev(r.revisions.find((x) => x.taskId === id) ?? null);
@@ -126,6 +133,18 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
                options={(["todo", "doing", "review", "done"] as Status[]).map((s) => ({ v: s, label: STATUS_LABEL[s] }))}
                onChange={(s) => void save({ status: s })} />
         </div>
+        {!t.parentTaskId && (
+          <div className="ed-field">
+            <span>담당</span>
+            <div className="ed-chips">
+              {meta.people.map((p) => (
+                <button key={p.id} type="button" className={`ed-chip${t.assigneeId === p.id ? " on" : ""}`}
+                        disabled={t.visibility === "private" && p.id !== t.createdById}
+                        onClick={() => { if (t.assigneeId !== p.id) void save({ assigneeId: p.id, assigneeName: p.name }); }}>{p.id === me ? `나 · ${p.name}` : p.name}</button>
+              ))}
+            </div>
+          </div>
+        )}
         {t.createdById === me && !t.parentTaskId && (
           <div className="ed-field">
             <span>공개</span>
@@ -202,6 +221,20 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
           <textarea className="ed-input" rows={5} placeholder="메모" value={memo} onChange={(e) => setMemo(e.target.value)}
                     onBlur={() => { if (memo !== (t.description ?? "")) void save({ description: memo }); }} />
         </div>
+        {linksIn(memo).length > 0 && (
+          <div className="ed-field" style={{ gap: 6 }}>
+            <span>링크</span>
+            {linksIn(memo).map((u) => <a key={u} className="tdr-link" href={u} target="_blank" rel="noreferrer noopener"><b>{host(u)}</b><em>{u}</em></a>)}
+          </div>
+        )}
+        {acts.length > 0 && (
+          <div className="ed-field" style={{ gap: 2 }}>
+            <span style={{ paddingBottom: 6 }}>활동</span>
+            {acts.slice(0, 8).map((a) => (
+              <div key={a.id} className="tdr-act"><span>{a.message}</span><em>{ago(String(a.createdAt ?? a.created_at ?? "").replace(" ", "T").replace(/\+00$/, "Z"))}</em></div>
+            ))}
+          </div>
+        )}
       </div>
       <div className="df">
         <button type="button" className="ed-btn gh red" style={{ padding: "10px 4px" }} onClick={() => void remove()}>삭제</button>

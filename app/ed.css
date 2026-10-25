@@ -375,3 +375,25 @@ textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; bord
 .ag-in textarea { flex: 1; resize: none; border: 0; outline: 0; max-height: 120px; padding: 11px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; background: var(--panel2); box-shadow: var(--sunken); color: var(--ink); }
 .ag-in .ed-btn.off { opacity: .3; }
 @media (max-width: 1180px) { .ag-pill { padding: 0 11px; } }
+.tdr-link { display: flex; flex-direction: column; gap: 1px; padding: 9px 12px; border-radius: 12px; background: var(--panel2); box-shadow: var(--sunken); color: var(--ink); min-width: 0; }
+.tdr-link:hover { text-decoration: none; background: color-mix(in oklch,var(--accent) 8%,var(--panel2)); }
+.tdr-link b { font-size: 13px; font-weight: 700; }
+.tdr-link em { font-style: normal; font-size: 12px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tdr-act { display: flex; gap: 10px; padding: 8px 2px; box-shadow: 0 1px 0 var(--line); font-size: 13px; line-height: 1.45; }
+.tdr-act:last-child { box-shadow: none; }
+.tdr-act span { flex: 1; min-width: 0; }
+.tdr-act em { flex-shrink: 0; font-style: normal; font-size: 12px; color: var(--faint); }
+
+/* 휴대폰(720px 아래) — 머리는 두 줄: 로고 · 버튼 / 메뉴 캡슐(가로로 밀림) */
+@media (max-width: 719px) {
+  .ed-top { grid-template-columns: auto 1fr; grid-template-rows: 56px auto; height: auto; row-gap: 0; padding: 0 14px 6px; }
+  .ed-top .ed-logo { grid-column: 1; grid-row: 1; }
+  .ed-top .ed-right { grid-column: 2; grid-row: 1; }
+  .ed-top .ed-nav { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; }
+  .ag-pill { font-size: 0; gap: 0; padding: 0 12px; }
+  .ag-pill i { font-size: 14px; }
+  .ed-main { padding: 14px 14px 20px; gap: 14px; }
+  .ed-h1 { font-size: 24px; }
+  .ed-drawer { top: 8px; right: 8px; bottom: 8px; max-width: calc(100vw - 16px); border-radius: 20px; }
+  .ed-live { padding: 0 14px; font-size: 13px; }
+}

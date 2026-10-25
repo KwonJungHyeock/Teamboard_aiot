@@ -205,7 +205,7 @@ export default function Calendar({ meId, launch }: { meId: number; launch: strin
               <input value={text} onChange={(e) => setText(e.target.value)} placeholder="이 날 업무 · Enter" aria-label="이 날 업무"
                      onKeyDown={(e) => { if (isEnter(e)) { e.preventDefault(); void add(); } }} />
             </div>
-            <Link href="/v3/tasks" className="cal-nd">기한 없음 {noDue}건<span>→</span></Link>
+            <Link href="/v3/tasks?due=none" className="cal-nd">기한 없음 {noDue}건<span>→</span></Link>
           </div>
         </aside>
       </div>
