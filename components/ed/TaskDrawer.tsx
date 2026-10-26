@@ -6,10 +6,28 @@
 // 저장은 기존 `/api/tasks/:id` PATCH. 체크리스트 항목은 하위 업무로 만든다(진척에 그대로 잡힌다).
 import { useCallback, useEffect, useState } from "react";
 import { addDays, ago, catColor, diffDays, dueBadge, initial, isEnter, mondayOf, STATUS_LABEL, todayKst, weekday, type EdTask, type Status } from "@/lib/ed/core";
-import { createTask, patchTask, deleteTask, useMeta, type Revision } from "./data";
+import { createTask, patchTask, deleteTask, refreshMeta, useMeta, type Revision } from "./data";
 import { api, Drawer, emitChanged, Seg, useToast } from "./ui";
 
 interface Act { id: number; message: string; created_at?: string; createdAt?: string }
+
+/** 「+ 추가」 칩 — 누르면 그 자리에서 입력칸이 된다. Enter 로 만들고 Esc 로 접는다(한글 조합 중 Enter 는 무시) */
+function AddChip({ label, onAdd }: { label: string; onAdd: (text: string) => Promise<void> }) {
+  const [text, setText] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (text === null) return <button type="button" className="ed-chip tdr-add" onClick={() => setText("")}>+ {label}</button>;
+  const go = async () => {
+    const v = text.trim();
+    if (!v || busy) return;
+    setBusy(true);
+    try { await onAdd(v); setText(null); } finally { setBusy(false); }
+  };
+  return (
+    <input className="ed-chip tdr-addin" autoFocus value={text} maxLength={60} placeholder={`새 ${label}`} disabled={busy}
+           onChange={(e) => setText(e.target.value)} onBlur={() => { if (!text.trim()) setText(null); }}
+           onKeyDown={(e) => { if (isEnter(e)) { e.preventDefault(); void go(); } else if (e.key === "Escape") { e.preventDefault(); setText(null); } }} />
+  );
+}
 // 기록 안의 주소 — 옛 상세의 「첨부」처럼 아래에 다시 보인다(저장하는 것은 없다)
 const linksIn = (text: string) => Array.from(new Set(text.match(/https?:\/\/[^\s)>\]]+/g) ?? [])).slice(0, 12);
 const host = (u: string) => { try { const h = new URL(u).hostname.replace(/^www\./, ""); return h; } catch { return u; } };
@@ -34,6 +52,8 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
   const [pinged, setPinged] = useState(false);
   const [acts, setActs] = useState<Act[]>([]);
   const [toast, showToast] = useToast();
+  const [tidyCat, setTidyCat] = useState(false);
+  const [tidyGoal, setTidyGoal] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -99,6 +119,42 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
     try { await api(`/api/tasks/${id}/nudge`, { method: "POST" }); setPinged(true); }
     catch (e) { showToast(e instanceof Error ? e.message : "보내지 못했습니다"); }
   };
+  // ── 카테고리 · 목표 — 자유롭게 만들고, 「정리」에서 지운다 ──────────────
+  const addArea = async (name: string) => {
+    try {
+      const { area } = await api<{ area: { id: number } }>("/api/ed/areas", { method: "POST", body: { name } });
+      await refreshMeta(); await save({ areaId: area.id }); emitChanged();
+    } catch (e) { showToast(e instanceof Error ? e.message : "만들지 못했습니다"); }
+  };
+  const dropArea = async (a: { id: number; name: string }) => {
+    if (!window.confirm(`「${a.name}」 카테고리를 지울까요?\n이 카테고리의 업무는 「기타」로 옮겨집니다.`)) return;
+    try {
+      const r = await api<{ moved: number }>(`/api/ed/areas?id=${a.id}`, { method: "DELETE" });
+      await refreshMeta(); await load(); emitChanged();
+      showToast(r.moved ? `지웠습니다 · 업무 ${r.moved}건 → 기타` : "지웠습니다");
+    } catch (e) { showToast(e instanceof Error ? e.message : "지우지 못했습니다"); }
+  };
+  // 개인 업무 → 내 개인 목표, 팀 업무 → 팀 목표(팀장). 이번 달 월 목표로 만든다 — 기간 · 상위는 목표 화면에서 정리
+  const goalScope = t.visibility === "private" ? "personal" : "team";
+  const canMakeGoal = goalScope === "personal" || !!meta.me.lead;
+  const addGoal = async (title: string) => {
+    try {
+      const { goal } = await api<{ goal: { id: number } }>("/api/goals", { method: "POST", body: { title, scope: goalScope, periodType: "month", periodStart: `${today.slice(0, 7)}-01` } });
+      await refreshMeta(); await save({ goalIds: [goal.id] }); emitChanged();
+    } catch (e) { showToast(e instanceof Error ? e.message : "만들지 못했습니다"); }
+  };
+  const dropGoal = async (g: { id: number; title: string }) => {
+    if (!window.confirm(`「${g.title}」 목표를 지울까요?\n붙어 있던 업무는 그대로 남습니다. 목표 화면 보관함에서 되살릴 수 있습니다.`)) return;
+    try {
+      await api(`/api/goals/${g.id}`, { method: "PUT", body: { isActive: false } });
+      if (t.goalIds.includes(g.id)) await save({ goalIds: t.goalIds.filter((x) => x !== g.id) });
+      await refreshMeta(); emitChanged(); showToast("지웠습니다");
+    } catch (e) { showToast(e instanceof Error ? e.message : "지우지 못했습니다"); }
+  };
+  // 서버 규칙과 같게(api/tasks/[id] goal_task): 개인 업무 → 내 개인 목표만, 팀 업무 → 팀 목표 + 내 개인 목표
+  const goalChoices = meta.goals.filter((g) => g.periodType !== "year" && (goalScope === "personal" ? g.scope === "personal" : true));
+  const canDropGoal = (g: { scope?: string; ownerId?: number | null }) => (g.scope === "personal" ? g.ownerId === me : !!meta.me.lead);
+
   const remove = async () => {
     try {
       await deleteTask(id);
@@ -162,23 +218,41 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
           </div>
         </div>
         <div className="ed-field">
-          <span>카테고리</span>
+          <span className="tdr-fh">카테고리
+            {!t.parentTaskId && <button type="button" className={`tdr-tidy${tidyCat ? " on" : ""}`} onClick={() => setTidyCat(!tidyCat)}>{tidyCat ? "완료" : "정리"}</button>}
+          </span>
           <div className="ed-chips">
             {meta.areas.map((a) => (
-              <button key={a.id} type="button" className={`ed-chip${t.areaId === a.id ? " on" : ""}`} onClick={() => void save({ areaId: a.id })} disabled={!!t.parentTaskId}>
-                <i className="tdr-cd" style={{ background: catColor(a.name) }} />{a.name}
-              </button>
+              tidyCat && a.name !== "기타" ? (
+                <button key={a.id} type="button" className="ed-chip tdr-del" onClick={() => void dropArea(a)} aria-label={`${a.name} 지우기`}>
+                  <i className="tdr-cd" style={{ background: catColor(a.name) }} />{a.name}<b aria-hidden="true">✕</b>
+                </button>
+              ) : (
+                <button key={a.id} type="button" className={`ed-chip${t.areaId === a.id ? " on" : ""}`} onClick={() => void save({ areaId: a.id })} disabled={!!t.parentTaskId || tidyCat}>
+                  <i className="tdr-cd" style={{ background: catColor(a.name) }} />{a.name}
+                </button>
+              )
             ))}
+            {!t.parentTaskId && !tidyCat && <AddChip label="카테고리" onAdd={addArea} />}
           </div>
         </div>
         {!t.parentTaskId && (
           <div className="ed-field">
-            <span>목표</span>
+            <span className="tdr-fh">목표
+              <button type="button" className={`tdr-tidy${tidyGoal ? " on" : ""}`} onClick={() => setTidyGoal(!tidyGoal)}>{tidyGoal ? "완료" : "정리"}</button>
+            </span>
             <div className="ed-chips">
-              <button type="button" className={`ed-chip${t.goalIds.length === 0 ? " on" : ""}`} onClick={() => void save({ goalIds: [] })}>없음</button>
-              {meta.goals.filter((g) => g.periodType !== "year").map((g) => (
-                <button key={g.id} type="button" className={`ed-chip${t.goalIds.includes(g.id) ? " on" : ""}`} onClick={() => void save({ goalIds: [g.id] })}>{g.title}</button>
+              {!tidyGoal && <button type="button" className={`ed-chip${t.goalIds.length === 0 ? " on" : ""}`} onClick={() => void save({ goalIds: [] })}>없음</button>}
+              {goalChoices.map((g) => (
+                tidyGoal ? (
+                  canDropGoal(g)
+                    ? <button key={g.id} type="button" className="ed-chip tdr-del" onClick={() => void dropGoal(g)} aria-label={`${g.title} 지우기`}>{g.title}<b aria-hidden="true">✕</b></button>
+                    : <span key={g.id} className="ed-chip tdr-lock" title="팀 목표는 팀장이 정리합니다">{g.title}</span>
+                ) : (
+                  <button key={g.id} type="button" className={`ed-chip${t.goalIds.includes(g.id) ? " on" : ""}`} onClick={() => void save({ goalIds: [g.id] })}>{g.title}</button>
+                )
               ))}
+              {!tidyGoal && canMakeGoal && <AddChip label="목표" onAdd={addGoal} />}
             </div>
           </div>
         )}

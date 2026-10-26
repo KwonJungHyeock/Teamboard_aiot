@@ -76,7 +76,15 @@ const CAT: Record<string, string> = {
   "R&D": "var(--violet)", "플랫폼": "var(--accent)", "교육자료": "var(--green)",
   "디자인": "var(--rose)", "연구소": "var(--amber)", "현장실습교육": "var(--teal)",
 };
-export function catColor(name: string | null | undefined): string { return (name && CAT[name]) || "var(--sub)"; }
+// 새로 만든 카테고리 — 이름으로 늘 같은 색을 고른다(만든 사람 · 화면마다 달라지지 않게)
+const CAT_MORE = ["var(--violet)", "var(--accent)", "var(--green)", "var(--rose)", "var(--amber)", "var(--teal)"];
+export function catColor(name: string | null | undefined): string {
+  if (!name) return "var(--sub)";
+  if (CAT[name]) return CAT[name];
+  if (name === "기타") return "var(--sub)";
+  let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return CAT_MORE[h % CAT_MORE.length];
+}
 
 export function initial(name: string | null | undefined): string { return (name ?? "?").trim().charAt(0) || "?"; }
 
