@@ -8,17 +8,27 @@ import { api, emitChanged, useOnChanged } from "./ui";
 
 export interface Person { id: number; name: string }
 export interface Area { id: number; name: string }
-export interface GoalLite { id: number; title: string; periodType: string; parentId: number | null }
-export interface Meta { me: Person; people: Person[]; areas: Area[]; goals: GoalLite[] }
+export interface GoalLite { id: number; title: string; periodType: string; parentId: number | null; scope?: string; ownerId?: number | null }
+export interface Meta { me: Person & { lead?: boolean }; people: Person[]; areas: Area[]; goals: GoalLite[] }
 export interface Revision { id: number; taskId: number; requesterId: number; requesterName: string; memo: string; createdAt: string }
 
 let metaCache: Promise<Meta> | null = null;
+const metaSubs = new Set<(m: Meta) => void>();
+const loadMeta = () => (metaCache ??= api<Meta>("/api/ed/meta").catch((e) => { metaCache = null; throw e; }));
 export function useMeta(): Meta | null {
   const [m, setM] = useState<Meta | null>(null);
   useEffect(() => {
-    metaCache ??= api<Meta>("/api/ed/meta").catch((e) => { metaCache = null; throw e; });
-    metaCache.then(setM).catch(() => {});
+    metaSubs.add(setM);
+    loadMeta().then(setM).catch(() => {});
+    return () => { metaSubs.delete(setM); };
   }, []);
+  return m;
+}
+/** 카테고리 · 목표를 만들거나 지운 뒤 — 고르는 목록을 쓰는 모든 화면에 새 목록을 돌린다 */
+export async function refreshMeta(): Promise<Meta> {
+  metaCache = null;
+  const m = await loadMeta();
+  metaSubs.forEach((f) => f(m));
   return m;
 }
 

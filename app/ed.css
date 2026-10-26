@@ -381,6 +381,15 @@ textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; bord
 .ag-guide .ed-label { margin-top: 6px; }
 .ag-say { display: flex; flex-wrap: wrap; gap: 6px; }
 .ag-say .ed-chip { white-space: normal; text-align: left; }
+.tdr-fh { display: flex; align-items: center; gap: 8px; }
+.tdr-tidy { margin-left: auto; border: 0; background: none; cursor: pointer; padding: 2px 4px; font-size: 12px; font-weight: 600; color: var(--faint); }
+.tdr-tidy:hover, .tdr-tidy.on { color: var(--accent); }
+.tdr-add { color: var(--faint); background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.tdr-add:hover { color: var(--ink); }
+.tdr-addin { width: 150px; cursor: text; outline: 0; background: var(--surface); box-shadow: var(--elev1); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; }
+.tdr-del b { margin-left: 2px; font-size: 11px; color: var(--red); }
+.tdr-del:hover { box-shadow: inset 0 0 0 1px var(--red); }
+.tdr-lock { opacity: .45; cursor: default; }
 .me-tip { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.6; color: var(--sub); }
 .ag-in textarea { flex: 1; resize: none; border: 0; outline: 0; max-height: 120px; padding: 11px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; background: var(--panel2); box-shadow: var(--sunken); color: var(--ink); }
 .ag-in .ed-btn.off { opacity: .3; }

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { jsonError } from "@/lib/api";
 import { query } from "@/lib/db";
+import { hasLead } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,15 +14,15 @@ export async function GET() {
     const [people, areas, goals] = await Promise.all([
       query<{ id: number; name: string }>(`SELECT id, display_name AS name FROM actor WHERE type = 'human' AND is_active ORDER BY id`),
       query<{ id: number; name: string }>(`SELECT id, name FROM area WHERE is_active ORDER BY sort_order, id`),
-      query<{ id: number; title: string; period_type: string; parent_id: number | null; period_end: string }>(
-        `SELECT id, title, period_type, parent_id, period_end::text FROM goal
+      query<{ id: number; title: string; period_type: string; parent_id: number | null; period_end: string; scope: string; owner_actor_id: number | null }>(
+        `SELECT id, title, period_type, parent_id, period_end::text, scope, owner_actor_id FROM goal
           WHERE is_active AND (scope = 'team' OR owner_actor_id = $1) AND period_end >= (now() AT TIME ZONE 'Asia/Seoul')::date - 31
           ORDER BY CASE period_type WHEN 'year' THEN 0 WHEN 'quarter' THEN 1 ELSE 2 END, period_start, id`, [s.id]),
     ]);
     return NextResponse.json({
-      me: { id: s.id, name: s.name },
+      me: { id: s.id, name: s.name, lead: hasLead(s.role) },
       people, areas,
-      goals: goals.map((g) => ({ id: g.id, title: g.title, periodType: g.period_type, parentId: g.parent_id })),
+      goals: goals.map((g) => ({ id: g.id, title: g.title, periodType: g.period_type, parentId: g.parent_id, scope: g.scope, ownerId: g.owner_actor_id })),
     });
   } catch (error) { return jsonError(error); }
 }

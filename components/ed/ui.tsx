@@ -40,7 +40,8 @@ export function Drawer({ onClose, width = 460, children, label }: { onClose: () 
   const [host, setHost] = useState<HTMLElement | null>(null);
   useEffect(() => { setHost(document.body); }, []);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    // 안쪽 입력칸이 Esc 를 먼저 썼으면(preventDefault) 드로어는 그대로 둔다
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !e.defaultPrevented) onClose(); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
