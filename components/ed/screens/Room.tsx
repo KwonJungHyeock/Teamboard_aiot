@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { initial, isEnter } from "@/lib/ed/core";
 import { Drawer, useToast } from "../ui";
+import MeetingNotes, { type NotesState } from "./MeetingNotes";
 
 type Kind = "agenda" | "link" | "decision" | "action" | "note" | "chat" | "file";
 interface Item { id: number; kind: Kind; body: string; url: string | null; meta: Record<string, unknown>; createdBy: string; createdById: number; createdAt: string }
@@ -15,6 +16,7 @@ interface Attendee { id: number; name: string; present: boolean; joinedAt: strin
 export interface MeetingData {
   id: number; title: string; status: "live" | "ended"; room: string; startedAt: string; endedAt: string | null;
   startedById: number; startedBy: string; items: Item[]; attendees: Attendee[]; minutes: unknown;
+  notes?: NotesState;
 }
 interface Minutes {
   attendees: string[]; agenda: { body: string; done: boolean }[]; decisions: { body: string }[]; openProposals: string[];
@@ -61,6 +63,7 @@ export default function Room({ initial: init, me, lead, domain, people }: {
   const [newIds, setNewIds] = useState<Set<number>>(new Set());
   const [curN, setCurN] = useState(0);
   const [showMin, setShowMin] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, showToast] = useToast();
   const chatRef = useRef<HTMLDivElement>(null);
@@ -258,6 +261,27 @@ export default function Room({ initial: init, me, lead, domain, people }: {
   const rows = tab === "link" ? links : tab === "chat" ? [] : by(tab as Kind);
   const minutes = (m.minutes ?? null) as Minutes | null;
   const docExt = doc ? extOf(doc.body) : "";
+  // ── 회의록 내보내기 재료 — 끝난 회의는 굳은 회의록(minutes), 열린 회의는 지금 항목 ──
+  const nameOf = (id: unknown, fallback: string) => people.find((p) => p.id === Number(id))?.name ?? fallback;
+  const exportDoc = () => {
+    const d = new Date(start + 9 * 3600e3).toISOString().slice(0, 10);
+    const decided = by("decision").filter((i) => i.meta.decidedAt);
+    return {
+      title: m.title, date: d, time: `${hhmm(m.startedAt)} – ${m.endedAt ? hhmm(m.endedAt) : "진행 중"}`,
+      attendees: minutes ? minutes.attendees : m.attendees.map((a) => a.name),
+      agenda: minutes ? minutes.agenda : agenda.map((a) => ({ body: a.body, done: !!a.meta.done })),
+      decisions: minutes ? minutes.decisions.map((x) => x.body) : decided.map((i) => i.body),
+      actions: by("action").map((i) => ({ body: i.body, who: nameOf(i.meta.assigneeId, i.createdBy), done: !!i.meta.done })),
+      links: links.map((i) => ({ body: i.body, url: i.kind === "file" ? null : i.url })),
+    };
+  };
+  const digest = () => {
+    const d = exportDoc();
+    const out: string[] = [];
+    if (d.decisions.length) out.push("[결정]", ...d.decisions.map((x) => `- ${x}`));
+    if (d.actions.length) out.push(...(out.length ? [""] : []), "[할 일]", ...d.actions.map((a) => `- ${a.body} (@${a.who})`));
+    return out.join("\n");
+  };
   const docSrc = doc ? `/api/meetings/${m.id}/files/${doc.id}` : "";
 
   return (
@@ -274,7 +298,7 @@ export default function Room({ initial: init, me, lead, domain, people }: {
           <span className={`rm-clock tn${ended ? " off" : ""}`}>{mmss(sec)}</span>
           <div className="rm-faces">{face.map((a) => <span key={a.id} title={a.name}>{initial(a.name)}</span>)}</div>
           <button type="button" className={`rm-link${copied ? " ok" : ""}`} onClick={() => void invite()}>{copied ? "복사됨 ✓" : "초대 링크"}</button>
-          {(canEnd || ended) && <button type="button" className={`rm-end${ended ? " off" : ""}`} onClick={() => void end()}>{ended ? "회의록 보기" : "회의 끝내기"}</button>}
+          {(canEnd || ended) && <button type="button" className={`rm-end${ended ? " off" : ""}`} onClick={() => void end()}>{ended ? "회의 요약" : "회의 끝내기"}</button>}
         </div>
       </div>
 
@@ -286,7 +310,11 @@ export default function Room({ initial: init, me, lead, domain, people }: {
             <span className="rm-cur">{curItem?.body ?? ""}</span>
           </div>
           <div className="rm-body">
-            {doc && (
+            {notesOpen && (
+              <MeetingNotes meetingId={m.id} remote={m.notes ?? { body: "", rev: 0, by: null, at: null }}
+                            onSaved={(n) => setM((x) => ({ ...x, notes: n }))} doc={exportDoc} digest={digest} onToast={showToast} />
+            )}
+            {doc && !notesOpen && (
               <div className="rm-doc">
                 <div className="rm-dh">
                   <span className="x" style={{ background: EXT_BG[docExt] ?? "#586174" }}>{docExt}</span>
@@ -301,8 +329,8 @@ export default function Room({ initial: init, me, lead, domain, people }: {
                 </div>
               </div>
             )}
-            <div className="rm-jit" ref={stageRef} style={{ display: video && !doc ? undefined : "none" }} />
-            {!video && !doc && (
+            <div className="rm-jit" ref={stageRef} style={{ display: video && !doc && !notesOpen ? undefined : "none" }} />
+            {!video && !doc && !notesOpen && (
               <div className="rm-off">
                 <div className="rm-av"><span className="r1" /><span className="r2" /><b>{initial(me.name)}</b></div>
                 {!ended && <button type="button" className="rm-on" onClick={() => setVideo(true)}>영상 켜기</button>}
@@ -315,6 +343,7 @@ export default function Room({ initial: init, me, lead, domain, people }: {
               <button type="button" className={mic ? "on" : undefined} onClick={toggleMic}>{mic ? "마이크" : "음소거"}</button>
               <button type="button" className={video ? "on" : undefined} onClick={() => !ended && setVideo((v) => !v)}>{video ? "영상 끄기" : "영상 켜기"}</button>
               <button type="button" className={share ? "on" : undefined} onClick={toggleShare}>{share ? "공유 중" : "화면 공유"}</button>
+              <button type="button" className={notesOpen ? "on" : undefined} onClick={() => setNotesOpen((x) => !x)}>{notesOpen ? "회의록 닫기" : "회의록 · 메모"}</button>
               <button type="button" className={tab === "chat" ? "on" : undefined} onClick={() => { setTab("chat"); setUnread(0); }}>
                 채팅{unread > 0 && <span className="bd">{unread}</span>}
               </button>
@@ -422,6 +451,7 @@ export default function Room({ initial: init, me, lead, domain, people }: {
           <div className="dh"><div style={{ flex: 1, fontSize: 20, fontWeight: 700 }}>회의록</div>
             <button type="button" className="ed-x" onClick={() => setShowMin(false)} aria-label="닫기">✕</button></div>
           <div className="db rm-min">
+            <button type="button" className="ed-btn pri" style={{ alignSelf: "flex-start" }} onClick={() => { setShowMin(false); setNotesOpen(true); }}>회의록 열기 · 저장(PDF · Word)</button>
             <div className="ed-field"><span>참석</span><p>{minutes.attendees.join(" · ") || "—"}</p></div>
             <div className="ed-field"><span>안건</span>{minutes.agenda.length ? minutes.agenda.map((a, k) => <p key={k}>{a.done ? "✓ " : "· "}{a.body}</p>) : <p className="f">없음</p>}</div>
             <div className="ed-field"><span>결정</span>{minutes.decisions.length ? minutes.decisions.map((a, k) => <p key={k}>{a.body}</p>) : <p className="f">없음</p>}</div>

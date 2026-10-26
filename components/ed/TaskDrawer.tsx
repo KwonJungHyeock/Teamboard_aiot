@@ -214,7 +214,12 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
           <div className="ed-chips">
             {DUES.map((d) => <button key={d.label} type="button" className={`ed-chip${t.dueDate === d.v ? " on" : ""}`} onClick={() => void save({ dueDate: d.v })}>{d.label}</button>)}
             <button type="button" className={`ed-chip${!t.dueDate ? " on" : ""}`} onClick={() => void save({ dueDate: null })}>없음</button>
-            <label className="ed-chip tdr-date">날짜<input type="date" value={t.dueDate ?? ""} onChange={(e) => e.target.value && void save({ dueDate: e.target.value })} /></label>
+            {/* 투명한 date 칸 위를 눌러도 브라우저가 달력을 안 여는 경우가 있다 — 누르면 달력을 직접 연다(showPicker) */}
+            <span className={`ed-chip tdr-date${t.dueDate && !DUES.some((d) => d.v === t.dueDate) ? " on" : ""}`}
+                  onClick={(e) => { const i = e.currentTarget.querySelector("input"); try { i?.showPicker(); } catch { i?.focus(); } }}>
+              {t.dueDate && !DUES.some((d) => d.v === t.dueDate) ? t.dueDate.slice(5).replace("-", ".") : "날짜"}
+              <input type="date" tabIndex={-1} aria-label="기한 날짜" value={t.dueDate ?? ""} onChange={(e) => e.target.value && void save({ dueDate: e.target.value })} />
+            </span>
           </div>
         </div>
         <div className="ed-field">
