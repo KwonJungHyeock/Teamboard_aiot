@@ -38,7 +38,10 @@ export interface Attendee { id: number; name: string; present: boolean; joinedAt
 export interface MeetingDetail {
   id: number; title: string; status: "live" | "ended"; room: string; startedAt: string; endedAt: string | null;
   startedById: number; startedBy: string; items: MeetingItem[]; attendees: Attendee[]; minutes: unknown;
+  /** 0045 — 함께 쓰는 회의록 본문. rev 는 저장할 때 「내가 본 판」으로 돌려준다 */
+  notes: MeetingNotes;
 }
+export interface MeetingNotes { body: string; rev: number; by: string | null; at: string | null }
 
 /** Jitsi 방 이름 — 추측 못 하게. 공개 Jitsi 서버에서 방 이름이 곧 열쇠다 */
 function roomName(): string {
@@ -88,10 +91,11 @@ export async function getMeeting(id: number): Promise<MeetingDetail | null> {
   const m = await queryOne<{
     id: number; title: string; status: "live" | "ended"; room: string; started_at: string; ended_at: string | null;
     started_by: number; starter: string; minutes: unknown;
+    notes: string; notes_rev: number; notes_who: string | null; notes_at: string | null;
   }>(
     `SELECT m.id, m.title, m.status, m.room, m.started_at::text, m.ended_at::text, m.started_by,
-            a.display_name AS starter, m.minutes
-       FROM meeting m JOIN actor a ON a.id = m.started_by WHERE m.id = $1`,
+            a.display_name AS starter, m.minutes, m.notes, m.notes_rev, n.display_name AS notes_who, m.notes_at::text
+       FROM meeting m JOIN actor a ON a.id = m.started_by LEFT JOIN actor n ON n.id = m.notes_by WHERE m.id = $1`,
     [id]
   );
   if (!m) return null;
@@ -115,6 +119,7 @@ export async function getMeeting(id: number): Promise<MeetingDetail | null> {
   return {
     id: m.id, title: m.title, status: m.status, room: m.room, startedAt: m.started_at, endedAt: m.ended_at,
     startedById: m.started_by, startedBy: m.starter, minutes: m.minutes,
+    notes: { body: m.notes ?? "", rev: m.notes_rev ?? 0, by: m.notes_who, at: m.notes_at },
     items: items.map((i) => ({ id: i.id, kind: i.kind, body: i.body, url: i.url, meta: i.meta ?? {},
       createdBy: i.who, createdById: i.created_by, createdAt: i.created_at })),
     attendees: att.map((a) => ({ id: a.id, name: a.name, present: m.status === "live" && !!a.present, joinedAt: a.joined_at })),
@@ -366,4 +371,49 @@ export async function meetingFileOf(id: number, itemId: number): Promise<{ pathn
   const r = await queryOne<{ url: string; body: string }>(
     `SELECT url, body FROM meeting_item WHERE id = $1 AND meeting_id = $2 AND kind = 'file' AND is_active`, [itemId, id]);
   return r && r.url ? { pathname: r.url, name: r.body } : null;
+}
+
+// ── 0045 회의록 본문 · 내 메모 ──────────────────────────────────────
+//
+// 회의록은 끝난 뒤에도 고친다(회의 중엔 받아 적고, 끝나고 다듬는다). 굳은 `minutes`(안건 · 결정 ·
+// 할 일 · 링크)와는 따로다. 동시에 고치면 rev 가 다른 쪽이 409 를 받고 최신 판을 받아 간다.
+export const NOTES_MAX = 100_000;
+
+export class NotesConflict extends Error {
+  constructor(public current: MeetingNotes) { super("다른 사람이 먼저 고쳤습니다. 최신 회의록을 불러왔습니다."); }
+}
+
+async function readNotes(id: number): Promise<MeetingNotes | null> {
+  const r = await queryOne<{ notes: string; notes_rev: number; who: string | null; notes_at: string | null }>(
+    `SELECT m.notes, m.notes_rev, a.display_name AS who, m.notes_at::text FROM meeting m LEFT JOIN actor a ON a.id = m.notes_by WHERE m.id = $1`, [id]);
+  return r ? { body: r.notes, rev: r.notes_rev, by: r.who, at: r.notes_at } : null;
+}
+
+export async function saveNotes(id: number, actorId: number, rawBody: unknown, rawRev: unknown): Promise<MeetingNotes> {
+  const body = String(rawBody ?? "").slice(0, NOTES_MAX);
+  const rev = Number(rawRev);
+  if (!Number.isInteger(rev) || rev < 0) throw new MeetingError("판 번호가 없습니다.");
+  const done = await queryOne<{ id: number }>(
+    `UPDATE meeting SET notes = $2, notes_rev = notes_rev + 1, notes_by = $3, notes_at = now()
+      WHERE id = $1 AND notes_rev = $4 RETURNING id`, [id, body, actorId, rev]);
+  const cur = await readNotes(id);
+  if (!cur) throw new MeetingError("회의를 찾을 수 없습니다.", 404);
+  if (!done) throw new NotesConflict(cur);
+  return cur;
+}
+
+export async function getMemo(id: number, actorId: number): Promise<{ body: string; at: string | null }> {
+  const r = await queryOne<{ body: string; updated_at: string }>(
+    `SELECT body, updated_at::text FROM meeting_memo WHERE meeting_id = $1 AND actor_id = $2`, [id, actorId]);
+  return { body: r?.body ?? "", at: r?.updated_at ?? null };
+}
+
+export async function saveMemo(id: number, actorId: number, rawBody: unknown): Promise<{ at: string }> {
+  const exists = await queryOne<{ id: number }>(`SELECT id FROM meeting WHERE id = $1`, [id]);
+  if (!exists) throw new MeetingError("회의를 찾을 수 없습니다.", 404);
+  const r = await queryOne<{ updated_at: string }>(
+    `INSERT INTO meeting_memo (meeting_id, actor_id, body) VALUES ($1, $2, $3)
+     ON CONFLICT (meeting_id, actor_id) DO UPDATE SET body = EXCLUDED.body, updated_at = now()
+     RETURNING updated_at::text`, [id, actorId, String(rawBody ?? "").slice(0, NOTES_MAX)]);
+  return { at: r!.updated_at };
 }

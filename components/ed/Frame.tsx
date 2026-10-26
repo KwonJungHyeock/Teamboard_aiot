@@ -14,7 +14,7 @@ import TaskDrawer from "./TaskDrawer";
 import Agent from "./Agent";
 import { Drawer } from "./ui";
 
-export interface FrameUser { id: number; name: string; roleLabel: string; lead: boolean; admin: boolean }
+export interface FrameUser { id: number; name: string; roleLabel: string; lead: boolean; admin: boolean; mustChange?: boolean }
 
 export function useTheme(): [string, () => void] {
   const [theme, setTheme] = useState("light");
@@ -219,6 +219,7 @@ export default function Frame({ user, children }: { user: FrameUser; children: R
         </nav>
         <div className="ed-right"><Agent /><ThemePill /><Account user={user} /></div>
       </header>
+      {user.mustChange && <div className="ed-pwnote" role="status">임시 비밀번호로 들어왔습니다. 아래 <b>비밀번호</b>에서 새 비밀번호로 바꿔 주세요.</div>}
       <main className="ed-main">{children}</main>
       <LiveTicker />
       <Suspense fallback={null}><DrawerHost /><DeniedToast /></Suspense>

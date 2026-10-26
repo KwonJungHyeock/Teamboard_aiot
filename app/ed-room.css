@@ -166,3 +166,20 @@
   .rm-hr { margin-left: 0; flex-wrap: wrap; }
 }
 .rl-sec > .ed-empty, .rl-dl > .ed-empty { padding: 6px 8px; }
+
+/* 0045 회의록 · 내 메모 — 스테이지 자리에 펼치는 종이 */
+.rm-notes .rm-dh { flex-wrap: wrap; }
+.rm-nseg { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: rgba(255,255,255,.08); }
+.rm-nseg button { border: 0; cursor: pointer; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 8px; background: transparent; color: rgba(255,255,255,.7); }
+.rm-nseg button.on { background: rgba(255,255,255,.92); color: #0b101b; }
+.rm-dh .b.pri { background: #fff; color: #0b101b; }
+.rm-exp { position: relative; }
+.rm-expm { position: absolute; right: 0; top: calc(100% + 6px); z-index: 5; width: 230px; display: flex; flex-direction: column; padding: 6px; border-radius: 12px; background: var(--surface); box-shadow: var(--elev2, 0 12px 32px rgba(0,0,0,.25)); color: var(--ink); }
+.rm-expm button { border: 0; cursor: pointer; text-align: left; padding: 8px 10px; border-radius: 8px; background: none; color: var(--ink); font-size: 13px; font-weight: 600; display: flex; flex-direction: column; gap: 1px; }
+.rm-expm button small { font-size: 11px; font-weight: 500; color: var(--faint); }
+.rm-expm button:hover { background: var(--panel2); }
+.rm-expc { display: flex; align-items: center; gap: 6px; padding: 8px 10px 4px; margin-top: 2px; border-top: 1px solid var(--line); font-size: 12px; color: var(--sub); cursor: pointer; }
+.rm-paper { flex: 1; min-height: 0; display: flex; border-radius: 14px; background: #f8f9fb; box-shadow: 0 20px 50px -20px rgba(0,0,0,.6); overflow: hidden; }
+.rm-paper textarea { flex: 1; resize: none; border: 0; outline: 0; padding: 22px 26px; background: transparent; color: #1b2230; font: inherit; font-size: 14.5px; line-height: 1.75; }
+.rm-paper textarea::placeholder { color: #9aa3b2; }
+.rm-paper .rm-empty { margin: auto; color: #7a8496; }

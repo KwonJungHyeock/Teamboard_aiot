@@ -48,9 +48,11 @@ export default async function V3Layout({ children }: { children: React.ReactNode
     const first = here.replace(`${V3_BASE}/`, "").split("?")[0].split("/")[0];
     redirect(notYetOf(first) ? notYetHref(first) : `${V3_BASE}/not-yet`);
   }
+  // 임시 비밀번호로 들어온 사람(구성원 관리에서 막 만든 계정) — 비밀번호를 바꿀 때까지 내 정보로 보낸다
+  if (live.mustChangePassword && here && !here.startsWith(`${V3_BASE}/me`)) redirect(`${V3_BASE}/me?pw=1`);
   const u = live.user;
   const lead = hasLead(u.role) || u.adminGrant;
   const admin = isAdmin(u);
-  const user = { id: u.id, name: u.name, lead, admin, roleLabel: `${roleLabel(u.role)}${u.adminGrant && u.role !== "admin" ? " · 관리자 권한" : ""}` };
+  const user = { id: u.id, name: u.name, lead, admin, mustChange: live.mustChangePassword, roleLabel: `${roleLabel(u.role)}${u.adminGrant && u.role !== "admin" ? " · 관리자 권한" : ""}` };
   return <Frame user={user}>{children}</Frame>;
 }
