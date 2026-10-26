@@ -95,7 +95,8 @@ export default function Members({ me }: { me: number }) {
       <AddMember onDone={load} />
       <section className="ed-sec q" style={{ gap: 0, padding: "8px 22px" }}>
         {rows === null ? <div className="ed-empty">불러오는 중</div> : live.length === 0 ? <div className="ed-empty">비어 있음</div> : live.map((m) => {
-          const why = note[m.id] || whyCannotLower(list, m) || whyCannotDeactivate(list, m, me);
+          // 줄 아래 글은 고칠 수 없는 이유 · 오류만 — 삭제를 못 하는 이유는 삭제 버튼에 대면 보인다
+          const why = note[m.id] || whyCannotLower(list, m);
           const offWhy = whyCannotDeactivate(list, m, me);
           const fixed = grantFixedWhy(m);
           return (
@@ -118,11 +119,11 @@ export default function Members({ me }: { me: number }) {
       </section>
       {gone.length > 0 && (
         <section className="ed-sec q" style={{ gap: 0, padding: "12px 22px" }}>
-          <h2 style={{ marginBottom: 4 }}>지운 구성원</h2>
+          <h2 style={{ marginBottom: 6 }}>지운 구성원</h2>
           {gone.map((m) => (
             <div key={m.id} className="mem-off">
-              <span className="ed-av" style={{ opacity: .5 }}>{initial(m.name)}</span>
-              <b>{m.name}</b><span style={{ flex: 1 }}>{m.email || "—"}</span>
+              <span className="ed-av">{initial(m.name)}</span>
+              <div className="mem-who"><b>{m.name}</b><small>{m.email || "—"}</small></div>
               <button type="button" className="ed-btn sm" disabled={busy === m.id} onClick={() => void send(m.id, { isActive: true })}>되살리기</button>
               {note[m.id] && <span className="ed-err">{note[m.id]}</span>}
             </div>
