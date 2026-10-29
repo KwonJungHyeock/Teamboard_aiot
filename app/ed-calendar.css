@@ -90,6 +90,40 @@
 .cal-nd { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--sub); padding: 0 4px; }
 .cal-nd:hover { text-decoration: none; color: var(--ink); }
 
+/* 일정 막대 — 날짜 칸과 같은 격자 줄 · 칸에 겹쳐 그린다. 세로 자리 = --evtop(칸 머리 아래) + 줄 × --evh.
+   칸 안의 .cal-evsp 가 같은 높이를 비워 두어 업무 줄이 막대 밑으로 내려간다. */
+.cal-grid { --evtop: 38px; --evh: 22px; }
+.cal-week { --evtop: 42px; --evh: 22px; }
+.cal-evsp { flex-shrink: 0; height: calc(var(--lanes) * var(--evh) - 3px); }
+.cal-ev { position: relative; z-index: 1; align-self: start; min-width: 0; height: 19px; margin: calc(var(--evtop) + var(--lane) * var(--evh)) 5px 0;
+  display: flex; align-items: center; gap: 5px; padding: 0 8px; border: 0; border-radius: 6px; cursor: pointer; overflow: hidden;
+  font: inherit; font-size: 12px; font-weight: 600; letter-spacing: -.01em; text-align: left; white-space: nowrap;
+  color: var(--violet); background: color-mix(in oklch,var(--violet) 15%,var(--ringbg)); animation: fadeIn .3s backwards; }
+.cal-ev:hover { background: color-mix(in oklch,var(--violet) 24%,var(--ringbg)); }
+.cal-ev:focus-visible { outline: 0; box-shadow: inset 0 0 0 1.5px var(--violet); }
+.cal-ev span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cal-ev em { flex-shrink: 0; font-style: normal; font-weight: 700; opacity: .7; font-variant-numeric: tabular-nums; }
+.cal-ev b { flex-shrink: 0; padding: 0 4px; border-radius: 4px; font-size: 10px; font-weight: 800; background: color-mix(in oklch,var(--teal) 16%,transparent); }
+/* 나만 — teal 점선 */
+.cal-ev.me { color: var(--teal); background: color-mix(in oklch,var(--teal) 6%,var(--ringbg)); border: 1px dashed color-mix(in oklch,var(--teal) 60%,transparent); padding: 0 7px; }
+.cal-ev.me:hover { background: color-mix(in oklch,var(--teal) 14%,var(--ringbg)); }
+/* 앞 주 · 다음 주로 이어지는 쪽은 모서리를 펴고 칸 끝까지 */
+.cal-ev.cl { margin-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.cal-ev.cr { margin-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.cal-ev.me.cl { border-left: 0; } .cal-ev.me.cr { border-right: 0; }
+
+/* 날짜 패널의 일정 줄 · 일정 드로어 */
+.cal-er { width: 100%; border: 0; cursor: pointer; background: transparent; text-align: left; font: inherit; color: inherit; }
+.cal-esw { width: 22px; height: 22px; flex-shrink: 0; display: grid; place-items: center; }
+.cal-esw i { width: 6px; height: 20px; border-radius: 3px; background: var(--violet); }
+.cal-er.me .cal-esw i { background: transparent; border: 1.5px dashed var(--teal); }
+.cal-evhd { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--sub); }
+.cal-evk { padding: 3px 8px; border-radius: 8px; font-size: 12px; font-weight: 700; color: var(--violet); background: color-mix(in oklch,var(--violet) 13%,transparent); }
+.cal-evk.me { color: var(--teal); background: color-mix(in oklch,var(--teal) 13%,transparent); }
+.cal-evd { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; }
+.cal-evd .ed-input:disabled { opacity: .7; }
+.cal-evro { padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.5; color: var(--sub); background: var(--panel2); }
+
 @media (max-width: 1180px) {
   .cal-main { grid-template-columns: minmax(0,1fr) 300px; }
   .cal-c { padding: 8px 6px 10px; }
@@ -114,4 +148,13 @@
   .cal-c { flex-direction: column; }
   .cal-wh span { padding: 0; text-align: center; }
   .cal-load { left: 6px; right: 6px; }
+}
+/* 휴대폰 — 일정 막대는 글자 없는 가는 선. 누르면 날짜가 골라지고, 아래 패널에서 연다 */
+@media (max-width: 719px) {
+  .cal-grid { --evtop: 32px; --evh: 7px; }
+  .cal-week { --evtop: 40px; --evh: 7px; }
+  .cal-ev, .cal-ev.me { height: 5px; margin-left: 3px; margin-right: 3px; padding: 0; border: 0; border-radius: 3px; pointer-events: none; background: color-mix(in oklch,var(--violet) 70%,transparent); }
+  .cal-ev.me { background: repeating-linear-gradient(90deg,var(--teal) 0 4px,transparent 4px 6px); }
+  .cal-ev.cl { margin-left: 0; } .cal-ev.cr { margin-right: 0; }
+  .cal-ev > * { display: none; }
 }

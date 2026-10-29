@@ -18,6 +18,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const id = Number(params.id);
     if (!Number.isInteger(id)) return NextResponse.json(NOT_FOUND, { status: 404 });
     const payload = await request.json();
+    // 둘 다 오면 순서를 먼저 본다 — 아니면 range_check 에 걸려 500 이 된다
+    if (isDate(payload.startDate) && isDate(payload.endDate) && payload.endDate < payload.startDate) {
+      return NextResponse.json({ error: "종료일이 시작일보다 앞설 수 없습니다." }, { status: 400 });
+    }
 
     const sets: string[] = [];
     const values: unknown[] = [];
