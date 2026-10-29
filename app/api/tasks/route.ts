@@ -8,6 +8,7 @@ import { requireSession } from "@/lib/auth";
 import { guardCreate } from "@/lib/claude-guard";
 import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
+import { canEditTask, EDIT_DENIED } from "@/lib/task-permission";
 import { notify as pushNotify } from "@/lib/push";
 import { jsonError } from "@/lib/api";
 import { kstToday } from "@/lib/home";
@@ -18,7 +19,7 @@ import { countableSql, doneSql, taskProgress } from "@/lib/progress";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const STATUSES = ["proposed", "todo", "doing", "review", "done", "dropped"] as const;
+const STATUSES = ["proposed", "todo", "doing", "review", "hold", "done", "dropped"] as const;
 const PRIORITIES = ["high", "mid", "low"] as const;
 const WORK_TYPES = ["team", "personal", "routine"] as const;
 
@@ -237,7 +238,7 @@ export async function GET(request: Request) {
                           AND ${visibleTaskSql(viewerParam, "pa")} AND (${asAlias("pa")})) )
        GROUP BY t.id, p.name, p.color_key, ar.name, a.display_name, c.display_name
        ORDER BY ${ORDER_BY[sortKey]}
-       LIMIT 300`,
+       LIMIT 3000`,
       params
     );
 
@@ -383,6 +384,10 @@ export async function POST(request: Request) {
     if (parentTaskId !== null) {
       const chk = await checkParent(parentTaskId, null);
       if (chk.error) return NextResponse.json({ error: chk.error }, { status: 400 });
+      // 남의 업무에 체크리스트 항목을 다는 것도 「고치기」다(QA 1)
+      const owner = await queryOne<{ assignee_id: number | null; created_by: number | null; parent_task_id: number | null }>(
+        `SELECT assignee_id, created_by, parent_task_id FROM task WHERE id = $1`, [parentTaskId]);
+      if (!owner || !(await canEditTask(session, owner))) return NextResponse.json({ error: EDIT_DENIED }, { status: 403 });
       projectId = chk.inherit!.projectId;
       areaId = chk.inherit!.areaId;
       visibility = chk.inherit!.visibility as typeof visibility;

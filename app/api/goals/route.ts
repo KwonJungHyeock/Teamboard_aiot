@@ -254,7 +254,7 @@ export async function POST(request: Request) {
     if (goal) await recomputeGoalChain(goal.id);
     await logActivity({
       userId: session.id,
-      message: `${session.name}이(가) ${scope === "personal" ? "개인 " : "팀 "}${periodType === "year" ? "연간" : periodType === "quarter" ? "분기" : "월"} 목표 생성 — "${title}"`,
+      message: `${session.name}이(가) ${scope === "personal" ? "개인 " : "팀 "}${periodType === "year" ? "연간" : periodType === "quarter" ? "분기" : "월"} 목표 생성${scope === "personal" ? "" : ` — "${title}"`}`,
     });
     // 27-4 — 막지 않고 알려만 준다. 저장을 먼저 끝낸 뒤 사실을 얹는다.
     return NextResponse.json({

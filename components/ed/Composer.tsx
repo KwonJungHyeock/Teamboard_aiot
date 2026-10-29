@@ -3,11 +3,13 @@
 // 한 줄 등록창 — `@담당 ~마감 #목표` 문법 + Enter (DESIGN.md 3.5).
 //   variant="chips"  업무 현황: 담당 · 마감 · 목표 드롭다운 칩 + 추가
 //   variant="tokens" 내 업무: 인식된 값 토큰 알약 + `···` 옵션 팝오버(담당 · 카테고리 · 마감 · 목표) + 추가
+// 맨 앞 [업무 | 일정] — 일정은 제목 · 시작일~종료일 · [팀 | 나만] (팀 → /api/events, 나만 → /api/personal-events).
 // 조합 중(한글) Enter 는 무시한다.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { catColor, dueFromWord, isEnter, md, parseLine, todayKst, wd, addDays, weekday, mondayOf } from "@/lib/ed/core";
 import { createTask, useMeta, type GoalLite } from "./data";
-import { usePop } from "./ui";
+import { api, emitChanged, Seg, usePop, useToast } from "./ui";
 
 const DUE_OPTS = (today: string) => [
   { label: "오늘", v: today },
@@ -30,6 +32,10 @@ export default function Composer({ variant = "chips", placeholder, presetWho, on
   const [err, setErr] = useState("");
   const [open, setOpen, ref] = usePop<"who" | "due" | "goal" | "opts">();
   const input = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<"task" | "event">("task");
+  const [ev, setEv] = useState<{ start: string; end: string; scope: "team" | "me" }>({ start: today, end: today, scope: "team" });
+  const [toast, showToast] = useToast();
+  const router = useRouter();
 
   useEffect(() => { if (presetWho) { setPick((p) => ({ ...p, who: presetWho })); input.current?.focus(); } }, [presetWho, autoFocusKey]);
 
@@ -74,6 +80,52 @@ export default function Composer({ variant = "chips", placeholder, presetWho, on
     finally { setBusy(false); input.current?.focus(); }
   };
 
+  // ── 일정 ──────────────────────────────────────────────────────
+  const evTitle = text.trim();
+  const evReady = evTitle.length > 0 && !!ev.start && !!ev.end && ev.end >= ev.start && !busy;
+  const addEvent = async () => {
+    if (!evReady) return;
+    setBusy(true); setErr("");
+    try {
+      const body = { title: evTitle, startDate: ev.start, endDate: ev.end };
+      await api(ev.scope === "team" ? "/api/events" : "/api/personal-events", { method: "POST", body });
+      emitChanged();
+      setText("");
+      showToast(`일정 추가 · ${md(ev.start)}${ev.end !== ev.start ? `~${md(ev.end)}` : ""}${ev.scope === "me" ? " · 나만" : ""}`,
+        { label: "달력 보기", run: () => router.push("/v3/calendar") });
+    } catch (e) { setErr(e instanceof Error ? e.message : "추가하지 못했습니다"); }
+    finally { setBusy(false); input.current?.focus(); }
+  };
+  const modeSw = (
+    <Seg className="ev-sw" value={mode} onChange={(m) => { setMode(m); setErr(""); setOpen(null); input.current?.focus(); }}
+         options={[{ v: "task", label: "업무" }, { v: "event", label: "일정" }]} />
+  );
+
+  if (mode === "event") {
+    const onKey = (e: React.KeyboardEvent) => { if (isEnter(e)) { e.preventDefault(); void addEvent(); } };
+    return (
+      <div className={`ed-comp ev${variant === "tokens" ? " tk" : ""}`}>
+        {modeSw}
+        <input ref={input} value={text} maxLength={120} onChange={(e) => setText(e.target.value)} onKeyDown={onKey}
+               placeholder="일정 이름 (박람회 · 교육 …)" aria-label="새 일정" />
+        <div className="ev-opts">
+          <div className="ev-when">
+            <input type="date" className="ev-d" value={ev.start} aria-label="시작일" onKeyDown={onKey}
+                   onChange={(e) => { const v = e.target.value; setEv((x) => ({ ...x, start: v, end: v && x.end < v ? v : x.end })); }} />
+            <span>~</span>
+            <input type="date" className="ev-d" value={ev.end} min={ev.start} aria-label="종료일" onKeyDown={onKey}
+                   onChange={(e) => { const v = e.target.value; setEv((x) => ({ ...x, end: v })); }} />
+          </div>
+          <Seg className="ev-sc" value={ev.scope} onChange={(v) => setEv((x) => ({ ...x, scope: v }))}
+               options={[{ v: "team", label: "팀" }, { v: "me", label: "나만" }]} />
+          <button type="button" className={`add${evReady ? "" : " off"}`} onClick={() => void addEvent()} disabled={!evReady}>추가</button>
+        </div>
+        {err && <div className="cerr">{err}</div>}
+        {toast}
+      </div>
+    );
+  }
+
   const opt = (on: boolean, label: React.ReactNode, fn: () => void, key: string | number) => (
     <button key={key} type="button" className={on ? "on" : undefined} onClick={() => { fn(); setOpen(null); }}>{label}</button>
   );
@@ -87,7 +139,7 @@ export default function Composer({ variant = "chips", placeholder, presetWho, on
     if (goalObj) tokens.push({ label: `${goalShort(goalObj)} 목표`, cls: "" });
     return (
       <div className="ed-comp tk" ref={ref}>
-        <span className="plus faint">+</span>
+        {modeSw}
         <input ref={input} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (isEnter(e)) { e.preventDefault(); void add(); } }}
                placeholder={placeholder ?? "할 일을 적고 Enter"} aria-label="새 업무" />
         <div className="toks">{tokens.map((t) => <span key={t.label} className={`tkn ${t.cls}`}>{t.dot && <i style={{ background: t.dot }} />}{t.label}</span>)}</div>
@@ -110,13 +162,14 @@ export default function Composer({ variant = "chips", placeholder, presetWho, on
         </div>
         <button type="button" className={`add${ready ? "" : " off"}`} onClick={() => void add()} disabled={!ready}>추가</button>
         {err && <div className="cerr">{err}</div>}
+        {toast}
       </div>
     );
   }
 
   return (
     <div className="ed-comp" ref={ref}>
-      <span className="plus">+</span>
+      {modeSw}
       <input ref={input} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (isEnter(e)) { e.preventDefault(); void add(); } }}
              placeholder={placeholder ?? "새 업무   @담당  ~마감  #목표"} aria-label="새 업무" />
       <div className="opts">
@@ -142,6 +195,7 @@ export default function Composer({ variant = "chips", placeholder, presetWho, on
         <button type="button" className={`add${ready ? "" : " off"}`} onClick={() => void add()} disabled={!ready}>추가</button>
       </div>
       {err && <div className="cerr">{err}</div>}
+      {toast}
     </div>
   );
 }

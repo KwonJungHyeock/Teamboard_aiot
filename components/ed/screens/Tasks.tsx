@@ -4,6 +4,7 @@
 //   레인: 지남 / 진행 중(진행 + 검토, 행에 「검토」) / 예정(시작 전) / 완료
 //   필터 세그먼트는 다른 레인을 흐리게만 한다. 건수 숫자는 어디에도 두지 않는다.
 //   행을 누르면 상세 드로어(?task=), 이니셜 원을 누르면 선택 → 아래 가운데 일괄 처리 바.
+//   QA(2026-10-29): 검색 · 담당 · 카테고리 · 공개 범위 거르기, 보류는 「예정」에 「보류」 표시, 중단은 고를 때만 「완료」 칸에.
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { addDays, diffDays, lookOf, LOOK_LABEL, mdw, todayKst, type EdTask, type Look } from "@/lib/ed/core";
@@ -15,7 +16,7 @@ type Filter = "all" | Lane;
 const LANES: { k: Lane; label: string; looks: Look[] }[] = [
   { k: "over", label: "지남", looks: ["over"] },
   { k: "doing", label: "진행 중", looks: ["doing", "review"] },
-  { k: "todo", label: "예정", looks: ["todo"] },
+  { k: "todo", label: "예정", looks: ["todo", "hold"] },
   { k: "done", label: "완료", looks: ["done"] },
 ];
 const SHADES = ["var(--ink)", "color-mix(in oklch, var(--ink) 70%, var(--panel2))", "color-mix(in oklch, var(--ink) 48%, var(--panel2))",
@@ -57,6 +58,13 @@ export default function Tasks() {
     const q = new URLSearchParams(sp.toString()); q.delete("who");
     router.replace(q.toString() ? `${path}?${q}` : path, { scroll: false });
   };
+  const [q, setQ] = useState("");
+  const [vis, setVis] = useState<"all" | "team" | "private">("all");
+  const [withDropped, setWithDropped] = useState(false);
+  const setParam = (k: string, v: string | null) => {
+    const n = new URLSearchParams(sp.toString()); if (v) n.set(k, v); else n.delete(k);
+    router.replace(n.toString() ? `${path}?${n}` : path, { scroll: false });
+  };
   const [sel, setSel] = useState<number[]>([]);
   const [pop, setPop] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -68,8 +76,14 @@ export default function Tasks() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  const list = useMemo(() => (tasks ?? []).filter((t) => t.parentTaskId === null && ["todo", "doing", "review", "done"].includes(t.status)
-    && (!who || t.assigneeId === who) && (!area || t.areaId === area) && (!noDue || (!t.dueDate && t.status !== "done"))), [tasks, who, area, noDue]);
+  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const list = useMemo(() => (tasks ?? []).filter((t) => t.parentTaskId === null
+    && ["todo", "doing", "review", "hold", "done", ...(withDropped ? ["dropped"] : [])].includes(t.status)
+    && (!who || t.assigneeId === who) && (!area || t.areaId === area) && (!noDue || (!t.dueDate && t.status !== "done"))
+    && (vis === "all" || t.visibility === vis)
+    // 검색 — 제목 · 설명 · 담당 · 카테고리에 낱말이 모두 들어 있으면
+    && words.every((w) => `${t.title} ${t.description ?? ""} ${t.assigneeName ?? ""} ${t.areaName}`.toLowerCase().includes(w))),
+  [tasks, who, area, noDue, vis, withDropped, words.join(" ")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 이니셜 — 같은 첫 글자가 겹치면 뒤 사람은 끝 글자(박주희 「박」 · 박정길 「길」)
   const initials = useMemo(() => {
@@ -90,7 +104,8 @@ export default function Tasks() {
   }, [list]);
 
   const lanes = useMemo(() => LANES.map((L) => {
-    const xs = list.map((t) => ({ t, look: lookOf(t, today) })).filter((x) => L.looks.includes(x.look));
+    // 중단은 끝난 일이다 — 「완료」 칸에 「중단」 표시로
+    const xs = list.map((t) => ({ t, look: (t.status === "dropped" ? "done" : lookOf(t, today)) as Look })).filter((x) => L.looks.includes(x.look));
     xs.sort((a, b) => {
       if (L.k === "done") return (b.t.completedAt ?? b.t.dueDate ?? "").localeCompare(a.t.completedAt ?? a.t.dueDate ?? "");
       return (a.t.dueDate ?? "9999").localeCompare(b.t.dueDate ?? "9999") || a.t.id - b.t.id;
@@ -140,11 +155,26 @@ export default function Tasks() {
         {who && <span className="tsk-who"><i>{whoName ? whoName.charAt(0) : "?"}</i>{whoName ?? "담당"}<button type="button" onClick={clearWho} aria-label="담당 조건 지우기">✕</button></span>}
         {area && <span className="tsk-who"><i>#</i>{areaName ?? "카테고리"}<button type="button" onClick={clearArea} aria-label="카테고리 조건 지우기">✕</button></span>}
         {noDue && <span className="tsk-who"><i>—</i>기한 없음<button type="button" onClick={() => { const q = new URLSearchParams(sp.toString()); q.delete("due"); router.replace(q.toString() ? `${path}?${q}` : path, { scroll: false }); }} aria-label="기한 조건 지우기">✕</button></span>}
-        {(filter !== "all" || who || area || noDue) && <button type="button" className="tsk-clear" onClick={() => {
-          setFilter("all");
+        {(filter !== "all" || who || area || noDue || q || vis !== "all" || withDropped) && <button type="button" className="tsk-clear" onClick={() => {
+          setFilter("all"); setQ(""); setVis("all"); setWithDropped(false);
           const q = new URLSearchParams(sp.toString()); q.delete("who"); q.delete("area"); q.delete("f"); q.delete("due");
           router.replace(q.toString() ? `${path}?${q}` : path, { scroll: false });
         }}>조건 지우기</button>}
+      </div>
+      <div className="tsk-find">
+        <input className="ed-input tsk-q" type="search" placeholder="업무 검색 — 제목 · 설명 · 담당 · 카테고리" value={q} onChange={(e) => setQ(e.target.value)} aria-label="업무 검색" />
+        <select className="ed-input" aria-label="담당" value={who ?? ""} onChange={(e) => setParam("who", e.target.value || null)}>
+          <option value="">담당 전체</option>
+          {(meta?.people ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        <select className="ed-input" aria-label="카테고리" value={area ?? ""} onChange={(e) => setParam("area", e.target.value || null)}>
+          <option value="">카테고리 전체</option>
+          {(meta?.areas ?? []).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+        <select className="ed-input" aria-label="공개 범위" value={vis} onChange={(e) => setVis(e.target.value as typeof vis)}>
+          <option value="all">공개 범위 전체</option><option value="team">팀 공개</option><option value="private">비공개(나만)</option>
+        </select>
+        <label className="tsk-chk"><input type="checkbox" checked={withDropped} onChange={(e) => setWithDropped(e.target.checked)} />중단 포함</label>
       </div>
       <section className="tsk-lanes">
         {lanes.map((l, li) => {
@@ -171,7 +201,8 @@ export default function Tasks() {
                               onClick={(e) => { e.stopPropagation(); toggle(t.id); }}>
                         {on ? "✓" : (t.assigneeId ? initials.get(t.assigneeId) : null) ?? (t.assigneeName ?? "?").charAt(0)}
                       </button>
-                      <div className="tt"><span>{t.title}</span>{t.status === "review" && !done && <em>검토</em>}</div>
+                      <div className="tt"><span>{t.title}</span>{t.status === "review" && !done && <em>검토</em>}{t.status === "hold" && <em className="hold">보류</em>}
+                        {t.status === "dropped" && <em className="drop">중단</em>}{t.visibility === "private" && <em className="pv">비공개</em>}</div>
                       <span className={`du${look === "over" ? " red" : t.dueDate === today && !done ? " now" : ""}`}>{dueText(t, look, today)}</span>
                     </div>
                   );

@@ -438,3 +438,32 @@ textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; bord
   .mem-row > .mem-who { grid-column: 2 / -1; }
   .mem-row > .mem-sel { grid-column: 2; }
 }
+
+/* QA 2026-10-29 — 업무 상세 보기 전용 · 중단 */
+.tdr-fs { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: inherit; }
+.tdr-fs:disabled .ed-chip, .tdr-fs:disabled .ed-seg button { cursor: default; }
+.tdr-fs:disabled .ed-chip:not(.on), .tdr-fs:disabled .ed-seg button:not(.on) { opacity: .55; }
+.tdr-ro { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; color: var(--sub); background: var(--panel2); }
+.tdr-ro.drop { color: var(--red); background: color-mix(in srgb, var(--red) 8%, var(--panel2)); }
+.tdr-ro .ed-btn { margin-left: auto; flex-shrink: 0; }
+
+/* 일정 */
+/* 등록창 맨 앞 [업무 | 일정] · 일정일 때 시작일 ~ 종료일 · [팀 | 나만] (Composer.tsx) */
+.ed-comp:has(> .ev-sw) { padding-left: 8px; }
+.ed-seg.ev-sw, .ed-seg.ev-sc { padding: 2px; border-radius: 10px; }
+.ed-seg.ev-sw button, .ed-seg.ev-sc button { padding: 6px 10px; border-radius: 8px; font-size: 12px; }
+.ed-comp.ev .ev-sw button.on { color: var(--violet); }
+.ed-comp.ev { flex-wrap: wrap; }
+.ed-comp.ev > input { min-width: 160px; }
+.ev-opts { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.ev-when { display: flex; align-items: center; gap: 4px; }
+.ev-when > span { font-size: 13px; color: var(--faint); }
+.ev-d { min-width: 0; border: 0; outline: 0; font: inherit; font-size: 13px; font-weight: 600; padding: 8px 10px; border-radius: 12px; background: var(--panel2); box-shadow: var(--sunken); color: var(--ink); }
+.ev-d:focus-visible { box-shadow: var(--sunken), inset 0 0 0 1.5px color-mix(in oklch,var(--accent) 50%,transparent); }
+@media (max-width: 719px) {
+  .ed-comp.ev > input { min-width: 0; flex: 1 1 120px; }
+  .ev-opts { width: 100%; margin-left: 0; }
+  .ev-when { flex: 1 1 100%; }
+  .ev-d { flex: 1; width: 0; }
+  .ev-opts .add { margin-left: auto; }
+}
