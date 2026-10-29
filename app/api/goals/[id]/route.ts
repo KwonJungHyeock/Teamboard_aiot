@@ -185,7 +185,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         );
       }
       await query("UPDATE goal SET is_active = false, updated_at = now() WHERE id = $1", [goalId]);
-      await logActivity({ userId: session.id, message: `${session.name}이(가) 목표 보관 — "${goal.title}"`, level: "warn" });
+      await logActivity({ userId: session.id, message: `${session.name}이(가) 목표 보관${goal.scope === "personal" ? "" : ` — "${goal.title}"`}`, level: "warn" });
       return NextResponse.json({ ok: true });
     }
 
@@ -202,7 +202,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         return NextResponse.json({ error: "상위 목표를 먼저 복구하세요." }, { status: 409 });
       }
       await query("UPDATE goal SET is_active = true, updated_at = now() WHERE id = $1", [goalId]);
-      await logActivity({ userId: session.id, message: `${session.name}이(가) 목표 복구 — "${goal.title}"` });
+      await logActivity({ userId: session.id, message: `${session.name}이(가) 목표 복구${goal.scope === "personal" ? "" : ` — "${goal.title}"`}` });
       return NextResponse.json({ ok: true });
     }
 
@@ -317,7 +317,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       moved = await reparentByPeriod(goalId);
     }
 
-    await logActivity({ userId: session.id, message: `${session.name}이(가) 목표 수정 — "${goal.title}"` });
+    await logActivity({ userId: session.id, message: `${session.name}이(가) 목표 수정${goal.scope === "personal" ? "" : ` — "${goal.title}"`}` });
     // 옮겨졌으면 화면이 "Q3 → Q4 로 옮겨졌습니다" 한 줄을 띄울 수 있게 사실을 돌려준다.
     return NextResponse.json({ ok: true, ...(moved?.moved ? { moved } : {}) });
   } catch (error) {

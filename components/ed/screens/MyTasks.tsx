@@ -16,8 +16,14 @@ import { api, emitChanged, useToast } from "../ui";
 type Lane = "over" | "fix" | "doing" | "todo" | "done";
 type Tab = "mine" | "delegated";
 
+// 보류는 멈춰 둔 일 — 「지남」으로 재촉하지 않고 예정 칸에 「보류」 표시로 둔다(QA 5)
 const laneOf = (t: EdTask, rev: Revision | undefined, today: string): Lane =>
-  t.status === "done" ? "done" : rev ? "fix" : t.dueDate && t.dueDate < today ? "over" : t.status === "todo" ? "todo" : "doing";
+  t.status === "done" ? "done" : rev ? "fix" : t.status === "hold" ? "todo" : t.dueDate && t.dueDate < today ? "over" : t.status === "todo" ? "todo" : "doing";
+/** 보류 · 비공개 표시 — 비공개는 나만 보는 업무다 */
+const Marks = ({ t }: { t: EdTask }) => (<>
+  {t.status === "hold" && <em className="my-mk hold">보류</em>}
+  {t.visibility === "private" && <em className="my-mk pv">비공개</em>}
+</>);
 
 const dLabel = (due: string | null, today: string) => {
   if (!due) return "—";
@@ -174,7 +180,7 @@ export default function MyTasks() {
                 <span className="tag" style={{ color, background: `color-mix(in oklch,${color} 13%,transparent)`, animation: i === 0 && isOver && !lv ? "pulseRed 2.4s infinite" : undefined }}>
                   {isOver ? `${-diffDays(t.dueDate!, today)}일 지남` : `수정 요청 · ${r!.requesterName}`}
                 </span>
-                <span className="cat">{t.areaName}{tab === "delegated" && t.assigneeName ? ` · ${t.assigneeName}` : ""}</span>
+                <span className="cat">{t.areaName}{tab === "delegated" && t.assigneeName ? ` · ${t.assigneeName}` : ""}<Marks t={t} /></span>
               </div>
               <div className="tt">{t.title}</div>
               {!isOver && <div className="note">{r!.memo}</div>}
@@ -216,7 +222,7 @@ export default function MyTasks() {
                    onMouseEnter={() => setHover(t.id)} onMouseLeave={() => setHover((h) => (h === t.id ? null : h))}
                    style={{ animation: rowAnim(t.id, i, 0.25) }}>
                 <div className="r1">
-                  <span className="tt">{t.title}</span>
+                  <span className="tt">{t.title}</span><Marks t={t} />
                   <span className="d" style={{ color: isDone ? "var(--green)" : o !== null && o <= 1 ? "var(--amber)" : "var(--sub)" }}>{isDone ? "완료" : dLabel(t.dueDate, today)}</span>
                 </div>
                 {!hv ? (
@@ -273,7 +279,7 @@ export default function MyTasks() {
                      style={{ animation: rowAnim(t.id, i, 0.25) }}>
                   <div className="bd">
                     <div className="tt">{t.title}</div>
-                    <div className="ct"><i style={{ background: catColor(t.areaName) }} />{t.areaName}{tab === "delegated" && t.assigneeName ? ` · ${t.assigneeName}` : ""}</div>
+                    <div className="ct"><i style={{ background: catColor(t.areaName) }} />{t.areaName}{tab === "delegated" && t.assigneeName ? ` · ${t.assigneeName}` : ""}<Marks t={t} /></div>
                   </div>
                   {hv && (
                     <div className="qk" onClick={(e) => e.stopPropagation()}>

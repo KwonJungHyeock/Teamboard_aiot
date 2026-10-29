@@ -1,7 +1,7 @@
 // 디자인 v1.0 공통 규칙 — 날짜 표기 · 상태 판정 · 카테고리 색 · 등록창 문법.
 // 화면마다 따로 적지 않는다. 클라이언트 · 서버 어디서나 불러도 되는 순수 함수만 둔다.
 
-export type Status = "todo" | "doing" | "review" | "done";
+export type Status = "todo" | "doing" | "review" | "hold" | "done";
 /** 화면 상태 — `over`(지남)는 저장값이 아니라 계산값이다 (DESIGN.md 6장) */
 export type Look = "over" | Status;
 
@@ -44,16 +44,18 @@ export function mondayOf(iso: string): string { const w = weekday(iso); return a
 /** 상태 판정 — 지남은 기한 < 오늘 && 미완 */
 export function lookOf(t: { status: string; dueDate: string | null }, today = todayKst()): Look {
   if (t.status === "done") return "done";
+  // 보류는 멈춰 둔 것 — 기한이 지나도 「지남」으로 재촉하지 않는다
+  if (t.status === "hold") return "hold";
   if (t.dueDate && t.dueDate < today) return "over";
   if (t.status === "doing") return "doing";
   if (t.status === "review") return "review";
   return "todo";
 }
-export const LOOK_LABEL: Record<Look, string> = { over: "지남", doing: "진행", review: "검토", todo: "시작 전", done: "완료" };
+export const LOOK_LABEL: Record<Look, string> = { over: "지남", doing: "진행", review: "검토", todo: "시작 전", hold: "보류", done: "완료" };
 export const LOOK_COLOR: Record<Look, string> = {
-  over: "var(--red)", doing: "var(--accent)", review: "var(--review)", todo: "var(--faint)", done: "var(--green)",
+  over: "var(--red)", doing: "var(--accent)", review: "var(--review)", todo: "var(--faint)", hold: "var(--amber)", done: "var(--green)",
 };
-export const STATUS_LABEL: Record<Status, string> = { todo: "시작 전", doing: "진행", review: "검토", done: "완료" };
+export const STATUS_LABEL: Record<Status, string> = { todo: "시작 전", doing: "진행", review: "검토", hold: "보류", done: "완료" };
 
 /** 기한 배지 — 지남 red / 오늘·내일 amber / 그 외 무채 */
 export function dueBadge(due: string | null, status: string, today = todayKst()): { text: string; tone: "" | "red" | "amber" | "green" } {

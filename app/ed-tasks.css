@@ -67,3 +67,15 @@
 .tsk-who button { width: 22px; height: 22px; border: 0; border-radius: 50%; cursor: pointer; font-size: 10px; color: var(--sub); background: transparent; }
 .tsk-who button:hover { background: var(--panel2); color: var(--ink); }
 @media (max-width: 719px) { .tsk-lanes { grid-template-columns: minmax(0,1fr); } .tsk-lane { min-height: 0; max-height: 70vh; } }
+/* QA 2026-10-29 — 검색 · 거르기 · 보류 / 중단 / 비공개 표시 */
+.tsk-find { flex-shrink: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tsk-find .ed-input { padding: 8px 12px; font-size: 13px; }
+.tsk-find select.ed-input { flex: 0 0 auto; width: auto; min-width: 120px; }
+.tsk-q { flex: 1 1 260px; min-width: 200px; }
+.tsk-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--sub); cursor: pointer; white-space: nowrap; }
+.tsk-row .tt em.hold { background: color-mix(in srgb, var(--amber) 16%, transparent); color: var(--amber); }
+.tsk-row .tt em.drop { background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--red); }
+.tsk-row .tt em.pv { background: transparent; box-shadow: inset 0 0 0 1px var(--line); color: var(--faint); }
+@media (max-width: 719px) {
+  .tsk-find select.ed-input { flex: 1 1 calc(50% - 8px); min-width: 0; }
+}

@@ -18,11 +18,12 @@ import { notify as pushNotify } from "@/lib/push";
 import { visibleTaskSql, isVisibility } from "@/lib/visibility";
 import { areaProjectError } from "@/lib/area-project-server";
 import { hasLead } from "@/lib/types";
+import { canEditTask, EDIT_DENIED } from "@/lib/task-permission";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const STATUSES = ["proposed", "todo", "doing", "review", "done", "dropped"] as const;
+const STATUSES = ["proposed", "todo", "doing", "review", "hold", "done", "dropped"] as const;
 const PRIORITIES = ["high", "mid", "low"] as const;
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
@@ -47,6 +48,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (!task) return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
     // Claude 를 거친 요청은 내 업무의 몇 칸만 (lib/claude-guard.ts) — 지우기 · 되살리기 · 공개 범위도 여기서 막힌다
     guardUpdate(session, task, payload);
+    // 담당 · 만든 사람 · 팀장만 고친다(QA 1). 진행률 한 칸만 오는 요청은 진척 편집자 규칙이 아래에서 따로 본다
+    const onlyProgress = Object.keys(payload).every((k) => k === "progress");
+    if (!onlyProgress && !(await canEditTask(session, task))) {
+      return NextResponse.json({ error: EDIT_DENIED }, { status: 403 });
+    }
 
     // 복구 — 삭제의 역방향. 진척 재계산도 같이 되돌아가야 한다 (MD-P-2026-024 지시 2).
     if (payload.isActive === true) {
@@ -178,6 +184,17 @@ export async function PUT(request: Request, { params }: { params: { id: string }
           { error: "개인 업무는 다른 사람에게 배정할 수 없습니다." },
           { status: 400 }
         );
+      }
+    }
+    // 하위 업무는 상위의 공개 범위를 따른다(QA 3). 개인으로 바꿀 때 남이 만들었거나 맡은 하위가 있으면
+    // 그 사람의 항목이 사라지므로 막는다(개인 업무는 만든 사람만 본다).
+    const visChanged = isVisibility(payload.visibility) && payload.visibility !== task.visibility && !task.parent_task_id;
+    if (visChanged && payload.visibility === "private") {
+      const others = await queryOne<{ n: number }>(
+        `SELECT count(*)::int AS n FROM task WHERE parent_task_id = $1 AND is_active
+            AND (created_by <> $2 OR (assignee_id IS NOT NULL AND assignee_id <> $2))`, [taskId, session.id]);
+      if ((others?.n ?? 0) > 0) {
+        return NextResponse.json({ error: "다른 사람이 만들거나 맡은 체크리스트 항목이 있어 「나만」으로 바꿀 수 없습니다." }, { status: 400 });
       }
     }
     if (isVisibility(payload.visibility) && payload.visibility !== task.visibility) {
@@ -467,6 +484,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         values
       );
     }
+    if (visChanged) {
+      await query(`UPDATE task SET visibility = $2, updated_at = now() WHERE parent_task_id = $1 AND visibility <> $2`, [taskId, payload.visibility]);
+    }
 
     // 진척 재계산 대상 목표 수집 (파트 B) — 변경 전 연결 목표부터.
     const affectedGoals = new Set<number>(affectedGoalsPre);
@@ -694,6 +714,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         origin: t.origin, workType: t.work_type, areaId: t.area_id, areaName: t.area_name, areaColor: t.area_color,
         projectId: t.project_id, projectName: t.project_name, colorKey: t.color_key,
         assigneeId: t.assignee_id, assigneeName: t.assignee_name, createdByName: t.created_by_name, createdById: t.created_by,
+        canEdit: await canEditTask(session, { assignee_id: t.assignee_id, created_by: t.created_by, parent_task_id: t.parent_task_id }),
         startDate: t.start_date, dueDate: t.due_date, dropReason: t.drop_reason,
         progress: t.progress ?? 0,
         goalIds: t.goal_ids ?? [],

@@ -19,7 +19,7 @@ export interface ToolDef {
 }
 
 const DATE = { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "YYYY-MM-DD (서울 날짜)" };
-const STATUS_LABEL: Record<string, string> = { todo: "대기", doing: "진행", review: "리뷰", done: "완료", dropped: "중단", proposed: "제안" };
+const STATUS_LABEL: Record<string, string> = { todo: "대기", doing: "진행", review: "리뷰", hold: "보류", done: "완료", dropped: "중단", proposed: "제안" };
 
 export const INSTRUCTIONS = [
   "AI 로봇 플랫폼팀 통합업무관리(팀보드)에 연결되어 있다. 이 연결은 한 사람의 것이고, 모든 쓰기는 그 사람 이름으로 남는다.",
@@ -82,7 +82,7 @@ export const TOOLS: ToolDef[] = [
     description: "업무를 고친다 — 제목 · 설명 · 상태 · 기한 · 시작일 · 진행률. 끝났으면 status=done. 번호는 list_my_tasks 로 찾는다.",
     inputSchema: { type: "object", properties: {
       id: { type: "integer" }, title: { type: "string" }, description: { type: "string" },
-      status: { type: "string", enum: ["todo", "doing", "review", "done"], description: "대기 · 진행 · 리뷰 · 완료" },
+      status: { type: "string", enum: ["todo", "doing", "review", "hold", "done"], description: "대기 · 진행 · 리뷰 · 보류 · 완료" },
       due_date: DATE, start_date: DATE,
       progress: { type: "integer", minimum: 0, maximum: 100 } }, required: ["id"] },
   },

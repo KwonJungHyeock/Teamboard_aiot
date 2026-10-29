@@ -35,6 +35,8 @@ const host = (u: string) => { try { const h = new URL(u).hostname.replace(/^www\
 interface Detail {
   id: number; title: string; description: string; status: string; assigneeId: number | null; assigneeName: string | null;
   createdByName: string | null; createdById: number | null; visibility: string; areaId: number; areaName: string; dueDate: string | null; goalIds: number[]; parentTaskId: number | null;
+  /** 담당 · 만든 사람 · 팀장만 고친다(QA 1) — 나머지는 보기 전용 + 「수정 요청」 */
+  canEdit?: boolean; dropReason?: string | null;
 }
 
 export default function TaskDrawer({ id, onClose }: { id: number; onClose: () => void }) {
@@ -161,21 +163,34 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
       onClose();
     } catch (e) { showToast(e instanceof Error ? e.message : "삭제하지 못했습니다"); }
   };
+  const ro = t.canEdit === false;
   const finish = async () => {
-    if (title.trim() && title.trim() !== t.title) await save({ title: title.trim() });
-    if (memo !== (t.description ?? "")) await save({ description: memo });
+    if (!ro && title.trim() && title.trim() !== t.title) await save({ title: title.trim() });
+    if (!ro && memo !== (t.description ?? "")) await save({ description: memo });
     onClose();
+  };
+  // 중단 — 사유가 있어야 한다(진척 분모에서 빠지므로). 중단한 업무는 목록에서 내려간다
+  const drop = async () => {
+    const why = window.prompt("중단 사유를 적어 주세요");
+    if (!why || !why.trim()) return;
+    await save({ status: "dropped", dropReason: why.trim() });
+    emitChanged();
   };
 
   return (
     <Drawer onClose={() => void finish()} label="업무 상세">
       <div className="dh">
-        <textarea className="tt" rows={2} value={title} onChange={(e) => setTitle(e.target.value)} aria-label="제목"
+        <textarea className="tt" rows={2} value={title} onChange={(e) => setTitle(e.target.value)} aria-label="제목" readOnly={ro}
                   onBlur={() => { if (title.trim() && title.trim() !== t.title) void save({ title: title.trim() }); }}
                   onKeyDown={(e) => { if (isEnter(e)) { e.preventDefault(); (e.target as HTMLTextAreaElement).blur(); } }} />
         <button type="button" className="ed-x" onClick={() => void finish()} aria-label="닫기">✕</button>
       </div>
       <div className="db">
+        {ro && <div className="tdr-ro">보기 전용 — 담당자 · 만든 사람 · 팀장만 고칠 수 있습니다. 고칠 것은 아래 「수정 요청」으로 알려 주세요.</div>}
+        {t.status === "dropped" && (
+          <div className="tdr-ro drop">중단한 업무{t.dropReason ? ` · ${t.dropReason}` : ""}
+            {!ro && <button type="button" className="ed-btn sm" onClick={() => void save({ status: "todo" }).then(emitChanged)}>되살리기</button>}</div>
+        )}
         {rev && (
           <div className="ed-box">
             <div className="tdr-fix"><span>수정 요청 · {rev.requesterName}</span>{rev.memo || "내용 없음"}</div>
@@ -183,11 +198,14 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
               ? <button type="button" className="ed-btn pri sm tdr-al" onClick={() => void fixDone()}>수정 완료</button> : null}
           </div>
         )}
+        <fieldset className="tdr-fs" disabled={ro}>
         <div className="ed-field">
-          <span>상태</span>
-          <Seg full value={(["todo", "doing", "review", "done"].includes(t.status) ? t.status : "todo") as Status}
-               options={(["todo", "doing", "review", "done"] as Status[]).map((s) => ({ v: s, label: STATUS_LABEL[s] }))}
-               onChange={(s) => void save({ status: s })} />
+          <span className="tdr-fh">상태
+            {!ro && t.status !== "dropped" && !t.parentTaskId && <button type="button" className="tdr-tidy" onClick={() => void drop()}>중단…</button>}
+          </span>
+          <Seg full value={(["todo", "doing", "review", "hold", "done"].includes(t.status) ? t.status : "todo") as Status}
+               options={(["todo", "doing", "review", "hold", "done"] as Status[]).map((s) => ({ v: s, label: STATUS_LABEL[s] }))}
+               onChange={(s) => { if (!ro) void save({ status: s }); }} />
         </div>
         {!t.parentTaskId && (
           <div className="ed-field">
@@ -224,7 +242,7 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
         </div>
         <div className="ed-field">
           <span className="tdr-fh">카테고리
-            {!t.parentTaskId && <button type="button" className={`tdr-tidy${tidyCat ? " on" : ""}`} onClick={() => setTidyCat(!tidyCat)}>{tidyCat ? "완료" : "정리"}</button>}
+            {!t.parentTaskId && !ro && <button type="button" className={`tdr-tidy${tidyCat ? " on" : ""}`} onClick={() => setTidyCat(!tidyCat)}>{tidyCat ? "완료" : "정리"}</button>}
           </span>
           <div className="ed-chips">
             {meta.areas.map((a) => (
@@ -238,13 +256,13 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
                 </button>
               )
             ))}
-            {!t.parentTaskId && !tidyCat && <AddChip label="카테고리" onAdd={addArea} />}
+            {!t.parentTaskId && !tidyCat && !ro && <AddChip label="카테고리" onAdd={addArea} />}
           </div>
         </div>
         {!t.parentTaskId && (
           <div className="ed-field">
             <span className="tdr-fh">목표
-              <button type="button" className={`tdr-tidy${tidyGoal ? " on" : ""}`} onClick={() => setTidyGoal(!tidyGoal)}>{tidyGoal ? "완료" : "정리"}</button>
+              {!ro && <button type="button" className={`tdr-tidy${tidyGoal ? " on" : ""}`} onClick={() => setTidyGoal(!tidyGoal)}>{tidyGoal ? "완료" : "정리"}</button>}
             </span>
             <div className="ed-chips">
               {!tidyGoal && <button type="button" className={`ed-chip${t.goalIds.length === 0 ? " on" : ""}`} onClick={() => void save({ goalIds: [] })}>없음</button>}
@@ -257,10 +275,11 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
                   <button key={g.id} type="button" className={`ed-chip${t.goalIds.includes(g.id) ? " on" : ""}`} onClick={() => void save({ goalIds: [g.id] })}>{g.title}</button>
                 )
               ))}
-              {!tidyGoal && canMakeGoal && <AddChip label="목표" onAdd={addGoal} />}
+              {!tidyGoal && canMakeGoal && !ro && <AddChip label="목표" onAdd={addGoal} />}
             </div>
           </div>
         )}
+        </fieldset>
         {canAskFix && (
           <div className="tdr-owner">
             <span className="ed-face lg">{initial(t.assigneeName)}</span>
@@ -285,19 +304,19 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {checks.map((c) => (
                 <div key={c.id} className={`ed-crow${c.status === "done" ? " done" : ""}`}>
-                  <button type="button" className={`ed-check sm${c.status === "done" ? " on" : ""}`} onClick={() => void toggleCheck(c)} aria-label="항목 완료">{c.status === "done" ? "✓" : ""}</button>
+                  <button type="button" className={`ed-check sm${c.status === "done" ? " on" : ""}`} disabled={ro} onClick={() => void toggleCheck(c)} aria-label="항목 완료">{c.status === "done" ? "✓" : ""}</button>
                   <span>{c.title}</span>
-                  <button type="button" className="rm" onClick={() => void removeCheck(c)} aria-label="항목 삭제">✕</button>
+                  {!ro && <button type="button" className="rm" onClick={() => void removeCheck(c)} aria-label="항목 삭제">✕</button>}
                 </div>
               ))}
             </div>
-            <input className="ed-input" value={checkText} onChange={(e) => setCheckText(e.target.value)} placeholder="+ 항목"
-                   onKeyDown={(e) => { if (isEnter(e)) { e.preventDefault(); void addCheck(); } }} />
+            {!ro && <input className="ed-input" value={checkText} onChange={(e) => setCheckText(e.target.value)} placeholder="+ 항목"
+                   onKeyDown={(e) => { if (isEnter(e)) { e.preventDefault(); void addCheck(); } }} />}
           </div>
         )}
         <div className="ed-field">
           <span>기록</span>
-          <textarea className="ed-input" rows={5} placeholder="메모" value={memo} onChange={(e) => setMemo(e.target.value)}
+          <textarea className="ed-input" rows={5} placeholder={ro ? "" : "메모"} value={memo} readOnly={ro} onChange={(e) => setMemo(e.target.value)}
                     onBlur={() => { if (memo !== (t.description ?? "")) void save({ description: memo }); }} />
         </div>
         {linksIn(memo).length > 0 && (
@@ -316,8 +335,8 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
         )}
       </div>
       <div className="df">
-        <button type="button" className="ed-btn gh red" style={{ padding: "10px 4px" }} onClick={() => void remove()}>삭제</button>
-        <button type="button" className="ed-btn pri lg" style={{ marginLeft: "auto" }} onClick={() => void finish()}>완료</button>
+        {!ro && <button type="button" className="ed-btn gh red" style={{ padding: "10px 4px" }} onClick={() => void remove()}>삭제</button>}
+        <button type="button" className="ed-btn pri lg" style={{ marginLeft: "auto" }} onClick={() => void finish()}>{ro ? "닫기" : "완료"}</button>
       </div>
       {toast}
     </Drawer>
