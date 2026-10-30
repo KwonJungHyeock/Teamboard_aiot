@@ -3,7 +3,7 @@
 //   node scripts/ed-walk.mjs            (BASE 기본 http://127.0.0.1:3000, 개발 서버가 떠 있어야 한다)
 //
 // 화면마다 · 라이트/다크 · 폭 980 / 1100 / 1440 · 높이 900 / 700 에서:
-//   ① 콘솔 오류 0    ② 가로 넘침 0    ③ 상단 메뉴 여덟(팀장 기준)이 전부 캡슐 안에 보인다
+//   ① 콘솔 오류 0    ② 가로 넘침 0    ③ 상단 메뉴 아홉(팀장 기준)이 전부 캡슐 안에 보인다
 //   ④ 계속 움직이는 것(무한 반복 애니메이션)은 배경 층을 빼고 화면당 1곳 이하
 //   ⑤ animation-fill-mode 에 both · forwards 가 없다    ⑥ 테마가 html[data-theme] 로 바뀐다
 // 그리고 한 번씩: 로그인 화면 · 등록창 한글 조합 중 Enter 무시 · ?task= 드로어 열고 Esc 닫기.
@@ -69,7 +69,7 @@ try {
         });
         page.off("console", onC); page.off("pageerror", onE);
         const id = `${path.replace("/v3/", "")}·${theme}·${w}x${h}`;
-        chk(id, errs.length === 0 && r.over <= 0 && r.menus === 8 && r.hidden.length === 0 && r.loops <= 1 && r.bad === 0 && r.theme === theme,
+        chk(id, errs.length === 0 && r.over <= 0 && r.menus === 9 && r.hidden.length === 0 && r.loops <= 1 && r.bad === 0 && r.theme === theme,
           `오류 ${errs.length}${errs[0] ? ` (${errs[0]})` : ""} · 넘침 ${r.over} · 메뉴 ${r.menus} 가림 [${r.hidden}] · 반복 ${r.loops}${r.loops > 1 ? ` [${r.loopWho}]` : ""} · fill ${r.bad} · ${r.theme}`);
       }
       await ctx.close();

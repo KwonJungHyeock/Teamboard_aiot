@@ -18,10 +18,16 @@ export async function GET(request: Request) {
   if (!reportId) return notFound();
   const r = await queryOne<{ id: number }>(`SELECT id FROM team_report WHERE id = $1 AND is_active`, [reportId]);
   if (!r) return notFound();
+  // ?dl=파일명 — 내려받기로(확정 PDF)
+  const dl = new URL(request.url).searchParams.get("dl");
+  const disp = dl ? `attachment; filename*=UTF-8''${encodeURIComponent(dl.replace(/[\r\n"]/g, ""))}` : null;
   if (blobEnabled()) {
     try {
       const got = await getPrivate(p, request.headers.get("if-none-match"));
-      return got ? buildBlobResponse(got) : notFound();
+      if (!got) return notFound();
+      const res = buildBlobResponse(got);
+      if (disp) res.headers.set("Content-Disposition", disp);
+      return res;
     } catch (e) {
       console.error(`[team-report file] ${p}`, e instanceof Error ? e.message : e);
       return notFound();
@@ -30,5 +36,5 @@ export async function GET(request: Request) {
   if (!localMode()) return notFound();
   const f = await readLocal(p);
   if (!f) return notFound();
-  return new NextResponse(new Uint8Array(f.body), { headers: { "Content-Type": f.type, "Cache-Control": "private, no-cache", "X-Content-Type-Options": "nosniff" } });
+  return new NextResponse(new Uint8Array(f.body), { headers: { "Content-Type": f.type, "Cache-Control": "private, no-cache", "X-Content-Type-Options": "nosniff", ...(disp ? { "Content-Disposition": disp } : {}) } });
 }
