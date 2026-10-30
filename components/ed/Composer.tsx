@@ -4,12 +4,14 @@
 //   variant="chips"  업무 현황: 담당 · 마감 · 목표 드롭다운 칩 + 추가
 //   variant="tokens" 내 업무: 인식된 값 토큰 알약 + `···` 옵션 팝오버(담당 · 카테고리 · 마감 · 목표) + 추가
 // 맨 앞 [업무 | 일정] — 일정은 제목 · 시작일~종료일 · [팀 | 나만] (팀 → /api/events, 나만 → /api/personal-events).
+// `자세히` — 기간 · 카테고리 · 공개 · 메모까지 한 번에 채우는 등록 창(AddModal)을 연다.
 // 조합 중(한글) Enter 는 무시한다.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { catColor, dueFromWord, isEnter, md, parseLine, todayKst, wd, addDays, weekday, mondayOf } from "@/lib/ed/core";
 import { createTask, useMeta, type GoalLite } from "./data";
 import { api, emitChanged, Seg, usePop, useToast } from "./ui";
+import AddModal, { type AddPreset } from "./AddModal";
 
 const DUE_OPTS = (today: string) => [
   { label: "오늘", v: today },
@@ -36,6 +38,10 @@ export default function Composer({ variant = "chips", placeholder, presetWho, on
   const [ev, setEv] = useState<{ start: string; end: string; scope: "team" | "me" }>({ start: today, end: today, scope: "team" });
   const [toast, showToast] = useToast();
   const router = useRouter();
+  const [detail, setDetail] = useState<AddPreset | null>(null);
+  const openDetail = () => { setDetail({ title: parsed.title || text.trim(), kind: mode, start: mode === "task" ? (due ?? undefined) : ev.start, end: mode === "event" ? ev.end : undefined }); setText(""); };
+  const detailNode = detail && <AddModal preset={detail} onClose={() => setDetail(null)} onDone={(msg, id) => { showToast(msg); if (id) onAdded?.(id, ""); }} />;
+  const detailBtn = <button type="button" className="ed-comp-more" onClick={openDetail} title="기간 · 카테고리 · 공개까지 등록 창에서">자세히</button>;
 
   useEffect(() => { if (presetWho) { setPick((p) => ({ ...p, who: presetWho })); input.current?.focus(); } }, [presetWho, autoFocusKey]);
 
@@ -118,10 +124,11 @@ export default function Composer({ variant = "chips", placeholder, presetWho, on
           </div>
           <Seg className="ev-sc" value={ev.scope} onChange={(v) => setEv((x) => ({ ...x, scope: v }))}
                options={[{ v: "team", label: "팀" }, { v: "me", label: "나만" }]} />
+          {detailBtn}
           <button type="button" className={`add${evReady ? "" : " off"}`} onClick={() => void addEvent()} disabled={!evReady}>추가</button>
         </div>
         {err && <div className="cerr">{err}</div>}
-        {toast}
+        {toast}{detailNode}
       </div>
     );
   }
@@ -160,9 +167,10 @@ export default function Composer({ variant = "chips", placeholder, presetWho, on
             </div>
           )}
         </div>
+        {detailBtn}
         <button type="button" className={`add${ready ? "" : " off"}`} onClick={() => void add()} disabled={!ready}>추가</button>
         {err && <div className="cerr">{err}</div>}
-        {toast}
+        {toast}{detailNode}
       </div>
     );
   }
@@ -192,10 +200,11 @@ export default function Composer({ variant = "chips", placeholder, presetWho, on
             {meta.goals.filter((g) => g.periodType !== "year").map((g) => opt(goal === g.id, g.title, () => setPick((x) => ({ ...x, goal: g.id })), g.id))}
           </div>}
         </div>
+        {detailBtn}
         <button type="button" className={`add${ready ? "" : " off"}`} onClick={() => void add()} disabled={!ready}>추가</button>
       </div>
       {err && <div className="cerr">{err}</div>}
-      {toast}
+      {toast}{detailNode}
     </div>
   );
 }

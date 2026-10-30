@@ -88,6 +88,13 @@ export function catColor(name: string | null | undefined): string {
   return CAT_MORE[h % CAT_MORE.length];
 }
 
+// 담당자 색 — 달력 막대 · 점 · 필터 견본이 같은 색을 쓴다. 빨강(지남) · violet(팀 일정) · teal(나만)은 피한다.
+const PERSON = ["#2F6FDE", "#E07A1F", "#2E9E5B", "#D6457A", "#B8900E", "#4F6BAA", "#A3409F", "#5E8C1F", "#8A5A2B", "#C26A4E", "#3A8FA8", "#6B7280"];
+/** 구성원 순서(meta.people)대로 색을 나눠 준다 — 화면마다 같은 사람은 같은 색 */
+export function personColors(people: { id: number }[]): Map<number, string> {
+  return new Map(people.map((p, i) => [p.id, PERSON[i % PERSON.length]]));
+}
+
 export function initial(name: string | null | undefined): string { return (name ?? "?").trim().charAt(0) || "?"; }
 
 /** `n분 전` */

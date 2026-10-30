@@ -13,8 +13,18 @@
 .cal-mv button:hover { background: var(--surface); }
 .cal-mv span { padding: 0 10px; font-size: 14px; font-weight: 700; white-space: nowrap; }
 .cal-today { border: 0; cursor: pointer; font-size: 13px; font-weight: 600; padding: 8px 12px; border-radius: 11px; background: var(--surface); box-shadow: var(--elev1); color: var(--ink); }
-.cal-mine { border: 0; cursor: pointer; font-size: 13px; font-weight: 600; padding: 9px 13px; border-radius: 12px; background: var(--panel2); box-shadow: var(--sunken); color: var(--sub); }
-.cal-mine.on { background: var(--ink); box-shadow: none; color: var(--bg); }
+/* 담당 거르기 — 색 견본이 곧 범례. 아무도 안 고르면 「모두」 */
+.cal-who { flex-shrink: 0; display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-top: -4px; }
+.cal-who::-webkit-scrollbar { display: none; }
+.cal-who .lb { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--faint); margin-right: 2px; }
+.cal-wc { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; border: 0; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap;
+  padding: 6px 11px 6px 9px; border-radius: 99px; color: var(--sub); background: var(--panel2); transition: background .15s, color .15s, box-shadow .15s; }
+.cal-wc i { width: 9px; height: 9px; border-radius: 50%; background: var(--pc); }
+.cal-wc:hover { color: var(--ink); }
+.cal-wc.on { color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--pc,var(--ink)), var(--elev1); }
+.cal-wc.all { padding: 6px 11px; }
+.cal-wc.all.on { color: var(--bg); background: var(--ink); box-shadow: none; }
+.cal-new { white-space: nowrap; }
 .cal-vw { display: flex; padding: 3px; border-radius: 12px; background: var(--panel2); box-shadow: var(--sunken); }
 .cal-vw button { border: 0; cursor: pointer; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 9px; background: transparent; color: var(--sub); }
 .cal-vw button.on { background: var(--surface); box-shadow: var(--elev1); color: var(--ink); }
@@ -34,6 +44,15 @@
 .cal-c.run { background: color-mix(in oklch,var(--accent) 5%,transparent); }
 .cal-c.wkend { background: color-mix(in oklch,var(--panel2) 70%,transparent); }
 .cal-c.sel { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.cal-c.rng { background: color-mix(in oklch,var(--accent) 14%,transparent); box-shadow: inset 0 0 0 1.5px color-mix(in oklch,var(--accent) 55%,transparent); }
+.cal-grid.dragging { user-select: none; -webkit-user-select: none; }
+.cal-grid.dragging .cal-c:hover { transform: none; }
+/* 칸의 + — 마우스를 올리거나 고른 칸에서만 */
+.cal-add { position: absolute; top: 7px; right: 7px; z-index: 2; width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 8px; cursor: pointer;
+  font: inherit; font-size: 16px; font-weight: 600; line-height: 1; color: var(--accent); background: var(--surface); box-shadow: var(--elev1); opacity: 0; transition: opacity .15s; }
+.cal-c:hover .cal-add, .cal-c.sel .cal-add, .cal-add:focus-visible { opacity: 1; }
+.cal-add:hover { background: var(--accent); color: #fff; }
+@media (hover: none), (max-width: 719px) { .cal-add { display: none; } }
 .cal-c.sel.today { box-shadow: inset 0 0 0 1.5px var(--ink), var(--elev2); }
 .cal-c:focus-visible { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .cal-ct { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
@@ -45,11 +64,11 @@
 .cal-lt { font-size: 11px; font-weight: 800; letter-spacing: .02em; color: var(--accent); white-space: nowrap; }
 .cal-od { width: 6px; height: 6px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
 .cal-it { display: flex; align-items: center; gap: 7px; min-width: 0; height: 22px; padding: 0 2px; }
-.cal-it i { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.cal-it i { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--pc,var(--accent)); }
 .cal-it span { min-width: 0; font-size: 13px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
-.cal-it.over i { background: var(--red); box-shadow: inset 0 0 0 1.5px var(--red); }
+.cal-it.over i { box-shadow: 0 0 0 2px color-mix(in oklch,var(--red) 35%,transparent); }
 .cal-it.over span { color: var(--red); }
-.cal-it.done i { background: transparent; box-shadow: inset 0 0 0 1.5px var(--faint); opacity: .45; }
+.cal-it.done i { background: transparent; box-shadow: inset 0 0 0 1.5px var(--pc,var(--faint)); opacity: .45; }
 .cal-it.done span { color: var(--faint); font-weight: 500; text-decoration: line-through; }
 .cal-more { padding: 0 2px 0 17px; font-size: 12px; font-weight: 700; color: var(--sub); }
 .cal-load { position: absolute; left: 8px; right: 8px; bottom: 4px; height: 2px; border-radius: 2px; background: var(--line); }
@@ -62,12 +81,31 @@
 .cal-card { padding: 8px 9px; border-radius: 10px; background: var(--surface); box-shadow: var(--elev1); display: flex; flex-direction: column; gap: 5px; }
 .cal-card .tt { font-size: 12px; font-weight: 600; line-height: 1.4; color: var(--ink); }
 .cal-card .mt { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--faint); }
-.cal-card .mt i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
-.cal-card.over .tt { color: var(--red); } .cal-card.over .mt i { background: var(--red); }
-.cal-card.done .tt { color: var(--faint); text-decoration: line-through; } .cal-card.done .mt i { background: var(--faint); }
+.cal-card { cursor: pointer; box-shadow: var(--elev1), inset 3px 0 0 var(--pc,var(--accent)); }
+.cal-card .mt i { width: 6px; height: 6px; border-radius: 50%; background: var(--pc,var(--accent)); }
+.cal-card.over .tt { color: var(--red); }
+.cal-card.done .tt { color: var(--faint); text-decoration: line-through; } .cal-card.done { opacity: .7; }
 
 .cal-day { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 22px; background: var(--surface); box-shadow: var(--elev1); overflow: hidden;
   animation: qIn .55s var(--ease) .08s backwards; }
+/* 내 업무 요약 — 패널 맨 위. 지난 것은 빨강 */
+.cal-my { flex-shrink: 0; margin: 12px 12px 0; padding: 14px 14px 12px; border-radius: 16px; background: var(--panel2); box-shadow: var(--sunken); display: flex; flex-direction: column; gap: 10px; }
+.cal-myh { display: flex; align-items: baseline; justify-content: space-between; }
+.cal-myh b { font-size: 14px; font-weight: 800; }
+.cal-myl, .cal-mym { font-size: 12px; font-weight: 600; color: var(--sub); }
+.cal-myl:hover, .cal-mym:hover { color: var(--ink); text-decoration: none; }
+.cal-mys { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 6px; }
+.cal-mys span { display: flex; flex-direction: column; gap: 1px; font-size: 11px; font-weight: 600; color: var(--faint); white-space: nowrap; }
+.cal-mys em { font-style: normal; font-size: 20px; font-weight: 800; letter-spacing: -.02em; color: var(--ink); }
+.cal-mys .amb em { color: var(--amber); }
+.cal-mys .red em, .cal-mys .red { color: var(--red); }
+.cal-myo { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; box-shadow: 0 -1px 0 var(--line); }
+.cal-myr { display: flex; align-items: center; gap: 8px; padding: 5px 6px; margin: 0 -6px; border-radius: 8px; color: var(--red); }
+.cal-myr:hover { text-decoration: none; background: color-mix(in oklch,var(--red) 8%,transparent); }
+.cal-myr .tt { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-myr em { flex-shrink: 0; font-style: normal; font-size: 11px; font-weight: 700; }
+.cal-mym { padding-top: 2px; }
+.cal-more-in { flex-shrink: 0; border: 0; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; padding: 7px 10px; border-radius: 10px; color: var(--accent); background: var(--surface); box-shadow: var(--elev1); }
 .cal-dh { flex-shrink: 0; display: flex; align-items: baseline; gap: 8px; padding: 20px 20px 12px; }
 .cal-dh .tt { font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
 .cal-dh .ct { font-size: 13px; font-weight: 600; color: var(--faint); }
@@ -79,9 +117,9 @@
 .cal-rb:hover { text-decoration: none; }
 .cal-rb .tt { display: block; font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
 .cal-rb .mt { margin-top: 2px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--faint); }
-.cal-rb .mt i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
-.cal-row.over .tt { color: var(--red); } .cal-row.over .mt i { background: var(--red); }
-.cal-row.done .tt { color: var(--faint); text-decoration: line-through; } .cal-row.done .mt i { background: var(--faint); }
+.cal-rb .mt i { width: 6px; height: 6px; border-radius: 50%; background: var(--pc,var(--accent)); }
+.cal-row.over .tt { color: var(--red); }
+.cal-row.done .tt { color: var(--faint); text-decoration: line-through; } .cal-row.done .mt i { opacity: .45; }
 .cal-empty { padding: 16px 8px; font-size: 13px; color: var(--faint); }
 .cal-df { flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; box-shadow: 0 -1px 0 var(--line); }
 .cal-in { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 14px; border-radius: 14px; background: var(--panel2); box-shadow: var(--sunken); }
@@ -107,6 +145,13 @@
 /* 나만 — teal 점선 */
 .cal-ev.me { color: var(--teal); background: color-mix(in oklch,var(--teal) 6%,var(--ringbg)); border: 1px dashed color-mix(in oklch,var(--teal) 60%,transparent); padding: 0 7px; }
 .cal-ev.me:hover { background: color-mix(in oklch,var(--teal) 14%,var(--ringbg)); }
+/* 업무 막대 — 담당자 색 왼쪽 띠 + 옅은 바탕. 지난 것은 빨간 글자, 끝낸 것은 흐리게 */
+.cal-ev.tk { color: color-mix(in oklch,var(--pc) 80%,var(--ink)); background: color-mix(in oklch,var(--pc) 13%,var(--ringbg)); box-shadow: inset 3px 0 0 var(--pc); padding-left: 9px; }
+.cal-ev.tk:hover { background: color-mix(in oklch,var(--pc) 22%,var(--ringbg)); }
+.cal-ev.tk:focus-visible { box-shadow: inset 3px 0 0 var(--pc), inset 0 0 0 1.5px var(--pc); }
+.cal-ev.tk.over { color: var(--red); }
+.cal-ev.tk.done { opacity: .5; } .cal-ev.tk.done span { text-decoration: line-through; }
+.cal-ev.tk.cl { box-shadow: none; padding-left: 8px; }
 /* 앞 주 · 다음 주로 이어지는 쪽은 모서리를 펴고 칸 끝까지 */
 .cal-ev.cl { margin-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .cal-ev.cr { margin-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
@@ -155,6 +200,7 @@
   .cal-week { --evtop: 40px; --evh: 7px; }
   .cal-ev, .cal-ev.me { height: 5px; margin-left: 3px; margin-right: 3px; padding: 0; border: 0; border-radius: 3px; pointer-events: none; background: color-mix(in oklch,var(--violet) 70%,transparent); }
   .cal-ev.me { background: repeating-linear-gradient(90deg,var(--teal) 0 4px,transparent 4px 6px); }
+  .cal-ev.tk { background: var(--pc); box-shadow: none; }
   .cal-ev.cl { margin-left: 0; } .cal-ev.cr { margin-right: 0; }
   .cal-ev > * { display: none; }
 }

@@ -53,6 +53,23 @@ export function Drawer({ onClose, width = 460, children, label }: { onClose: () 
     </>, host);
 }
 
+/** 가운데 창 — 등록처럼 한 번에 여러 칸을 채울 때. scrim + blur, Esc · 바깥 클릭으로 닫힌다 */
+export function Modal({ onClose, width = 520, children, label }: { onClose: () => void; width?: number; children: React.ReactNode; label?: string }) {
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  useEffect(() => { setHost(document.body); }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !e.defaultPrevented) onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  if (!host) return null;
+  return createPortal(
+    <>
+      <div className="ed-scrim" onClick={onClose} />
+      <div className="ed-modal" style={{ width }} role="dialog" aria-modal="true" aria-label={label}>{children}</div>
+    </>, host);
+}
+
 /** 바깥을 누르거나 Esc 면 닫히는 팝오버 상태 */
 export function usePop<K extends string>(): [K | null, (k: K | null) => void, React.RefObject<HTMLDivElement>] {
   const [open, setOpen] = useState<K | null>(null);

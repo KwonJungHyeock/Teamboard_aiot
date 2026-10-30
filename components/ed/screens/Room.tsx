@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { initial, isEnter } from "@/lib/ed/core";
 import { Drawer, useToast } from "../ui";
-import MeetingNotes, { type NotesState } from "./MeetingNotes";
+import MeetingNotes, { hm, type NotesState } from "./MeetingNotes";
 
 type Kind = "agenda" | "link" | "decision" | "action" | "note" | "chat" | "file";
 interface Item { id: number; kind: Kind; body: string; url: string | null; meta: Record<string, unknown>; createdBy: string; createdById: number; createdAt: string }
@@ -64,6 +64,9 @@ export default function Room({ initial: init, me, lead, domain, people }: {
   const [curN, setCurN] = useState(0);
   const [showMin, setShowMin] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  // 남이 회의록을 고쳤는데 아직 안 열어 봤으면 위 「회의록」 단추에 점
+  const [notesNew, setNotesNew] = useState(false);
+  const notesOpenRef = useRef(notesOpen); notesOpenRef.current = notesOpen;
   const [busy, setBusy] = useState(false);
   const [toast, showToast] = useToast();
   const chatRef = useRef<HTMLDivElement>(null);
@@ -101,8 +104,12 @@ export default function Room({ initial: init, me, lead, domain, people }: {
       }
       reacts.current.set(i.id, n);
     }
-    setM(d.meeting);
-  }, [init.id, me.id, burst]);
+    setM((prev) => {
+      const r0 = prev.notes?.rev ?? 0, n1 = d.meeting.notes;
+      if (n1 && n1.rev > r0 && n1.by && n1.by !== me.name && !notesOpenRef.current) setNotesNew(true);
+      return d.meeting;
+    });
+  }, [init.id, me.id, me.name, burst]);
 
   useEffect(() => {
     setNow(Date.now());
@@ -297,6 +304,11 @@ export default function Room({ initial: init, me, lead, domain, people }: {
         <div className="rm-hr">
           <span className={`rm-clock tn${ended ? " off" : ""}`}>{mmss(sec)}</span>
           <div className="rm-faces">{face.map((a) => <span key={a.id} title={a.name}>{initial(a.name)}</span>)}</div>
+          <button type="button" className={`rm-nbtn${notesOpen ? " on" : ""}`} onClick={() => { setNotesOpen((x) => !x); setNotesNew(false); }}
+                  title="참석자 모두가 같이 쓰는 회의록 · 나만 보는 메모">
+            {notesNew && <i className="dot" aria-label="새로 고친 내용" />}회의록
+            {m.notes?.at && <small>{m.notes.by ?? ""} {hm(m.notes.at)}</small>}
+          </button>
           <button type="button" className={`rm-link${copied ? " ok" : ""}`} onClick={() => void invite()}>{copied ? "복사됨 ✓" : "초대 링크"}</button>
           {(canEnd || ended) && <button type="button" className={`rm-end${ended ? " off" : ""}`} onClick={() => void end()}>{ended ? "회의 요약" : "회의 끝내기"}</button>}
         </div>
@@ -343,7 +355,7 @@ export default function Room({ initial: init, me, lead, domain, people }: {
               <button type="button" className={mic ? "on" : undefined} onClick={toggleMic}>{mic ? "마이크" : "음소거"}</button>
               <button type="button" className={video ? "on" : undefined} onClick={() => !ended && setVideo((v) => !v)}>{video ? "영상 끄기" : "영상 켜기"}</button>
               <button type="button" className={share ? "on" : undefined} onClick={toggleShare}>{share ? "공유 중" : "화면 공유"}</button>
-              <button type="button" className={notesOpen ? "on" : undefined} onClick={() => setNotesOpen((x) => !x)}>{notesOpen ? "회의록 닫기" : "회의록 · 메모"}</button>
+              <button type="button" className={notesOpen ? "on" : undefined} onClick={() => { setNotesOpen((x) => !x); setNotesNew(false); }}>{notesOpen ? "회의록 닫기" : "회의록 · 메모"}</button>
               <button type="button" className={tab === "chat" ? "on" : undefined} onClick={() => { setTab("chat"); setUnread(0); }}>
                 채팅{unread > 0 && <span className="bd">{unread}</span>}
               </button>
