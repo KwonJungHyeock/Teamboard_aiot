@@ -1,7 +1,7 @@
 "use client";
 
 // 등록 창 — 달력에서 날짜를 누르거나(끌면 기간) `+ 등록`, 한 줄 등록창의 `자세히` 로 연다 (팀 피드백 4 · 5).
-//   [업무 | 일정] 라디오. 업무 = 이름 · 시작일~기한 · 담당 · 카테고리 · 목표(설명) · 공개 · 상태 · 메모.
+//   [업무 | 일정] 라디오. 업무 = 이름 · 시작일~기한 · 담당 · 함께하는 사람(체크) · 카테고리 · 목표(설명) · 공개 · 상태 · 메모.
 //   일정 = 이름 · 시작일~종료일 · 공개. 알약 대신 라디오 · 선택 상자로 한눈에.
 import { useState } from "react";
 import { addDays, md, todayKst } from "@/lib/ed/core";
@@ -40,6 +40,7 @@ export default function AddModal({ preset, onClose, onDone }: { preset?: AddPres
   const [scope, setScope] = useState<"team" | "private">("team");
   const [status, setStatus] = useState<"todo" | "doing">("todo");
   const [memo, setMemo] = useState("");
+  const [members, setMembers] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -58,6 +59,8 @@ export default function AddModal({ preset, onClose, onDone }: { preset?: AddPres
         const body: Record<string, unknown> = { title: title.trim(), assigneeId: assignee, status, visibility: scope, startDate: start || null, dueDate: due || null };
         if (area !== "") body.areaId = area;
         if (memo.trim()) body.description = memo.trim();
+        const with_ = members.filter((m) => m !== assignee);
+        if (scope === "team" && with_.length) body.memberIds = with_;
         const { id } = await createTask(body);
         if (goal !== "" && id) await api(`/api/tasks/${id}`, { method: "PATCH", body: { goalIds: [goal] } }).catch(() => {});
         if (goal !== "") emitChanged();
@@ -120,6 +123,20 @@ export default function AddModal({ preset, onClose, onDone }: { preset?: AddPres
                 </select>
               </label>
             </div>
+            {scope === "team" && (meta?.people.length ?? 0) > 1 && (
+              <div className="am-f">
+                <span>함께하는 사람 <small>(선택 · 같이 보고 고칠 수 있음, 집계는 주담당만)</small></span>
+                <div className="am-checks">
+                  {meta?.people.filter((p) => p.id !== assignee).map((p) => (
+                    <label key={p.id} className={`am-radio${members.includes(p.id) ? " on" : ""}`}>
+                      <input type="checkbox" checked={members.includes(p.id)}
+                             onChange={(e) => setMembers((xs) => e.target.checked ? [...xs, p.id] : xs.filter((x) => x !== p.id))} />
+                      <span>{p.id === me ? `나 · ${p.name}` : p.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <label className="am-f">
               <span>목표</span>
               <select className="ed-input" value={goal} onChange={(e) => setGoal(e.target.value ? Number(e.target.value) : "")}>

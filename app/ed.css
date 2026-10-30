@@ -117,6 +117,12 @@ summary::-webkit-details-marker { display: none; }
 .ed-nav a.on { padding: 8px 16px; background: var(--ink); color: var(--bg); font-weight: 700; box-shadow: 0 6px 14px -6px color-mix(in oklch,var(--ink) 60%,transparent); }
 /* 메뉴 아홉 — 좁은 PC 폭(1100 이하)에서도 캡슐 안에 다 들어오게 간격만 줄인다 */
 @media (max-width: 1100px) and (min-width: 720px) { .ed-nav a { padding: 8px 10px; font-size: 13px; } .ed-nav a.on { padding: 8px 12px; } }
+/* 하위 탭 줄 — 업무 · 보고 · 더보기 묶음 (2026-10 팀 피드백 2차) */
+.ed-sub { flex-shrink: 0; display: flex; gap: 4px; align-self: flex-start; max-width: 100%; overflow-x: auto; scrollbar-width: none; padding: 3px; border-radius: 12px; background: var(--panel2); box-shadow: var(--sunken); }
+.ed-sub::-webkit-scrollbar { display: none; }
+.ed-sub a { flex-shrink: 0; padding: 6px 13px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--sub); white-space: nowrap; }
+.ed-sub a:hover { color: var(--ink); text-decoration: none; }
+.ed-sub a.on { background: var(--surface); color: var(--ink); font-weight: 700; box-shadow: var(--elev1); }
 
 .ed-right { justify-self: end; display: flex; align-items: center; gap: 8px; }
 .ed-pill { flex-shrink: 0; white-space: nowrap; height: 36px; padding: 0 12px; border: 0; cursor: pointer; font-size: 12px; font-weight: 600; border-radius: 99px;
@@ -233,6 +239,7 @@ summary::-webkit-details-marker { display: none; }
 .ed-comp .add.off { opacity: .3; }
 .ed-comp .ed-comp-more { flex-shrink: 0; border: 0; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; padding: 9px 10px; border-radius: 12px; background: transparent; color: var(--sub); white-space: nowrap; }
 .ed-comp .ed-comp-more:hover { color: var(--ink); background: var(--panel2); }
+@media (max-width: 719px) { .ed-comp .ed-comp-more { display: none; } }  /* 휴대폰 — 칸이 좁다. 등록 창은 홈의 「+ 등록」으로 */
 .ed-pop { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; min-width: 150px; max-height: 320px; overflow: auto; padding: 6px; border-radius: 14px; background: var(--surface); box-shadow: var(--elev3);
   display: flex; flex-direction: column; gap: 2px; animation: pop .16s var(--ease); }
 .ed-pop button { border: 0; cursor: pointer; text-align: left; font-size: 13px; font-weight: 600; padding: 9px 12px; border-radius: 10px; background: transparent; color: var(--ink); white-space: nowrap; display: flex; align-items: center; gap: 8px; }
@@ -273,6 +280,8 @@ select.ed-input { cursor: pointer; }
 .am-radios { display: flex; gap: 6px; flex-wrap: wrap; }
 .am-radio { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px 8px 10px; border-radius: 11px; cursor: pointer; font-size: 14px; font-weight: 600;
   color: var(--sub); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .15s, color .15s; }
+.am-checks { display: flex; gap: 6px; flex-wrap: wrap; }
+.am-checks .am-radio { padding: 6px 11px 6px 9px; font-size: 13px; }
 .am-radio input { margin: 0; width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
 .am-radio small { margin-left: 6px; font-size: 12px; font-weight: 500; color: var(--faint); }
 .am-radio.on { color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--accent); }

@@ -37,6 +37,8 @@ interface Detail {
   createdByName: string | null; createdById: number | null; visibility: string; areaId: number; areaName: string; dueDate: string | null; startDate?: string | null; goalIds: number[]; parentTaskId: number | null;
   /** 담당 · 만든 사람 · 팀장만 고친다(QA 1) — 나머지는 보기 전용 + 「수정 요청」 */
   canEdit?: boolean; dropReason?: string | null;
+  /** 함께하는 사람(0048) */
+  members?: { id: number; name: string }[];
 }
 
 export default function TaskDrawer({ id, onClose }: { id: number; onClose: () => void }) {
@@ -84,7 +86,7 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
 
   const me = meta.me.id;
   const delegated = t.assigneeId !== me && createdById === me;
-  const canAskFix = t.assigneeId !== me;
+  const canAskFix = t.assigneeId !== me && !(t.members ?? []).some((m) => m.id === me);
   const done = checks.filter((c) => c.status === "done").length;
   const pct = checks.length ? Math.round((done / checks.length) * 100) : 0;
   const db = dueBadge(t.dueDate, t.status, today);
@@ -214,9 +216,28 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
               {meta.people.map((p) => (
                 <button key={p.id} type="button" className={`ed-chip${t.assigneeId === p.id ? " on" : ""}`}
                         disabled={t.visibility === "private" && p.id !== t.createdById}
-                        onClick={() => { if (t.assigneeId !== p.id) void save({ assigneeId: p.id, assigneeName: p.name }); }}>{p.id === me ? `나 · ${p.name}` : p.name}</button>
+                        onClick={() => { if (t.assigneeId !== p.id) void save({ assigneeId: p.id, assigneeName: p.name, ...((t.members ?? []).some((m) => m.id === p.id) ? { members: (t.members ?? []).filter((m) => m.id !== p.id) } : {}) }); }}>{p.id === me ? `나 · ${p.name}` : p.name}</button>
               ))}
             </div>
+          </div>
+        )}
+        {!t.parentTaskId && (
+          <div className="ed-field">
+            <span>함께하는 사람 <small className="tdr-sub">같이 보고 고칠 수 있습니다 · 집계는 주담당만</small></span>
+            {t.visibility === "private" ? <em className="tdr-hint">「나만」 업무에는 함께하는 사람을 둘 수 없습니다.</em> : (
+              <div className="ed-chips">
+                {meta.people.filter((p) => p.id !== t.assigneeId).map((p) => {
+                  const on = (t.members ?? []).some((m) => m.id === p.id);
+                  return (
+                    <button key={p.id} type="button" className={`ed-chip tdr-mem${on ? " on" : ""}`} aria-pressed={on}
+                            onClick={() => {
+                              const next = on ? (t.members ?? []).filter((m) => m.id !== p.id) : [...(t.members ?? []), p];
+                              void save({ memberIds: next.map((m) => m.id), members: next });
+                            }}>{on ? "✓ " : "+ "}{p.id === me ? `나 · ${p.name}` : p.name}</button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
         {t.createdById === me && !t.parentTaskId && (

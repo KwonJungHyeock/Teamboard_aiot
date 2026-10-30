@@ -8,7 +8,7 @@
 // 체크리스트 = 하위 업무. 진척 막대는 하위 업무 완료 비율(없으면 진행 15% · 검토 90% 자리 표시).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { addDays, catColor, diffDays, mondayOf, todayKst, weekday, wd, type EdTask } from "@/lib/ed/core";
+import { addDays, catColor, diffDays, isOnTask, mondayOf, todayKst, weekday, wd, type EdTask } from "@/lib/ed/core";
 import Composer from "../Composer";
 import { deleteTask, patchTask, useMeta, useTasks, type Revision } from "../data";
 import { api, emitChanged, useToast } from "../ui";
@@ -19,8 +19,9 @@ type Tab = "mine" | "delegated";
 // 보류는 멈춰 둔 일 — 「지남」으로 재촉하지 않고 예정 칸에 「보류」 표시로 둔다(QA 5)
 const laneOf = (t: EdTask, rev: Revision | undefined, today: string): Lane =>
   t.status === "done" ? "done" : rev ? "fix" : t.status === "hold" ? "todo" : t.dueDate && t.dueDate < today ? "over" : t.status === "todo" ? "todo" : "doing";
-/** 보류 · 비공개 표시 — 비공개는 나만 보는 업무다 */
-const Marks = ({ t }: { t: EdTask }) => (<>
+/** 보류 · 비공개 · 함께 표시 — 비공개는 나만 보는 업무, 함께는 주담당이 따로 있는 업무(0048) */
+const Marks = ({ t, me }: { t: EdTask; me?: number | null }) => (<>
+  {me != null && t.assigneeId !== me && (t.memberIds ?? []).includes(me) && <em className="my-mk with" title="함께하는 업무">함께 · {t.assigneeName ?? "담당 없음"}</em>}
   {t.status === "hold" && <em className="my-mk hold">보류</em>}
   {t.visibility === "private" && <em className="my-mk pv">비공개</em>}
 </>);
@@ -73,7 +74,7 @@ export default function MyTasks() {
   }, [tasks]);
 
   const top = useMemo(() => (tasks ?? []).filter((t) => !t.parentTaskId && t.status !== "dropped" && t.status !== "proposed"), [tasks]);
-  const inTab = useCallback((t: EdTask, k: Tab = tab) => (k === "mine" ? t.assigneeId === me : t.createdById === me && t.assigneeId !== me), [tab, me]);
+  const inTab = useCallback((t: EdTask, k: Tab = tab) => (k === "mine" ? isOnTask(t, me) : t.createdById === me && !isOnTask(t, me)), [tab, me]);
   const pool = top.filter((t) => inTab(t));
   const byDue = (a: EdTask, b: EdTask) => (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999") || a.id - b.id;
   const lane = (k: Lane) => pool.filter((t) => laneOf(t, revOf.get(t.id), today) === k).sort(byDue);
@@ -106,7 +107,7 @@ export default function MyTasks() {
 
   // ── 한 번에 정리 ─────────────────────────────────────────────
   const startTriage = () => {
-    const q = top.filter((t) => t.assigneeId === me && laneOf(t, revOf.get(t.id), today) === "over").sort(byDue).map((t) => t.id);
+    const q = top.filter((t) => isOnTask(t, me) && laneOf(t, revOf.get(t.id), today) === "over").sort(byDue).map((t) => t.id);
     if (q.length) setTriage({ q, i: 0, moved: 0, done: 0, del: 0 });
   };
   const triageAct = useCallback(async (a: string) => {
@@ -142,8 +143,8 @@ export default function MyTasks() {
   const onAdded = async (id: number) => {
     setNewId(id);
     try {
-      const d = await api<{ task: { assigneeId: number | null } }>(`/api/tasks/${id}`);
-      if (d.task.assigneeId !== me) setTab("delegated"); else setTab("mine");
+      const d = await api<{ task: { assigneeId: number | null; members?: { id: number }[] } }>(`/api/tasks/${id}`);
+      if (d.task.assigneeId !== me && !(d.task.members ?? []).some((m) => m.id === me)) setTab("delegated"); else setTab("mine");
     } catch { /* 목록은 그대로 */ }
   };
 
@@ -180,7 +181,7 @@ export default function MyTasks() {
                 <span className="tag" style={{ color, background: `color-mix(in oklch,${color} 13%,transparent)`, animation: i === 0 && isOver && !lv ? "pulseRed 2.4s infinite" : undefined }}>
                   {isOver ? `${-diffDays(t.dueDate!, today)}일 지남` : `수정 요청 · ${r!.requesterName}`}
                 </span>
-                <span className="cat">{t.areaName}{tab === "delegated" && t.assigneeName ? ` · ${t.assigneeName}` : ""}<Marks t={t} /></span>
+                <span className="cat">{t.areaName}{tab === "delegated" && t.assigneeName ? ` · ${t.assigneeName}` : ""}<Marks t={t} me={me} /></span>
               </div>
               <div className="tt">{t.title}</div>
               {!isOver && <div className="note">{r!.memo}</div>}
@@ -222,7 +223,7 @@ export default function MyTasks() {
                    onMouseEnter={() => setHover(t.id)} onMouseLeave={() => setHover((h) => (h === t.id ? null : h))}
                    style={{ animation: rowAnim(t.id, i, 0.25) }}>
                 <div className="r1">
-                  <span className="tt">{t.title}</span><Marks t={t} />
+                  <span className="tt">{t.title}</span><Marks t={t} me={me} />
                   <span className="d" style={{ color: isDone ? "var(--green)" : o !== null && o <= 1 ? "var(--amber)" : "var(--sub)" }}>{isDone ? "완료" : dLabel(t.dueDate, today)}</span>
                 </div>
                 {!hv ? (
@@ -279,7 +280,7 @@ export default function MyTasks() {
                      style={{ animation: rowAnim(t.id, i, 0.25) }}>
                   <div className="bd">
                     <div className="tt">{t.title}</div>
-                    <div className="ct"><i style={{ background: catColor(t.areaName) }} />{t.areaName}{tab === "delegated" && t.assigneeName ? ` · ${t.assigneeName}` : ""}<Marks t={t} /></div>
+                    <div className="ct"><i style={{ background: catColor(t.areaName) }} />{t.areaName}{tab === "delegated" && t.assigneeName ? ` · ${t.assigneeName}` : ""}<Marks t={t} me={me} /></div>
                   </div>
                   {hv && (
                     <div className="qk" onClick={(e) => e.stopPropagation()}>

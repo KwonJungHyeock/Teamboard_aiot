@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { MENU } from "@/lib/v3/nine";
+import { MENU, menuOn } from "@/lib/v3/nine";
 import { V3_BASE } from "@/lib/v3/routes";
 import { DENIED_PARAM, deniedReason } from "@/lib/denied";
 import { ago, initial } from "@/lib/ed/core";
@@ -194,6 +194,9 @@ function DrawerHost() {
 export default function Frame({ user, children }: { user: FrameUser; children: React.ReactNode }) {
   const path = usePathname() ?? "";
   const scroll = path.startsWith(`${V3_BASE}/stats`);
+  // 하위 탭 줄 — 업무 · 보고 · 더보기 묶음 안에서 화면을 옮긴다(2026-10 팀 피드백 2차)
+  const group = MENU.find((m) => m.tabs && menuOn(path, m.match));
+  const subTabs = (group?.tabs ?? []).filter((t) => !t.lead || user.lead);
   useEffect(() => { document.body.classList.toggle("ed-scroll-page", scroll); }, [scroll]);
   // 좁은 화면에서 메뉴 캡슐이 가로로 밀릴 때 — 지금 화면의 메뉴가 보이게 당겨 둔다
   const nav = useRef<HTMLElement>(null);
@@ -207,20 +210,27 @@ export default function Frame({ user, children }: { user: FrameUser; children: R
     <div className={`ed-app${scroll ? " scroll" : ""}`}>
       <Backdrop />
       <header className="ed-top">
-        <Link href={`${V3_BASE}/control`} className="ed-logo" aria-label="업무 현황으로">
+        <Link href={`${V3_BASE}/calendar`} className="ed-logo" aria-label="홈으로">
           <img className="lt" src="/brand/ed-mark.png" alt="" /><img className="dk" src="/brand/ed-mark-dark.png" alt="" />
           <b><span>통합업무관리</span><span>AI 로봇 플랫폼팀</span></b>
         </Link>
         <nav className="ed-nav" aria-label="메뉴" ref={nav}>
           {MENU.filter((m) => !m.lead || user.lead).map((m) => {
-            const on = m.match.some((p) => path === p || path.startsWith(`${p}/`));
-            return <Link key={m.href} href={m.href} className={on ? "on" : undefined} aria-current={on ? "page" : undefined}>{m.label}</Link>;
+            const on = menuOn(path, m.match);
+            return <Link key={m.label} href={m.href} className={on ? "on" : undefined} aria-current={on ? "page" : undefined}>{m.label}</Link>;
           })}
         </nav>
         <div className="ed-right"><Agent /><ThemePill /><Account user={user} /></div>
       </header>
       {user.mustChange && <div className="ed-pwnote" role="status">임시 비밀번호로 들어왔습니다. 아래 <b>비밀번호</b>에서 새 비밀번호로 바꿔 주세요.</div>}
-      <main className="ed-main">{children}</main>
+      <main className="ed-main">{subTabs.length > 0 && (
+        <nav className="ed-sub" aria-label={`${group!.label} 하위 메뉴`}>
+          {subTabs.map((t) => {
+            const on = menuOn(path, t.match);
+            return <Link key={t.href} href={t.href} className={on ? "on" : undefined} aria-current={on ? "page" : undefined}>{t.label}</Link>;
+          })}
+        </nav>
+      )}{children}</main>
       <LiveTicker />
       <Suspense fallback={null}><DrawerHost /><DeniedToast /></Suspense>
     </div>

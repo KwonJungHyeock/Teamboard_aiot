@@ -139,4 +139,5 @@
 /* QA 2026-10-29 — 보류 · 비공개 표시 */
 .my-mk { flex-shrink: 0; margin-left: 6px; font-style: normal; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 99px; white-space: nowrap; vertical-align: 1px; }
 .my-mk.hold { background: color-mix(in srgb, var(--amber) 16%, transparent); color: var(--amber); }
+.my-mk.with { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
 .my-mk.pv { box-shadow: inset 0 0 0 1px var(--line); color: var(--faint); }
