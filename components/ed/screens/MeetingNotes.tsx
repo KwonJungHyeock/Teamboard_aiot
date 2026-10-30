@@ -126,7 +126,7 @@ export default function MeetingNotes({ meetingId, remote, onSaved, doc, digest, 
   const [menu, setMenu] = useState(false);
 
   const status = mode === "notes"
-    ? (state === "saving" ? "저장 중" : state === "dirty" ? "고치는 중" : meta.at ? `마지막 수정 · ${meta.by ?? "누군가"} · ${hm(meta.at)}` : "함께 쓰는 회의록 · 참석자 모두 고칠 수 있음")
+    ? (state === "saving" ? "저장 중" : state === "dirty" ? "고치는 중" : meta.at ? `마지막 수정 · ${meta.by ?? "누군가"} · ${hm(meta.at)}` : "함께 쓰는 회의록")
     : (memoState === "saving" ? "저장 중" : memoState === "dirty" ? "고치는 중" : memoAt ? `저장됨 · ${hm(memoAt)} · 나만 보기` : "나만 보는 메모");
 
   return (
@@ -155,10 +155,10 @@ export default function MeetingNotes({ meetingId, remote, onSaved, doc, digest, 
       <div className="rm-paper">
         {mode === "notes" ? (
           <textarea value={text} onChange={(e) => edit(e.target.value)} aria-label="회의록"
-                    placeholder={"회의록을 적어 주세요. 참석한 사람 모두가 같이 고칩니다.\n\n예)\n1. 지난주 진행 상황\n- 시제품 2차 조립 완료\n2. 결정\n- 다음 주 금요일 현장 테스트"} />
+                    placeholder={"회의록 — 참석자 모두 같이 씁니다"} />
         ) : memo === null ? <div className="rm-empty">불러오는 중</div> : (
           <textarea value={memo} onChange={(e) => editMemo(e.target.value)} aria-label="내 메모"
-                    placeholder="나만 보는 메모입니다. 다른 사람(팀장 포함)은 볼 수 없습니다." />
+                    placeholder="나만 보는 메모" />
         )}
       </div>
     </div>

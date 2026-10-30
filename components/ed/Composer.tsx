@@ -2,16 +2,17 @@
 
 // 한 줄 등록창 — `@담당 ~마감 #목표` 문법 + Enter (DESIGN.md 3.5).
 //   variant="chips"  업무 현황: 담당 · 마감 · 목표 드롭다운 칩 + 추가
-//   variant="tokens" 내 업무: 인식된 값 토큰 알약 + `···` 옵션 팝오버(담당 · 카테고리 · 마감 · 목표) + 추가
+//   variant="tokens" 내 업무: 인식된 값 토큰 알약 + `···` 옵션(담당 · 카테고리 고르거나 적기 · 기한 달력 · 목표) + 추가
 // 맨 앞 [업무 | 일정] — 일정은 제목 · 시작일~종료일 · [팀 | 나만] (팀 → /api/events, 나만 → /api/personal-events).
 // `자세히` — 기간 · 카테고리 · 공개 · 메모까지 한 번에 채우는 등록 창(AddModal)을 연다.
 // 조합 중(한글) Enter 는 무시한다.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { catColor, dueFromWord, isEnter, md, parseLine, todayKst, wd, addDays, weekday, mondayOf } from "@/lib/ed/core";
-import { createTask, useMeta, type GoalLite } from "./data";
+import { areaOpts, createTask, goalOpts, makeArea, useMeta, type GoalLite } from "./data";
+import Combo from "./Combo";
 import { api, emitChanged, Seg, usePop, useToast } from "./ui";
-import AddModal, { type AddPreset } from "./AddModal";
+import AddModal, { DateIn, type AddPreset } from "./AddModal";
 
 const DUE_OPTS = (today: string) => [
   { label: "오늘", v: today },
@@ -32,7 +33,7 @@ export default function Composer({ variant = "chips", placeholder, presetWho, on
   const [pick, setPick] = useState<{ who?: number; due?: string | null; goal?: number | null; area?: number }>({});
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const [open, setOpen, ref] = usePop<"who" | "due" | "goal" | "opts">();
+  const [open, setOpen, ref] = usePop<"who" | "goal" | "opts">();
   const input = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<"task" | "event">("task");
   const [ev, setEv] = useState<{ start: string; end: string; scope: "team" | "me" }>({ start: today, end: today, scope: "team" });
@@ -153,17 +154,22 @@ export default function Composer({ variant = "chips", placeholder, presetWho, on
         <div className="ed-rel">
           <button type="button" className={`more${open === "opts" ? " on" : ""}`} title="옵션" onClick={() => setOpen(open === "opts" ? null : "opts")}>···</button>
           {open === "opts" && meta && (
-            <div className="ed-optpop">
-              <OptGroup label="담당">{meta.people.map((p) => <OptBtn key={p.id} on={who === p.id} onClick={() => setPick((x) => ({ ...x, who: p.id }))}>{p.name}</OptBtn>)}</OptGroup>
-              <OptGroup label="카테고리">{meta.areas.map((a) => <OptBtn key={a.id} on={area === a.id} dot={catColor(a.name)} onClick={() => setPick((x) => ({ ...x, area: a.id }))}>{a.name}</OptBtn>)}</OptGroup>
-              <OptGroup label="마감">
-                <OptBtn on={!due} onClick={() => setPick((x) => ({ ...x, due: null }))}>없음</OptBtn>
-                {DUE_OPTS(today).map((d) => <OptBtn key={d.label} on={due === d.v} onClick={() => setPick((x) => ({ ...x, due: d.v }))}>{d.label}</OptBtn>)}
-              </OptGroup>
-              <OptGroup label="목표">
-                <OptBtn on={!goal} onClick={() => setPick((x) => ({ ...x, goal: null }))}>없음</OptBtn>
-                {meta.goals.filter((g) => g.periodType !== "year").map((g) => <OptBtn key={g.id} on={goal === g.id} onClick={() => setPick((x) => ({ ...x, goal: g.id }))}>{goalShort(g)}</OptBtn>)}
-              </OptGroup>
+            <div className="ed-optpop cp-opts">
+              <label className="cp-f"><span>담당</span>
+                <select className="ed-input" value={who ?? ""} onChange={(e) => setPick((x) => ({ ...x, who: Number(e.target.value) }))}>
+                  {meta.people.map((p) => <option key={p.id} value={p.id}>{p.id === meta.me.id ? `나 · ${p.name}` : p.name}</option>)}
+                </select>
+              </label>
+              <div className="cp-f"><span>카테고리</span>
+                <Combo label="카테고리" value={area ?? null} options={areaOpts(meta)} none="기타" onPick={(id) => setPick((x) => ({ ...x, area: id ?? undefined }))}
+                       onCreate={async (name) => { try { const id = await makeArea(name); setPick((x) => ({ ...x, area: id })); } catch (e) { setErr(e instanceof Error ? e.message : "만들지 못했습니다"); } }} />
+              </div>
+              <div className="cp-f"><span>기한</span>
+                <DateIn label="기한" value={due ?? ""} onChange={(v) => setPick((x) => ({ ...x, due: v || null }))} />
+              </div>
+              <div className="cp-f"><span>목표</span>
+                <Combo label="목표" value={goal} options={goalOpts(meta, false)} none="없음" onPick={(id) => setPick((x) => ({ ...x, goal: id }))} />
+              </div>
             </div>
           )}
         </div>
@@ -186,13 +192,10 @@ export default function Composer({ variant = "chips", placeholder, presetWho, on
             {who === meta?.me.id ? "나" : whoName ?? "나"}<span className="cv">▼</span></button>
           {open === "who" && meta && <div className="ed-pop">{meta.people.map((p) => opt(who === p.id, p.id === meta.me.id ? `나 · ${p.name}` : p.name, () => setPick((x) => ({ ...x, who: p.id })), p.id))}</div>}
         </div>
-        <div className="ed-rel">
-          <button type="button" className={`tok${due ? " set" : ""}`} onClick={() => setOpen(open === "due" ? null : "due")}>{dueLabel(due)}<span className="cv">▼</span></button>
-          {open === "due" && <div className="ed-pop">
-            {opt(!due, "마감 없음", () => setPick((x) => ({ ...x, due: null })), "none")}
-            {DUE_OPTS(today).map((d) => opt(due === d.v, `${d.label} · ${md(d.v)}`, () => setPick((x) => ({ ...x, due: d.v })), d.label))}
-          </div>}
-        </div>
+        <label className={`tok tok-date${due ? " set" : ""}`} onClick={(e) => { const el = e.currentTarget.querySelector("input"); try { el?.showPicker(); } catch { el?.focus(); } }}>
+          {dueLabel(due)}<span className="cv">▼</span>
+          <input type="date" tabIndex={-1} aria-label="마감" value={due ?? ""} onChange={(e) => setPick((x) => ({ ...x, due: e.target.value || null }))} />
+        </label>
         <div className="ed-rel">
           <button type="button" className={`tok${goal ? " set" : ""}`} onClick={() => setOpen(open === "goal" ? null : "goal")}>{goalObj ? goalShort(goalObj) : "목표 없음"}<span className="cv">▼</span></button>
           {open === "goal" && meta && <div className="ed-pop">
@@ -207,11 +210,4 @@ export default function Composer({ variant = "chips", placeholder, presetWho, on
       {toast}{detailNode}
     </div>
   );
-}
-
-function OptGroup({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="og"><span>{label}</span><div>{children}</div></div>;
-}
-function OptBtn({ on, dot, onClick, children }: { on: boolean; dot?: string; onClick: () => void; children: React.ReactNode }) {
-  return <button type="button" className={on ? "on" : undefined} onClick={onClick}>{dot && <i style={{ background: dot }} />}{children}</button>;
 }

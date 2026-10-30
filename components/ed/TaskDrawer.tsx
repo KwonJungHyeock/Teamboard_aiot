@@ -1,33 +1,18 @@
 "use client";
 
 // 업무 상세 드로어(460px) — 어느 화면이든 `?task=ID` 로 연다 (DESIGN.md 5.3).
-//   수정 요청 박스 · 맡긴 일(담당 + 확인 요청 · 수정 요청) · 상태 세그먼트 · 기한 칩 · 카테고리 · 목표 ·
+//   수정 요청 박스 · 맡긴 일(담당 + 확인 요청 · 수정 요청) · 상태 · 담당/공개 · 함께하는 사람 · 기간(달력) · 카테고리/목표(고르거나 적기) ·
 //   체크리스트(하위 업무 = 항목) · 기록(메모) · 하단 삭제 / 완료
 // 저장은 기존 `/api/tasks/:id` PATCH. 체크리스트 항목은 하위 업무로 만든다(진척에 그대로 잡힌다).
 import { useCallback, useEffect, useState } from "react";
-import { addDays, ago, catColor, diffDays, dueBadge, initial, isEnter, mondayOf, STATUS_LABEL, todayKst, weekday, type EdTask, type Status } from "@/lib/ed/core";
-import { createTask, patchTask, deleteTask, refreshMeta, useMeta, type Revision } from "./data";
+import { ago, dueBadge, initial, isEnter, STATUS_LABEL, todayKst, type EdTask, type Status } from "@/lib/ed/core";
+import { areaOpts, canMakeGoal, createTask, deleteTask, dropArea, dropGoal, goalOpts, makeArea, makeGoal, patchTask, useMeta, type Revision } from "./data";
+import Combo from "./Combo";
+import { DateIn } from "./AddModal";
 import { api, Drawer, emitChanged, Seg, useToast } from "./ui";
 
 interface Act { id: number; message: string; created_at?: string; createdAt?: string }
 
-/** 「+ 추가」 칩 — 누르면 그 자리에서 입력칸이 된다. Enter 로 만들고 Esc 로 접는다(한글 조합 중 Enter 는 무시) */
-function AddChip({ label, onAdd }: { label: string; onAdd: (text: string) => Promise<void> }) {
-  const [text, setText] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  if (text === null) return <button type="button" className="ed-chip tdr-add" onClick={() => setText("")}>+ {label}</button>;
-  const go = async () => {
-    const v = text.trim();
-    if (!v || busy) return;
-    setBusy(true);
-    try { await onAdd(v); setText(null); } finally { setBusy(false); }
-  };
-  return (
-    <input className="ed-chip tdr-addin" autoFocus value={text} maxLength={60} placeholder={`새 ${label}`} disabled={busy}
-           onChange={(e) => setText(e.target.value)} onBlur={() => { if (!text.trim()) setText(null); }}
-           onKeyDown={(e) => { if (isEnter(e)) { e.preventDefault(); void go(); } else if (e.key === "Escape") { e.preventDefault(); setText(null); } }} />
-  );
-}
 // 기록 안의 주소 — 옛 상세의 「첨부」처럼 아래에 다시 보인다(저장하는 것은 없다)
 const linksIn = (text: string) => Array.from(new Set(text.match(/https?:\/\/[^\s)>\]]+/g) ?? [])).slice(0, 12);
 const host = (u: string) => { try { const h = new URL(u).hostname.replace(/^www\./, ""); return h; } catch { return u; } };
@@ -56,8 +41,6 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
   const [pinged, setPinged] = useState(false);
   const [acts, setActs] = useState<Act[]>([]);
   const [toast, showToast] = useToast();
-  const [tidyCat, setTidyCat] = useState(false);
-  const [tidyGoal, setTidyGoal] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -90,10 +73,6 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
   const done = checks.filter((c) => c.status === "done").length;
   const pct = checks.length ? Math.round((done / checks.length) * 100) : 0;
   const db = dueBadge(t.dueDate, t.status, today);
-  const DUES = [
-    { label: "오늘", v: today }, { label: "내일", v: addDays(today, 1) },
-    { label: "금요일", v: addDays(today, (5 - weekday(today) + 7) % 7) }, { label: "다음 주", v: addDays(mondayOf(today), 7) },
-  ];
 
   const addCheck = async () => {
     const txt = checkText.trim();
@@ -123,41 +102,9 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
     try { await api(`/api/tasks/${id}/nudge`, { method: "POST" }); setPinged(true); }
     catch (e) { showToast(e instanceof Error ? e.message : "보내지 못했습니다"); }
   };
-  // ── 카테고리 · 목표 — 자유롭게 만들고, 「정리」에서 지운다 ──────────────
-  const addArea = async (name: string) => {
-    try {
-      const { area } = await api<{ area: { id: number } }>("/api/ed/areas", { method: "POST", body: { name } });
-      await refreshMeta(); await save({ areaId: area.id }); emitChanged();
-    } catch (e) { showToast(e instanceof Error ? e.message : "만들지 못했습니다"); }
-  };
-  const dropArea = async (a: { id: number; name: string }) => {
-    if (!window.confirm(`「${a.name}」 카테고리를 지울까요?\n이 카테고리의 업무는 「기타」로 옮겨집니다.`)) return;
-    try {
-      const r = await api<{ moved: number }>(`/api/ed/areas?id=${a.id}`, { method: "DELETE" });
-      await refreshMeta(); await load(); emitChanged();
-      showToast(r.moved ? `지웠습니다 · 업무 ${r.moved}건 → 기타` : "지웠습니다");
-    } catch (e) { showToast(e instanceof Error ? e.message : "지우지 못했습니다"); }
-  };
-  // 개인 업무 → 내 개인 목표, 팀 업무 → 팀 목표(팀장). 이번 달 월 목표로 만든다 — 기간 · 상위는 목표 화면에서 정리
-  const goalScope = t.visibility === "private" ? "personal" : "team";
-  const canMakeGoal = goalScope === "personal" || !!meta.me.lead;
-  const addGoal = async (title: string) => {
-    try {
-      const { goal } = await api<{ goal: { id: number } }>("/api/goals", { method: "POST", body: { title, scope: goalScope, periodType: "month", periodStart: `${today.slice(0, 7)}-01` } });
-      await refreshMeta(); await save({ goalIds: [goal.id] }); emitChanged();
-    } catch (e) { showToast(e instanceof Error ? e.message : "만들지 못했습니다"); }
-  };
-  const dropGoal = async (g: { id: number; title: string }) => {
-    if (!window.confirm(`「${g.title}」 목표를 지울까요?\n붙어 있던 업무는 그대로 남습니다. 목표 화면 보관함에서 되살릴 수 있습니다.`)) return;
-    try {
-      await api(`/api/goals/${g.id}`, { method: "PUT", body: { isActive: false } });
-      if (t.goalIds.includes(g.id)) await save({ goalIds: t.goalIds.filter((x) => x !== g.id) });
-      await refreshMeta(); emitChanged(); showToast("지웠습니다");
-    } catch (e) { showToast(e instanceof Error ? e.message : "지우지 못했습니다"); }
-  };
-  // 서버 규칙과 같게(api/tasks/[id] goal_task): 개인 업무 → 내 개인 목표만, 팀 업무 → 팀 목표 + 내 개인 목표
-  const goalChoices = meta.goals.filter((g) => g.periodType !== "year" && (goalScope === "personal" ? g.scope === "personal" : true));
-  const canDropGoal = (g: { scope?: string; ownerId?: number | null }) => (g.scope === "personal" ? g.ownerId === me : !!meta.me.lead);
+  // ── 카테고리 · 목표 — 고르거나 적기(Combo). 만들기 · 지우기 규칙은 data.ts 하나 ──
+  const personal = t.visibility === "private";
+  const fail = (e: unknown) => showToast(e instanceof Error ? e.message : "처리하지 못했습니다");
 
   const remove = async () => {
     try {
@@ -188,7 +135,7 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
         <button type="button" className="ed-x" onClick={() => void finish()} aria-label="닫기">✕</button>
       </div>
       <div className="db">
-        {ro && <div className="tdr-ro">보기 전용 — 담당자 · 만든 사람 · 팀장만 고칠 수 있습니다. 고칠 것은 아래 「수정 요청」으로 알려 주세요.</div>}
+        {ro && <div className="tdr-ro">보기 전용 · 고칠 것은 아래 「수정 요청」으로</div>}
         {t.status === "dropped" && (
           <div className="tdr-ro drop">중단한 업무{t.dropReason ? ` · ${t.dropReason}` : ""}
             {!ro && <button type="button" className="ed-btn sm" onClick={() => void save({ status: "todo" }).then(emitChanged)}>되살리기</button>}</div>
@@ -210,113 +157,74 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
                onChange={(s) => { if (!ro) void save({ status: s }); }} />
         </div>
         {!t.parentTaskId && (
-          <div className="ed-field">
-            <span>담당</span>
-            <div className="ed-chips">
-              {meta.people.map((p) => (
-                <button key={p.id} type="button" className={`ed-chip${t.assigneeId === p.id ? " on" : ""}`}
-                        disabled={t.visibility === "private" && p.id !== t.createdById}
-                        onClick={() => { if (t.assigneeId !== p.id) void save({ assigneeId: p.id, assigneeName: p.name, ...((t.members ?? []).some((m) => m.id === p.id) ? { members: (t.members ?? []).filter((m) => m.id !== p.id) } : {}) }); }}>{p.id === me ? `나 · ${p.name}` : p.name}</button>
-              ))}
-            </div>
-          </div>
-        )}
-        {!t.parentTaskId && (
-          <div className="ed-field">
-            <span>함께하는 사람 <small className="tdr-sub">같이 보고 고칠 수 있습니다 · 집계는 주담당만</small></span>
-            {t.visibility === "private" ? <em className="tdr-hint">「나만」 업무에는 함께하는 사람을 둘 수 없습니다.</em> : (
-              <div className="ed-chips">
-                {meta.people.filter((p) => p.id !== t.assigneeId).map((p) => {
-                  const on = (t.members ?? []).some((m) => m.id === p.id);
-                  return (
-                    <button key={p.id} type="button" className={`ed-chip tdr-mem${on ? " on" : ""}`} aria-pressed={on}
-                            onClick={() => {
-                              const next = on ? (t.members ?? []).filter((m) => m.id !== p.id) : [...(t.members ?? []), p];
-                              void save({ memberIds: next.map((m) => m.id), members: next });
-                            }}>{on ? "✓ " : "+ "}{p.id === me ? `나 · ${p.name}` : p.name}</button>
-                  );
-                })}
+          <div className="tdr-two">
+            <label className="ed-field">
+              <span>담당</span>
+              <select className="ed-input" value={t.assigneeId ?? ""} disabled={t.visibility === "private"}
+                      onChange={(e) => { const p = meta.people.find((x) => x.id === Number(e.target.value)); if (p) void save({ assigneeId: p.id, assigneeName: p.name, members: (t.members ?? []).filter((m) => m.id !== p.id) }); }}>
+                {t.assigneeId === null && <option value="">담당 없음</option>}
+                {meta.people.map((p) => <option key={p.id} value={p.id}>{p.id === me ? `나 · ${p.name}` : p.name}</option>)}
+              </select>
+            </label>
+            {t.createdById === me ? (
+              <div className="ed-field">
+                <span>공개</span>
+                <Seg full value={t.visibility === "private" ? "private" : "team"}
+                     options={[{ v: "team", label: "팀" }, { v: "private", label: "나만" }]}
+                     onChange={(v) => void save({ visibility: v })} />
               </div>
-            )}
+            ) : <span />}
           </div>
         )}
-        {t.createdById === me && !t.parentTaskId && (
+        {!t.parentTaskId && t.visibility !== "private" && (
           <div className="ed-field">
-            <span>공개</span>
-            <Seg full value={t.visibility === "private" ? "private" : "team"}
-                 options={[{ v: "private", label: "나만" }, { v: "team", label: "팀" }]}
-                 onChange={(v) => void save({ visibility: v })} />
-          </div>
-        )}
-        {!t.parentTaskId && (
-          <div className="ed-field">
-            <span>시작일 <small className="tdr-sub">넣으면 달력에 시작일~기한 막대로 보입니다</small></span>
+            <span>함께하는 사람</span>
             <div className="ed-chips">
-              <button type="button" className={`ed-chip${!t.startDate ? " on" : ""}`} onClick={() => void save({ startDate: null })}>없음</button>
-              <button type="button" className={`ed-chip${t.startDate === today ? " on" : ""}`}
-                      onClick={() => { if (t.dueDate && t.dueDate < today) showToast("기한보다 늦은 시작일은 넣을 수 없습니다"); else void save({ startDate: today }); }}>오늘</button>
-              <span className={`ed-chip tdr-date${t.startDate && t.startDate !== today ? " on" : ""}`}
-                    onClick={(e) => { const i = e.currentTarget.querySelector("input"); try { i?.showPicker(); } catch { i?.focus(); } }}>
-                {t.startDate && t.startDate !== today ? t.startDate.slice(5).replace("-", ".") : "날짜"}
-                <input type="date" tabIndex={-1} aria-label="시작 날짜" value={t.startDate ?? ""} max={t.dueDate ?? undefined}
-                       onChange={(e) => { const v = e.target.value; if (!v) return; if (t.dueDate && v > t.dueDate) showToast("기한보다 늦은 시작일은 넣을 수 없습니다"); else void save({ startDate: v }); }} />
-              </span>
-            </div>
-          </div>
-        )}
-        <div className="ed-field">
-          <span>기한 {t.dueDate && <em className={`tdr-due ${db.tone}`}>{db.tone === "red" ? db.text : `${t.dueDate.slice(5).replace("-", ".")}${diffDays(t.dueDate, today) >= 0 ? ` · ${db.text === "오늘" || db.text === "내일" ? db.text : `D-${diffDays(t.dueDate, today)}`}` : ""}`}</em>}</span>
-          <div className="ed-chips">
-            {DUES.map((d) => <button key={d.label} type="button" className={`ed-chip${t.dueDate === d.v ? " on" : ""}`} onClick={() => void save({ dueDate: d.v })}>{d.label}</button>)}
-            <button type="button" className={`ed-chip${!t.dueDate ? " on" : ""}`} onClick={() => void save({ dueDate: null })}>없음</button>
-            {/* 투명한 date 칸 위를 눌러도 브라우저가 달력을 안 여는 경우가 있다 — 누르면 달력을 직접 연다(showPicker) */}
-            <span className={`ed-chip tdr-date${t.dueDate && !DUES.some((d) => d.v === t.dueDate) ? " on" : ""}`}
-                  onClick={(e) => { const i = e.currentTarget.querySelector("input"); try { i?.showPicker(); } catch { i?.focus(); } }}>
-              {t.dueDate && !DUES.some((d) => d.v === t.dueDate) ? t.dueDate.slice(5).replace("-", ".") : "날짜"}
-              <input type="date" tabIndex={-1} aria-label="기한 날짜" value={t.dueDate ?? ""} onChange={(e) => e.target.value && void save({ dueDate: e.target.value })} />
-            </span>
-          </div>
-        </div>
-        <div className="ed-field">
-          <span className="tdr-fh">카테고리
-            {!t.parentTaskId && !ro && <button type="button" className={`tdr-tidy${tidyCat ? " on" : ""}`} onClick={() => setTidyCat(!tidyCat)}>{tidyCat ? "완료" : "정리"}</button>}
-          </span>
-          <div className="ed-chips">
-            {meta.areas.map((a) => (
-              tidyCat && a.name !== "기타" ? (
-                <button key={a.id} type="button" className="ed-chip tdr-del" onClick={() => void dropArea(a)} aria-label={`${a.name} 지우기`}>
-                  <i className="tdr-cd" style={{ background: catColor(a.name) }} />{a.name}<b aria-hidden="true">✕</b>
+              {(t.members ?? []).map((m) => (
+                <button key={m.id} type="button" className="ed-chip on tdr-mem" aria-label={`${m.name} 빼기`}
+                        onClick={() => { const next = (t.members ?? []).filter((x) => x.id !== m.id); void save({ memberIds: next.map((x) => x.id), members: next }); }}>
+                  {m.id === me ? `나 · ${m.name}` : m.name}<b aria-hidden="true">✕</b>
                 </button>
-              ) : (
-                <button key={a.id} type="button" className={`ed-chip${t.areaId === a.id ? " on" : ""}`} onClick={() => void save({ areaId: a.id })} disabled={!!t.parentTaskId || tidyCat}>
-                  <i className="tdr-cd" style={{ background: catColor(a.name) }} />{a.name}
-                </button>
-              )
-            ))}
-            {!t.parentTaskId && !tidyCat && !ro && <AddChip label="카테고리" onAdd={addArea} />}
-          </div>
-        </div>
-        {!t.parentTaskId && (
-          <div className="ed-field">
-            <span className="tdr-fh">목표
-              {!ro && <button type="button" className={`tdr-tidy${tidyGoal ? " on" : ""}`} onClick={() => setTidyGoal(!tidyGoal)}>{tidyGoal ? "완료" : "정리"}</button>}
-            </span>
-            <div className="ed-chips">
-              {!tidyGoal && <button type="button" className={`ed-chip${t.goalIds.length === 0 ? " on" : ""}`} onClick={() => void save({ goalIds: [] })}>없음</button>}
-              {goalChoices.map((g) => (
-                tidyGoal ? (
-                  canDropGoal(g)
-                    ? <button key={g.id} type="button" className="ed-chip tdr-del" onClick={() => void dropGoal(g)} aria-label={`${g.title} 지우기`}>{g.title}<b aria-hidden="true">✕</b></button>
-                    : <span key={g.id} className="ed-chip tdr-lock" title="팀 목표는 팀장이 정리합니다">{g.title}</span>
-                ) : (
-                  <button key={g.id} type="button" className={`ed-chip${t.goalIds.includes(g.id) ? " on" : ""}`} onClick={() => void save({ goalIds: [g.id] })}>{g.title}</button>
-                )
               ))}
-              {!tidyGoal && canMakeGoal && !ro && <AddChip label="목표" onAdd={addGoal} />}
+              {meta.people.some((p) => p.id !== t.assigneeId && !(t.members ?? []).some((m) => m.id === p.id)) && (
+                <select className="ed-chip tdr-addsel" value="" aria-label="함께하는 사람 더하기"
+                        onChange={(e) => { const p = meta.people.find((x) => x.id === Number(e.target.value)); if (!p) return; const next = [...(t.members ?? []), p]; void save({ memberIds: next.map((x) => x.id), members: next }); }}>
+                  <option value="">+ 더하기</option>
+                  {meta.people.filter((p) => p.id !== t.assigneeId && !(t.members ?? []).some((m) => m.id === p.id))
+                    .map((p) => <option key={p.id} value={p.id}>{p.id === me ? `나 · ${p.name}` : p.name}</option>)}
+                </select>
+              )}
             </div>
-            {!tidyGoal && <em className="tdr-hint">목표에 연결하면 그 목표의 달성률과 「보고」에 집계됩니다. 일상 업무는 「없음」으로 두면 상시 업무로 셉니다.</em>}
           </div>
         )}
+        <div className="ed-field">
+          <span>{t.parentTaskId ? "기한" : "기간"} {t.dueDate && <em className={`tdr-due ${db.tone}`}>{db.text}</em>}</span>
+          <div className="am-dates">
+            {!t.parentTaskId ? (
+              <DateIn label="시작일" value={t.startDate ?? ""} max={t.dueDate ?? undefined} onChange={(v) => void save({ startDate: v || null })} />
+            ) : <span />}
+            <i>~</i>
+            <DateIn label="기한" value={t.dueDate ?? ""} min={t.startDate ?? undefined} onChange={(v) => void save({ dueDate: v || null })} />
+          </div>
+        </div>
+        <div className="tdr-two">
+          <div className="ed-field">
+            <span>카테고리</span>
+            <Combo label="카테고리" value={t.areaId} options={areaOpts(meta)} disabled={!!t.parentTaskId || ro}
+                   onPick={(id) => { const a = id === null ? meta.areas.find((x) => x.name === "기타") : meta.areas.find((x) => x.id === id); if (a) void save({ areaId: a.id, areaName: a.name }); }}
+                   onCreate={async (name) => { try { const id = await makeArea(name); await save({ areaId: id, areaName: name }); } catch (e) { fail(e); } }}
+                   onRemove={async (o) => { try { const msg = await dropArea(o); if (msg) { showToast(msg); await load(); } } catch (e) { fail(e); } }} />
+          </div>
+          {!t.parentTaskId && (
+            <div className="ed-field">
+              <span>목표</span>
+              <Combo label="목표" value={t.goalIds[0] ?? null} options={goalOpts(meta, personal)} none="없음 (상시 업무)" disabled={ro}
+                     onPick={(id) => void save({ goalIds: id === null ? [] : [id] })}
+                     onCreate={canMakeGoal(meta, personal) ? async (title) => { try { const id = await makeGoal(title, personal); await save({ goalIds: [id] }); } catch (e) { fail(e); } } : undefined}
+                     onRemove={async (o) => { try { if (await dropGoal(o) && t.goalIds.includes(o.id)) await save({ goalIds: t.goalIds.filter((x) => x !== o.id) }); } catch (e) { fail(e); } }} />
+            </div>
+          )}
+        </div>
         </fieldset>
         {canAskFix && (
           <div className="tdr-owner">

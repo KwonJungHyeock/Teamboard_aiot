@@ -53,17 +53,16 @@ export default function TeamReports() {
           )}
           {kind === "year" && <select className="ed-input" value={pick} onChange={(e) => setPick(e.target.value)} style={{ width: 170 }}>{years.map((y) => <option key={y} value={y}>{y}년</option>)}</select>}
           <button type="button" className="ed-btn pri" onClick={() => void create()}>보고 만들기</button>
-          <span className="trp-hint">같은 기간 보고가 있으면 그 보고를 엽니다.</span>
         </div>
       )}
-      {rows === null ? <div className="ed-empty">불러오는 중</div> : rows.length === 0 ? <div className="ed-empty">{canEdit ? "아직 보고가 없습니다 — 기간을 고르고 「보고 만들기」" : "아직 보고가 없습니다"}</div> : (
+      {rows === null ? <div className="ed-empty">불러오는 중</div> : rows.length === 0 ? <div className="ed-empty">{canEdit ? "아직 보고가 없습니다" : "아직 보고가 없습니다"}</div> : (
         <div className="trp-cards">
           {rows.map((r) => (
             <div key={r.id} className="trp-card">
               <Link href={`/v3/reports/${r.id}`} style={{ color: "inherit", textDecoration: "none", display: "flex", flexDirection: "column", gap: 8 }}>
                 <div className="trp-row"><span className={`trp-st${r.status === "final" ? " final" : ""}`}>{r.status === "final" ? "확정" : "작성중"}</span><small>{r.label}</small></div>
                 <b>{r.title}</b>
-                <div className="n">{r.counts ? <><span>업무 {r.counts.total}</span><span>완료 {r.counts.done}</span></> : <span>숫자는 확정 때 굳습니다</span>}<span>상세 {r.items}건</span></div>
+                <div className="n">{r.counts ? <><span>업무 {r.counts.total}</span><span>완료 {r.counts.done}</span></> : <span>작성중</span>}<span>상세 {r.items}건</span></div>
               </Link>
               {r.pdf && <a className="ed-btn sm" style={{ alignSelf: "flex-start" }} href={`/api/team-reports/${r.id}/pdf`}>PDF 받기</a>}
             </div>

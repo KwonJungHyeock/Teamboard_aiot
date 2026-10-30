@@ -174,7 +174,7 @@ function Editor({ d, tab, setTab, item, setSel, row, drop, add, call, toast }: {
       {tab === "plans" && <Plans d={d} row={row} drop={drop} add={add} />}
       {tab === "tidy" && (
         <div className="trp-list">
-          <p className="trp-hint">이 기간에 완료로 바뀌었지만 시작일 · 기한 · 등록일이 모두 기간 전인 업무입니다. 실적에서 빠집니다 — 실제 완료일을 확인해 정리하세요.</p>
+          <p className="trp-hint">기간 전 업무가 이번에 완료 처리됨 · 실적에서 빠집니다</p>
           {d.agg.tidy.map((t) => <Link key={t.id} className="trp-li" href={`/v3/reports/${r.id}?task=${t.id}`} scroll={false}><span className="t">{t.title}</span><small>{t.assignee}</small></Link>)}
           {!d.agg.tidy.length && <p className="trp-hint">없음</p>}
         </div>
@@ -205,7 +205,6 @@ function Setup({ d, call }: { d: ReportData; call: (u: string, m: string, b?: un
           <button type="button" className="x" disabled={i === 0} onClick={() => move(i, -1)} aria-label="위로">↑</button>
           <button type="button" className="x" disabled={i === 2} onClick={() => move(i, 1)} aria-label="아래로">↓</button></div>
       ))}</div>
-      <p className="trp-hint">팀 기본 순서는 설정에서 바꿉니다. 새 보고는 팀 기본 순서로 시작합니다.</p>
     </>
   );
 }
@@ -216,7 +215,7 @@ function Pick({ d, add, drop }: { d: ReportData; add: (res: string, b: Record<st
   const ts = d.agg.tasks.filter((t) => !q.trim() || `${t.title} ${t.assignee ?? ""}`.toLowerCase().includes(q.trim().toLowerCase()));
   return (
     <>
-      <p className="trp-hint">이 기간의 팀 업무입니다. 체크하면 업무 상세 페이지(④)가 생깁니다. 팀보드에 없는 일은 먼저 업무로 등록하세요.</p>
+      <p className="trp-hint">체크한 업무가 상세 페이지로 들어갑니다</p>
       <input className="ed-input" placeholder="찾기" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="trp-cand">
         {d.report.partOrder.map((p) => {
@@ -240,7 +239,7 @@ function Items({ d, setSel, call }: { d: ReportData; setSel: (n: number) => void
   const [dragId, setDragId] = useState<number | null>(null);
   return (
     <>
-      <p className="trp-hint">누르면 고칩니다. 같은 파트 안에서 끌어 순서를 바꿉니다. 페이지를 눌러도 됩니다.</p>
+      <p className="trp-hint">끌어서 순서 변경</p>
       {d.report.partOrder.map((p) => {
         const xs = d.items.filter((i) => i.task?.part === p).sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
         if (!xs.length) return null;
@@ -305,7 +304,7 @@ function ItemEdit({ d, item, row, drop, add, toast, back }: {
         <input ref={file} type="file" hidden accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void onFile(f); }} />
       </div>
-      <p className="trp-hint">이미지 5MB · GIF · 영상 50MB. 첫 번째 에셋이 크게, 나머지는 아래에 작게 나옵니다.</p>
+      <p className="trp-hint">이미지 5MB · 영상 50MB · 첫 번째가 크게</p>
       <div className="trp-row"><input className="ed-input" placeholder="iframe 주소 https://…" value={url} onChange={(e) => setUrl(e.target.value)} />
         <button type="button" className="ed-btn sm" disabled={!url.trim()} onClick={async () => { if (await add("assets", { itemId: item.id, kind: "iframe", url: url.trim(), caption: cap })) { setUrl(""); setCap(""); } }}>넣기</button></div>
     </>
@@ -370,7 +369,7 @@ function Plans({ d, row, drop, add }: { d: ReportData; row: (r: string, i: numbe
   return (
     <>
       <h3>지난 계획 → 지금</h3>
-      <p className="trp-hint">지난 보고의 「다음 계획」입니다. 업무로 걸린 것은 지금 상태가 자동으로, 손으로 적은 것은 여기서 상태를 고칩니다.</p>
+      <p className="trp-hint">지난 보고의 다음 계획 · 업무로 연결된 것은 상태 자동</p>
       {d.prevPlans.map((x) => (
         <div key={`${x.kind}-${x.id}`} className="trp-li"><span className="t">{x.body}</span>
           {x.kind === "manual"
@@ -378,7 +377,7 @@ function Plans({ d, row, drop, add }: { d: ReportData; row: (r: string, i: numbe
             : <small>{statusWord(x.status)}</small>}
         </div>
       ))}
-      {!d.prevPlans.length && <p className="trp-hint">지난 보고가 없거나 계획이 없습니다.</p>}
+      {!d.prevPlans.length && <p className="trp-hint">지난 계획 없음</p>}
       <h3>다음 기간 계획</h3>
       <p className="trp-hint">기한이 다음 기간인 업무 {d.agg.autoPlans.length}건은 자동으로 들어갑니다. 업무가 아닌 계획만 아래에 적습니다.</p>
       {d.plans.map((p) => <div key={p.id} className="trp-li"><span className="t">{p.body}</span><button type="button" className="x" onClick={() => void drop("plans", p.id)}>✕</button></div>)}

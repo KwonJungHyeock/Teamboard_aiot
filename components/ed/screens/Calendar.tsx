@@ -430,7 +430,7 @@ export default function Calendar({ meId, launch }: { meId: number; launch: strin
                 </div>
               );
             })}
-            {!dayList.length && !dayEvs.length && <div className="cal-empty">일정 없음 — 날짜를 한 번 더 누르거나, 칸을 끌어 기간을 고르면 등록 창이 열립니다</div>}
+            {!dayList.length && !dayEvs.length && <div className="cal-empty">일정 없음</div>}
           </div>
           <div className="cal-df">
             <div className="cal-in">
@@ -496,8 +496,8 @@ function EventDrawer({ ev, canEdit, onClose, onToast }: { ev: CalEvent; canEdit:
           <label className="ed-field"><span>종료일</span>
             <input type="date" className="ed-input" value={end} min={start} disabled={!canEdit} onChange={(e) => setEnd(e.target.value)} /></label>
         </div>
-        {canEdit && !ev.allDay && datesMoved && <div className="cal-evro">날짜를 바꾸면 시각 없이 종일 일정이 됩니다.</div>}
-        {!canEdit && <div className="cal-evro">보기 전용 — 만든 사람이나 팀장만 고칠 수 있습니다.</div>}
+        {canEdit && !ev.allDay && datesMoved && <div className="cal-evro">종일 일정으로 바뀝니다</div>}
+        {!canEdit && <div className="cal-evro">보기 전용</div>}
         {err && <div className="ed-err">{err}</div>}
       </div>
       <div className="df">

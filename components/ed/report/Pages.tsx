@@ -180,7 +180,7 @@ export function buildPages(d: ReportData, mode: Mode, posters?: Record<number, s
                       <div className="more">{it.assets.slice(1, 4).map((x) => <figure key={x.id}><AssetView a={x} mode={mode} posters={posters} />{x.caption && <figcaption>{x.caption}</figcaption>}</figure>)}</div>
                     )}
                   </>
-                ) : <div className="rp-slot">에셋 자리 — 이미지 · GIF · 영상 · iframe<br />(발표 · PDF 에서는 숨겨집니다)</div>}
+                ) : <div className="rp-slot">에셋 자리 — 이미지 · GIF · 영상 · iframe<br />(발표 · PDF에선 숨김)</div>}
               </div>
             )}
             <div className="rp-text">
