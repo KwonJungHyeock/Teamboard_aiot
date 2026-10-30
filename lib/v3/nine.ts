@@ -133,18 +133,43 @@ export const RAIL: RailGroup[] = [
   },
 ];
 
-/** 상단 캡슐 메뉴 — 순서 · 이름 고정 (DESIGN.md 3.2). `match` 는 켜짐 판정에 쓰는 주소 앞부분 */
-export const MENU: { label: string; href: string; match: string[]; lead?: boolean }[] = [
-  { label: "업무 현황", href: `${V3_BASE}/control`, match: [`${V3_BASE}/control`] },
-  { label: "내 업무",   href: `${V3_BASE}/my`,      match: [`${V3_BASE}/my`] },
-  { label: "업무일지",  href: `${V3_BASE}/log`,     match: [`${V3_BASE}/log`, `${V3_BASE}/report`] },
-  { label: "전체 업무", href: `${V3_BASE}/tasks`,   match: [`${V3_BASE}/tasks`] },
-  { label: "목표 관리", href: `${V3_BASE}/goals`,   match: [`${V3_BASE}/goals`] },
-  { label: "성과 분석", href: `${V3_BASE}/stats`,   match: [`${V3_BASE}/stats`], lead: true },
-  { label: "일정",      href: `${V3_BASE}/calendar`, match: [`${V3_BASE}/calendar`] },
-  { label: "회의",      href: `${V3_BASE}/room`,    match: [`${V3_BASE}/room`] },
-  { label: "보고",      href: `${V3_BASE}/reports`, match: [`${V3_BASE}/reports`] },
+/**
+ * 상단 캡슐 메뉴 — 2026-10 팀 피드백 2차: **다섯 개** (홈 · 업무 · 회의 · 보고 · 더보기).
+ * `match` 는 켜짐 판정에 쓰는 주소 앞부분. `tabs` 가 있으면 화면 위에 하위 탭 줄이 선다(Frame).
+ * 더보기도 같은 모양이다 — 자주 안 여는 화면(업무일지 · 월간 보고)을 탭으로 묶는다.
+ * 내 정보 · 구성원 · 설정은 오른쪽 위 계정 메뉴에 그대로 있다.
+ */
+export interface MenuTab { label: string; href: string; match: string[]; lead?: boolean }
+export interface MenuItem { label: string; href: string; match: string[]; lead?: boolean; tabs?: MenuTab[] }
+export const MENU: MenuItem[] = [
+  { label: "홈", href: `${V3_BASE}/calendar`, match: [`${V3_BASE}/calendar`] },
+  {
+    label: "업무", href: `${V3_BASE}/my`, match: [`${V3_BASE}/my`, `${V3_BASE}/tasks`, `${V3_BASE}/control`],
+    tabs: [
+      { label: "내 업무", href: `${V3_BASE}/my`, match: [`${V3_BASE}/my`] },
+      { label: "전체 업무", href: `${V3_BASE}/tasks`, match: [`${V3_BASE}/tasks`] },
+      { label: "팀원별 현황", href: `${V3_BASE}/control`, match: [`${V3_BASE}/control`] },
+    ],
+  },
+  { label: "회의", href: `${V3_BASE}/room`, match: [`${V3_BASE}/room`] },
+  {
+    label: "보고", href: `${V3_BASE}/reports`, match: [`${V3_BASE}/reports`, `${V3_BASE}/goals`, `${V3_BASE}/stats`],
+    tabs: [
+      { label: "팀 보고", href: `${V3_BASE}/reports`, match: [`${V3_BASE}/reports`] },
+      { label: "목표", href: `${V3_BASE}/goals`, match: [`${V3_BASE}/goals`] },
+      { label: "성과 분석", href: `${V3_BASE}/stats`, match: [`${V3_BASE}/stats`], lead: true },
+    ],
+  },
+  {
+    label: "더보기", href: `${V3_BASE}/log`, match: [`${V3_BASE}/log`, `${V3_BASE}/report`],
+    tabs: [
+      { label: "업무일지", href: `${V3_BASE}/log`, match: [`${V3_BASE}/log`] },
+      { label: "월간 보고 (내 기록)", href: `${V3_BASE}/report`, match: [`${V3_BASE}/report`] },
+    ],
+  },
 ];
+/** 주소가 이 메뉴(또는 탭)에 드는가 */
+export const menuOn = (path: string, match: string[]) => match.some((p) => path === p || path.startsWith(`${p}/`));
 
 /**
  * 계정 블록의 링크 — 레일에서 내려온 것들. 등급 조건은 **그 화면과 같은 함수**로

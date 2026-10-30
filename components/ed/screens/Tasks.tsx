@@ -7,7 +7,7 @@
 //   QA(2026-10-29): 검색 · 담당 · 카테고리 · 공개 범위 거르기, 보류는 「예정」에 「보류」 표시, 중단은 고를 때만 「완료」 칸에.
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { addDays, diffDays, lookOf, mdw, todayKst, type EdTask, type Look } from "@/lib/ed/core";
+import { addDays, diffDays, isOnTask, lookOf, mdw, todayKst, type EdTask, type Look } from "@/lib/ed/core";
 import { patchTask, useMeta, useTasks } from "../data";
 import { emitChanged, Seg, useToast } from "../ui";
 
@@ -79,7 +79,7 @@ export default function Tasks() {
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const list = useMemo(() => (tasks ?? []).filter((t) => t.parentTaskId === null
     && ["todo", "doing", "review", "hold", "done", ...(withDropped ? ["dropped"] : [])].includes(t.status)
-    && (!who || t.assigneeId === who) && (!area || t.areaId === area) && (!noDue || (!t.dueDate && t.status !== "done"))
+    && (!who || isOnTask(t, who)) && (!area || t.areaId === area) && (!noDue || (!t.dueDate && t.status !== "done"))
     && (vis === "all" || t.visibility === vis)
     // 검색 — 제목 · 설명 · 담당 · 카테고리에 낱말이 모두 들어 있으면
     && words.every((w) => `${t.title} ${t.description ?? ""} ${t.assigneeName ?? ""} ${t.areaName}`.toLowerCase().includes(w))),

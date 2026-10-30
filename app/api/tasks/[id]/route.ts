@@ -205,6 +205,24 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       );
     }
 
+    // ── 함께하는 사람 (0048) — 주담당 1명 + 여럿. 개인 업무 · 체크리스트 항목에는 두지 않는다 ──
+    let nextMembers: number[] | null = null;
+    if (payload.memberIds !== undefined) {
+      if (!Array.isArray(payload.memberIds)) return NextResponse.json({ error: "함께하는 사람 목록이 올바르지 않습니다." }, { status: 400 });
+      nextMembers = Array.from(new Set(payload.memberIds.map(Number).filter((n: number) => Number.isInteger(n) && n > 0 && n !== nextAssignee))) as number[];
+      if (nextMembers.length > 10) return NextResponse.json({ error: "함께하는 사람은 10명까지입니다." }, { status: 400 });
+      if (nextMembers.length && task.parent_task_id) return NextResponse.json({ error: "체크리스트 항목에는 함께하는 사람을 둘 수 없습니다." }, { status: 400 });
+      if (nextMembers.length) {
+        const ok = await query<{ id: number }>(`SELECT id FROM actor WHERE id = ANY($1) AND is_active`, [nextMembers]);
+        if (ok.length !== nextMembers.length) return NextResponse.json({ error: "없는 구성원이 들어 있습니다." }, { status: 400 });
+      }
+    }
+    if (nextVisibility === "private") {
+      const has = nextMembers !== null ? nextMembers.length
+        : (await queryOne<{ n: number }>(`SELECT count(*)::int AS n FROM task_member WHERE task_id = $1 AND is_active`, [taskId]))?.n ?? 0;
+      if (has > 0) return NextResponse.json({ error: "함께하는 사람이 있는 업무는 「나만」으로 바꿀 수 없습니다. 함께하는 사람을 먼저 빼 주세요." }, { status: 400 });
+    }
+
     /*
      * ── 영역·프로젝트 조합 (066 §E-44) ──────────────────────────────
      * 안 맞는 조합은 **400 이다.** 여기서 안 막으면 DB 트리거가 영문 예외를 던지고
@@ -487,6 +505,34 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (visChanged) {
       await query(`UPDATE task SET visibility = $2, updated_at = now() WHERE parent_task_id = $1 AND visibility <> $2`, [taskId, payload.visibility]);
     }
+    // 주담당이 된 사람은 함께하는 사람에서 빠진다(한 사람이 두 자리에 있지 않게)
+    if (payload.assigneeId !== undefined && nextAssignee) {
+      await query(`UPDATE task_member SET is_active = false, updated_at = now() WHERE task_id = $1 AND actor_id = $2 AND is_active`, [taskId, nextAssignee]);
+    }
+    if (nextMembers !== null) {
+      const before = await query<{ actor_id: number }>(`SELECT actor_id FROM task_member WHERE task_id = $1 AND is_active`, [taskId]);
+      const had = new Set(before.map((r) => r.actor_id));
+      const added = nextMembers.filter((x) => !had.has(x));
+      const removed = Array.from(had).filter((x) => !nextMembers!.includes(x));
+      for (const a of added) {
+        await query(
+          `INSERT INTO task_member (task_id, actor_id, added_by) VALUES ($1, $2, $3)
+           ON CONFLICT (task_id, actor_id) DO UPDATE SET is_active = true, added_by = EXCLUDED.added_by, updated_at = now()`,
+          [taskId, a, session.id]);
+      }
+      if (removed.length) {
+        await query(`UPDATE task_member SET is_active = false, updated_at = now() WHERE task_id = $1 AND actor_id = ANY($2)`, [taskId, removed]);
+      }
+      if (added.length || removed.length) {
+        const names = await query<{ id: number; display_name: string }>(`SELECT id, display_name FROM actor WHERE id = ANY($1)`, [[...added, ...removed]]);
+        const nm = (id: number) => names.find((n) => n.id === id)?.display_name ?? `#${id}`;
+        const parts = [...added.map((a) => `+${nm(a)}`), ...removed.map((r) => `−${nm(r)}`)];
+        extraLogs.push(`${session.name}이(가) 함께하는 사람 변경 (${parts.join(", ")}) — "${task.title}"`);
+        for (const a of added) {
+          await notify({ userId: a, type: "assign", refType: "task", refId: taskId, snippet: `함께하는 업무 · ${task.title}`, actorId: session.id });
+        }
+      }
+    }
 
     // 진척 재계산 대상 목표 수집 (파트 B) — 변경 전 연결 목표부터.
     const affectedGoals = new Set<number>(affectedGoalsPre);
@@ -714,7 +760,11 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         origin: t.origin, workType: t.work_type, areaId: t.area_id, areaName: t.area_name, areaColor: t.area_color,
         projectId: t.project_id, projectName: t.project_name, colorKey: t.color_key,
         assigneeId: t.assignee_id, assigneeName: t.assignee_name, createdByName: t.created_by_name, createdById: t.created_by,
-        canEdit: await canEditTask(session, { assignee_id: t.assignee_id, created_by: t.created_by, parent_task_id: t.parent_task_id }),
+        canEdit: await canEditTask(session, { id: t.id, assignee_id: t.assignee_id, created_by: t.created_by, parent_task_id: t.parent_task_id }),
+        // 함께하는 사람(0048) — 주담당은 assigneeId
+        members: await query<{ id: number; name: string }>(
+          `SELECT tm.actor_id AS id, a.display_name AS name FROM task_member tm JOIN actor a ON a.id = tm.actor_id
+            WHERE tm.task_id = $1 AND tm.is_active ORDER BY tm.created_at`, [t.id]),
         startDate: t.start_date, dueDate: t.due_date, dropReason: t.drop_reason,
         progress: t.progress ?? 0,
         goalIds: t.goal_ids ?? [],

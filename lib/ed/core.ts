@@ -11,7 +11,13 @@ export interface EdTask {
   areaId: number; areaName: string; dueDate: string | null; startDate: string | null; goalIds: number[];
   parentTaskId: number | null; childCount: number; childCounted: number; progress: number;
   completedAt: string | null; createdAt: string; visibility: string;
+  /** 함께하는 사람(0048). 주담당은 assigneeId — 집계는 주담당만 센다 */
+  memberIds?: number[];
 }
+
+/** 이 사람이 맡은 업무인가 — 주담당이거나 함께하는 사람 */
+export const isOnTask = (t: { assigneeId: number | null; memberIds?: number[] }, id: number | null | undefined) =>
+  id != null && (t.assigneeId === id || (t.memberIds ?? []).includes(id));
 
 const WD = ["일", "월", "화", "수", "목", "금", "토"];
 

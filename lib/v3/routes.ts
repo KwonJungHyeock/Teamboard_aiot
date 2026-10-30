@@ -38,7 +38,8 @@ export const ROUTE_PAIRS: RoutePair[] = [
    * 2026-10 관제 패널 — **첫 화면은 관제다**(지시: 「첫 화면 바로 적용」). 로그인하면
    * `/` 로 오고, 여기서 관제로 보낸다. 「대시보드」(`/v3`)는 그대로 있고 레일에서 간다.
    */
-  { old: "/", v3: `${V3_BASE}/control`, what: "관제 (옛 홈 · 첫 화면)" },
+  // 2026-10 팀 피드백 2차 — 첫 화면(홈)은 일정이다
+  { old: "/", v3: `${V3_BASE}/calendar`, what: "홈 — 일정 + 내 업무 요약 (첫 화면)" },
   { old: "/tasks", v3: `${V3_BASE}/tasks`, what: "업무 (옛 업무 목록)" },
   { old: "/calendar", v3: `${V3_BASE}/calendar`, what: "캘린더 (옛 캘린더)" },
   /*

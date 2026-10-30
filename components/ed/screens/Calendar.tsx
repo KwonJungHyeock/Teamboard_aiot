@@ -10,7 +10,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { addDays, diffDays, isEnter, md, personColors, todayKst, weekday, type EdTask } from "@/lib/ed/core";
+import { addDays, diffDays, isEnter, isOnTask, md, personColors, todayKst, weekday, type EdTask } from "@/lib/ed/core";
 import { createTask, patchTask, useMeta, useTasks } from "../data";
 import { api, Drawer, emitChanged, useOnChanged, useToast } from "../ui";
 import AddModal, { type AddPreset } from "../AddModal";
@@ -129,7 +129,7 @@ export default function Calendar({ meId, launch }: { meId: number; launch: strin
   const canEdit = (e: CalEvent) => e.kind === "me" || e.createdBy === meId || !!meta?.me.lead;
 
   const vis = useMemo(() => (tasks ?? []).filter((t) => t.parentTaskId === null && t.status !== "dropped" && t.status !== "proposed"
-    && (!who.length || (t.assigneeId !== null && who.includes(t.assigneeId)))), [tasks, who]);
+    && (!who.length || who.some((w) => isOnTask(t, w)))), [tasks, who]);
   const spans = useMemo(() => vis.filter(isSpan), [vis]);
   const items = useMemo<BarIt[]>(() => [
     ...evs.map((ev) => ({ key: ev.key, start: ev.start, end: ev.end, ev })),
@@ -166,7 +166,7 @@ export default function Calendar({ meId, launch }: { meId: number; launch: strin
     const t = x.it.task;
     if (t) {
       return (
-        <button type="button" className={`cal-ev tk ${look(t)}${edge}`} title={`${t.title} · ${t.assigneeName ?? "담당 없음"} · ${spanText({ start: t.startDate!, end: t.dueDate! })}`}
+        <button type="button" className={`cal-ev tk ${look(t)}${edge}`} title={`${t.title} · ${t.assigneeName ?? "담당 없음"}${t.memberIds?.length ? ` 외 ${t.memberIds.length}명` : ""} · ${spanText({ start: t.startDate!, end: t.dueDate! })}`}
                 style={{ ...pos, ["--pc" as string]: colorOf(t.assigneeId) }}
                 onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); openTask(t.id); }}>
           <span>{t.title}</span>
@@ -194,7 +194,7 @@ export default function Calendar({ meId, launch }: { meId: number; launch: strin
 
   // ── 내 업무 요약(팀 피드백 1) — 거르기와 상관없이 내 것 ──────────────
   const mineSum = useMemo(() => {
-    const xs = (tasks ?? []).filter((t) => t.parentTaskId === null && t.assigneeId === meId && !["done", "dropped", "proposed"].includes(t.status));
+    const xs = (tasks ?? []).filter((t) => t.parentTaskId === null && isOnTask(t, meId) && !["done", "dropped", "proposed"].includes(t.status));
     const over = xs.filter((t) => t.dueDate && t.dueDate < today).sort((a, b) => a.dueDate!.localeCompare(b.dueDate!));
     return {
       todo: xs.filter((t) => t.status === "todo" || t.status === "hold").length,

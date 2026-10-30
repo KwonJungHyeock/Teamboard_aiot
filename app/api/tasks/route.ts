@@ -10,6 +10,7 @@ import { query, queryOne } from "@/lib/db";
 import { logActivity } from "@/lib/activity";
 import { canEditTask, EDIT_DENIED } from "@/lib/task-permission";
 import { notify as pushNotify } from "@/lib/push";
+import { notify } from "@/lib/notify";
 import { jsonError } from "@/lib/api";
 import { kstToday } from "@/lib/home";
 import { visibleTaskSql, isVisibility } from "@/lib/visibility";
@@ -45,6 +46,8 @@ export interface TaskListRow {
    */
   createdById: number | null;
   startDate: string | null;
+  /** 함께하는 사람(0048). 주담당은 assigneeId */
+  memberIds: number[];
   dueDate: string | null;
   goalIds: number[];
   progress: number;
@@ -182,6 +185,7 @@ export async function GET(request: Request) {
       start_date: string | null;
       due_date: string | null;
       goal_ids: number[] | null;
+      member_ids: number[] | null;
       progress: number;
       created_by_name: string | null;
       created_by: number | null;
@@ -203,7 +207,10 @@ export async function GET(request: Request) {
               t.assignee_id, a.display_name AS assignee_name,
               t.area_id, ar.name AS area_name, t.work_type,
               t.start_date::text, t.due_date::text,
-              array_agg(gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
+              array_agg(DISTINCT gt.goal_id) FILTER (WHERE gt.goal_id IS NOT NULL) AS goal_ids,
+              -- 함께하는 사람(0048) — 주담당은 assignee_id 그대로
+              (SELECT array_agg(tm.actor_id ORDER BY tm.created_at) FROM task_member tm
+                WHERE tm.task_id = t.id AND tm.is_active) AS member_ids,
               t.progress,
               c.display_name AS created_by_name, t.created_by,
               t.blocked, t.blocked_reason, t.blocked_by, t.visibility, t.resolution,
@@ -287,6 +294,7 @@ export async function GET(request: Request) {
       startDate: r.start_date,
       dueDate: r.due_date,
       goalIds: r.goal_ids ?? [],
+      memberIds: r.member_ids ?? [],
       // 28-a — **실효 진척**을 내보낸다. 하위가 있으면 하위 완료율이 이긴다.
       //   raw 값을 내보내면 목록은 0%, 상세는 50% 가 된다 — 같은 업무가 화면마다 다른 말을 한다.
       //   셈은 lib/progress.ts 의 taskProgress() 가 한다. 여기서 공식을 새로 쓰지 않는다.
@@ -385,8 +393,8 @@ export async function POST(request: Request) {
       const chk = await checkParent(parentTaskId, null);
       if (chk.error) return NextResponse.json({ error: chk.error }, { status: 400 });
       // 남의 업무에 체크리스트 항목을 다는 것도 「고치기」다(QA 1)
-      const owner = await queryOne<{ assignee_id: number | null; created_by: number | null; parent_task_id: number | null }>(
-        `SELECT assignee_id, created_by, parent_task_id FROM task WHERE id = $1`, [parentTaskId]);
+      const owner = await queryOne<{ id: number; assignee_id: number | null; created_by: number | null; parent_task_id: number | null }>(
+        `SELECT id, assignee_id, created_by, parent_task_id FROM task WHERE id = $1`, [parentTaskId]);
       if (!owner || !(await canEditTask(session, owner))) return NextResponse.json({ error: EDIT_DENIED }, { status: 403 });
       projectId = chk.inherit!.projectId;
       areaId = chk.inherit!.areaId;
@@ -450,6 +458,17 @@ export async function POST(request: Request) {
         parentTaskId,
       ]
     );
+    // 함께하는 사람(0048) — 팀 공개 최상위 업무만. 주담당은 빼고, 있는 구성원만
+    if (Array.isArray(payload.memberIds) && visibility === "team" && parentTaskId === null) {
+      const ids = Array.from(new Set(payload.memberIds.map(Number).filter((n: number) => Number.isInteger(n) && n > 0 && n !== assigneeId))).slice(0, 10) as number[];
+      if (ids.length) {
+        await query(
+          `INSERT INTO task_member (task_id, actor_id, added_by)
+           SELECT $1, a.id, $3 FROM actor a WHERE a.id = ANY($2) AND a.is_active
+           ON CONFLICT (task_id, actor_id) DO NOTHING`, [task!.id, ids, session.id]);
+        for (const a of ids) await notify({ userId: a, type: "assign", refType: "task", refId: task!.id, snippet: `함께하는 업무 · ${title}`, actorId: session.id });
+      }
+    }
     // 프로젝트를 골라도 목표는 따라 붙지 않는다 (§A4 — 상속 폐지).
     // 목표는 사람이 직접 고른다. 안 고른 업무는 목표 화면의 미연결 배너에 오른다.
 

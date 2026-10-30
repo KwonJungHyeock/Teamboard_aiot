@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: `${TEAM_NAME} 통합업무관리`,
     short_name: "팀보드",
     description: "관제 · 내 업무 · 내 기록 · 회의실",
-    start_url: "/v3/control",
+    start_url: "/v3/calendar",
     scope: "/",
     display: "standalone",
     background_color: "#F4F7FB",
