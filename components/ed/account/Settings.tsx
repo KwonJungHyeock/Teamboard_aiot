@@ -17,6 +17,31 @@ async function send(url: string, method: string, body?: unknown): Promise<{ ok: 
   return { ok: !!r?.ok, data: r ? await r.json().catch(() => null) : null };
 }
 
+/** 보고 파트 순서 — 팀 기본값. 새 보고가 이 순서로 시작한다(보고마다 바꿀 수 있다) */
+const PARTS: Record<string, string> = { platform: "플랫폼", rnd: "R&D", etc: "기타" };
+function ReportOrder() {
+  const [order, setOrder] = useState<string[] | null>(null);
+  const [msg, setMsg] = useState("");
+  useEffect(() => { void fetch("/api/team-reports/settings", { cache: "no-store" }).then((r) => r.json()).then((d) => setOrder(d.partOrder)).catch(() => {}); }, []);
+  const move = async (i: number, k: number) => {
+    if (!order) return;
+    const o = [...order]; const [x] = o.splice(i, 1); o.splice(i + k, 0, x); setOrder(o);
+    const r = await send("/api/team-reports/settings", "PUT", { partOrder: o });
+    setMsg(r.ok ? "저장됨 ✓" : r.data?.error ?? "저장하지 못했습니다");
+  };
+  return (
+    <section className="ed-sec q q3">
+      <h2>보고 파트 순서</h2>
+      {order && order.map((p, i) => (
+        <div key={p} className="ed-row"><span className="k">{i + 1}. {PARTS[p]}</span><span className="ed-sp" />
+          <button type="button" className="ed-btn sm" disabled={i === 0} onClick={() => void move(i, -1)} aria-label="위로">↑</button>
+          <button type="button" className="ed-btn sm" disabled={i === order.length - 1} onClick={() => void move(i, 1)} aria-label="아래로">↓</button></div>
+      ))}
+      {msg && <div className="ed-ok" role="status">{msg}</div>}
+    </section>
+  );
+}
+
 export default function Settings() {
   const [p, setP] = useState<Platform | null>(null);
   const [n, setN] = useState<NotionInfo | null>(null);
@@ -108,6 +133,7 @@ export default function Settings() {
             </div>
             <Note k="scope" />
           </section>
+          <ReportOrder />
         </>
       )}
     </div>

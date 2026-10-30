@@ -115,6 +115,8 @@ summary::-webkit-details-marker { display: none; }
 .ed-nav a { flex-shrink: 0; padding: 8px 14px; border-radius: 99px; color: var(--sub); font-size: 13.5px; font-weight: 500; white-space: nowrap; transition: background .2s, color .2s; }
 .ed-nav a:hover { background: var(--panel2); color: var(--ink); text-decoration: none; }
 .ed-nav a.on { padding: 8px 16px; background: var(--ink); color: var(--bg); font-weight: 700; box-shadow: 0 6px 14px -6px color-mix(in oklch,var(--ink) 60%,transparent); }
+/* 메뉴 아홉 — 좁은 PC 폭(1100 이하)에서도 캡슐 안에 다 들어오게 간격만 줄인다 */
+@media (max-width: 1100px) and (min-width: 720px) { .ed-nav a { padding: 8px 10px; font-size: 13px; } .ed-nav a.on { padding: 8px 12px; } }
 
 .ed-right { justify-self: end; display: flex; align-items: center; gap: 8px; }
 .ed-pill { flex-shrink: 0; white-space: nowrap; height: 36px; padding: 0 12px; border: 0; cursor: pointer; font-size: 12px; font-weight: 600; border-radius: 99px;

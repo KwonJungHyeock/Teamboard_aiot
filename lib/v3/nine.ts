@@ -48,6 +48,7 @@ export const NINE: NineScreen[] = [
   { n: 12, key: "control", label: "업무 현황", path: `${V3_BASE}/control` },
   { n: 13, key: "room", label: "회의", path: `${V3_BASE}/room`, prefix: true },
   { n: 14, key: "settings", label: "설정", path: `${V3_BASE}/settings` },
+  { n: 15, key: "reports", label: "보고", path: `${V3_BASE}/reports`, prefix: true },
   { n: 15, key: "calendar", label: "일정", path: `${V3_BASE}/calendar` },
   { n: 16, key: "report", label: "월간 보고", path: `${V3_BASE}/report` },
 ];
@@ -142,6 +143,7 @@ export const MENU: { label: string; href: string; match: string[]; lead?: boolea
   { label: "성과 분석", href: `${V3_BASE}/stats`,   match: [`${V3_BASE}/stats`], lead: true },
   { label: "일정",      href: `${V3_BASE}/calendar`, match: [`${V3_BASE}/calendar`] },
   { label: "회의",      href: `${V3_BASE}/room`,    match: [`${V3_BASE}/room`] },
+  { label: "보고",      href: `${V3_BASE}/reports`, match: [`${V3_BASE}/reports`] },
 ];
 
 /**
