@@ -257,24 +257,43 @@ summary::-webkit-details-marker { display: none; }
 .ed-drawer .db { flex: 1; min-height: 0; overflow: auto; padding: 12px 22px 22px; display: flex; flex-direction: column; gap: 22px; }
 .ed-drawer .df { flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 16px 22px; box-shadow: 0 -1px 0 var(--line); }
 .ed-drawer .tt { flex: 1; resize: none; border: 0; outline: 0; background: transparent; font-size: 20px; font-weight: 700; line-height: 1.35; color: var(--ink); padding: 0; }
+/* ── 고르거나 적기(cb-) — 카테고리 · 목표 ─────────────────────── */
+.cb { position: relative; min-width: 0; }
+.cb-in { padding-right: 30px; cursor: pointer; text-overflow: ellipsis; }
+.cb.open .cb-in { cursor: text; }
+.cb-in.dot { padding-left: 28px; }
+.cb-dot { position: absolute; left: 13px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; pointer-events: none; z-index: 1; }
+.cb-dot.in { position: static; margin: 0; flex-shrink: 0; }
+.cb-cv { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--faint); pointer-events: none; }
+.cb-list { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 50; max-height: 248px; overflow: auto; padding: 5px; border-radius: 14px;
+  background: var(--surface); box-shadow: var(--elev3); animation: fadeIn .12s; }
+.cb-row { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 9px; cursor: pointer; font-size: 14px; color: var(--ink); }
+.cb-row.hi { background: var(--panel2); }
+.cb-row.on .cb-t { font-weight: 700; }
+.cb-row.make { color: var(--accent); font-weight: 600; }
+.cb-t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cb-rm { flex-shrink: 0; width: 24px; height: 24px; border: 0; border-radius: 7px; cursor: pointer; font-size: 11px; color: var(--faint); background: transparent; opacity: 0; }
+.cb-row.hi .cb-rm { opacity: 1; }
+.cb-rm:hover { color: var(--red); background: color-mix(in oklch,var(--red) 10%,transparent); }
+@media (hover: none) { .cb-rm { opacity: 1; } }
+.cb-empty { padding: 10px; font-size: 13px; color: var(--faint); }
+
 /* ── 가운데 창 · 등록 창(am-) ──────────────────────────────────── */
 .ed-modal { position: fixed; top: 50%; left: 50%; z-index: 41; max-width: calc(100vw - 24px); max-height: calc(100dvh - 32px); transform: translate(-50%,-50%);
   display: flex; flex-direction: column; border-radius: 22px; background: var(--surface); box-shadow: var(--elev3); overflow: hidden; animation: fadeIn .2s; }
 .am-h { flex-shrink: 0; display: flex; align-items: center; gap: 14px; padding: 18px 20px 12px; box-shadow: 0 1px 0 var(--line); }
-.am-h > b { font-size: 18px; font-weight: 800; letter-spacing: -.02em; }
-.am-h .am-radios { flex: 1; }
 .am-b { flex: 1; min-height: 0; overflow: auto; padding: 16px 20px 18px; display: flex; flex-direction: column; gap: 16px; }
 .am-f { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
 .am-f > span { font-size: 13px; font-weight: 700; color: var(--sub); }
 .am-f > span small { font-weight: 500; color: var(--faint); }
 .am-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 14px; }
-.am-dates { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: end; gap: 8px; }
-.am-dates label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.am-dates small { font-size: 12px; color: var(--faint); }
-.am-dates i { font-style: normal; color: var(--faint); padding-bottom: 10px; }
-.am-quick { display: flex; gap: 6px; flex-wrap: wrap; }
-.am-quick button { border: 0; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 8px; color: var(--sub); background: var(--panel2); }
-.am-quick button:hover { color: var(--ink); }
+.am-dates { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 8px; }
+.am-date { cursor: pointer; }
+.am-title { font-size: 16px; font-weight: 600; padding: 13px 14px; }
+.am-more { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; color: var(--sub); padding: 2px 0; }
+.am-more:hover { color: var(--ink); }
+.am-more span { font-size: 10px; }
+.am-dates i { font-style: normal; color: var(--faint); }
 .am-hint { font-style: normal; font-size: 12px; line-height: 1.55; color: var(--faint); }
 select.ed-input { cursor: pointer; }
 .am-radios { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -337,6 +356,14 @@ textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; bord
 .ed-comp .cerr { width: 100%; padding: 0 0 4px; font-size: 13px; color: var(--red); }
 .ed-optpop { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: 340px; max-height: 60vh; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: 18px;
   background: var(--surface); box-shadow: var(--elev3); animation: pop .16s var(--ease); }
+.ed-optpop.cp-opts { overflow: visible; max-height: none; width: 320px; gap: 12px; }
+.cp-f { display: flex; flex-direction: column; gap: 6px; }
+.cp-f > span { font-size: 12px; font-weight: 700; color: var(--sub); }
+.cp-f .ed-input { padding: 9px 12px; font-size: 13px; }
+.cp-f .cb-in { padding-right: 30px; }
+.cp-f .cb-in.dot { padding-left: 28px; }
+.tok-date { position: relative; }
+.tok-date input { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
 .ed-optpop .og { display: flex; flex-direction: column; gap: 8px; }
 .ed-optpop .og > span { font-size: 12px; font-weight: 700; color: var(--faint); }
 .ed-optpop .og > div { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -358,12 +385,13 @@ textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; bord
 .tdr-al { align-self: flex-start; }
 .tdr-due { margin-left: 6px; font-style: normal; color: var(--sub); }
 .tdr-due.red { color: var(--red); } .tdr-due.amber { color: var(--amber); }
+.tdr-two { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; align-items: start; }
+.tdr-mem b { margin-left: 4px; font-size: 10px; opacity: .6; }
+.tdr-mem:hover b { opacity: 1; color: var(--red); }
+.tdr-addsel { appearance: none; -webkit-appearance: none; cursor: pointer; border: 0; font: inherit; font-size: 13px; font-weight: 600; color: var(--faint); background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.tdr-addsel:hover { color: var(--ink); }
 .tdr-sub { margin-left: 6px; font-size: 12px; font-weight: 500; color: var(--faint); }
 .tdr-hint { font-style: normal; font-size: 12px; line-height: 1.55; color: var(--faint); }
-.tdr-date { position: relative; }
-.tdr-date { cursor: pointer; }
-.tdr-date input { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
-.tdr-cd { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
 .tdr-owner { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--panel2); box-shadow: var(--sunken); }
 .tdr-owner b { display: block; font-size: 14px; font-weight: 600; }
 .tdr-owner small { display: block; font-size: 12px; color: var(--faint); }
@@ -449,12 +477,6 @@ textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; bord
 .tdr-fh { display: flex; align-items: center; gap: 8px; }
 .tdr-tidy { margin-left: auto; border: 0; background: none; cursor: pointer; padding: 2px 4px; font-size: 12px; font-weight: 600; color: var(--faint); }
 .tdr-tidy:hover, .tdr-tidy.on { color: var(--accent); }
-.tdr-add { color: var(--faint); background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
-.tdr-add:hover { color: var(--ink); }
-.tdr-addin { width: 150px; cursor: text; outline: 0; background: var(--surface); box-shadow: var(--elev1); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; }
-.tdr-del b { margin-left: 2px; font-size: 11px; color: var(--red); }
-.tdr-del:hover { box-shadow: inset 0 0 0 1px var(--red); }
-.tdr-lock { opacity: .45; cursor: default; }
 .me-tip { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.6; color: var(--sub); }
 .ag-in textarea { flex: 1; resize: none; border: 0; outline: 0; max-height: 120px; padding: 11px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; background: var(--panel2); box-shadow: var(--sunken); color: var(--ink); }
 .ag-in .ed-btn.off { opacity: .3; }

@@ -1,25 +1,23 @@
 "use client";
 
-// 등록 창 — 달력에서 날짜를 누르거나(끌면 기간) `+ 등록`, 한 줄 등록창의 `자세히` 로 연다 (팀 피드백 4 · 5).
-//   [업무 | 일정] 라디오. 업무 = 이름 · 시작일~기한 · 담당 · 함께하는 사람(체크) · 카테고리 · 목표(설명) · 공개 · 상태 · 메모.
-//   일정 = 이름 · 시작일~종료일 · 공개. 알약 대신 라디오 · 선택 상자로 한눈에.
+// 등록 창 — 달력의 `+ 등록` · 칸의 `+` · 고른 날 한 번 더 · 칸 끌기, 한 줄 등록창의 `자세히` 로 연다.
+//   업무: 이름 · 기간(달력) · 담당 · 카테고리(고르거나 적기) · 목표(고르거나 적기).
+//         함께하는 사람 · 공개 · 상태 · 메모는 「옵션」 안에 접어 둔다 — 대부분은 안 건드린다.
+//   일정: 이름 · 기간 · 팀/나만.
 import { useState } from "react";
-import { addDays, md, todayKst } from "@/lib/ed/core";
-import { createTask, useMeta } from "./data";
-import { api, emitChanged, Modal } from "./ui";
+import { md, todayKst } from "@/lib/ed/core";
+import { areaOpts, canMakeGoal, createTask, dropArea, dropGoal, goalOpts, makeArea, makeGoal, useMeta } from "./data";
+import Combo from "./Combo";
+import { api, emitChanged, Modal, Seg } from "./ui";
 
 export interface AddPreset { start?: string; end?: string; title?: string; kind?: "task" | "event" }
 
-function Radios<T extends string>({ name, value, options, onChange }: { name: string; value: T; options: { v: T; label: string; hint?: string }[]; onChange: (v: T) => void }) {
+/** 날짜 칸 — 누르면 바로 달력이 열린다(showPicker) */
+export function DateIn({ value, onChange, min, max, label }: { value: string; onChange: (v: string) => void; min?: string; max?: string; label: string }) {
   return (
-    <div className="am-radios" role="radiogroup">
-      {options.map((o) => (
-        <label key={o.v} className={`am-radio${o.v === value ? " on" : ""}`}>
-          <input type="radio" name={name} value={o.v} checked={o.v === value} onChange={() => onChange(o.v)} />
-          <span>{o.label}{o.hint && <small>{o.hint}</small>}</span>
-        </label>
-      ))}
-    </div>
+    <input type="date" className="ed-input am-date" aria-label={label} value={value} min={min} max={max}
+           onClick={(e) => { try { e.currentTarget.showPicker(); } catch { /* 오래된 브라우저는 그냥 칸 */ } }}
+           onChange={(e) => onChange(e.target.value)} />
   );
 }
 
@@ -35,21 +33,23 @@ export default function AddModal({ preset, onClose, onDone }: { preset?: AddPres
   const [evStart, setEvStart] = useState(preset?.start ?? today);
   const [evEnd, setEvEnd] = useState(preset?.end ?? preset?.start ?? today);
   const [who, setWho] = useState<number | "">("");
-  const [area, setArea] = useState<number | "">("");
-  const [goal, setGoal] = useState<number | "">("");
+  const [area, setArea] = useState<number | null>(null);
+  const [goal, setGoal] = useState<number | null>(null);
   const [scope, setScope] = useState<"team" | "private">("team");
   const [status, setStatus] = useState<"todo" | "doing">("todo");
   const [memo, setMemo] = useState("");
   const [members, setMembers] = useState<number[]>([]);
+  const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
   const me = meta?.me.id;
-  const assignee = scope === "private" ? me : (who === "" ? me : who);
-  const goals = (meta?.goals ?? []).filter((g) => g.periodType !== "year");
+  const personal = scope === "private";
+  const assignee = personal ? me : (who === "" ? me : who);
   const taskOk = !!title.trim() && (!start || !due || start <= due);
   const evOk = !!title.trim() && !!evStart && !!evEnd && evEnd >= evStart;
   const ok = (kind === "task" ? taskOk : evOk) && !busy;
+  const fail = (e: unknown) => setErr(e instanceof Error ? e.message : "처리하지 못했습니다");
 
   const submit = async () => {
     if (!ok) return;
@@ -57,124 +57,113 @@ export default function AddModal({ preset, onClose, onDone }: { preset?: AddPres
     try {
       if (kind === "task") {
         const body: Record<string, unknown> = { title: title.trim(), assigneeId: assignee, status, visibility: scope, startDate: start || null, dueDate: due || null };
-        if (area !== "") body.areaId = area;
+        if (area !== null) body.areaId = area;
         if (memo.trim()) body.description = memo.trim();
         const with_ = members.filter((m) => m !== assignee);
-        if (scope === "team" && with_.length) body.memberIds = with_;
+        if (!personal && with_.length) body.memberIds = with_;
         const { id } = await createTask(body);
-        if (goal !== "" && id) await api(`/api/tasks/${id}`, { method: "PATCH", body: { goalIds: [goal] } }).catch(() => {});
-        if (goal !== "") emitChanged();
-        const when = start && due ? `${md(start)}~${md(due)}` : due ? `기한 ${md(due)}` : "기한 없음";
-        onDone?.(`업무 등록 · ${when}`, id);
+        if (goal !== null && id) { await api(`/api/tasks/${id}`, { method: "PATCH", body: { goalIds: [goal] } }).catch(() => {}); emitChanged(); }
+        onDone?.(`업무 등록 · ${start && due ? `${md(start)}~${md(due)}` : due ? md(due) : "기한 없음"}`, id);
       } else {
-        await api(scope === "team" ? "/api/events" : "/api/personal-events", { method: "POST", body: { title: title.trim(), startDate: evStart, endDate: evEnd } });
+        await api(personal ? "/api/personal-events" : "/api/events", { method: "POST", body: { title: title.trim(), startDate: evStart, endDate: evEnd } });
         emitChanged();
-        onDone?.(`일정 등록 · ${md(evStart)}${evEnd !== evStart ? `~${md(evEnd)}` : ""}${scope === "private" ? " · 나만" : ""}`);
+        onDone?.(`일정 등록 · ${md(evStart)}${evEnd !== evStart ? `~${md(evEnd)}` : ""}${personal ? " · 나만" : ""}`);
       }
       onClose();
-    } catch (e) { setErr(e instanceof Error ? e.message : "등록하지 못했습니다"); setBusy(false); }
+    } catch (e) { fail(e); setBusy(false); }
   };
   const onEnter = (e: React.KeyboardEvent) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); void submit(); } };
+  const others = (meta?.people ?? []).filter((p) => p.id !== assignee);
+  const nm = (p: { id: number; name: string }) => (p.id === me ? `나 · ${p.name}` : p.name);
 
   return (
-    <Modal onClose={onClose} label="등록" width={560}>
+    <Modal onClose={onClose} label="등록" width={520}>
       <div className="am-h">
-        <b>등록</b>
-        <Radios name="am-kind" value={kind} onChange={(v) => { setKind(v); setErr(""); }}
-                options={[{ v: "task", label: "업무" }, { v: "event", label: "일정", hint: "박람회 · 교육 · 출장" }]} />
+        <Seg value={kind} onChange={(v) => { setKind(v); setErr(""); }} options={[{ v: "task", label: "업무" }, { v: "event", label: "일정" }]} />
+        <span style={{ flex: 1 }} />
         <button type="button" className="ed-x" onClick={onClose} aria-label="닫기">✕</button>
       </div>
       <div className="am-b">
-        <label className="am-f">
-          <span>이름</span>
-          <input className="ed-input" autoFocus value={title} maxLength={kind === "task" ? 200 : 120} onChange={(e) => setTitle(e.target.value)} onKeyDown={onEnter}
-                 placeholder={kind === "task" ? "무엇을 하나요" : "일정 이름"} />
-        </label>
+        <input className="ed-input am-title" autoFocus value={title} maxLength={kind === "task" ? 200 : 120} onChange={(e) => setTitle(e.target.value)} onKeyDown={onEnter}
+               placeholder={kind === "task" ? "업무 이름" : "일정 이름"} aria-label="이름" />
 
         {kind === "task" ? (
           <>
             <div className="am-f">
               <span>기간</span>
               <div className="am-dates">
-                <label><small>시작일</small><input type="date" className="ed-input" value={start} max={due || undefined} onChange={(e) => setStart(e.target.value)} /></label>
+                <DateIn label="시작일" value={start} max={due || undefined} onChange={setStart} />
                 <i>~</i>
-                <label><small>기한</small><input type="date" className="ed-input" value={due} min={start || undefined} onChange={(e) => setDue(e.target.value)} /></label>
+                <DateIn label="기한" value={due} min={start || undefined} onChange={setDue} />
               </div>
-              <div className="am-quick">
-                <button type="button" onClick={() => { setStart(""); setDue(today); }}>오늘까지</button>
-                <button type="button" onClick={() => { setStart(today); setDue(addDays(today, 6)); }}>이번 일주일</button>
-                <button type="button" onClick={() => { setStart(""); setDue(""); }}>기한 없음</button>
-              </div>
-              <em className="am-hint">시작일을 넣으면 달력에 시작~기한 막대로 보입니다. 하루짜리는 기한만 두세요.</em>
             </div>
             <div className="am-grid">
               <label className="am-f">
                 <span>담당</span>
-                <select className="ed-input" value={scope === "private" ? (me ?? "") : who === "" ? (me ?? "") : who} disabled={scope === "private"}
-                        onChange={(e) => setWho(Number(e.target.value))}>
-                  {meta?.people.map((p) => <option key={p.id} value={p.id}>{p.id === me ? `나 · ${p.name}` : p.name}</option>)}
+                <select className="ed-input" value={assignee ?? ""} disabled={personal} onChange={(e) => setWho(Number(e.target.value))}>
+                  {meta?.people.map((p) => <option key={p.id} value={p.id}>{nm(p)}</option>)}
                 </select>
               </label>
-              <label className="am-f">
+              <div className="am-f">
                 <span>카테고리</span>
-                <select className="ed-input" value={area} onChange={(e) => setArea(e.target.value ? Number(e.target.value) : "")}>
-                  <option value="">고르지 않음 (기타)</option>
-                  {meta?.areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-              </label>
+                <Combo label="카테고리" value={area} options={areaOpts(meta)} none="기타" onPick={setArea}
+                       onCreate={async (name) => { try { setArea(await makeArea(name)); } catch (e) { fail(e); } }}
+                       onRemove={async (o) => { try { if (await dropArea(o) && area === o.id) setArea(null); } catch (e) { fail(e); } }} />
+              </div>
             </div>
-            {scope === "team" && (meta?.people.length ?? 0) > 1 && (
-              <div className="am-f">
-                <span>함께하는 사람 <small>(선택 · 같이 보고 고칠 수 있음, 집계는 주담당만)</small></span>
-                <div className="am-checks">
-                  {meta?.people.filter((p) => p.id !== assignee).map((p) => (
-                    <label key={p.id} className={`am-radio${members.includes(p.id) ? " on" : ""}`}>
-                      <input type="checkbox" checked={members.includes(p.id)}
-                             onChange={(e) => setMembers((xs) => e.target.checked ? [...xs, p.id] : xs.filter((x) => x !== p.id))} />
-                      <span>{p.id === me ? `나 · ${p.name}` : p.name}</span>
-                    </label>
-                  ))}
+            <div className="am-f">
+              <span>목표 <small>달성률 · 보고에 집계</small></span>
+              <Combo label="목표" value={goal} options={goalOpts(meta, personal)} none="없음 (상시 업무)" onPick={setGoal}
+                     onCreate={canMakeGoal(meta, personal) ? async (t) => { try { setGoal(await makeGoal(t, personal)); } catch (e) { fail(e); } } : undefined}
+                     onRemove={async (o) => { try { if (await dropGoal(o) && goal === o.id) setGoal(null); } catch (e) { fail(e); } }} />
+            </div>
+
+            <button type="button" className="am-more" aria-expanded={more} onClick={() => setMore((x) => !x)}>
+              옵션 {more ? "접기" : `· 함께하는 사람 · 공개 · 메모`}<span>{more ? "▴" : "▾"}</span>
+            </button>
+            {more && (
+              <>
+                {!personal && others.length > 0 && (
+                  <div className="am-f">
+                    <span>함께하는 사람</span>
+                    <div className="am-checks">
+                      {others.map((p) => (
+                        <label key={p.id} className={`am-radio${members.includes(p.id) ? " on" : ""}`}>
+                          <input type="checkbox" checked={members.includes(p.id)}
+                                 onChange={(e) => setMembers((xs) => e.target.checked ? [...xs, p.id] : xs.filter((x) => x !== p.id))} />
+                          <span>{nm(p)}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="am-grid">
+                  <div className="am-f">
+                    <span>공개</span>
+                    <Seg value={scope} onChange={(v) => { setScope(v); setGoal(null); }} options={[{ v: "team", label: "팀" }, { v: "private", label: "나만" }]} />
+                  </div>
+                  <div className="am-f">
+                    <span>상태</span>
+                    <Seg value={status} onChange={setStatus} options={[{ v: "todo", label: "할 일" }, { v: "doing", label: "진행 중" }]} />
+                  </div>
                 </div>
-              </div>
+                <textarea className="ed-input" rows={2} value={memo} maxLength={4000} onChange={(e) => setMemo(e.target.value)} placeholder="메모" aria-label="메모" />
+              </>
             )}
-            <label className="am-f">
-              <span>목표</span>
-              <select className="ed-input" value={goal} onChange={(e) => setGoal(e.target.value ? Number(e.target.value) : "")}>
-                <option value="">없음 — 상시 업무</option>
-                {goals.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
-              </select>
-              <em className="am-hint">목표에 연결하면 그 목표의 달성률과 「보고」에 집계됩니다. 목표와 상관없는 일상 업무는 「없음」으로 두면 상시 업무로 셉니다.</em>
-            </label>
-            <div className="am-grid">
-              <div className="am-f">
-                <span>공개</span>
-                <Radios name="am-scope" value={scope} onChange={setScope} options={[{ v: "team", label: "팀" }, { v: "private", label: "나만" }]} />
-              </div>
-              <div className="am-f">
-                <span>상태</span>
-                <Radios name="am-status" value={status} onChange={setStatus} options={[{ v: "todo", label: "할 일" }, { v: "doing", label: "진행 중" }]} />
-              </div>
-            </div>
-            {scope === "private" && <em className="am-hint">나만 보는 업무는 담당이 나로 고정되고 집계 · 보고에 들어가지 않습니다.</em>}
-            <label className="am-f">
-              <span>메모 <small>(선택)</small></span>
-              <textarea className="ed-input" rows={3} value={memo} maxLength={4000} onChange={(e) => setMemo(e.target.value)} placeholder="참고할 내용 · 링크" />
-            </label>
           </>
         ) : (
           <>
             <div className="am-f">
               <span>기간</span>
               <div className="am-dates">
-                <label><small>시작일</small><input type="date" className="ed-input" value={evStart}
-                       onChange={(e) => { const v = e.target.value; setEvStart(v); if (v && evEnd < v) setEvEnd(v); }} /></label>
+                <DateIn label="시작일" value={evStart} onChange={(v) => { setEvStart(v); if (v && evEnd < v) setEvEnd(v); }} />
                 <i>~</i>
-                <label><small>종료일</small><input type="date" className="ed-input" value={evEnd} min={evStart} onChange={(e) => setEvEnd(e.target.value)} /></label>
+                <DateIn label="종료일" value={evEnd} min={evStart} onChange={setEvEnd} />
               </div>
             </div>
             <div className="am-f">
               <span>공개</span>
-              <Radios name="am-escope" value={scope} onChange={setScope} options={[{ v: "team", label: "팀", hint: "모두의 달력에" }, { v: "private", label: "나만", hint: "내 달력에만" }]} />
+              <Seg value={scope} onChange={setScope} options={[{ v: "team", label: "팀" }, { v: "private", label: "나만" }]} />
             </div>
           </>
         )}
