@@ -34,7 +34,7 @@ const host = (u: string) => { try { const h = new URL(u).hostname.replace(/^www\
 
 interface Detail {
   id: number; title: string; description: string; status: string; assigneeId: number | null; assigneeName: string | null;
-  createdByName: string | null; createdById: number | null; visibility: string; areaId: number; areaName: string; dueDate: string | null; goalIds: number[]; parentTaskId: number | null;
+  createdByName: string | null; createdById: number | null; visibility: string; areaId: number; areaName: string; dueDate: string | null; startDate?: string | null; goalIds: number[]; parentTaskId: number | null;
   /** 담당 · 만든 사람 · 팀장만 고친다(QA 1) — 나머지는 보기 전용 + 「수정 요청」 */
   canEdit?: boolean; dropReason?: string | null;
 }
@@ -227,6 +227,22 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
                  onChange={(v) => void save({ visibility: v })} />
           </div>
         )}
+        {!t.parentTaskId && (
+          <div className="ed-field">
+            <span>시작일 <small className="tdr-sub">넣으면 달력에 시작일~기한 막대로 보입니다</small></span>
+            <div className="ed-chips">
+              <button type="button" className={`ed-chip${!t.startDate ? " on" : ""}`} onClick={() => void save({ startDate: null })}>없음</button>
+              <button type="button" className={`ed-chip${t.startDate === today ? " on" : ""}`}
+                      onClick={() => { if (t.dueDate && t.dueDate < today) showToast("기한보다 늦은 시작일은 넣을 수 없습니다"); else void save({ startDate: today }); }}>오늘</button>
+              <span className={`ed-chip tdr-date${t.startDate && t.startDate !== today ? " on" : ""}`}
+                    onClick={(e) => { const i = e.currentTarget.querySelector("input"); try { i?.showPicker(); } catch { i?.focus(); } }}>
+                {t.startDate && t.startDate !== today ? t.startDate.slice(5).replace("-", ".") : "날짜"}
+                <input type="date" tabIndex={-1} aria-label="시작 날짜" value={t.startDate ?? ""} max={t.dueDate ?? undefined}
+                       onChange={(e) => { const v = e.target.value; if (!v) return; if (t.dueDate && v > t.dueDate) showToast("기한보다 늦은 시작일은 넣을 수 없습니다"); else void save({ startDate: v }); }} />
+              </span>
+            </div>
+          </div>
+        )}
         <div className="ed-field">
           <span>기한 {t.dueDate && <em className={`tdr-due ${db.tone}`}>{db.tone === "red" ? db.text : `${t.dueDate.slice(5).replace("-", ".")}${diffDays(t.dueDate, today) >= 0 ? ` · ${db.text === "오늘" || db.text === "내일" ? db.text : `D-${diffDays(t.dueDate, today)}`}` : ""}`}</em>}</span>
           <div className="ed-chips">
@@ -277,6 +293,7 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
               ))}
               {!tidyGoal && canMakeGoal && !ro && <AddChip label="목표" onAdd={addGoal} />}
             </div>
+            {!tidyGoal && <em className="tdr-hint">목표에 연결하면 그 목표의 달성률과 「보고」에 집계됩니다. 일상 업무는 「없음」으로 두면 상시 업무로 셉니다.</em>}
           </div>
         )}
         </fieldset>

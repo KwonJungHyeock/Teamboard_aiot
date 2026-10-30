@@ -12,7 +12,7 @@ export interface NotesState { body: string; rev: number; by: string | null; at: 
 type Mode = "notes" | "memo";
 const IDLE = 1200;
 
-const hm = (iso: string | null) => {
+export const hm = (iso: string | null) => {
   if (!iso) return "";
   const d = new Date(Date.parse(iso.replace(" ", "T").replace(/\+00$/, "Z").replace(/([+-]\d\d)$/, "$1:00")) + 9 * 3600e3);
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
@@ -126,7 +126,7 @@ export default function MeetingNotes({ meetingId, remote, onSaved, doc, digest, 
   const [menu, setMenu] = useState(false);
 
   const status = mode === "notes"
-    ? (state === "saving" ? "저장 중" : state === "dirty" ? "고치는 중" : meta.at ? `저장됨 · ${hm(meta.at)}${meta.by ? ` ${meta.by}` : ""}` : "함께 쓰는 회의록")
+    ? (state === "saving" ? "저장 중" : state === "dirty" ? "고치는 중" : meta.at ? `마지막 수정 · ${meta.by ?? "누군가"} · ${hm(meta.at)}` : "함께 쓰는 회의록 · 참석자 모두 고칠 수 있음")
     : (memoState === "saving" ? "저장 중" : memoState === "dirty" ? "고치는 중" : memoAt ? `저장됨 · ${hm(memoAt)} · 나만 보기` : "나만 보는 메모");
 
   return (
