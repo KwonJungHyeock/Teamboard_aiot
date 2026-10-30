@@ -7,7 +7,7 @@
 //   QA(2026-10-29): 검색 · 담당 · 카테고리 · 공개 범위 거르기, 보류는 「예정」에 「보류」 표시, 중단은 고를 때만 「완료」 칸에.
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { addDays, diffDays, lookOf, LOOK_LABEL, mdw, todayKst, type EdTask, type Look } from "@/lib/ed/core";
+import { addDays, diffDays, lookOf, mdw, todayKst, type EdTask, type Look } from "@/lib/ed/core";
 import { patchTask, useMeta, useTasks } from "../data";
 import { emitChanged, Seg, useToast } from "../ui";
 
@@ -131,14 +131,22 @@ export default function Tasks() {
     showToast(fail ? `${ids.length - fail}건 ${label} · ${fail}건 실패` : `${ids.length}건을 ${label}`);
   };
 
+  // CSV — 보이는 그대로(거르기 반영). 날짜는 표시 글자(「3일 지남」)가 아니라 YYYY-MM-DD 원래 값으로 —
+  // 엑셀에서 월별로 걸러 보고 정리할 수 있게(2026-10 운영: 「10월 업무 정리」)
   const csv = () => {
     const shown = lanes.filter((l) => filter === "all" || l.k === filter).flatMap((l) => l.xs);
     const goalName = new Map((meta?.goals ?? []).map((g) => [g.id, g.title]));
-    const head = "업무,담당,카테고리,상태,기한,목표";
-    const body = shown.map(({ t, look }) => [t.title, t.assigneeName ?? "", t.areaName, LOOK_LABEL[look], dueText(t, look, today),
-      t.goalIds.map((g) => goalName.get(g) ?? "").filter(Boolean).join(" / ")]
+    const ST: Record<string, string> = { todo: "시작 전", doing: "진행", review: "검토", hold: "보류", done: "완료", dropped: "중단" };
+    const day = (v: string | null) => (v ? new Date(Date.parse(v.replace(" ", "T").replace(/\+00$/, "Z")) + 9 * 3600e3).toISOString().slice(0, 10) : "");
+    const kids = new Map<number, { n: number; d: number }>();
+    for (const t of tasks ?? []) if (t.parentTaskId) { const k = kids.get(t.parentTaskId) ?? { n: 0, d: 0 }; k.n++; if (t.status === "done") k.d++; kids.set(t.parentTaskId, k); }
+    const head = "업무,담당,카테고리,상태,지남,공개,시작일,기한,완료일,등록일,체크리스트,목표,메모";
+    const body = shown.map(({ t, look }) => [t.title, t.assigneeName ?? "", t.areaName, ST[t.status] ?? t.status, look === "over" ? "지남" : "",
+      t.visibility === "private" ? "비공개" : "팀", t.startDate ?? "", t.dueDate ?? "", day(t.completedAt), day(t.createdAt),
+      kids.get(t.id) ? `${kids.get(t.id)!.d}/${kids.get(t.id)!.n}` : "",
+      t.goalIds.map((g) => goalName.get(g) ?? "").filter(Boolean).join(" / "), (t.description ?? "").replace(/\s+/g, " ").slice(0, 300)]
       .map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const url = URL.createObjectURL(new Blob([`﻿${head}\n${body}`], { type: "text/csv;charset=utf-8" }));
+    const url = URL.createObjectURL(new Blob([`\ufeff${head}\n${body}`], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a"); a.href = url; a.download = `전체업무_${today}.csv`; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
