@@ -277,6 +277,8 @@ summary::-webkit-details-marker { display: none; }
 .cb-rm:hover { color: var(--red); background: color-mix(in oklch,var(--red) 10%,transparent); }
 @media (hover: none) { .cb-rm { opacity: 1; } }
 .cb-empty { padding: 10px; font-size: 13px; color: var(--faint); }
+/* 등록 창 · 드로어 안에서 목록이 창 끝에 잘리지 않게 — 펼친 동안만 넘치게 둔다 */
+.ed-modal:has(.cb.open), .am-b:has(.cb.open) { overflow: visible; }
 
 /* ── 가운데 창 · 등록 창(am-) ──────────────────────────────────── */
 .ed-modal { position: fixed; top: 50%; left: 50%; z-index: 41; max-width: calc(100vw - 24px); max-height: calc(100dvh - 32px); transform: translate(-50%,-50%);
