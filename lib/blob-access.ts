@@ -8,6 +8,7 @@
 //
 // 하나라도 어긋나면 호출부는 404 로 답한다. 403 을 쓰지 않는 이유는
 // "그 파일이 존재한다"는 사실 자체를 노출하지 않기 위해서다.
+import { isLeadActorId } from "./task-permission";
 import { queryOne } from "./db";
 import { visibleTaskSql } from "./visibility";
 import { signalVisibilityClause } from "./signals";
@@ -59,9 +60,9 @@ export async function canReadBlob(scope: BlobScope, pathname: string, viewerId: 
       return !!row;
     }
     case "worklog":
-      // 업무기록 첨부는 **쓴 사람만** 읽는다. 폴더 이름이 곧 주인이다(lib/blob.ts).
+      // 업무기록 첨부는 쓴 사람 · 팀장이 읽는다(2026-11 — 팀장이 팀원 업무일지를 본다). 폴더 이름이 곧 주인이다(lib/blob.ts).
       // 아직 기록에 안 붙은 파일(올리고 저장하기 전 미리보기)도 읽혀야 해서 줄을 묻지 않는다.
-      return scope.id === viewerId;
+      return scope.id === viewerId || await isLeadActorId(viewerId);
     case "review": {
       // 리뷰 항목의 전/후 이미지 또는 그 항목에 달린 코멘트 이미지.
       const row = await queryOne<{ ok: number }>(

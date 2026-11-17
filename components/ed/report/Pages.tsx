@@ -14,7 +14,8 @@ export interface RTask {
   id: number; title: string; status: string; part: Part; area: string; assigneeId: number | null; assignee: string | null;
   start: string | null; due: string | null; done: string | null; created: string; checks: string | null; description: string; goalIds: number[];
 }
-export interface LevelRate { level: "year" | "quarter" | "month"; done: number; total: number; rate: number | null; goals: { id: number; title: string; done: number; total: number; rate: number | null }[] }
+export interface LevelRate { level: "year" | "quarter" | "month"; done: number; total: number; rate: number | null;
+  goals: { id: number; title: string; done: number; total: number; rate: number | null; kpi?: { current: number; target: number; unit: string | null } | null }[] }
 export interface Agg {
   counts: Counts; parts: Record<Part, Counts>; people: { id: number | null; name: string; counts: Counts }[]; routine: number; goals: LevelRate[];
   trend: { label: string; start: string; counts: Counts; status: string; reportId: number | null }[]; tasks: RTask[]; tidy: RTask[]; autoPlans: RTask[];
@@ -100,7 +101,7 @@ export function buildPages(d: ReportData, mode: Mode, posters?: Record<number, s
       {r.headline.trim() ? <p className="rp-headline">{r.headline}</p> : mode === "view" ? <p className="rp-headline ph">핵심 멘트 — 편집에서 적습니다</p> : null}
       {goalRows.length > 0 && (
         <div className="rp-goals">
-          {goalRows.map((g) => <div key={g.id}><span>{LEVEL[g.level]}</span><b>{g.title}</b><em>{g.total ? `${g.done}/${g.total}` : "업무 없음"}</em><i>{pct(g.rate)}{g.rate === null ? "" : "%"}</i></div>)}
+          {goalRows.map((g) => <div key={g.id}><span>{LEVEL[g.level]}</span><b>{g.title}</b><em>{g.kpi ? `${g.kpi.current.toLocaleString()}/${g.kpi.target.toLocaleString()}${g.kpi.unit ?? ""}` : g.total ? `${g.done}/${g.total}` : "업무 없음"}</em><i>{pct(g.rate)}{g.rate === null ? "" : "%"}</i></div>)}
         </div>
       )}
     </Page>

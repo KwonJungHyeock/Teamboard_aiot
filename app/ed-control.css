@@ -134,3 +134,7 @@
   .mon-th > span:nth-child(2), .mon-tr .wk { display: none; }
   .mon-goals { flex-wrap: wrap; justify-content: flex-start; }
 }
+
+/* 2026-11 — 팀원 드로어에서 성과 카드 · 업무일지로 */
+.mon-go { display: flex; gap: 8px; padding: 0 22px 6px; }
+.mon-go a:hover { text-decoration: none; }

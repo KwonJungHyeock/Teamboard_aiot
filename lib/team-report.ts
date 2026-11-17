@@ -12,6 +12,7 @@
 //
 // 분기 · 연간은 기간 전체를 한 번에 센다 — 두 달에 걸친 업무를 두 번 세지 않게. 달별 · 분기별 추이는 따로 낸다.
 // 확정한 보고는 이 값들을 snapshot 에 굳히고, 그 뒤로는 굳은 값을 보여 준다.
+import { kpiRate } from "./goals";
 import { query, queryOne } from "./db";
 import { kstToday } from "./home";
 
@@ -108,13 +109,14 @@ export function countOf(ts: RTask[]): Counts {
 }
 
 // ── 목표 달성률 ──────────────────────────────────────────────────
-export interface GoalRate { id: number; title: string; done: number; total: number; rate: number | null }
+/** kpi — 수치 목표(목표값 · 현재값 · 단위)가 있으면 달성률은 현재 ÷ 목표다(업무 완료율 대신) */
+export interface GoalRate { id: number; title: string; done: number; total: number; rate: number | null; kpi?: { current: number; target: number; unit: string | null } | null }
 export interface LevelRate { level: "year" | "quarter" | "month"; done: number; total: number; rate: number | null; goals: GoalRate[] }
 const rateOf = (d: number, t: number) => (t ? Math.round((d / t) * 100) : null);
 
 export async function goalRates(s: string, e: string): Promise<LevelRate[]> {
-  const goals = await query<{ id: number; title: string; period_type: "year" | "quarter" | "month" }>(
-    `SELECT id, title, period_type FROM goal
+  const goals = await query<{ id: number; title: string; period_type: "year" | "quarter" | "month"; target_value: string | null; current_value: string | null; target_metric: string | null }>(
+    `SELECT id, title, period_type, target_value::text, current_value::text, target_metric FROM goal
       WHERE is_active AND scope = 'team' AND period_start <= $2::date AND period_end >= $1::date
       ORDER BY CASE period_type WHEN 'year' THEN 0 WHEN 'quarter' THEN 1 ELSE 2 END, period_start, id`, [s, e]);
   const links = goals.length ? await query<{ root: number; task_id: number; status: string }>(
@@ -131,7 +133,9 @@ export async function goalRates(s: string, e: string): Promise<LevelRate[]> {
       const ls = links.filter((l) => l.root === g.id);
       ls.forEach((l) => all.set(l.task_id, l.status));
       const d = ls.filter((l) => l.status === "done").length;
-      return { id: g.id, title: g.title, done: d, total: ls.length, rate: rateOf(d, ls.length) };
+      const k = kpiRate(g.target_value, g.current_value);
+      return { id: g.id, title: g.title, done: d, total: ls.length, rate: k ?? rateOf(d, ls.length),
+        kpi: k === null ? null : { current: Number(g.current_value), target: Number(g.target_value), unit: g.target_metric } };
     });
     const done = Array.from(all.values()).filter((x) => x === "done").length;
     return { level, done, total: all.size, rate: rateOf(done, all.size), goals: per };

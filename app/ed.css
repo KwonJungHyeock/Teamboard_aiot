@@ -387,6 +387,9 @@ textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; bord
 .tdr-al { align-self: flex-start; }
 .tdr-due { margin-left: 6px; font-style: normal; color: var(--sub); }
 .tdr-due.red { color: var(--red); } .tdr-due.amber { color: var(--amber); }
+.tdr-note { display: flex; gap: 6px; align-items: center; animation: fadeIn .2s; }
+.tdr-note .ed-input { flex: 1; min-width: 0; padding: 8px 12px; font-size: 13px; }
+.tdr-lw { margin-right: 6px; font-weight: 700; color: var(--sub); }
 .tdr-two { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; align-items: start; }
 .tdr-mem b { margin-left: 4px; font-size: 10px; opacity: .6; }
 .tdr-mem:hover b { opacity: 1; color: var(--red); }

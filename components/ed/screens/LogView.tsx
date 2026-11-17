@@ -4,9 +4,13 @@
 //   · 등록창: 한 줄 + Enter(조합 중 무시) · `#카테고리` · ⌁ 파일(붙여넣기도) · ··· 카테고리/날짜(오늘·어제·그제)
 //   · 스트림: 날짜 머리(sticky) · 시간 · 점 · 내용 · 「완료」(내가 끝낸 업무, 자동) · 파일 칩 · hover ✕
 //   · 오른쪽: 월 히트맵(누르면 그날만) · 카테고리 분포(누르면 그 카테고리만) · 이 달 정리 복사
-// 기록은 나만 본다 — `/api/worklog` 가 쓴 사람 것만 돌려준다.
+// 기록은 쓴 사람과 팀장이 본다(2026-11). 팀장은 `?owner=사람` 으로 팀원 일지를 읽기만 한다.
+//   · ··· 옵션의 「업무」로 기록을 업무에 건다 — 그 업무 드로어 「업무일지」에도 보인다. 걸린 줄에는 업무 칩.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useMeta, useTasks } from "../data";
+import Combo from "../Combo";
 import { addDays, catColor, isEnter, todayKst, weekday } from "@/lib/ed/core";
 import { blobSrc } from "@/lib/upload";
 import { usePop, useToast } from "../ui";
@@ -15,7 +19,7 @@ interface FileRef { pathname: string; name: string; size: number; contentType: s
 interface Entry { id: number; loggedOn: string; body: string; categoryId: number | null; taskId: number | null; attachments: FileRef[]; createdAt: string }
 interface Category { id: number; name: string; color: string; count: number }
 interface Done { id: number; title: string; areaName: string; completedAt: string; loggedOn: string }
-interface Row { key: string; id: number | null; day: string; time: string; text: string; cat: string; color: string; done: boolean; files: FileRef[]; sort: string }
+interface Row { key: string; id: number | null; day: string; time: string; text: string; cat: string; color: string; done: boolean; files: FileRef[]; sort: string; taskId: number | null }
 
 const WK = ["일", "월", "화", "수", "목", "금", "토"];
 const DATE_OPTS: [string, number][] = [["오늘", 0], ["어제", -1], ["그제", -2]];
@@ -39,6 +43,19 @@ const colorOf = (name: string, own?: string) => (catColor(name) !== "var(--sub)"
 
 export default function LogView({ meId }: { meId: number }) {
   const today = todayKst();
+  const router = useRouter();
+  const sp = useSearchParams();
+  const meta = useMeta();
+  const ownerRaw = Number(sp.get("owner"));
+  const owner = Number.isInteger(ownerRaw) && ownerRaw > 0 && ownerRaw !== meId ? ownerRaw : null;   // 팀장이 보는 팀원
+  const readOnly = owner !== null;
+  const lead = !!meta?.me.lead;
+  const { tasks: allTasks } = useTasks();
+  const myOpen = useMemo(() => (allTasks ?? []).filter((t) => t.parentTaskId === null && ["todo", "doing", "review", "hold"].includes(t.status)
+    && (t.assigneeId === meId || (t.memberIds ?? []).includes(meId))), [allTasks, meId]);
+  const [taskPick, setTaskPick] = useState<number | null>(null);
+  const [taskNames, setTaskNames] = useState<Map<number, string>>(new Map());
+  const [ownerName, setOwnerName] = useState<string | null>(null);
   const [month, setMonth] = useState(today.slice(0, 7));
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
@@ -60,11 +77,13 @@ export default function LogView({ meId }: { meId: number }) {
   const input = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async (m: string) => {
-    const r = await fetch(`/api/ed/log?month=${m}`, { cache: "no-store" }).catch(() => null);
+    const r = await fetch(`/api/ed/log?month=${m}${owner ? `&owner=${owner}` : ""}`, { cache: "no-store" }).catch(() => null);
     const d = r ? await r.json().catch(() => ({})) : {};
     if (!r?.ok) { show(d.error ?? "불러오지 못했습니다"); setEntries([]); return; }
     setEntries(d.entries); setCats(d.categories); setDone(d.done ?? []);
-  }, [show]);
+    setTaskNames(new Map(((d.tasks ?? []) as { id: number; title: string }[]).map((t) => [t.id, t.title])));
+    setOwnerName(d.owner?.name ?? null);
+  }, [show, owner]);
   useEffect(() => { void load(month); }, [month, load]);
   useEffect(() => { const t = setTimeout(() => setIntro(false), 1400); return () => clearTimeout(t); }, []);
 
@@ -75,10 +94,10 @@ export default function LogView({ meId }: { meId: number }) {
       const c = e.categoryId ? catById.get(e.categoryId) : undefined;
       const name = c?.name ?? "기타";
       out.push({ key: `w${e.id}`, id: e.id, day: e.loggedOn, time: hhmm(e.createdAt), text: e.body || e.attachments[0]?.name || "", cat: name,
-        color: colorOf(name, c?.color), done: false, files: e.attachments, sort: e.createdAt });
+        color: colorOf(name, c?.color), done: false, files: e.attachments, sort: e.createdAt, taskId: e.taskId });
     }
     for (const t of done) {
-      out.push({ key: `t${t.id}`, id: null, day: t.loggedOn, time: hhmm(t.completedAt), text: t.title, cat: t.areaName, color: colorOf(t.areaName), done: true, files: [], sort: t.completedAt });
+      out.push({ key: `t${t.id}`, id: null, day: t.loggedOn, time: hhmm(t.completedAt), text: t.title, cat: t.areaName, color: colorOf(t.areaName), done: true, files: [], sort: t.completedAt, taskId: t.id });
     }
     return out;
   }, [entries, done, catById]);
@@ -143,12 +162,12 @@ export default function LogView({ meId }: { meId: number }) {
     const loggedOn = addDays(today, dateOff);
     const r = await fetch("/api/worklog", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body, categoryId: existing?.id ?? null, loggedOn, attachments: file?.ref ? [file.ref] : [] }),
+      body: JSON.stringify({ body, categoryId: existing?.id ?? null, loggedOn, attachments: file?.ref ? [file.ref] : [], taskId: taskPick }),
     }).catch(() => null);
     const d = r ? await r.json().catch(() => ({})) : {};
     setBusy(false);
     if (!r?.ok) { show(d.error ?? "기록하지 못했습니다"); return; }
-    setText(""); setFile(null); setDateOff(0); setOpen(null);
+    setText(""); setFile(null); setDateOff(0); setOpen(null); setTaskPick(null);
     setNewId(d.entry.id);
     setPulse((p) => ({ ...p, [d.entry.loggedOn]: (p[d.entry.loggedOn] ?? 0) + 1 }));
     window.dispatchEvent(new Event("ed:changed"));
@@ -184,17 +203,27 @@ export default function LogView({ meId }: { meId: number }) {
     <div className="log-page">
       <div className="log-head">
         <div className="l">
-          <h1 className="ed-h1">업무일지</h1>
+          <h1 className="ed-h1">{readOnly ? `${ownerName ?? ""} 업무일지` : "업무일지"}</h1>
           <div className="log-mon">
             <button type="button" onClick={() => { setMonth(shiftMonth(month, -1)); setFDay(null); }} aria-label="이전 달">‹</button>
             <span className="tn">{y}년 {mo}월</span>
             <button type="button" onClick={() => { setMonth(shiftMonth(month, 1)); setFDay(null); }} aria-label="다음 달">›</button>
           </div>
         </div>
-        <Link href={`/v3/report?m=${month}`} className="log-rep">월간 보고 →</Link>
+        <div className="l">
+          {lead && meta && (
+            <select className="ed-input log-who" value={owner ?? meId} aria-label="누구의 업무일지"
+                    onChange={(e) => { const v = Number(e.target.value); router.push(v === meId ? "/v3/log" : `/v3/log?owner=${v}`); }}>
+              {meta.people.map((p) => <option key={p.id} value={p.id}>{p.id === meId ? `내 일지 · ${p.name}` : `${p.name} 일지`}</option>)}
+            </select>
+          )}
+          {readOnly ? <Link href={`/v3/people/${owner}`} className="log-rep">성과 카드 →</Link> : <Link href={`/v3/report?m=${month}`} className="log-rep">월간 보고 →</Link>}
+        </div>
       </div>
+      {readOnly ? <div className="log-note">보기 전용 — {ownerName} 님의 기록입니다</div>
+        : !lead && <div className="log-note">업무일지는 나와 팀장이 봅니다</div>}
 
-      <div className="log-comp" ref={popRef}>
+      {!readOnly && <div className="log-comp" ref={popRef}>
         <span className="plus">+</span>
         <input ref={input} value={text} onChange={(e) => setText(e.target.value)} placeholder="오늘 한 일 한 줄 · Enter" aria-label="오늘 한 일"
                onKeyDown={(e) => { if (isEnter(e)) { e.preventDefault(); void add(); } }}
@@ -202,18 +231,22 @@ export default function LogView({ meId }: { meId: number }) {
         <div className="toks">
           {effCat && <span className={`tkn${tagMatch ? " acc" : ""}`}><i style={{ background: optCats.find(([n]) => n === effCat)?.[1] ?? "var(--sub)" }} />{effCat}</span>}
           {dateOff !== 0 && <span className="tkn amb">{dateLabel}</span>}
+          {taskPick && <span className="tkn acc">업무 · {myOpen.find((t) => t.id === taskPick)?.title.slice(0, 16) ?? ""}<button type="button" onClick={() => setTaskPick(null)} aria-label="업무 빼기">✕</button></span>}
           {file && <span className="tkn">⌁ {file.up ? "올리는 중" : file.name}<button type="button" onClick={() => setFile(null)} aria-label="파일 빼기">✕</button></span>}
         </div>
         <label className="ico" title="파일">⌁<input type="file" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }} /></label>
         <div className="ed-rel">
           <button type="button" className={`ico${open === "opts" ? " on" : ""}`} title="옵션" onClick={() => setOpen(open === "opts" ? null : "opts")}>···</button>
           {open === "opts" && (
-            <div className="ed-optpop" style={{ width: 320 }}>
+            <div className="ed-optpop log-opts" style={{ width: 340 }}>
               <div className="og"><span>카테고리</span><div>
                 {optCats.map(([n, col]) => (
                   <button key={n} type="button" className={effCat === n ? "on" : undefined} onClick={() => setCatPick(catPick === n ? null : n)}><i style={{ background: col }} />{n}</button>
                 ))}
               </div></div>
+              <div className="og"><span>업무 <small>(이 기록이 어느 업무의 일인가)</small></span>
+                <Combo label="업무" value={taskPick} options={myOpen.map((t) => ({ id: t.id, label: t.title }))} none="연결 안 함" onPick={setTaskPick} />
+              </div>
               <div className="og"><span>날짜</span><div>
                 {DATE_OPTS.map(([l, v]) => <button key={l} type="button" className={dateOff === v ? "on" : undefined} onClick={() => setDateOff(v)}>{l}</button>)}
               </div></div>
@@ -221,7 +254,7 @@ export default function LogView({ meId }: { meId: number }) {
           )}
         </div>
         <button type="button" className={`go${ready ? "" : " off"}`} onClick={() => void add()} disabled={!ready}>기록</button>
-      </div>
+      </div>}
 
       <div className="log-grid">
         <section className="log-stream">
@@ -246,10 +279,12 @@ export default function LogView({ meId }: { meId: number }) {
                         <div className="tx">
                           <span>{e.text}</span>
                           {e.done && <em className="dn">완료</em>}
+                          {!e.done && e.taskId && <button type="button" className="tk" onClick={() => router.push(`?${new URLSearchParams({ ...(owner ? { owner: String(owner) } : {}), task: String(e.taskId) })}`, { scroll: false })}
+                                                         title={taskNames.get(e.taskId) ?? "업무"}>↗ {(taskNames.get(e.taskId) ?? "업무").slice(0, 18)}</button>}
                           {e.files.map((f) => <a key={f.pathname} className="fl" href={blobSrc(f.pathname)} target="_blank" rel="noreferrer">⌁ {f.name}</a>)}
                         </div>
                         <span className="ct">{e.cat}</span>
-                        {e.id !== null && <button type="button" className="rm" onClick={() => void remove(e.id!)} aria-label="기록 삭제">✕</button>}
+                        {e.id !== null && !readOnly && <button type="button" className="rm" onClick={() => void remove(e.id!)} aria-label="기록 삭제">✕</button>}
                       </div>
                     ))}
                   </div>

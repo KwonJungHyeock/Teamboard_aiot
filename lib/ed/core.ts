@@ -13,6 +13,8 @@ export interface EdTask {
   completedAt: string | null; createdAt: string; visibility: string;
   /** 함께하는 사람(0048). 주담당은 assigneeId — 집계는 주담당만 센다 */
   memberIds?: number[];
+  updatedAt?: string;
+  goalSource?: string | null;
 }
 
 /** 이 사람이 맡은 업무인가 — 주담당이거나 함께하는 사람 */
