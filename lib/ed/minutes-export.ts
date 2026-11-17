@@ -13,6 +13,8 @@ export interface MinutesDoc {
   actions: { body: string; who: string; done: boolean }[];
   links: { body: string; url: string | null }[];
   memo?: string;             // 내 메모(고른 경우만)
+  files?: { name: string; who: string; size: string }[];   // 올린 자료(고른 경우만)
+  chat?: { who: string; at: string; body: string }[];      // 채팅 기록(고른 경우만)
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
@@ -33,7 +35,9 @@ export function minutesHtml(d: MinutesDoc, forWord = false): string {
     section("안건", list(d.agenda.map((a) => `${a.done ? "✓ " : ""}${esc(a.body)}`))),
     section("결정 사항", list(d.decisions.map(esc))),
     section("할 일", list(d.actions.map((a) => `${a.done ? "✓ " : ""}${esc(a.body)} <span class="w">— ${esc(a.who)}</span>`))),
-    d.links.length ? section("링크 · 자료", list(d.links.map((l) => (l.url ? `<a href="${esc(l.url)}">${esc(l.body)}</a>` : esc(l.body))))) : "",
+    d.files?.length ? section("자료", list(d.files.map((f) => `${esc(f.name)} <span class="w">— ${esc(f.who)} · ${esc(f.size)}</span>`))) : "",
+    d.links.length ? section("링크", list(d.links.map((l) => (l.url ? `<a href="${esc(l.url)}">${esc(l.body)}</a>` : esc(l.body))))) : "",
+    d.chat?.length ? section("채팅 기록", `<table class="chat">${d.chat.map((c) => `<tr><th>${esc(c.at)}</th><td><b>${esc(c.who)}</b> ${esc(c.body)}</td></tr>`).join("")}</table>`) : "",
     d.memo && d.memo.trim() ? section("내 메모", `<div class="notes memo">${esc(d.memo.trim())}</div>`) : "",
   ].join("\n");
   const css = `
@@ -47,6 +51,7 @@ export function minutesHtml(d: MinutesDoc, forWord = false): string {
     ul { margin: 4px 0; padding-left: 20px; } li { margin: 2px 0; }
     .notes { white-space: pre-wrap; }
     .memo { padding: 10px 12px; background: #f4f6fa; border-radius: 6px; }
+    table.chat { border-collapse: collapse; font-size: 10pt; } table.chat th { color: #7a8496; font-weight: 500; padding: 2px 10px 2px 0; vertical-align: top; white-space: nowrap; } table.chat td { padding: 2px 0; }
     .f, .w { color: #7a8496; }
     a { color: #2f5bea; }`;
   const head = forWord
@@ -62,7 +67,9 @@ export function minutesText(d: MinutesDoc): string {
   block("안건", d.agenda.map((a) => `${a.done ? "[완료] " : ""}${a.body}`));
   block("결정 사항", d.decisions);
   block("할 일", d.actions.map((a) => `${a.done ? "[완료] " : ""}${a.body} — ${a.who}`));
-  if (d.links.length) block("링크 · 자료", d.links.map((l) => (l.url && l.url !== l.body ? `${l.body} (${l.url})` : l.body)));
+  if (d.files?.length) block("자료", d.files.map((f) => `${f.name} — ${f.who} · ${f.size}`));
+  if (d.links.length) block("링크", d.links.map((l) => (l.url && l.url !== l.body ? `${l.body} (${l.url})` : l.body)));
+  if (d.chat?.length) block("채팅 기록", d.chat.map((c) => `${c.at} ${c.who}: ${c.body}`));
   if (d.memo && d.memo.trim()) L.push("■ 내 메모", d.memo.trim(), "");
   return L.join("\n");
 }

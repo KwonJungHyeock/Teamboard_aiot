@@ -10,8 +10,9 @@
 //   · 팀원 누구나 회의를 열고, 들어오고, 안건 · 링크 · 결정 · 할 일을 올리고, 찬성한다
 //   · 결정 확정 · 회의 끝내기는 **연 사람이나 팀장**만 — 끝내면 회의록이 굳는다
 //   · 끝난 회의는 읽기만 된다(고치는 길이 없다)
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { query, queryOne } from "./db";
+import { safeName, WORKLOG_TYPES } from "./blob";
 import { ensureCategory } from "./worklog";
 
 export type ItemKind = "agenda" | "link" | "decision" | "action" | "note";
@@ -40,6 +41,8 @@ export interface MeetingDetail {
   startedById: number; startedBy: string; items: MeetingItem[]; attendees: Attendee[]; minutes: unknown;
   /** 0045 — 함께 쓰는 회의록 본문. rev 는 저장할 때 「내가 본 판」으로 돌려준다 */
   notes: MeetingNotes;
+  /** 0049 — 지금 모두가 함께 보는 자료(파일 · 링크). 없으면 null */
+  present: { itemId: number; by: string; byId: number; at: string } | null;
 }
 export interface MeetingNotes { body: string; rev: number; by: string | null; at: string | null }
 
@@ -92,10 +95,13 @@ export async function getMeeting(id: number): Promise<MeetingDetail | null> {
     id: number; title: string; status: "live" | "ended"; room: string; started_at: string; ended_at: string | null;
     started_by: number; starter: string; minutes: unknown;
     notes: string; notes_rev: number; notes_who: string | null; notes_at: string | null;
+    present_item_id: number | null; present_by: number | null; present_who: string | null; present_at: string | null;
   }>(
     `SELECT m.id, m.title, m.status, m.room, m.started_at::text, m.ended_at::text, m.started_by,
-            a.display_name AS starter, m.minutes, m.notes, m.notes_rev, n.display_name AS notes_who, m.notes_at::text
-       FROM meeting m JOIN actor a ON a.id = m.started_by LEFT JOIN actor n ON n.id = m.notes_by WHERE m.id = $1`,
+            a.display_name AS starter, m.minutes, m.notes, m.notes_rev, n.display_name AS notes_who, m.notes_at::text,
+            m.present_item_id, m.present_by, p.display_name AS present_who, m.present_at::text
+       FROM meeting m JOIN actor a ON a.id = m.started_by LEFT JOIN actor n ON n.id = m.notes_by
+       LEFT JOIN actor p ON p.id = m.present_by WHERE m.id = $1`,
     [id]
   );
   if (!m) return null;
@@ -120,6 +126,9 @@ export async function getMeeting(id: number): Promise<MeetingDetail | null> {
     id: m.id, title: m.title, status: m.status, room: m.room, startedAt: m.started_at, endedAt: m.ended_at,
     startedById: m.started_by, startedBy: m.starter, minutes: m.minutes,
     notes: { body: m.notes ?? "", rev: m.notes_rev ?? 0, by: m.notes_who, at: m.notes_at },
+    // 띄운 항목을 내렸으면 함께 보기도 끝난 것으로 본다. 끝난 회의는 함께 보지 않는다
+    present: m.status === "live" && m.present_item_id && items.some((i) => i.id === m.present_item_id)
+      ? { itemId: m.present_item_id, by: m.present_who ?? "", byId: m.present_by ?? 0, at: m.present_at ?? "" } : null,
     items: items.map((i) => ({ id: i.id, kind: i.kind, body: i.body, url: i.url, meta: i.meta ?? {},
       createdBy: i.who, createdById: i.created_by, createdAt: i.created_at })),
     attendees: att.map((a) => ({ id: a.id, name: a.name, present: m.status === "live" && !!a.present, joinedAt: a.joined_at })),
@@ -321,7 +330,18 @@ export async function findDecisions(rawQ: unknown, limit = 50): Promise<FoundDec
 // 채팅 한 줄과 올린 파일도 `meeting_item` 에 쌓는다(kind 'chat' · 'file').
 // 파일 본문은 Private Blob(`meetings/{회의}/…`)에 두고, 읽기는 회의 항목에 실제로 붙은 경로만 연다.
 export const REACTIONS = ["👍", "👏", "🙌", "❓"] as const;
+/** 함수 본문으로 바로 받는 길(저장소 없는 로컬 · 예전 화면) — 운영 함수 본문 한도(4.5MB) 안 */
 export const MEETING_FILE_MAX = 4 * 1024 * 1024;
+/** 브라우저가 저장소로 바로 올리는 길 — 영상 · 큰 PDF 도 */
+export const MEETING_UPLOAD_MAX = 50 * 1024 * 1024;
+/** 회의 자료로 받는 형식 — 업무기록 첨부(이미지 · PDF · 오피스 · 한글 · zip · txt) + 영상 */
+export const MEETING_TYPES: Record<string, string> = {
+  ...WORKLOG_TYPES, "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov",
+};
+const FILE_PATH_RE = /^meetings\/(\d+)\/[0-9a-f-]{36}-[^/]+$/i;
+/** 경로 `meetings/<회의>/<uuid>-<이름>` 의 회의 번호 — 규칙 밖이면 null */
+export const meetingIdOfPath = (p: string): number | null => { const m = FILE_PATH_RE.exec(p); return m ? Number(m[1]) : null; };
+export const newMeetingPath = (id: number, name: string) => `meetings/${id}/${randomUUID()}-${safeName(name)}`;
 
 async function insertItem(id: number, actorId: number, kind: "chat" | "file", body: string, url: string | null, meta: Record<string, unknown>) {
   const row = await queryOne<{ id: number }>(
@@ -363,6 +383,24 @@ export async function toggleReaction(id: number, itemId: number, actorId: number
   if (set.size) reactions[e] = Array.from(set); else delete reactions[e];
   meta.reactions = reactions;
   await query(`UPDATE meeting_item SET meta = $2::jsonb, updated_at = now() WHERE id = $1`, [itemId, JSON.stringify(meta)]);
+  await heartbeat(id, actorId);
+}
+
+/**
+ * 모두에게 띄우기(0049) — 그 회의의 살아 있는 파일 · 링크 하나를 함께 본다. null 이면 거둔다.
+ * 누구나 띄운다(회의에서 자료를 보여 주는 건 발표하는 사람이다). 거두는 것도 누구나 — 자리가 하나라 막지 않는다.
+ */
+export async function setPresent(id: number, actorId: number, rawItemId: unknown): Promise<void> {
+  await liveOrThrow(id);
+  let itemId: number | null = null;
+  if (rawItemId !== null && rawItemId !== undefined) {
+    itemId = Number(rawItemId);
+    const it = await queryOne<{ id: number }>(
+      `SELECT id FROM meeting_item WHERE id = $1 AND meeting_id = $2 AND is_active AND kind IN ('file', 'link')`, [itemId, id]);
+    if (!it) throw new MeetingError("띄울 자료를 찾을 수 없습니다.", 404);
+  }
+  await query(`UPDATE meeting SET present_item_id = $2, present_by = $3, present_at = now() WHERE id = $1`,
+    [id, itemId, itemId ? actorId : null]);
   await heartbeat(id, actorId);
 }
 
