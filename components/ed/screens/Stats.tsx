@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { addDays, diffDays, md } from "@/lib/ed/core";
 import { api } from "../ui";
+import { downloadXlsx } from "@/lib/ed/xlsx";
 import type { StatsData } from "@/lib/ed/stats";
 
 const ST = [
@@ -75,12 +76,16 @@ export default function Stats({ initialMonth }: { initialMonth: string }) {
           <button type="button" onClick={() => move(1)} aria-label="다음 달">›</button>
         </div>
       </div>
-      <div className="st-legend">{ST.map((s) => <span key={s.k}><i style={{ background: s.color }} />{s.label}</span>)}</div>
+      <div className="st-hl">
+        <div className="st-legend">{ST.map((s) => <span key={s.k}><i style={{ background: s.color }} />{s.label}</span>)}</div>
+        <button type="button" className="ed-btn sm" disabled={!data} onClick={() => data && exportXlsx(data)}>엑셀</button>
+      </div>
     </div>
   );
   if (err) return <>{head}<div className="ed-err">{err}</div></>;
   if (!data) return <>{head}<div className="ed-empty">불러오는 중</div></>;
 
+  const onTot = data.onTime.on + data.onTime.late;
   // ── KPI ─────────────────────────────────────────────
   const rings = data.rings.map((r, i) => {
     const pc = r.total ? r.done / r.total : 0, rad = [44, 32, 20][i], C = 2 * Math.PI * rad;
@@ -215,6 +220,27 @@ export default function Stats({ initialMonth }: { initialMonth: string }) {
           </div>
         </section>
       </div>
+
+      {/* 기한 준수율 (2026-11) — 그 달에 끝낸 업무 중 기한 안에 끝낸 비율. 이름을 누르면 성과 카드 */}
+      <section className="st-card st-on q" style={{ animationDelay: ".18s" }}>
+        <div className="st-onh">
+          <span className="st-k">기한 준수율</span>
+          <b className="tn">{onTot ? `${Math.round((data.onTime.on / onTot) * 100)}%` : "—"}</b>
+          <span>{title} 완료 중 기한 안 {data.onTime.on} · 넘김 {data.onTime.late}</span>
+        </div>
+        <div className="st-onl">
+          {data.onTime.who.length ? data.onTime.who.map((w) => {
+            const t = w.on + w.late, r = Math.round((w.on / t) * 100);
+            return (
+              <a key={w.id} href={`/v3/people/${w.id}?at=${data.month}`} className="st-onr">
+                <span className="nm">{w.name}</span>
+                <span className="tr"><i style={{ width: mounted ? `${r}%` : "0%", background: r >= 80 ? "var(--green)" : r < 60 ? "var(--red)" : "var(--amber)" }} /></span>
+                <b className="tn">{r}%</b><small className="tn">{w.on}/{t}</small>
+              </a>
+            );
+          }) : <span className="st-onx">이 달 기한 있는 완료 업무가 없습니다</span>}
+        </div>
+      </section>
 
       <div className="st-mid">
         <section className="st-card st-bd q" style={{ animationDelay: ".2s" }}>
@@ -355,4 +381,29 @@ export default function Stats({ initialMonth }: { initialMonth: string }) {
       </div>
     </div>
   );
+}
+
+/** 성과 분석 → 엑셀(요약 · 담당자 · 카테고리×상태 · 담당자×상태 · 주간 완료) */
+function exportXlsx(d: StatsData) {
+  const ring = (i: number) => d.rings[i];
+  const pc = (a: number, b: number) => (b ? Math.round((a / b) * 100) : "");
+  downloadXlsx(`성과분석_${d.month}`, [
+    { name: "요약", widths: [26, 14], rows: [
+      ["항목", "값"], ["기준 달", d.month],
+      ...d.rings.map((r, i) => [`완료율 ${r.label} (%)`, pc(ring(i).done, ring(i).total)]),
+      ["기한 안 완료", d.onTime.on], ["기한 넘김", d.onTime.late], ["기한 준수율(%)", pc(d.onTime.on, d.onTime.on + d.onTime.late)],
+      ["처리 기간 평균(일)", d.cycle.avg ?? ""], ["처리 기간 중앙값(일)", d.cycle.median ?? ""],
+      ["지연 업무", d.aging.buckets.reduce((a, x) => a + x, 0)], ["최장 지연(일)", d.aging.max],
+    ] },
+    { name: "담당자", widths: [14, 8, 8, 8, 8, 8, 10, 10, 12], rows: [
+      ["담당", "지남", "진행", "검토", "시작 전", "합계", "기한 안", "넘김", "준수율(%)"],
+      ...d.load.map((l) => {
+        const w = d.onTime.who.find((x) => x.name === l.name);
+        return [l.name, ...l.v, l.v.reduce((a, x) => a + x, 0), w?.on ?? 0, w?.late ?? 0, w ? pc(w.on, w.on + w.late) : ""];
+      }),
+    ] },
+    { name: "카테고리×상태", widths: [16, 8, 8, 8, 8], rows: [["카테고리", "진행", "검토", "시작 전", "완료"], ...d.cross.cat.map((r) => [r.label, ...r.v])] },
+    { name: "담당자×상태", widths: [16, 8, 8, 8, 8], rows: [["담당", "진행", "검토", "시작 전", "완료"], ...d.cross.who.map((r) => [r.label, ...r.v])] },
+    { name: "주간 완료", widths: [10, 8], rows: [["주", "완료"], ...d.weeks.map((w) => [w.label, w.n])] },
+  ]);
 }

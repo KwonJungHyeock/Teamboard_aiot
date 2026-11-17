@@ -9,6 +9,7 @@
 //   · 가오픈 추이   이 달 1일 ~ 가오픈 사이, 가오픈까지 기한인 업무의 잔여(실제) · 계획(직선) · 지금 속도 예상
 //   · 이 달 기한    기한이 그 달인 업무 — 상태별(교차표와 같은 모집단)
 //   · 담당자 부하   지금 미완 업무 — 지남 · 진행 · 검토 · 시작 전
+//   · 기한 준수율   그 달에 완료한 업무 중 기한이 있는 것 — 기한 안(완료일 ≤ 기한) / 늦음. 사람별로도
 // 기준일: 고른 달이 이번 달이면 오늘, 지난 달이면 그 달 말일, 앞 달이면 그 달 1일.
 import { query } from "../db";
 import { countableSql } from "../progress";
@@ -32,6 +33,8 @@ export interface StatsData {
   launch: { before: number; after: number; none: number; done: number };
   cross: { cat: { id: number; label: string; v: number[] }[]; who: { id: number; label: string; v: number[] }[] };
   load: { name: string; v: number[] }[];
+  /** 그 달 완료 · 기한 있는 업무의 기한 준수 — on 기한 안 · late 늦음 */
+  onTime: { on: number; late: number; who: { id: number; name: string; on: number; late: number }[] };
 }
 
 interface Row {
@@ -149,7 +152,12 @@ export async function getStats(viewerId: number, month: string, today: string): 
     return { name: p.name, v: [over.length, rest.filter((r) => r.status === "doing").length, rest.filter((r) => r.status === "review").length, rest.filter((r) => norm(r.status) === "todo").length] };
   }).sort((a, b) => b.v.reduce((s, x) => s + x, 0) - a.v.reduce((s, x) => s + x, 0));
 
-  return { month, today, ref, live, rings, weeks, cycle, aging, burn, monthDue, launch, cross, load };
+  // ── 기한 준수율 ─────────────────────────────────────────
+  const doneDue = rows.filter((r) => isDone(r) && r.done_on && r.due && r.done_on >= mStart && r.done_on <= mEnd);
+  const onOf = (xs: Row[]) => ({ on: xs.filter((r) => r.done_on! <= r.due!).length, late: xs.filter((r) => r.done_on! > r.due!).length });
+  const onTime = { ...onOf(doneDue), who: people.map((p) => ({ id: p.id, name: p.name, ...onOf(doneDue.filter((r) => r.assignee_id === p.id)) })).filter((x) => x.on + x.late > 0) };
+
+  return { month, today, ref, live, rings, weeks, cycle, aging, burn, monthDue, launch, cross, load, onTime };
 }
 
 /** AI 에게 보내는 것 — 숫자만. 업무 제목 · 사람 이름은 보내지 않는다 */
@@ -168,5 +176,6 @@ export function statsFacts(s: StatsData) {
     주간_완료_8주: s.weeks.map((w) => w.n), 지연_업무: overAll, 지연_최다_한사람_건수: topOver, 지연_최장_일수: s.aging.max,
     처리기간_평균일: s.cycle.avg, 이달_기한_상태: s.monthDue, 담당자_수: loads.length, 적정_부하: 8,
     부하_초과_인원: loads.filter((l) => l.total > 8).length,
+    이달_기한_준수율: s.onTime.on + s.onTime.late ? Math.round((s.onTime.on / (s.onTime.on + s.onTime.late)) * 100) : null,
   };
 }

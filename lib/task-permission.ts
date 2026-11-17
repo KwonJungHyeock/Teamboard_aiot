@@ -29,3 +29,9 @@ export async function canEditTask(s: SessionUser, t: TaskOwners): Promise<boolea
     `SELECT assignee_id, created_by FROM task WHERE id = $1`, [t.parent_task_id]);
   return !!p && (p.assignee_id === s.id || p.created_by === s.id || await isTaskMember(t.parent_task_id, s.id));
 }
+
+/** 사람 번호로 팀장(관리자 권한 포함)인지 — 세션이 없는 자리(파일 읽기 권한 등)에서 쓴다 */
+export async function isLeadActorId(actorId: number): Promise<boolean> {
+  const a = await queryOne<{ role: string; admin_grant: boolean | null }>(`SELECT role, admin_grant FROM account WHERE actor_id = $1`, [actorId]);
+  return !!a && (hasLead(a.role as Parameters<typeof hasLead>[0]) || a.admin_grant === true);
+}

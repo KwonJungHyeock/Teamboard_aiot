@@ -181,6 +181,8 @@ function day(v: unknown): string | null {
 
 export interface WorklogInput {
   body?: unknown;
+  /** 이 기록이 어느 업무의 일인가(2026-11) — 쓴 사람에게 보이는 살아 있는 업무만 */
+  taskId?: unknown;
   categoryId?: unknown;
   loggedOn?: unknown;
   attachments?: unknown;
@@ -195,12 +197,22 @@ export async function createEntry(ownerId: number, input: WorklogInput): Promise
   if (!body) throw new WorklogInputError("기록할 내용이 비었습니다.");
   let categoryId = await ownCategory(ownerId, input.categoryId);
   if (tag) categoryId = (await ensureCategory(ownerId, tag)).id;
+  let taskId: number | null = null;
+  if (input.taskId !== undefined && input.taskId !== null && input.taskId !== "") {
+    const t = await queryOne<{ id: number; area: string }>(
+      `SELECT t.id, ar.name AS area FROM task t JOIN area ar ON ar.id = t.area_id
+        WHERE t.id = $1 AND t.is_active AND (t.visibility = 'team' OR t.created_by = $2)`, [Number(input.taskId), ownerId]);
+    if (!t) throw new WorklogInputError("연결할 업무를 찾을 수 없습니다.");
+    taskId = t.id;
+    // 카테고리를 안 골랐으면 업무의 카테고리로
+    if (!categoryId) categoryId = (await ensureCategory(ownerId, t.area)).id;
+  }
   const loggedOn = day(input.loggedOn);
   const row = await queryOne<Row>(
-    `INSERT INTO work_log (owner_actor_id, body, category_id, attachments, logged_on)
-     VALUES ($1, $2, $3, $4::jsonb, coalesce($5::date, (now() AT TIME ZONE 'Asia/Seoul')::date))
+    `INSERT INTO work_log (owner_actor_id, body, category_id, attachments, logged_on, task_id)
+     VALUES ($1, $2, $3, $4::jsonb, coalesce($5::date, (now() AT TIME ZONE 'Asia/Seoul')::date), $6)
      RETURNING ${COLS}`,
-    [ownerId, body, categoryId, JSON.stringify(files), loggedOn]
+    [ownerId, body, categoryId, JSON.stringify(files), loggedOn, taskId]
   );
   return toEntry(row!);
 }
@@ -307,4 +319,22 @@ export async function doneTasksOfMonth(ownerId: number, month: string): Promise<
     [ownerId, `${month}-01`]
   );
   return rows.map((r) => ({ id: r.id, title: r.title, areaName: r.area_name, completedAt: r.completed_at, loggedOn: r.day }));
+}
+
+/** 기록에 걸린 업무 이름 — 화면이 「업무 칩」을 그린다 */
+export async function taskTitles(ids: number[], viewerId: number): Promise<{ id: number; title: string }[]> {
+  if (!ids.length) return [];
+  // 보는 사람에게 안 보이는 업무(남의 비공개)는 이름을 주지 않는다
+  return query<{ id: number; title: string }>(
+    `SELECT id, title FROM task WHERE id = ANY($1::int[]) AND (visibility = 'team' OR created_by = $2)`, [ids, viewerId]);
+}
+
+/** 이 업무에 걸린 기록 — 팀장은 모두, 그 밖에는 내 것만(업무일지는 쓴 사람 · 팀장이 본다) */
+export async function logsOfTask(taskId: number, viewerId: number, lead: boolean): Promise<{ id: number; loggedOn: string; body: string; who: string; mine: boolean }[]> {
+  const rows = await query<{ id: number; logged_on: string; body: string; who: string; owner_actor_id: number }>(
+    `SELECT w.id, w.logged_on::text, w.body, a.display_name AS who, w.owner_actor_id
+       FROM work_log w JOIN actor a ON a.id = w.owner_actor_id
+      WHERE w.task_id = $1 AND w.is_active AND ($3 OR w.owner_actor_id = $2)
+      ORDER BY w.logged_on DESC, w.id DESC LIMIT 30`, [taskId, viewerId, lead]);
+  return rows.map((r) => ({ id: r.id, loggedOn: r.logged_on, body: r.body, who: r.who, mine: r.owner_actor_id === viewerId }));
 }

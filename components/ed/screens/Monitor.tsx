@@ -266,6 +266,12 @@ export default function Monitor() {
             <div><b className="tn" style={{ color: tone(selM.week, "var(--amber)") }}>{selM.week}</b><span style={{ color: "var(--amber)" }}>이번 주</span></div>
             <div><b className="tn" style={{ color: tone(selM.over, "var(--red)") }}>{selM.over}</b><span style={{ color: "var(--red)" }}>지남</span></div>
           </div>
+          {(meta?.me.lead || selM.id === meta?.me.id) && (
+            <div className="mon-go">
+              <Link href={`/v3/people/${selM.id}`} className="ed-btn sm pri">성과 카드</Link>
+              <Link href={selM.id === meta?.me.id ? "/v3/log" : `/v3/log?owner=${selM.id}`} className="ed-btn sm">업무일지</Link>
+            </div>
+          )}
           <div className="db mon-db">
             {(selM.id === meta?.me.id || daily[selM.id]?.line || daily[selM.id]?.state) && (
               <div className="grp">

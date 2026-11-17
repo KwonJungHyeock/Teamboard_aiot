@@ -113,20 +113,27 @@ export {
 } from "./progress";
 export type { GoalStatus } from "./progress";
 
+/** 수치 목표 달성률 — 목표값 > 0 이고 현재값이 있으면 0~100, 아니면 null */
+export function kpiRate(target: string | number | null, current: string | number | null): number | null {
+  const t = target === null ? NaN : Number(target), c = current === null ? NaN : Number(current);
+  return Number.isFinite(t) && t > 0 && Number.isFinite(c) ? Math.max(0, Math.min(100, Math.round((c / t) * 100))) : null;
+}
+
 /**
  * 목표 1건의 진척을 재계산해 저장한다.
  * progress_auto = 집계 결과 / progress = 실효값(수동 우선). 반환값은 실효값.
  */
 export async function recomputeGoal(goalId: number): Promise<number | null> {
-  const g = await queryOne<{ progress_manual: string | null }>(
-    `SELECT progress_manual::text FROM goal WHERE id = $1 AND is_active = true`,
+  const g = await queryOne<{ progress_manual: string | null; target_value: string | null; current_value: string | null }>(
+    `SELECT progress_manual::text, target_value::text, current_value::text FROM goal WHERE id = $1 AND is_active = true`,
     [goalId]
   );
   if (!g) return null;
 
   const auto = await computeAuto(goalId);
   const manual = g.progress_manual === null ? null : Math.round(Number(g.progress_manual));
-  const effective = manual !== null ? manual : auto;
+  // 수치 목표(KPI) — 목표값이 있고 현재값을 적었으면 현재 ÷ 목표가 달성률이다(2026-11). 수동 입력이 그보다 앞선다
+  const effective = manual !== null ? manual : kpiRate(g.target_value, g.current_value) ?? auto;
 
   await query(
     `UPDATE goal SET progress_auto = $1, progress = $2, updated_at = now() WHERE id = $3`,

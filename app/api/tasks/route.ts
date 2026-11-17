@@ -48,6 +48,10 @@ export interface TaskListRow {
   startDate: string | null;
   /** 함께하는 사람(0048). 주담당은 assigneeId */
   memberIds: number[];
+  /** 마지막으로 손댄 때 — 「정리 필요」가 오래 머문 업무를 찾는다 */
+  updatedAt?: string;
+  /** 'none' = 「목표 없음(상시 업무)」으로 정해 둔 것 */
+  goalSource?: string | null;
   dueDate: string | null;
   goalIds: number[];
   progress: number;
@@ -201,6 +205,8 @@ export async function GET(request: Request) {
       child_done: number;
       completed_at: string | null;
       created_at: string;
+      updated_at: string;
+      goal_source: string | null;
     }>(
       `SELECT t.id, t.title, t.description, t.status, t.priority, t.origin,
               t.project_id, p.name AS project_name, p.color_key,
@@ -226,7 +232,7 @@ export async function GET(request: Request) {
               (SELECT count(*)::int FROM task ck
                 WHERE ck.parent_task_id = t.id AND ${countableSql("ck")}
                   AND ${doneSql("ck")}) AS child_done,
-              t.completed_at::text, t.created_at::text
+              t.completed_at::text, t.created_at::text, t.updated_at::text, t.goal_source
        FROM task t
        LEFT JOIN project p ON p.id = t.project_id
        JOIN area ar ON ar.id = t.area_id
@@ -316,6 +322,8 @@ export async function GET(request: Request) {
       childCounted: r.child_counted,
       completedAt: r.completed_at,
       createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      goalSource: r.goal_source,
     }));
     return NextResponse.json({
       tasks,

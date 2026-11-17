@@ -163,3 +163,19 @@
   .st-rg svg { width: 84px; height: 84px; }
   .st-rg > span { font-size: 15px; }
 }
+
+/* 기한 준수율 (2026-11) */
+.st-on { flex-shrink: 0; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 20px; align-items: center; }
+.st-onh { display: flex; flex-direction: column; gap: 4px; }
+.st-onh b { font-size: 34px; font-weight: 800; letter-spacing: -.02em; color: var(--ink); }
+.st-onh span:last-child { font-size: 12px; color: var(--faint); }
+.st-onl { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 18px; }
+.st-onr { display: grid; grid-template-columns: 64px minmax(0, 1fr) 40px 40px; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 9px; color: var(--ink); }
+.st-onr:hover { background: var(--panel2); text-decoration: none; }
+.st-onr .nm { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-onr .tr { height: 8px; border-radius: 99px; background: var(--panel2); overflow: hidden; }
+.st-onr .tr i { display: block; height: 100%; border-radius: 99px; transition: width .7s var(--ease) .3s; }
+.st-onr b { font-size: 13px; text-align: right; } .st-onr small { font-size: 11px; color: var(--faint); text-align: right; }
+.st-onx { font-size: 13px; color: var(--faint); }
+@media (max-width: 760px) { .st-on { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) { .st-kpi { grid-template-columns: minmax(0, 1fr); } }

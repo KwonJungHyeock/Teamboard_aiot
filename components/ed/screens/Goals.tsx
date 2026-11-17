@@ -4,6 +4,7 @@
 //   기대치 = 오늘이 목표 기간 안에서 차지하는 위치(%). 진척 = 서버가 저장한 값(연결 업무 완료율).
 //   상태: 100% 달성 · 진척−기대치 ≥ 0 앞서감 · −10%p 이내 조금 늦음 · 그보다 늦으면 뒤처짐 · 진척 없음 계획.
 //   연결된 업무는 그 목표와 하위 목표에 걸린 업무 전부(`/api/tasks` 의 goalIds).
+//   수치 목표(KPI): 목표값 · 단위를 두면 진척은 「현재값 ÷ 목표값」이다(서버 recomputeGoal). 현재값은 담당자가 갱신한다.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { diffDays, lookOf, todayKst, wd, type EdTask, type Look } from "@/lib/ed/core";
@@ -13,6 +14,8 @@ import { api, Seg, useOnChanged, usePop, useToast } from "../ui";
 interface GNode {
   id: number; parentId: number | null; periodType: "year" | "quarter" | "month"; periodStart: string; periodEnd: string;
   title: string; progress: number | null; ownerName: string | null; scope: string; children: GNode[];
+  /** 수치 목표(KPI, 2026-11) — 목표값이 있고 현재값을 적으면 달성률 = 현재 ÷ 목표 */
+  targetMetric?: string | null; targetValue?: number | null; currentValue?: number | null;
 }
 interface Row { g: GNode; depth: number; group: string; pct: number | null; expect: number | null }
 
@@ -199,6 +202,7 @@ function Detail({ row, byId, tasks, today, flip, mounted, onPick, toast }: {
           </div>
           {segs.length > 0 && <div className="lg">{segs.map((s) => <span key={s.k}><i style={{ background: ST_COLOR[s.k] }} />{ST_LABEL[s.k]}<b className="tn">{s.n}</b></span>)}</div>}
         </div>
+        <Kpi g={g} toast={toast} />
         {g.children.length > 0 && (
           <div className="kids">
             <span className="ed-label">하위 목표</span>
@@ -299,6 +303,50 @@ function NewGoal({ selected, onMade, onErr }: { selected: GNode | null; onMade: 
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** 수치 목표(KPI) — 목표값 · 단위 · 현재값. 저장하면 서버가 달성률을 다시 센다 */
+function Kpi({ g, toast }: { g: GNode; toast: (t: string) => void }) {
+  const has = g.targetValue != null && g.targetValue > 0;
+  const [edit, setEdit] = useState(false);
+  const [target, setTarget] = useState(has ? String(g.targetValue) : "");
+  const [unit, setUnit] = useState(g.targetMetric ?? "");
+  const [cur, setCur] = useState(g.currentValue != null ? String(g.currentValue) : "");
+  const put = async (body: Record<string, unknown>, msg: string) => {
+    try { await api(`/api/goals/${g.id}`, { method: "PUT", body }); toast(msg); setEdit(false); window.dispatchEvent(new Event("ed:changed")); }
+    catch (e) { toast(e instanceof Error ? e.message : "저장하지 못했습니다"); }
+  };
+  const num = (v: string) => (v.trim() === "" ? null : Number(v.replace(/,/g, "")));
+  if (!has && !edit) return <button type="button" className="gol-kpi-add" onClick={() => setEdit(true)}>+ 수치 목표 (예: 설치 50대 · 매출 3억)</button>;
+  if (edit) return (
+    <div className="gol-kpi">
+      <span className="ed-label">수치 목표</span>
+      <div className="row">
+        <input className="ed-input" inputMode="decimal" placeholder="목표값" value={target} onChange={(e) => setTarget(e.target.value)} aria-label="목표값" />
+        <input className="ed-input" placeholder="단위(대 · 건 · 원)" value={unit} maxLength={20} onChange={(e) => setUnit(e.target.value)} aria-label="단위" />
+        <input className="ed-input" inputMode="decimal" placeholder="현재값" value={cur} onChange={(e) => setCur(e.target.value)} aria-label="현재값" />
+      </div>
+      <div className="row">
+        {has && <button type="button" className="ed-btn sm gh" onClick={() => void put({ targetValue: null, currentValue: null, targetMetric: null }, "수치 목표를 뺐습니다 · 업무 완료율로 셉니다")}>수치 목표 빼기</button>}
+        <span style={{ flex: 1 }} />
+        <button type="button" className="ed-btn sm" onClick={() => setEdit(false)}>취소</button>
+        <button type="button" className="ed-btn sm pri" disabled={!(num(target)! > 0)}
+                onClick={() => void put({ targetValue: num(target), targetMetric: unit.trim() || null, currentValue: num(cur) }, "수치 목표를 저장했습니다")}>저장</button>
+      </div>
+    </div>
+  );
+  const pct = g.currentValue != null ? Math.round((g.currentValue / g.targetValue!) * 100) : null;
+  return (
+    <div className="gol-kpi">
+      <div className="hd"><span className="ed-label">수치 목표</span><button type="button" className="ed" onClick={() => setEdit(true)}>고치기</button></div>
+      <div className="v"><b className="tn">{g.currentValue != null ? g.currentValue.toLocaleString() : "—"}</b><span>/ {g.targetValue!.toLocaleString()}{g.targetMetric ?? ""}</span>{pct != null && <em className="tn">{pct}%</em>}</div>
+      <div className="row">
+        <input className="ed-input" inputMode="decimal" placeholder="현재값 갱신" value={cur} onChange={(e) => setCur(e.target.value)} aria-label="현재값"
+               onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); void put({ currentValue: num(cur) }, "현재값을 갱신했습니다"); } }} />
+        <button type="button" className="ed-btn sm pri" onClick={() => void put({ currentValue: num(cur) }, "현재값을 갱신했습니다")}>갱신</button>
+      </div>
     </div>
   );
 }

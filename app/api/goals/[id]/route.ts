@@ -26,6 +26,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       id: number; title: string; description: string; period_type: string;
       period_start: string; period_end: string; progress_mode: "auto" | "manual";
       progress: string | null; progress_auto: string | null; progress_manual: string | null;
+      target_metric: string | null; target_value: string | null; current_value: string | null;
       counted_tasks: number;
       status_manual: GoalStatus | null;
       scope: string; owner_actor_id: number | null; owner_name: string | null;
@@ -34,6 +35,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     }>(
       `SELECT g.id, g.title, g.description, g.period_type, g.period_start::text, g.period_end::text,
               g.progress_mode, g.progress::text, g.progress_auto::text, g.progress_manual::text,
+              g.target_metric, g.target_value::text, g.current_value::text,
               ${goalCountedSql("g.id")}::int AS counted_tasks,
               g.status_manual,
               g.scope, g.owner_actor_id, o.display_name AS owner_name,
@@ -114,6 +116,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         countedTasks: Number(g.counted_tasks ?? 0),
         progressAuto: g.progress_auto === null ? null : Math.round(Number(g.progress_auto)),
         progressManual: manual,
+        // 수치 목표(KPI) — 목표값 · 현재값 · 단위. 둘 다 있으면 달성률은 현재 ÷ 목표
+        targetMetric: g.target_metric, targetValue: g.target_value === null ? null : Number(g.target_value),
+        currentValue: g.current_value === null ? null : Number(g.current_value),
         status: g.status_manual ?? judgeGoalStatus(effective, g.period_start, g.period_end, kstToday()),
         statusManual: g.status_manual !== null,
         scope: g.scope, ownerActorId: g.owner_actor_id, ownerName: g.owner_name,
@@ -305,7 +310,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     // 진척에 영향 주는 변경(연결·수동 진척·모드) → 체인 재계산 (파트 B)
-    const progressAffecting = linksChanged || "progress" in payload || "progressMode" in payload;
+    const progressAffecting = linksChanged || "progress" in payload || "progressMode" in payload || "targetValue" in payload || "currentValue" in payload;
     if (progressAffecting || parentChanged) await recomputeGoalChain(goalId);
     // 상위가 바뀌면 **떠난 쪽**도 다시 계산해야 한다. 안 하면 옛 상위에 이 목표의 몫이 남는다.
     if (parentChanged && oldParentId !== null) await recomputeGoalChain(oldParentId);

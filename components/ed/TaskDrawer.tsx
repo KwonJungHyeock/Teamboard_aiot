@@ -24,6 +24,8 @@ interface Detail {
   canEdit?: boolean; dropReason?: string | null;
   /** 함께하는 사람(0048) */
   members?: { id: number; name: string }[];
+  /** 이 업무에 걸린 업무일지(팀장은 모두, 그 밖에는 내 것만) */
+  logs?: { id: number; loggedOn: string; body: string; who: string; mine: boolean }[];
 }
 
 export default function TaskDrawer({ id, onClose }: { id: number; onClose: () => void }) {
@@ -40,6 +42,8 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
   const [ask, setAsk] = useState<string | null>(null);
   const [pinged, setPinged] = useState(false);
   const [acts, setActs] = useState<Act[]>([]);
+  // 상태를 바꾼 뒤 「무엇을 했나요」 한 줄 — 업무일지에 이 업무로 걸어 남긴다(선택, 2026-11)
+  const [note, setNote] = useState<{ status: string; text: string } | null>(null);
   const [toast, showToast] = useToast();
 
   const load = useCallback(async () => {
@@ -106,6 +110,14 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
   const personal = t.visibility === "private";
   const fail = (e: unknown) => showToast(e instanceof Error ? e.message : "처리하지 못했습니다");
 
+  const addNote = async () => {
+    const body = note?.text.trim();
+    if (!body) return;
+    try {
+      await api("/api/worklog", { method: "POST", body: { body, taskId: id } });
+      setNote(null); showToast("업무일지에 남겼습니다"); await load(); emitChanged();
+    } catch (e) { showToast(e instanceof Error ? e.message : "남기지 못했습니다"); }
+  };
   const remove = async () => {
     try {
       await deleteTask(id);
@@ -154,7 +166,17 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
           </span>
           <Seg full value={(["todo", "doing", "review", "hold", "done"].includes(t.status) ? t.status : "todo") as Status}
                options={(["todo", "doing", "review", "hold", "done"] as Status[]).map((s) => ({ v: s, label: STATUS_LABEL[s] }))}
-               onChange={(s) => { if (!ro) void save({ status: s }); }} />
+               onChange={(s) => { if (!ro && s !== t.status) { void save({ status: s }); setNote({ status: s, text: "" }); } }} />
+          {note && !ro && (
+            <div className="tdr-note">
+              <input className="ed-input" autoFocus value={note.text} maxLength={500} aria-label="진척 메모"
+                     placeholder={`${STATUS_LABEL[note.status as Status] ?? ""}으로 바꿨습니다 — 무엇을 했나요? (업무일지에 남음)`}
+                     onChange={(e) => setNote({ ...note, text: e.target.value })}
+                     onKeyDown={(e) => { if (isEnter(e)) { e.preventDefault(); void addNote(); } else if (e.key === "Escape") { e.preventDefault(); setNote(null); } }} />
+              <button type="button" className="ed-btn sm pri" disabled={!note.text.trim()} onClick={() => void addNote()}>남기기</button>
+              <button type="button" className="ed-btn sm gh" onClick={() => setNote(null)}>건너뛰기</button>
+            </div>
+          )}
         </div>
         {!t.parentTaskId && (
           <div className="tdr-two">
@@ -269,6 +291,14 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
           <div className="ed-field" style={{ gap: 6 }}>
             <span>링크</span>
             {linksIn(memo).map((u) => <a key={u} className="tdr-link" href={u} target="_blank" rel="noreferrer noopener"><b>{host(u)}</b><em>{u}</em></a>)}
+          </div>
+        )}
+        {(t.logs ?? []).length > 0 && (
+          <div className="ed-field" style={{ gap: 2 }}>
+            <span style={{ paddingBottom: 6 }}>업무일지</span>
+            {t.logs!.slice(0, 10).map((l) => (
+              <div key={l.id} className="tdr-act"><span><b className="tdr-lw">{l.mine ? "나" : l.who}</b>{l.body}</span><em>{Number(l.loggedOn.slice(5, 7))}.{Number(l.loggedOn.slice(8, 10))}</em></div>
+            ))}
           </div>
         )}
         {acts.length > 0 && (

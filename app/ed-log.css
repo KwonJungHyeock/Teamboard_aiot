@@ -90,3 +90,11 @@
   .log-comp { flex-wrap: wrap; }
 }
 @media (max-height: 699px) { .log-stream { min-height: 420px; } }
+
+/* 2026-11 — 팀장이 팀원 일지 보기 · 업무 연결 */
+.log-who { width: auto; min-width: 150px; padding: 8px 12px; font-size: 13px; }
+.log-note { flex-shrink: 0; font-size: 12px; color: var(--faint); margin-top: -8px; }
+.log-row .tx .tk { margin-left: 6px; border: 0; cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 6px; background: color-mix(in oklch, var(--accent) 10%, transparent); color: var(--accent); white-space: nowrap; }
+.ed-optpop.log-opts { overflow: visible; max-height: none; }
+.log-opts .og > span small { font-weight: 500; color: var(--faint); }
+.log-opts .cb-in { padding: 8px 30px 8px 12px; font-size: 13px; }

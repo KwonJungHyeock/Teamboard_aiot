@@ -51,6 +51,9 @@ export const NINE: NineScreen[] = [
   { n: 15, key: "reports", label: "보고", path: `${V3_BASE}/reports`, prefix: true },
   { n: 15, key: "calendar", label: "일정", path: `${V3_BASE}/calendar` },
   { n: 16, key: "report", label: "월간 보고", path: `${V3_BASE}/report` },
+  // 2026-11 모니터링 — 팀원 상세(개인 성과 카드) · 정리 필요함
+  { n: 17, key: "people", label: "성과 카드", path: `${V3_BASE}/people/`, prefix: true },
+  { n: 18, key: "tidy", label: "정리 필요", path: `${V3_BASE}/tidy` },
 ];
 
 /** 새 화면 스위치 자리. **스위치가 꺼져 있어도** 관리자에게는 열린다(`app/v3/layout.tsx`) */
@@ -144,11 +147,13 @@ export interface MenuItem { label: string; href: string; match: string[]; lead?:
 export const MENU: MenuItem[] = [
   { label: "홈", href: `${V3_BASE}/calendar`, match: [`${V3_BASE}/calendar`] },
   {
-    label: "업무", href: `${V3_BASE}/my`, match: [`${V3_BASE}/my`, `${V3_BASE}/tasks`, `${V3_BASE}/control`],
+    label: "업무", href: `${V3_BASE}/my`, match: [`${V3_BASE}/my`, `${V3_BASE}/tasks`, `${V3_BASE}/control`, `${V3_BASE}/people`, `${V3_BASE}/tidy`],
     tabs: [
       { label: "내 업무", href: `${V3_BASE}/my`, match: [`${V3_BASE}/my`] },
       { label: "전체 업무", href: `${V3_BASE}/tasks`, match: [`${V3_BASE}/tasks`] },
       { label: "팀원별 현황", href: `${V3_BASE}/control`, match: [`${V3_BASE}/control`] },
+      { label: "성과 카드", href: `${V3_BASE}/people/me`, match: [`${V3_BASE}/people`] },
+      { label: "정리 필요", href: `${V3_BASE}/tidy`, match: [`${V3_BASE}/tidy`], lead: true },
     ],
   },
   { label: "회의", href: `${V3_BASE}/room`, match: [`${V3_BASE}/room`] },

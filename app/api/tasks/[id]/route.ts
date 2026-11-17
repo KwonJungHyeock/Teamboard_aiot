@@ -18,7 +18,8 @@ import { notify as pushNotify } from "@/lib/push";
 import { visibleTaskSql, isVisibility } from "@/lib/visibility";
 import { areaProjectError } from "@/lib/area-project-server";
 import { hasLead } from "@/lib/types";
-import { canEditTask, EDIT_DENIED } from "@/lib/task-permission";
+import { canEditTask, EDIT_DENIED, isLeadUser } from "@/lib/task-permission";
+import { logsOfTask } from "@/lib/worklog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -762,6 +763,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         assigneeId: t.assignee_id, assigneeName: t.assignee_name, createdByName: t.created_by_name, createdById: t.created_by,
         canEdit: await canEditTask(session, { id: t.id, assignee_id: t.assignee_id, created_by: t.created_by, parent_task_id: t.parent_task_id }),
         // 함께하는 사람(0048) — 주담당은 assigneeId
+        // 이 업무에 걸린 업무일지(2026-11) — 팀장은 모두, 그 밖에는 내 것만
+        logs: await logsOfTask(t.id, session.id, isLeadUser(session)),
         members: await query<{ id: number; name: string }>(
           `SELECT tm.actor_id AS id, a.display_name AS name FROM task_member tm JOIN actor a ON a.id = tm.actor_id
             WHERE tm.task_id = $1 AND tm.is_active ORDER BY tm.created_at`, [t.id]),
