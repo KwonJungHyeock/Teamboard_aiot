@@ -15,7 +15,18 @@ export interface EdTask {
   memberIds?: number[];
   updatedAt?: string;
   goalSource?: string | null;
+  /** 우선순위 urgent · high · mid · low — 보통(mid)은 표시하지 않는다 */
+  priority?: string;
 }
+
+/** 우선순위(0050) — 긴급 · 높음 · 보통 · 낮음. 보통은 배지를 그리지 않는다(대부분이 보통) */
+export const PRIORITY_OPTS = [
+  { v: "urgent", label: "긴급" }, { v: "high", label: "높음" }, { v: "mid", label: "보통" }, { v: "low", label: "낮음" },
+] as const;
+export type PriorityV = (typeof PRIORITY_OPTS)[number]["v"];
+export const PRIORITY_LABEL: Record<string, string> = { urgent: "긴급", high: "높음", mid: "보통", low: "낮음" };
+/** 정렬용 — 작을수록 위 */
+export const priorityRank = (p?: string | null) => (p === "urgent" ? 0 : p === "high" ? 1 : p === "low" ? 3 : 2);
 
 /** 이 사람이 맡은 업무인가 — 주담당이거나 함께하는 사람 */
 export const isOnTask = (t: { assigneeId: number | null; memberIds?: number[] }, id: number | null | undefined) =>

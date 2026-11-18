@@ -86,6 +86,7 @@ function Account({ user }: { user: FrameUser }) {
     else if (n.refType === "person" && n.refId) router.push(`${V3_BASE}/people/${n.refId}`);
     else if (n.refType === "worklog") router.push(`${V3_BASE}/log`);
     else if (n.refType === "stats") router.push(`${V3_BASE}/stats`);
+    else if (n.refType === "request") router.push(`${V3_BASE}/requests`);
   };
   return (
     <>
@@ -181,6 +182,24 @@ function DeniedToast() {
   return <div className="ed-toast dnote" role="status">{reason}<button type="button" className="dnote-x" onClick={close} aria-label="닫기">✕</button></div>;
 }
 
+/** 받은 요청 중 대기 — 「업무」 메뉴와 「업무 요청」 탭에 숫자. 화면을 옮기거나 바뀌면 다시 묻는다 */
+function useRequestCount(path: string): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      const r = await fetch("/api/ed/requests?count=1", { cache: "no-store" }).catch(() => null);
+      if (r?.ok && alive) setN((await r.json()).pending ?? 0);
+    };
+    void load();
+    const iv = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 60000);
+    window.addEventListener("ed:changed", load);
+    return () => { alive = false; clearInterval(iv); window.removeEventListener("ed:changed", load); };
+  }, [path]);
+  return n;
+}
+const Cnt = ({ n }: { n: number }) => (n > 0 ? <i className="ed-cnt" aria-label={`새 요청 ${n}건`}>{n > 99 ? "99+" : n}</i> : null);
+
 function DrawerHost() {
   const sp = useSearchParams();
   const router = useRouter();
@@ -197,7 +216,8 @@ function DrawerHost() {
 export default function Frame({ user, children }: { user: FrameUser; children: React.ReactNode }) {
   const path = usePathname() ?? "";
   // 긴 문서형 화면은 페이지 전체가 스크롤된다
-  const scroll = [`${V3_BASE}/stats`, `${V3_BASE}/people`, `${V3_BASE}/tidy`].some((p) => path.startsWith(p));
+  const scroll = [`${V3_BASE}/stats`, `${V3_BASE}/people`, `${V3_BASE}/tidy`, `${V3_BASE}/requests`].some((p) => path.startsWith(p));
+  const reqN = useRequestCount(path);
   // 하위 탭 줄 — 업무 · 보고 · 더보기 묶음 안에서 화면을 옮긴다(2026-10 팀 피드백 2차)
   const group = MENU.find((m) => m.tabs && menuOn(path, m.match));
   const subTabs = (group?.tabs ?? []).filter((t) => !t.lead || user.lead);
@@ -221,7 +241,7 @@ export default function Frame({ user, children }: { user: FrameUser; children: R
         <nav className="ed-nav" aria-label="메뉴" ref={nav}>
           {MENU.filter((m) => !m.lead || user.lead).map((m) => {
             const on = menuOn(path, m.match);
-            return <Link key={m.label} href={m.href} className={on ? "on" : undefined} aria-current={on ? "page" : undefined}>{m.label}</Link>;
+            return <Link key={m.label} href={m.href} className={on ? "on" : undefined} aria-current={on ? "page" : undefined}>{m.label}{m.tabs?.some((t) => t.count === "requests") && !on && <Cnt n={reqN} />}</Link>;
           })}
         </nav>
         <div className="ed-right"><Agent /><ThemePill /><Account user={user} /></div>
@@ -231,7 +251,7 @@ export default function Frame({ user, children }: { user: FrameUser; children: R
         <nav className="ed-sub" aria-label={`${group!.label} 하위 메뉴`}>
           {subTabs.map((t) => {
             const on = menuOn(path, t.match);
-            return <Link key={t.href} href={t.href} className={on ? "on" : undefined} aria-current={on ? "page" : undefined}>{t.label}</Link>;
+            return <Link key={t.href} href={t.href} className={on ? "on" : undefined} aria-current={on ? "page" : undefined}>{t.label}{t.count === "requests" && <Cnt n={reqN} />}</Link>;
           })}
         </nav>
       )}{children}</main>

@@ -7,7 +7,8 @@
 //   QA(2026-10-29): 검색 · 담당 · 카테고리 · 공개 범위 거르기, 보류는 「예정」에 「보류」 표시, 중단은 고를 때만 「완료」 칸에.
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { addDays, diffDays, isOnTask, lookOf, mdw, todayKst, type EdTask, type Look } from "@/lib/ed/core";
+import { addDays, diffDays, isOnTask, lookOf, mdw, priorityRank, todayKst, type EdTask, type Look } from "@/lib/ed/core";
+import { PriBadge } from "../Pri";
 import { patchTask, useMeta, useTasks } from "../data";
 import { emitChanged, Seg, useToast } from "../ui";
 
@@ -108,7 +109,7 @@ export default function Tasks() {
     const xs = list.map((t) => ({ t, look: (t.status === "dropped" ? "done" : lookOf(t, today)) as Look })).filter((x) => L.looks.includes(x.look));
     xs.sort((a, b) => {
       if (L.k === "done") return (b.t.completedAt ?? b.t.dueDate ?? "").localeCompare(a.t.completedAt ?? a.t.dueDate ?? "");
-      return (a.t.dueDate ?? "9999").localeCompare(b.t.dueDate ?? "9999") || a.t.id - b.t.id;
+      return priorityRank(a.t.priority) - priorityRank(b.t.priority) || (a.t.dueDate ?? "9999").localeCompare(b.t.dueDate ?? "9999") || a.t.id - b.t.id;
     });
     const share = new Map<number, number>();
     for (const x of xs) if (x.t.assigneeId) share.set(x.t.assigneeId, (share.get(x.t.assigneeId) ?? 0) + 1);
@@ -209,7 +210,7 @@ export default function Tasks() {
                               onClick={(e) => { e.stopPropagation(); toggle(t.id); }}>
                         {on ? "✓" : (t.assigneeId ? initials.get(t.assigneeId) : null) ?? (t.assigneeName ?? "?").charAt(0)}
                       </button>
-                      <div className="tt"><span>{t.title}</span>{t.status === "review" && !done && <em>검토</em>}{t.status === "hold" && <em className="hold">보류</em>}
+                      <div className="tt"><span>{t.title}</span><PriBadge p={t.priority} />{t.status === "review" && !done && <em>검토</em>}{t.status === "hold" && <em className="hold">보류</em>}
                         {t.status === "dropped" && <em className="drop">중단</em>}{t.visibility === "private" && <em className="pv">비공개</em>}</div>
                       <span className={`du${look === "over" ? " red" : t.dueDate === today && !done ? " now" : ""}`}>{dueText(t, look, today)}</span>
                     </div>

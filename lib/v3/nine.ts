@@ -54,6 +54,8 @@ export const NINE: NineScreen[] = [
   // 2026-11 모니터링 — 팀원 상세(개인 성과 카드) · 정리 필요함
   { n: 17, key: "people", label: "성과 카드", path: `${V3_BASE}/people/`, prefix: true },
   { n: 18, key: "tidy", label: "정리 필요", path: `${V3_BASE}/tidy` },
+  // 2026-11-18 업무 요청(0050) — 팀원끼리 일을 부탁한다
+  { n: 19, key: "requests", label: "업무 요청", path: `${V3_BASE}/requests` },
 ];
 
 /** 새 화면 스위치 자리. **스위치가 꺼져 있어도** 관리자에게는 열린다(`app/v3/layout.tsx`) */
@@ -142,14 +144,16 @@ export const RAIL: RailGroup[] = [
  * 더보기도 같은 모양이다 — 자주 안 여는 화면(업무일지 · 월간 보고)을 탭으로 묶는다.
  * 내 정보 · 구성원 · 설정은 오른쪽 위 계정 메뉴에 그대로 있다.
  */
-export interface MenuTab { label: string; href: string; match: string[]; lead?: boolean }
+/** `count` — 탭 옆에 숫자를 붙일 자리(받은 요청 중 대기). Frame 이 읽는다 */
+export interface MenuTab { label: string; href: string; match: string[]; lead?: boolean; count?: "requests" }
 export interface MenuItem { label: string; href: string; match: string[]; lead?: boolean; tabs?: MenuTab[] }
 export const MENU: MenuItem[] = [
   { label: "홈", href: `${V3_BASE}/calendar`, match: [`${V3_BASE}/calendar`] },
   {
-    label: "업무", href: `${V3_BASE}/my`, match: [`${V3_BASE}/my`, `${V3_BASE}/tasks`, `${V3_BASE}/control`, `${V3_BASE}/people`, `${V3_BASE}/tidy`],
+    label: "업무", href: `${V3_BASE}/my`, match: [`${V3_BASE}/my`, `${V3_BASE}/tasks`, `${V3_BASE}/control`, `${V3_BASE}/people`, `${V3_BASE}/tidy`, `${V3_BASE}/requests`],
     tabs: [
       { label: "내 업무", href: `${V3_BASE}/my`, match: [`${V3_BASE}/my`] },
+      { label: "업무 요청", href: `${V3_BASE}/requests`, match: [`${V3_BASE}/requests`], count: "requests" },
       { label: "전체 업무", href: `${V3_BASE}/tasks`, match: [`${V3_BASE}/tasks`] },
       { label: "팀원별 현황", href: `${V3_BASE}/control`, match: [`${V3_BASE}/control`] },
       { label: "성과 카드", href: `${V3_BASE}/people/me`, match: [`${V3_BASE}/people`] },

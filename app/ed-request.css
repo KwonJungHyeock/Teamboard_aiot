@@ -1,0 +1,37 @@
+/* 업무 요청 (2026-11-18) — 접두사 rq- */
+.ed-page.rq { max-width: 920px; gap: 14px; }
+.rq-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.rq-head .ed-h1 { margin: 0; }
+.rq-sec { display: flex; flex-direction: column; gap: 8px; padding: 6px 14px 14px; border-radius: 20px; background: var(--surface); box-shadow: var(--elev1); }
+.rq-sec h2 { display: flex; align-items: baseline; gap: 8px; margin: 12px 4px 2px; font-size: 14px; font-weight: 800; }
+.rq-sec h2 .tn { font-size: 12px; color: var(--accent); }
+.rq-sec h2 small { font-size: 12px; font-weight: 500; color: var(--faint); }
+.rq-empty { padding: 18px 6px; font-size: 13.5px; color: var(--faint); }
+
+.rq-it { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: 14px; background: var(--panel2); }
+.rq-it .r1 { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.rq-it .tt { min-width: 0; font-size: 15px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rq-it .st { margin-left: auto; padding-left: 10px; flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--sub); white-space: nowrap; }
+.rq-it .st.wait { color: var(--accent); }
+.rq-it .st.ok { color: var(--accent); }
+.rq-it .st.done { color: var(--green); }
+.rq-it .st.no { color: var(--red); }
+.rq-it .st.off { color: var(--faint); }
+.rq-it .mt { font-size: 12.5px; color: var(--sub); }
+.rq-it .mt .late { color: var(--red); font-weight: 700; }
+.rq-it .bd { margin: 2px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.rq-it .rp { margin: 0; font-size: 13px; color: var(--red); }
+.rq-it .ac { display: flex; gap: 6px; flex-wrap: wrap; }
+.rq-it .ac:empty { display: none; }
+.rq-it.pending { background: color-mix(in srgb, var(--accent) 6%, var(--panel2)); box-shadow: inset 3px 0 0 var(--accent); }
+.rq-sec.past .rq-it { padding: 10px 14px; }
+.rq-sec.past .rq-it .tt { font-size: 14px; font-weight: 600; }
+.rq-sec.past .rq-it.declined .tt, .rq-sec.past .rq-it.canceled .tt { color: var(--faint); }
+.rq-no { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.rq-no .ed-input { flex: 1; min-width: 180px; }
+.rq-mt { font-size: 17px; font-weight: 800; }
+
+@media (max-width: 560px) {
+  .rq-head .ed-btn.pri { width: 100%; }
+}
+

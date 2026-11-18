@@ -21,7 +21,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const STATUSES = ["proposed", "todo", "doing", "review", "hold", "done", "dropped"] as const;
-const PRIORITIES = ["high", "mid", "low"] as const;
+const PRIORITIES = ["urgent", "high", "mid", "low"] as const;
 const WORK_TYPES = ["team", "personal", "routine"] as const;
 
 export interface TaskListRow {
@@ -159,8 +159,8 @@ export async function GET(request: Request) {
     const ORDER_BY = {
       // 지연 → 임박 → 여유 → 기한없음. 동률이면 우선순위, 그다음 최신 작성순.
       due: "t.due_date ASC NULLS LAST, "
-        + "CASE t.priority WHEN 'high' THEN 0 WHEN 'low' THEN 2 ELSE 1 END ASC, t.created_at DESC, t.id DESC",
-      priority: "CASE t.priority WHEN 'high' THEN 0 WHEN 'low' THEN 2 ELSE 1 END ASC, "
+        + "CASE t.priority WHEN 'urgent' THEN -1 WHEN 'high' THEN 0 WHEN 'low' THEN 2 ELSE 1 END ASC, t.created_at DESC, t.id DESC",
+      priority: "CASE t.priority WHEN 'urgent' THEN -1 WHEN 'high' THEN 0 WHEN 'low' THEN 2 ELSE 1 END ASC, "
         + "t.due_date ASC NULLS LAST, t.created_at DESC, t.id DESC",
       created: "t.created_at DESC, t.id DESC",
       // §0 정규화와 **같은 식**이다. 두 곳에 다른 식이 있으면 순서가 다시 갈라진다.

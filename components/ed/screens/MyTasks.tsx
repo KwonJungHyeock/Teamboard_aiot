@@ -8,7 +8,8 @@
 // 체크리스트 = 하위 업무. 진척 막대는 하위 업무 완료 비율(없으면 진행 15% · 검토 90% 자리 표시).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { addDays, catColor, diffDays, isOnTask, mondayOf, todayKst, weekday, wd, type EdTask } from "@/lib/ed/core";
+import { addDays, catColor, diffDays, isOnTask, mondayOf, priorityRank, todayKst, weekday, wd, type EdTask } from "@/lib/ed/core";
+import { PriBadge } from "../Pri";
 import Composer from "../Composer";
 import { deleteTask, patchTask, useMeta, useTasks, type Revision } from "../data";
 import { api, emitChanged, useToast } from "../ui";
@@ -21,6 +22,7 @@ const laneOf = (t: EdTask, rev: Revision | undefined, today: string): Lane =>
   t.status === "done" ? "done" : rev ? "fix" : t.status === "hold" ? "todo" : t.dueDate && t.dueDate < today ? "over" : t.status === "todo" ? "todo" : "doing";
 /** 보류 · 비공개 · 함께 표시 — 비공개는 나만 보는 업무, 함께는 주담당이 따로 있는 업무(0048) */
 const Marks = ({ t, me }: { t: EdTask; me?: number | null }) => (<>
+  <PriBadge p={t.priority} />
   {me != null && t.assigneeId !== me && (t.memberIds ?? []).includes(me) && <em className="my-mk with" title="함께하는 업무">함께 · {t.assigneeName ?? "담당 없음"}</em>}
   {t.status === "hold" && <em className="my-mk hold">보류</em>}
   {t.visibility === "private" && <em className="my-mk pv">비공개</em>}
@@ -76,7 +78,8 @@ export default function MyTasks() {
   const top = useMemo(() => (tasks ?? []).filter((t) => !t.parentTaskId && t.status !== "dropped" && t.status !== "proposed"), [tasks]);
   const inTab = useCallback((t: EdTask, k: Tab = tab) => (k === "mine" ? isOnTask(t, me) : t.createdById === me && !isOnTask(t, me)), [tab, me]);
   const pool = top.filter((t) => inTab(t));
-  const byDue = (a: EdTask, b: EdTask) => (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999") || a.id - b.id;
+  // 급한 것 먼저, 같은 급이면 기한 순
+  const byDue = (a: EdTask, b: EdTask) => priorityRank(a.priority) - priorityRank(b.priority) || (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999") || a.id - b.id;
   const lane = (k: Lane) => pool.filter((t) => laneOf(t, revOf.get(t.id), today) === k).sort(byDue);
   const over = lane("over"), fix = lane("fix"), doing = lane("doing"), todo = lane("todo"), done = lane("done");
   const alerts = [...over, ...fix];

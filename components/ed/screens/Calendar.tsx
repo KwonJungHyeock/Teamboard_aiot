@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, diffDays, isEnter, isOnTask, md, personColors, todayKst, weekday, type EdTask } from "@/lib/ed/core";
+import { PriBadge } from "../Pri";
 import { createTask, patchTask, useMeta, useTasks } from "../data";
 import { api, Drawer, emitChanged, useOnChanged, useToast } from "../ui";
 import AddModal, { type AddPreset } from "../AddModal";
@@ -367,7 +368,7 @@ export default function Calendar({ meId, launch }: { meId: number; launch: strin
                       return (
                         <div key={t.id} className={`cal-card ${l}`} style={{ ["--pc" as string]: colorOf(t.assigneeId) }}
                              onClick={(e) => { e.stopPropagation(); openTask(t.id); }}>
-                          <span className="tt">{t.title}</span>
+                          <span className="tt">{t.title}<PriBadge p={t.priority} /></span>
                           <span className="mt"><i />{t.assigneeName ?? "담당 없음"} · {t.areaName}</span>
                         </div>
                       );
@@ -396,7 +397,7 @@ export default function Calendar({ meId, launch }: { meId: number; launch: strin
               <div className="cal-myo">
                 {mineSum.over.slice(0, 3).map((t) => (
                   <Link key={t.id} href={`/v3/calendar?task=${t.id}`} scroll={false} className="cal-myr">
-                    <span className="tt">{t.title}</span><em className="tn">{diffDays(today, t.dueDate!)}일 지남</em>
+                    <span className="tt">{t.title}<PriBadge p={t.priority} /></span><em className="tn">{diffDays(today, t.dueDate!)}일 지남</em>
                   </Link>
                 ))}
                 {mineSum.over.length > 3 && <Link href="/v3/my" className="cal-mym">지난 업무 {mineSum.over.length - 3}건 더 →</Link>}
@@ -424,7 +425,7 @@ export default function Calendar({ meId, launch }: { meId: number; launch: strin
                   <button type="button" className={`ed-check${t.status === "done" ? " on" : ""}`} aria-pressed={t.status === "done"}
                           aria-label={t.status === "done" ? "완료 취소" : "완료"} onClick={() => void toggle(t)}>{t.status === "done" ? "✓" : ""}</button>
                   <Link href={`/v3/calendar?task=${t.id}`} scroll={false} className="cal-rb">
-                    <span className="tt">{t.title}</span>
+                    <span className="tt">{t.title}<PriBadge p={t.priority} /></span>
                     <span className="mt"><i />{t.assigneeName ?? "담당 없음"} · {t.areaName}{isSpan(t) ? ` · ${spanText({ start: t.startDate, end: t.dueDate })}` : ""}</span>
                   </Link>
                 </div>

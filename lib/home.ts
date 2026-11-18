@@ -505,7 +505,7 @@ export async function buildHomeSummary(viewerId: number, isLead = false): Promis
      LEFT JOIN area ar ON ar.id = t.area_id
      LEFT JOIN actor ac ON ac.id = t.assignee_id
      WHERE ${OPEN_TASK} AND ${TEAM_TASK}
-     ORDER BY t.due_date ASC NULLS LAST, t.priority = 'high' DESC, t.id`
+     ORDER BY t.due_date ASC NULLS LAST, (t.priority = 'urgent') DESC, (t.priority = 'high') DESC, t.id`
   );
   const lanes: Lane[] = humans.map((h) => ({
     actorId: h.id,
