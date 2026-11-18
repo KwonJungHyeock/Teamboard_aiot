@@ -1,13 +1,15 @@
 "use client";
 
 // 등록 창 — 달력의 `+ 등록` · 칸의 `+` · 고른 날 한 번 더 · 칸 끌기, 한 줄 등록창의 `자세히` 로 연다.
-//   업무: 이름 · 기간(달력) · 담당 · 카테고리(고르거나 적기) · 목표(고르거나 적기).
+//   업무: 이름 · 기간(달력) · 우선순위 · 담당 · 카테고리(고르거나 적기) · 목표(고르거나 적기).
 //         함께하는 사람 · 공개 · 상태 · 메모는 「옵션」 안에 접어 둔다 — 대부분은 안 건드린다.
 //   일정: 이름 · 기간 · 팀/나만.
 import { useState } from "react";
 import { md, todayKst } from "@/lib/ed/core";
 import { areaOpts, canMakeGoal, createTask, dropArea, dropGoal, goalOpts, makeArea, makeGoal, useMeta } from "./data";
 import Combo from "./Combo";
+import { PriPick } from "./Pri";
+import type { PriorityV } from "@/lib/ed/core";
 import { api, emitChanged, Modal, Seg } from "./ui";
 
 export interface AddPreset { start?: string; end?: string; title?: string; kind?: "task" | "event" }
@@ -38,6 +40,7 @@ export default function AddModal({ preset, onClose, onDone }: { preset?: AddPres
   const [scope, setScope] = useState<"team" | "private">("team");
   const [status, setStatus] = useState<"todo" | "doing">("todo");
   const [memo, setMemo] = useState("");
+  const [pri, setPri] = useState<PriorityV>("mid");
   const [members, setMembers] = useState<number[]>([]);
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -56,7 +59,7 @@ export default function AddModal({ preset, onClose, onDone }: { preset?: AddPres
     setBusy(true); setErr("");
     try {
       if (kind === "task") {
-        const body: Record<string, unknown> = { title: title.trim(), assigneeId: assignee, status, visibility: scope, startDate: start || null, dueDate: due || null };
+        const body: Record<string, unknown> = { title: title.trim(), assigneeId: assignee, status, visibility: scope, startDate: start || null, dueDate: due || null, priority: pri };
         if (area !== null) body.areaId = area;
         if (memo.trim()) body.description = memo.trim();
         const with_ = members.filter((m) => m !== assignee);
@@ -96,6 +99,10 @@ export default function AddModal({ preset, onClose, onDone }: { preset?: AddPres
                 <i>~</i>
                 <DateIn label="기한" value={due} min={start || undefined} onChange={setDue} />
               </div>
+            </div>
+            <div className="am-f">
+              <span>우선순위</span>
+              <PriPick full value={pri} onChange={setPri} />
             </div>
             <div className="am-grid">
               <label className="am-f">

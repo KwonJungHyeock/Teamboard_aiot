@@ -9,6 +9,7 @@ import { ago, dueBadge, initial, isEnter, STATUS_LABEL, todayKst, type EdTask, t
 import { areaOpts, canMakeGoal, createTask, deleteTask, dropArea, dropGoal, goalOpts, makeArea, makeGoal, patchTask, useMeta, type Revision } from "./data";
 import Combo from "./Combo";
 import { DateIn } from "./AddModal";
+import { PriPick } from "./Pri";
 import { api, Drawer, emitChanged, Seg, useToast } from "./ui";
 
 interface Act { id: number; message: string; created_at?: string; createdAt?: string }
@@ -19,7 +20,7 @@ const host = (u: string) => { try { const h = new URL(u).hostname.replace(/^www\
 
 interface Detail {
   id: number; title: string; description: string; status: string; assigneeId: number | null; assigneeName: string | null;
-  createdByName: string | null; createdById: number | null; visibility: string; areaId: number; areaName: string; dueDate: string | null; startDate?: string | null; goalIds: number[]; parentTaskId: number | null;
+  createdByName: string | null; createdById: number | null; visibility: string; priority?: string; areaId: number; areaName: string; dueDate: string | null; startDate?: string | null; goalIds: number[]; parentTaskId: number | null;
   /** 담당 · 만든 사람 · 팀장만 고친다(QA 1) — 나머지는 보기 전용 + 「수정 요청」 */
   canEdit?: boolean; dropReason?: string | null;
   /** 함께하는 사람(0048) */
@@ -178,6 +179,12 @@ export default function TaskDrawer({ id, onClose }: { id: number; onClose: () =>
             </div>
           )}
         </div>
+        {!t.parentTaskId && (
+          <div className="ed-field">
+            <span>우선순위</span>
+            <PriPick full value={t.priority} onChange={(v) => { if (v !== t.priority) void save({ priority: v }); }} />
+          </div>
+        )}
         {!t.parentTaskId && (
           <div className="tdr-two">
             <label className="ed-field">

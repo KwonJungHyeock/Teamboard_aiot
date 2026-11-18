@@ -173,6 +173,7 @@ export function patchBody(
  * 화면이 영문 코드를 그리면 무슨 뜻인지 배워야 한다.
  */
 export const PRIORITY_CHOICES = [
+  { value: "urgent", label: "긴급" },
   { value: "high", label: "높음" },
   { value: "mid", label: "보통" },
   { value: "low", label: "낮음" },

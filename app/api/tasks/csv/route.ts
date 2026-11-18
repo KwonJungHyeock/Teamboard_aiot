@@ -42,7 +42,7 @@ const HEADER = [
 ] as const;
 
 /** 우선순위 — 화면과 같은 말로 적는다. 영문 코드를 파일에 내보내지 않는다. */
-const PRIORITY_LABEL: Record<string, string> = { high: "높음", mid: "보통", low: "낮음" };
+const PRIORITY_LABEL: Record<string, string> = { urgent: "긴급", high: "높음", mid: "보통", low: "낮음" };
 
 interface Row extends SelectableRow {
   priority: string;

@@ -20,12 +20,13 @@ import { areaProjectError } from "@/lib/area-project-server";
 import { hasLead } from "@/lib/types";
 import { canEditTask, EDIT_DENIED, isLeadUser } from "@/lib/task-permission";
 import { logsOfTask } from "@/lib/worklog";
+import { notifyRequestDone } from "@/lib/task-request";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const STATUSES = ["proposed", "todo", "doing", "review", "hold", "done", "dropped"] as const;
-const PRIORITIES = ["high", "mid", "low"] as const;
+const PRIORITIES = ["urgent", "high", "mid", "low"] as const;
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -656,6 +657,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     // **자동으로 해제하지 않는다.** 원인이 끝나도 다른 이유로 여전히 막혀 있을 수 있다.
     // 대신 활동에 남긴다 — 사람이 화면을 안 보고 있을 수 있다(§B4).
     if (statusChanged && payload.status === "done") {
+      // 요청으로 생긴 업무 — 요청한 사람에게 완료를 알린다(0050)
+      await notifyRequestDone(taskId, session.id);
       const waiting = await query<{ id: number; title: string; assignee_id: number | null }>(
         `SELECT id, title, assignee_id FROM task
           WHERE blocked_by = $1 AND is_active = true AND blocked = true`,

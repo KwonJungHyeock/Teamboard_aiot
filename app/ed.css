@@ -542,3 +542,12 @@ textarea.ed-input { resize: vertical; line-height: 1.6; padding: 14px 16px; bord
   .ev-d { flex: 1; width: 0; }
   .ev-opts .add { margin-left: auto; }
 }
+
+/* 우선순위 배지(0050) — 긴급 · 높음 · 낮음. 보통은 그리지 않는다 */
+.ed-pri { flex-shrink: 0; display: inline-flex; align-items: center; margin-left: 6px; padding: 1px 6px; border-radius: 99px; font-style: normal; font-size: 10.5px; font-weight: 700; line-height: 1.5; vertical-align: 1px; white-space: nowrap; }
+.ed-pri.urgent { background: var(--red); color: #fff; }
+.ed-pri.high { background: color-mix(in srgb, var(--amber) 18%, transparent); color: var(--amber); }
+.ed-pri.low { background: transparent; box-shadow: inset 0 0 0 1px var(--line); color: var(--faint); }
+
+/* 탭 · 메뉴 숫자 — 받은 요청 중 대기 */
+.ed-cnt { display: inline-grid; place-items: center; min-width: 17px; height: 17px; margin-left: 5px; padding: 0 5px; border-radius: 99px; font-style: normal; font-size: 10.5px; font-weight: 800; line-height: 1; background: var(--red); color: #fff; vertical-align: 1px; }
