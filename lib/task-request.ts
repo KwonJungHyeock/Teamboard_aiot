@@ -92,7 +92,8 @@ export async function getRequest(id: number): Promise<TaskRequest | null> {
 }
 
 /** 받은 사람이 수락 — 업무를 만들고 잇는다. 카테고리는 고르면 그것, 아니면 받은 사람 소속 영역 */
-export async function acceptRequest(me: { id: number; name: string }, id: number, areaIdIn?: unknown): Promise<TaskRequest> {
+/** `done` — 「바로 완료」: 받자마자 끝낸 일(짧은 부탁). 업무는 완료로 만들고, 요청한 사람에게는 완료 알림 하나만 간다 */
+export async function acceptRequest(me: { id: number; name: string }, id: number, areaIdIn?: unknown, done = false): Promise<TaskRequest> {
   const req = await getRequest(id);
   if (!req) throw new RequestError("요청을 찾지 못했습니다.", 404);
   if (req.toId !== me.id) throw new RequestError("받은 사람만 수락할 수 있습니다.", 403);
@@ -119,13 +120,15 @@ export async function acceptRequest(me: { id: number; name: string }, id: number
   const desc = [req.body, `요청: ${clean(req.fromName)}`].filter(Boolean).join("\n\n");
   const task = await queryOne<{ id: number }>(
     `INSERT INTO task (area_id, work_type, title, description, status, assignee_id, due_date, priority, origin, created_by, visibility, goal_source, sort_order)
-     VALUES ($1,'team',$2,$3,'todo',$4,$5,$6,'human',$7,'team',$8,
+     VALUES ($1,'team',$2,$3,$9,$4,$5,$6,'human',$7,'team',$8,
              COALESCE((SELECT max(s.sort_order) + 1 FROM task s WHERE s.is_active = true AND s.parent_task_id IS NULL), 1))
      RETURNING id`,
-    [areaId, req.title, desc.slice(0, 4000), me.id, req.dueDate, req.priority, req.fromId, NEW_TASK_GOAL_SOURCE]);
+    [areaId, req.title, desc.slice(0, 4000), me.id, req.dueDate, req.priority, req.fromId, NEW_TASK_GOAL_SOURCE, done ? "done" : "todo"]);
+  if (done) await query(`UPDATE task SET completed_at = now(), progress = 100 WHERE id = $1`, [task!.id]);
   await query(`UPDATE task_request SET task_id = $2 WHERE id = $1`, [id, task!.id]);
-  await logActivity({ userId: me.id, taskId: task!.id, message: `${me.name}이(가) ${clean(req.fromName)} 님의 요청을 수락 — "${req.title}"` });
-  await createNotification({ userId: req.fromId, type: "system", refType: "request", refId: id, actorId: me.id,
+  await logActivity({ userId: me.id, taskId: task!.id, message: `${me.name}이(가) ${clean(req.fromName)} 님의 요청을 ${done ? "수락하고 완료" : "수락"} — "${req.title}"` });
+  if (done) await notifyRequestDone(task!.id, me.id);
+  else await createNotification({ userId: req.fromId, type: "system", refType: "request", refId: id, actorId: me.id,
     snippet: `요청 수락 · ${req.title}` });
   return (await getRequest(id))!;
 }
@@ -153,6 +156,19 @@ export async function cancelRequest(me: { id: number }, id: number): Promise<Tas
   // 받은 사람 알림함에 남은 요청 알림은 걷는다 — 눌러도 할 일이 없다
   await query(`UPDATE notification SET archived = true WHERE user_id = $1 AND ref_type = 'request' AND ref_id = $2`, [req.toId, id]);
   return (await getRequest(id))!;
+}
+
+/** 다시 알림 — 요청한 사람이 대기 중인 요청을 한 번 더 알린다. 하루 한 번 */
+export async function remindRequest(me: { id: number; name: string }, id: number, today: string): Promise<boolean> {
+  const req = await getRequest(id);
+  if (!req) throw new RequestError("요청을 찾지 못했습니다.", 404);
+  if (req.fromId !== me.id) throw new RequestError("요청한 사람만 다시 알릴 수 있습니다.", 403);
+  if (req.status !== "pending") throw new RequestError("이미 처리된 요청입니다.", 409);
+  const r = await createNotification({ userId: req.toId, type: "assign", refType: "request", refId: id, actorId: me.id,
+    snippet: `다시 알림 · ${PRI_WORD[req.priority] ?? ""}${req.title}`, dedupeKey: `request-remind:${id}:${today}` });
+  if (r !== "created") return false;
+  await pushNotify([req.toId], "assign", { title: `${clean(me.name)} 님이 요청을 다시 알렸습니다`, body: req.title, url: "/v3/requests", tag: `request-${id}` });
+  return true;
 }
 
 /** 요청으로 생긴 업무가 완료되면 — 요청한 사람에게 알린다(본인이 완료했으면 안 보낸다) */

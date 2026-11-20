@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ago, dMinus, mdw, STATUS_LABEL, todayKst, type PriorityV, type Status } from "@/lib/ed/core";
-import { useMeta } from "../data";
+import { patchTask, useMeta } from "../data";
 import { DateIn } from "../AddModal";
 import { PriBadge, PriPick } from "../Pri";
 import { api, emitChanged, Modal, Seg, useOnChanged, useToast } from "../ui";
@@ -45,17 +45,25 @@ export default function Requests() {
 
   const pending = data?.received.filter((r) => r.status === "pending").length ?? 0;
   const list = tab === "in" ? data?.received : data?.sent;
-  const open = (list ?? []).filter((r) => r.status === "pending");
-  const past = (list ?? []).filter((r) => r.status !== "pending");
+  // 진행 중 = 답을 기다리거나, 수락했는데 아직 안 끝난 것. 여기서 바로 시작 · 완료한다
+  const isOpen = (r: Req) => r.status === "pending" || (r.status === "accepted" && !!r.taskStatus && r.taskStatus !== "done" && r.taskStatus !== "dropped");
+  const open = (list ?? []).filter(isOpen);
+  const past = (list ?? []).filter((r) => !isOpen(r));
 
   const act = async (r: Req, body: Record<string, unknown>, msg: string) => {
     try {
-      const d = await api<{ request: Req }>(`/api/ed/requests/${r.id}`, { method: "PATCH", body });
+      const d = await api<{ request?: Req }>(`/api/ed/requests/${r.id}`, { method: "PATCH", body });
       await load(); emitChanged();
-      const tid = d.request.taskId;
-      if (body.action === "accept" && tid) show(msg, { label: "열기", run: () => router.push(`?task=${tid}`, { scroll: false }) });
+      const tid = d.request?.taskId;
+      if (body.action === "accept" && tid && !body.done) show(msg, { label: "열기", run: () => router.push(`?task=${tid}`, { scroll: false }) });
       else show(msg);
     } catch (e) { show(e instanceof Error ? e.message : "처리하지 못했습니다"); }
+  };
+  /** 수락해서 생긴 업무의 상태 — 시작 · 완료. 받은 사람(담당)과 요청한 사람(만든 사람) 모두 바꿀 수 있다 */
+  const move = async (r: Req, status: "doing" | "done", msg: string) => {
+    if (!r.taskId) return;
+    try { await patchTask(r.taskId, { status }); await load(); show(msg); }
+    catch (e) { show(e instanceof Error ? e.message : "처리하지 못했습니다"); }
   };
 
   return (
@@ -70,15 +78,15 @@ export default function Requests() {
       {!data ? <div className="ed-empty">불러오는 중</div> : (
         <>
           <section className="rq-sec">
-            <h2>{tab === "in" ? "처리할 요청" : "답을 기다리는 요청"}<span className="tn">{open.length}</span></h2>
+            <h2>{tab === "in" ? "처리할 요청" : "진행 중인 요청"}<span className="tn">{open.length}</span></h2>
             {open.length === 0
-              ? <div className="rq-empty">{tab === "in" ? "받은 요청이 없습니다" : "기다리는 요청이 없습니다"}</div>
-              : open.map((r) => <Item key={r.id} r={r} side={tab} act={act} />)}
+              ? <div className="rq-empty">{tab === "in" ? "처리할 요청이 없습니다" : "진행 중인 요청이 없습니다"}</div>
+              : open.map((r) => <Item key={r.id} r={r} side={tab} act={act} move={move} />)}
           </section>
           {past.length > 0 && (
             <section className="rq-sec past">
               <h2>지난 요청<span className="tn">{past.length}</span><small>최근 60일</small></h2>
-              {past.map((r) => <Item key={r.id} r={r} side={tab} act={act} />)}
+              {past.map((r) => <Item key={r.id} r={r} side={tab} act={act} move={move} />)}
             </section>
           )}
         </>
@@ -93,12 +101,17 @@ export default function Requests() {
   );
 }
 
-function Item({ r, side, act }: { r: Req; side: "in" | "out"; act: (r: Req, body: Record<string, unknown>, msg: string) => Promise<void> }) {
+function Item({ r, side, act, move }: {
+  r: Req; side: "in" | "out";
+  act: (r: Req, body: Record<string, unknown>, msg: string) => Promise<void>;
+  move: (r: Req, status: "doing" | "done", msg: string) => Promise<void>;
+}) {
   const router = useRouter();
   const today = todayKst();
   const [no, setNo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const run = async (body: Record<string, unknown>, msg: string) => { setBusy(true); await act(r, body, msg); setBusy(false); };
+  const step = async (status: "doing" | "done", msg: string) => { setBusy(true); await move(r, status, msg); setBusy(false); };
 
   const who = side === "in" ? `${r.fromName} 님이 요청` : `${r.toName} 님에게`;
   const st = r.status === "pending" ? { cls: "wait", text: side === "in" ? "새 요청" : "대기" }
@@ -136,14 +149,23 @@ function Item({ r, side, act }: { r: Req; side: "in" | "out"; act: (r: Req, body
         <div className="ac">
           {side === "in" && r.status === "pending" && (<>
             <button type="button" className="ed-btn sm pri" disabled={busy} onClick={() => void run({ action: "accept" }, "내 업무에 넣었습니다")}>수락</button>
+            <button type="button" className="ed-btn sm ok" disabled={busy} title="받자마자 끝낸 일 — 수락하고 바로 완료"
+                    onClick={() => void run({ action: "accept", done: true }, `완료했습니다 · ${r.fromName} 님에게 알렸습니다`)}>바로 완료</button>
             <button type="button" className="ed-btn sm" disabled={busy} onClick={() => setNo("")}>거절</button>
           </>)}
-          {side === "out" && r.status === "pending" && (
+          {side === "out" && r.status === "pending" && (<>
+            <button type="button" className="ed-btn sm" disabled={busy} onClick={() => void run({ action: "remind" }, `${r.toName} 님에게 다시 알렸습니다`)}>다시 알림</button>
             <button type="button" className="ed-btn sm gh" disabled={busy}
                     onClick={() => { if (window.confirm("이 요청을 취소할까요?")) void run({ action: "cancel" }, "요청을 취소했습니다"); }}>요청 취소</button>
-          )}
+          </>)}
+          {r.status === "accepted" && live && (<>
+            {side === "in" && (r.taskStatus === "todo" || r.taskStatus === "hold") &&
+              <button type="button" className="ed-btn sm" disabled={busy} onClick={() => void step("doing", "진행으로 옮겼습니다")}>시작</button>}
+            <button type="button" className="ed-btn sm ok" disabled={busy}
+                    onClick={() => void step("done", side === "in" ? `완료했습니다 · ${r.fromName} 님에게 알렸습니다` : "완료했습니다")}>완료</button>
+          </>)}
           {r.taskId && r.taskStatus && (
-            <button type="button" className="ed-btn sm" onClick={() => router.push(`?task=${r.taskId}`, { scroll: false })}>업무 열기</button>
+            <button type="button" className="ed-btn sm gh" onClick={() => router.push(`?task=${r.taskId}`, { scroll: false })}>업무 열기</button>
           )}
         </div>
       )}

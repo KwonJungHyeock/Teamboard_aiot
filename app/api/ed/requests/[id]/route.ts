@@ -1,9 +1,10 @@
-// 업무 요청 처리 — PATCH { action: "accept", areaId? } · { action: "decline", reply? } · { action: "cancel" }
+// 업무 요청 처리 — PATCH { action: "accept", areaId?, done? } · { action: "remind" } · { action: "decline", reply? } · { action: "cancel" }
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { jsonError } from "@/lib/api";
 import { viaClaude } from "@/lib/claude-guard";
-import { acceptRequest, cancelRequest, declineRequest, RequestError } from "@/lib/task-request";
+import { acceptRequest, cancelRequest, declineRequest, remindRequest, RequestError } from "@/lib/task-request";
+import { kstToday } from "@/lib/home";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +17,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const id = Number(params.id);
     if (!Number.isInteger(id) || id <= 0) return new NextResponse(null, { status: 404 });
     const b = await request.json().catch(() => ({})) as Record<string, unknown>;
-    const r = b.action === "accept" ? await acceptRequest(s, id, b.areaId)
+    if (b.action === "remind") {
+      const sent = await remindRequest(s, id, kstToday());
+      return sent ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "오늘은 이미 다시 알렸습니다." }, { status: 429 });
+    }
+    const r = b.action === "accept" ? await acceptRequest(s, id, b.areaId, b.done === true)
       : b.action === "decline" ? await declineRequest(s, id, b.reply)
       : b.action === "cancel" ? await cancelRequest(s, id)
       : null;

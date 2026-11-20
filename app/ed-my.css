@@ -134,6 +134,10 @@
   .my-bc { flex-direction: row; gap: 14px; }
   .my-bc b { margin-left: 4px; }
   .my-tri { margin: 0 0 0 auto; margin-right: 16px; }
+  /* 휴대폰 — 셋째 줄(업무 요청)이 붙어도 글자가 쪼개지지 않게 줄을 넘긴다 */
+  .my-bl { flex-wrap: wrap; row-gap: 8px; padding-right: 16px; }
+  .my-bt, .my-bc > div, .my-tri { white-space: nowrap; }
+  .my-bc { flex-wrap: wrap; row-gap: 6px; }
 }
 
 /* QA 2026-10-29 — 보류 · 비공개 표시 */

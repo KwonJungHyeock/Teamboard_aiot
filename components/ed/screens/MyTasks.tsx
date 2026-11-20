@@ -8,11 +8,11 @@
 // 체크리스트 = 하위 업무. 진척 막대는 하위 업무 완료 비율(없으면 진행 15% · 검토 90% 자리 표시).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { addDays, catColor, diffDays, isOnTask, mondayOf, priorityRank, todayKst, weekday, wd, type EdTask } from "@/lib/ed/core";
+import { addDays, catColor, diffDays, dMinus, isOnTask, mdw, mondayOf, priorityRank, todayKst, weekday, wd, type EdTask } from "@/lib/ed/core";
 import { PriBadge } from "../Pri";
 import Composer from "../Composer";
 import { deleteTask, patchTask, useMeta, useTasks, type Revision } from "../data";
-import { api, emitChanged, useToast } from "../ui";
+import { api, emitChanged, useOnChanged, useToast } from "../ui";
 
 type Lane = "over" | "fix" | "doing" | "todo" | "done";
 type Tab = "mine" | "delegated";
@@ -28,6 +28,8 @@ const Marks = ({ t, me }: { t: EdTask; me?: number | null }) => (<>
   {t.visibility === "private" && <em className="my-mk pv">비공개</em>}
 </>);
 
+interface InReq { id: number; fromName: string; title: string; body: string; dueDate: string | null; priority: string; status: string }
+
 const dLabel = (due: string | null, today: string) => {
   if (!due) return "—";
   const o = diffDays(due, today);
@@ -40,6 +42,13 @@ export default function MyTasks() {
   const path = usePathname() ?? "/v3/my";
   const meta = useMeta();
   const { tasks, revisions, setTasks } = useTasks();
+  // 받은 업무 요청(대기) — 알림판 맨 앞에. 여기서 바로 수락 · 완료한다(2026-11-20)
+  const [reqs, setReqs] = useState<InReq[]>([]);
+  const loadReqs = useCallback(async () => {
+    try { const d = await api<{ received: InReq[] }>("/api/ed/requests"); setReqs(d.received.filter((r) => r.status === "pending")); } catch { /* 알림판만 비운다 */ }
+  }, []);
+  useEffect(() => { void loadReqs(); }, [loadReqs]);
+  useOnChanged(() => { void loadReqs(); });
   const [toast, showToast] = useToast();
   const today = todayKst();
   const me = meta?.me.id ?? null;
@@ -83,6 +92,8 @@ export default function MyTasks() {
   const lane = (k: Lane) => pool.filter((t) => laneOf(t, revOf.get(t.id), today) === k).sort(byDue);
   const over = lane("over"), fix = lane("fix"), doing = lane("doing"), todo = lane("todo"), done = lane("done");
   const alerts = [...over, ...fix];
+  // 받은 요청은 「받은 일」 탭에서만 — 「맡긴 일」은 내가 남에게 준 것이다
+  const showReqs = tab === "mine" ? reqs : [];
   const openCount = pool.filter((t) => t.status !== "done").length;
   const tabCount = (k: Tab) => top.filter((t) => inTab(t, k) && t.status !== "done").length;
 
@@ -102,6 +113,17 @@ export default function MyTasks() {
     await api("/api/revisions", { method: "PATCH", body: { taskId: id } });
     local(id, { status: "review" });
     await patchTask(id, { status: "review" });
+  };
+  const [reqBusy, setReqBusy] = useState<number | null>(null);
+  const answer = async (r: InReq, done: boolean) => {
+    setReqBusy(r.id);
+    try {
+      const d = await api<{ request: { taskId: number | null } }>(`/api/ed/requests/${r.id}`, { method: "PATCH", body: { action: "accept", done } });
+      setReqs((xs) => xs.filter((x) => x.id !== r.id)); emitChanged();
+      if (d.request.taskId) setNewId(d.request.taskId);
+      showToast(done ? `완료했습니다 · ${r.fromName} 님에게 알렸습니다` : "수락했습니다 · 할 일에 넣었습니다");
+    } catch (e) { showToast(e instanceof Error ? e.message : "처리하지 못했습니다"); void loadReqs(); }
+    setReqBusy(null);
   };
   const start = (id: number) => exit(id, "right", async () => { await setStatus(id, "doing"); setFlash((f) => f + 1); }, 450);
 
@@ -161,16 +183,33 @@ export default function MyTasks() {
 
   // ── 알림판 ───────────────────────────────────────────────────
   const board = (
-    <section className={`my-board${alerts.length ? "" : " calm"}`}>
+    <section className={`my-board${alerts.length || showReqs.length ? "" : " calm"}`}>
       <div className="my-bl">
         <span className="my-bt">알림판</span>
         <div className="my-bc">
           <div><i style={{ background: "var(--red)", boxShadow: "0 0 0 3px color-mix(in oklch,var(--red) 16%,transparent)" }} />밀림<b style={{ color: over.length ? "var(--red)" : "var(--faint)" }}>{over.length}</b></div>
           <div><i style={{ background: "var(--violet)", boxShadow: "0 0 0 3px color-mix(in oklch,var(--violet) 16%,transparent)" }} />수정 필요<b style={{ color: fix.length ? "var(--violet)" : "var(--faint)" }}>{fix.length}</b></div>
+          {showReqs.length > 0 && <div><i style={{ background: "var(--accent)", boxShadow: "0 0 0 3px color-mix(in oklch,var(--accent) 16%,transparent)" }} />업무 요청<b style={{ color: "var(--accent)" }}>{showReqs.length}</b></div>}
         </div>
         {tab === "mine" && over.length > 1 && <button type="button" className="my-tri" onClick={startTriage}>한 번에 정리</button>}
       </div>
       <div className="my-cards">
+        {showReqs.map((r) => (
+          <div key={`rq${r.id}`} className="my-card rq" onClick={() => router.push("/v3/requests")} role="link">
+            <span className="tab" style={{ background: "var(--accent)" }} />
+            <div className="hd">
+              <span className="tag" style={{ color: "var(--accent)", background: "color-mix(in oklch,var(--accent) 13%,transparent)" }}>업무 요청 · {r.fromName}</span>
+              <span className="cat"><PriBadge p={r.priority} />{r.dueDate ? ` ${mdw(r.dueDate)} ${dMinus(r.dueDate, today)}` : ""}</span>
+            </div>
+            <div className="tt">{r.title}</div>
+            {r.body && <div className="note">{r.body}</div>}
+            <div className="qk" onClick={(e) => e.stopPropagation()}>
+              <button type="button" className="s" disabled={reqBusy === r.id} onClick={() => void answer(r, false)}>수락</button>
+              <button type="button" disabled={reqBusy === r.id} onClick={() => void answer(r, true)}>바로 완료</button>
+              <button type="button" disabled={reqBusy === r.id} onClick={() => router.push("/v3/requests")}>거절…</button>
+            </div>
+          </div>
+        ))}
         {alerts.map((t, i) => {
           const isOver = !revOf.get(t.id);
           const r = revOf.get(t.id);
@@ -201,7 +240,7 @@ export default function MyTasks() {
             </div>
           );
         })}
-        {ready && !alerts.length && <div className="my-calm"><span>✓</span>확인할 것 없음</div>}
+        {ready && !alerts.length && !showReqs.length && <div className="my-calm"><span>✓</span>확인할 것 없음</div>}
       </div>
     </section>
   );
