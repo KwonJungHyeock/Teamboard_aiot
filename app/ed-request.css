@@ -35,3 +35,6 @@
   .rq-head .ed-btn.pri { width: 100%; }
 }
 
+/* 완료 쪽 버튼 — 초록 */
+.rq-it .ed-btn.ok { background: color-mix(in srgb, var(--green) 14%, transparent); color: var(--green); font-weight: 700; box-shadow: none; }
+.rq-it .ed-btn.ok:hover { background: var(--green); color: #fff; }
