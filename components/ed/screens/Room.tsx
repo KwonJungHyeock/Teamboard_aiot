@@ -20,6 +20,7 @@ import { minutesHtml, saveWord, type MinutesDoc } from "@/lib/ed/minutes-export"
 import { uploadMeetingFile } from "@/lib/ed/meeting-upload";
 import { Modal, Seg, useToast } from "../ui";
 import MeetingNotes, { hm, type NotesState } from "./MeetingNotes";
+import StrategyApply from "../StrategyApply";
 
 type Kind = "agenda" | "link" | "decision" | "action" | "note" | "chat" | "file";
 interface Item { id: number; kind: Kind; body: string; url: string | null; meta: Record<string, unknown>; createdBy: string; createdById: number; createdAt: string }
@@ -76,6 +77,8 @@ export default function Room({ initial: init, me, lead, domain, people }: {
   const hasFiles = init.items.some((i) => i.kind === "file" || i.kind === "link");
   const [stage, setStage] = useState<Stage>(hasFiles ? "files" : "notes");
   const [pane, setPane] = useState<Pane>("chat");
+  // 확정된 결정 → 운영 전략(지시서 v1 파트 4)
+  const [toStrategy, setToStrategy] = useState<{ id: number; body: string } | null>(null);
   const [view, setView] = useState<number | null>(null);          // 자료 크게 보기(항목 번호)
   const [follow, setFollow] = useState(true);                       // 남이 띄운 자료를 따라간다
   const [text, setText] = useState("");
@@ -606,6 +609,7 @@ export default function Room({ initial: init, me, lead, domain, people }: {
                     <span className={`num${it.meta.decidedAt ? " ok" : ""}`}>{it.meta.decidedAt ? "✓" : "?"}</span>
                     <div className="tx"><span className="b">{it.body}</span><span className="s">{it.meta.decidedAt ? "결정" : "제안"} · {it.createdBy}</span></div>
                     {!it.meta.decidedAt && host_ && !ended && <button type="button" className="ok" onClick={() => void act(it.id, "decide")}>확정</button>}
+                    {!!it.meta.decidedAt && <button type="button" className="sg-to" onClick={() => setToStrategy({ id: it.id, body: it.body })}>전략에 반영</button>}
                     {!ended && (it.createdById === me.id || host_) && <button type="button" className="rm" onClick={() => void act(it.id, "remove")} aria-label="내리기">✕</button>}
                   </div>
                 ))}
@@ -631,6 +635,10 @@ export default function Room({ initial: init, me, lead, domain, people }: {
         <SaveModal ending={saving === "end"} counts={{ files: mats.length, chat: chat.length, decisions: decisions.length, actions: actions.length, notes: !!m.notes?.body.trim() }}
                    time={mmss(sec)} people={m.attendees.length}
                    onClose={() => setSaving(null)} onSave={(inc, fmt) => void finish(inc, fmt, saving === "end")} onEndOnly={() => void endOnly()} />
+      )}
+      {toStrategy && (
+        <StrategyApply meetingId={m.id} decision={toStrategy} onClose={() => setToStrategy(null)}
+                       onDone={(msg) => { setToStrategy(null); showToast(msg); }} />
       )}
       {toast}
     </>

@@ -6,6 +6,7 @@ import { hasLead } from "@/lib/types";
 import { getMeeting, heartbeat, jitsiDomain } from "@/lib/meeting";
 import Room, { type MeetingData } from "@/components/ed/screens/Room";
 import "../../../ed-room.css";
+import "../../../ed-strategy.css";
 
 export const dynamic = "force-dynamic";
 

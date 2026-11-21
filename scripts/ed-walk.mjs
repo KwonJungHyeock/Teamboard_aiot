@@ -24,7 +24,7 @@ const tok = (u) => { const p = Buffer.from(JSON.stringify({ ...u, exp: Math.floo
 let pass = 0, fail = 0;
 const chk = (id, c, n) => { if (c) { pass++; console.log(`OK   ${id.padEnd(34)} ${n}`); } else { fail++; console.log(`FAIL ${id.padEnd(34)} ${n}`); } };
 
-const SCREENS = ["/v3/control", "/v3/my", "/v3/log", "/v3/report", "/v3/tasks", "/v3/goals", "/v3/stats", "/v3/calendar", "/v3/room", "/v3/me", "/v3/settings"];
+const SCREENS = ["/v3/control", "/v3/my", "/v3/log", "/v3/report", "/v3/tasks", "/v3/goals", "/v3/stats", "/v3/calendar", "/v3/room", "/v3/me", "/v3/settings", "/v3/strategy"];
 const SIZES = [[1440, 900], [1100, 900], [980, 700]];
 const MARK = "[검사]";
 let browser;
@@ -69,7 +69,8 @@ try {
         });
         page.off("console", onC); page.off("pageerror", onE);
         const id = `${path.replace("/v3/", "")}·${theme}·${w}x${h}`;
-        chk(id, errs.length === 0 && r.over <= 0 && r.menus === 5 && r.hidden.length === 0 && r.loops <= 1 && r.bad === 0 && r.theme === theme,
+        // 메뉴 여섯: 홈 · 업무 · 회의 · 보고 · 전략 · 더보기 (2026-11-21 운영 전략 추가)
+        chk(id, errs.length === 0 && r.over <= 0 && r.menus === 6 && r.hidden.length === 0 && r.loops <= 1 && r.bad === 0 && r.theme === theme,
           `오류 ${errs.length}${errs[0] ? ` (${errs[0]})` : ""} · 넘침 ${r.over} · 메뉴 ${r.menus} 가림 [${r.hidden}] · 반복 ${r.loops}${r.loops > 1 ? ` [${r.loopWho}]` : ""} · fill ${r.bad} · ${r.theme}`);
       }
       await ctx.close();

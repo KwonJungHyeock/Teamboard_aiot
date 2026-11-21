@@ -87,6 +87,7 @@ function Account({ user }: { user: FrameUser }) {
     else if (n.refType === "worklog") router.push(`${V3_BASE}/log`);
     else if (n.refType === "stats") router.push(`${V3_BASE}/stats`);
     else if (n.refType === "request") router.push(`${V3_BASE}/requests`);
+    else if (n.refType === "strategy") router.push(`${V3_BASE}/strategy${n.refId ? `?item=${n.refId}` : ""}`);
   };
   return (
     <>
@@ -216,7 +217,7 @@ function DrawerHost() {
 export default function Frame({ user, children }: { user: FrameUser; children: React.ReactNode }) {
   const path = usePathname() ?? "";
   // 긴 문서형 화면은 페이지 전체가 스크롤된다
-  const scroll = [`${V3_BASE}/stats`, `${V3_BASE}/people`, `${V3_BASE}/tidy`, `${V3_BASE}/requests`].some((p) => path.startsWith(p));
+  const scroll = [`${V3_BASE}/stats`, `${V3_BASE}/people`, `${V3_BASE}/tidy`, `${V3_BASE}/requests`, `${V3_BASE}/strategy`].some((p) => path.startsWith(p));
   const reqN = useRequestCount(path);
   // 하위 탭 줄 — 업무 · 보고 · 더보기 묶음 안에서 화면을 옮긴다(2026-10 팀 피드백 2차)
   const group = MENU.find((m) => m.tabs && menuOn(path, m.match));

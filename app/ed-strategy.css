@@ -1,0 +1,102 @@
+/* 운영 전략 (지시서 v1): 접두사 sg- · 회의의 [전략에 반영] 창 sga-
+   카드 상자 · 검은 배경 상자 없이 선으로 나눈다. 글은 단어 단위로 줄을 바꾼다. 색은 기존 토큰만 쓴다. */
+.ed-page.sg { max-width: 1320px; gap: 14px; word-break: keep-all; overflow-wrap: break-word; }
+.sg-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.sg-head .ed-h1 { margin: 0; }
+.sg-sp { flex: 1; }
+.sg-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.sg-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line); background: transparent; color: var(--sub); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.sg-chip:hover { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.sg-chip[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.sg-chip i { font-style: normal; font-size: 11.5px; font-weight: 800; color: var(--amber); }
+.sg-add, .sg-save { border: 1px solid var(--accent); background: var(--accent); color: #fff; font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 12px; cursor: pointer; white-space: nowrap; }
+.sg-add:hover, .sg-save:hover:not(:disabled) { filter: brightness(1.06); }
+.sg-save:disabled { opacity: .45; cursor: default; }
+.sg-save { padding: 7px 14px; }
+
+/* 표: 축 4행 × 단계 2열. 줄로만 나눈다 */
+.sg-grid { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.sg-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) minmax(0, 1fr); border-bottom: 1px solid var(--line); }
+.sg-row.hd { position: sticky; top: 0; z-index: 1; background: color-mix(in srgb, var(--bg) 88%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.sg-ax, .sg-ph { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; }
+.sg-ax b, .sg-ph b { font-size: 14px; font-weight: 800; color: var(--ink); }
+.sg-ax span, .sg-ph span { font-size: 12px; color: var(--faint); }
+.sg-ph { border-left: 1px solid var(--line); }
+.sg-row:not(.hd) .sg-ax { padding-top: 16px; }
+.sg-cell { display: flex; flex-direction: column; gap: 2px; padding: 8px 8px 10px; border-left: 1px solid var(--line); min-width: 0; }
+
+.sg-it { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 9px 10px; border: 0; border-radius: 10px; background: transparent; text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
+.sg-it:hover { background: var(--panel2); }
+.sg-it.on { background: color-mix(in srgb, var(--accent) 9%, transparent); box-shadow: inset 2px 0 0 var(--accent); }
+.sg-it .l1 { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.sg-it .tt { min-width: 0; font-size: 14px; font-weight: 700; line-height: 1.4; }
+.sg-it .l2 { font-size: 12.5px; line-height: 1.45; color: var(--sub); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sg-it .l3 { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11.5px; color: var(--faint); }
+.sg-it .l3 .none { color: var(--faint); font-style: italic; }
+.sg-it .st.live { color: var(--green); font-weight: 700; }
+.sg-it .st.review { color: var(--amber); font-weight: 700; }
+.sg-it .st.dropped { color: var(--faint); font-weight: 700; }
+.sg-it.gone .tt { color: var(--faint); text-decoration: line-through; }
+.sg-lock { flex-shrink: 0; align-self: center; color: var(--sub); }
+.sg-wait { flex-shrink: 0; font-style: normal; font-size: 11px; font-weight: 800; color: var(--amber); white-space: nowrap; }
+.sg-none { padding: 9px 10px; font-size: 12.5px; color: var(--faint); }
+.sg-plus { align-self: flex-start; margin: 2px 4px 0; padding: 4px 6px; border: 0; background: none; font: inherit; font-size: 12px; font-weight: 600; color: var(--faint); cursor: pointer; border-radius: 8px; }
+.sg-plus:hover { color: var(--accent); }
+
+/* 상세 패널: 업무 상세 서랍 안 */
+.sg-db { word-break: keep-all; overflow-wrap: break-word; gap: 18px; }
+.sg-dt { flex: 1; font-size: 20px; font-weight: 700; }
+.sg-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.sg-ro { display: block; padding: 9px 2px; font-size: 14px; color: var(--sub); }
+.sg-note { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 13px; color: var(--sub); }
+.sg-link { border: 0; background: none; padding: 0; font: inherit; font-size: 13px; font-weight: 700; color: var(--accent); cursor: pointer; white-space: nowrap; }
+.sg-std { font-size: 14px; line-height: 1.55; }
+.sg-edit { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.sg-acts { display: flex; justify-content: flex-end; gap: 6px; }
+.sg-linkrow { display: flex; align-items: center; gap: 10px; }
+.sg-linkrow .ed-input { flex: 1; }
+.sg-n { font-style: normal; font-size: 12px; font-weight: 700; color: var(--accent); margin-left: 4px; }
+.sg-empty, .sg-hint { margin: 0; font-size: 13px; color: var(--faint); }
+.sg-ch { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; border-top: 1px solid var(--line); }
+.sg-ch.wait { padding-left: 10px; box-shadow: inset 2px 0 0 var(--amber); }
+.sg-ch .who { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--sub); }
+.sg-ch .who small { font-size: 11.5px; color: var(--faint); }
+.sg-ch .ap { font-style: normal; font-size: 11px; font-weight: 800; }
+.sg-ch .ap.direct { color: var(--sub); }
+.sg-ch .ap.approved { color: var(--green); }
+.sg-ch .ap.rejected { color: var(--red); }
+.sg-ch p { margin: 0; display: flex; gap: 8px; font-size: 13.5px; line-height: 1.5; color: var(--ink); white-space: pre-wrap; }
+.sg-ch p b { flex-shrink: 0; width: 30px; font-size: 11.5px; font-weight: 700; color: var(--faint); padding-top: 2px; }
+.sg-ch p.bf { color: var(--faint); }
+.sg-ch.rejected p.af { color: var(--faint); text-decoration: line-through; }
+.sg-ch p.rs { font-size: 12.5px; color: var(--sub); }
+.sg-ch .mt { align-self: flex-start; margin-left: 38px; font-size: 12.5px; font-weight: 700; color: var(--accent); }
+.sg-cm-in { display: flex; gap: 6px; }
+.sg-cm-in .ed-input { flex: 1; }
+.sg-cm { padding: 8px 0; border-top: 1px solid var(--line); }
+.sg-cm .who { font-size: 12px; color: var(--sub); }
+.sg-cm p { margin: 3px 0 0; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; }
+
+/* 회의: 확정된 결정 줄의 [전략에 반영] */
+.rm-it button.sg-to { flex-shrink: 0; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); background: transparent; color: var(--accent); font: inherit; font-size: 11.5px; font-weight: 700; padding: 4px 8px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+.rm-it button.sg-to:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.sga-t { font-size: 17px; font-weight: 800; }
+.sga-q, .sga-cur { margin: 0; display: flex; gap: 10px; font-size: 13.5px; line-height: 1.5; color: var(--ink); word-break: keep-all; overflow-wrap: break-word; }
+.sga-q { padding: 8px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.sga-q b, .sga-cur b { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--faint); padding-top: 1px; }
+.sga-cur { color: var(--sub); }
+.sga-lock { margin: 0; font-size: 12.5px; color: var(--amber); font-weight: 600; word-break: keep-all; }
+
+@media (max-width: 900px) {
+  .sg-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .sg-row .sg-ax { grid-column: 1 / -1; flex-direction: row; align-items: baseline; gap: 8px; padding: 12px 10px 4px; }
+  .sg-row.hd .sg-ax { display: none; }
+  .sg-row > :nth-child(2) { border-left: 0; }
+}
+@media (max-width: 560px) {
+  .sg-row { grid-template-columns: minmax(0, 1fr); }
+  .sg-row.hd { display: none; }
+  .sg-cell { border-left: 0; }
+  .sg-cell::before { content: attr(data-ph); font-size: 11.5px; font-weight: 700; color: var(--faint); padding: 2px 10px; }
+  .sg-two { grid-template-columns: minmax(0, 1fr); }
+}

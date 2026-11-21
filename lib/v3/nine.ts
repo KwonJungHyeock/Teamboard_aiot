@@ -56,6 +56,8 @@ export const NINE: NineScreen[] = [
   { n: 18, key: "tidy", label: "정리 필요", path: `${V3_BASE}/tidy` },
   // 2026-11-18 업무 요청(0050) — 팀원끼리 일을 부탁한다
   { n: 19, key: "requests", label: "업무 요청", path: `${V3_BASE}/requests` },
+  // 2026-11-21 운영 전략(지시서 v1, 0051)
+  { n: 20, key: "strategy", label: "운영 전략", path: `${V3_BASE}/strategy` },
 ];
 
 /** 새 화면 스위치 자리. **스위치가 꺼져 있어도** 관리자에게는 열린다(`app/v3/layout.tsx`) */
@@ -169,6 +171,8 @@ export const MENU: MenuItem[] = [
       { label: "성과 분석", href: `${V3_BASE}/stats`, match: [`${V3_BASE}/stats`], lead: true },
     ],
   },
+  // 운영 전략 — 「보고」 오른쪽(지시서 v1)
+  { label: "전략", href: `${V3_BASE}/strategy`, match: [`${V3_BASE}/strategy`] },
   {
     label: "더보기", href: `${V3_BASE}/log`, match: [`${V3_BASE}/log`, `${V3_BASE}/report`],
     tabs: [
